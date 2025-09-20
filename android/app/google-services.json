@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "60224912980",
+    "project_id": "aj-budgetr",
+    "storage_bucket": "aj-budgetr.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:60224912980:android:6a2d6e67fa4d154a77b7c1",
+        "android_client_info": {
+          "package_name": "com.example.budget"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAuhwwi72qE6cIRWgvWFOP-4YKzzn6CmYs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
