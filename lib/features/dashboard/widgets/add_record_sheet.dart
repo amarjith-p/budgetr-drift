@@ -1,3 +1,4 @@
+import 'package:budget/features/dashboard/widgets/modern_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,7 +9,9 @@ import '../../../core/models/percentage_config_model.dart';
 import '../../../core/services/firestore_service.dart';
 
 class AddRecordSheet extends StatefulWidget {
-  const AddRecordSheet({super.key});
+  final FinancialRecord? recordToEdit;
+
+  const AddRecordSheet({super.key, this.recordToEdit});
 
   @override
   State<AddRecordSheet> createState() => _AddRecordSheetState();
@@ -18,16 +21,18 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
   final _formKey = GlobalKey<FormState>();
   final _firestoreService = FirestoreService();
 
-  final _salaryController = TextEditingController();
-  final _extraIncomeController = TextEditingController();
-  final _emiController = TextEditingController();
+  late TextEditingController _salaryController;
+  late TextEditingController _extraIncomeController;
+  late TextEditingController _emiController;
 
   int? _selectedYear;
   int? _selectedMonth;
+
   final List<int> _years = List.generate(
-    10,
+    50,
     (index) => DateTime.now().year - 5 + index,
   );
+
   final List<int> _months = List.generate(12, (index) => index + 1);
 
   double _effectiveIncome = 0;
@@ -36,20 +41,44 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
 
   TextEditingController? _activeController;
   bool _isKeyboardVisible = false;
+  bool _isEditing = false;
 
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _selectedYear = now.year;
-    _selectedMonth = now.month;
+    _isEditing = widget.recordToEdit != null;
 
-    // Load config. It will be in the user's defined order.
-    _firestoreService.getPercentageConfig().then((config) {
-      setState(() {
-        _config = config;
+    _salaryController = TextEditingController(
+      text: widget.recordToEdit?.salary.toString() ?? '',
+    );
+    _extraIncomeController = TextEditingController(
+      text: widget.recordToEdit?.extraIncome.toString() ?? '',
+    );
+    _emiController = TextEditingController(
+      text: widget.recordToEdit?.emi.toString() ?? '',
+    );
+
+    if (_isEditing) {
+      _selectedYear = widget.recordToEdit!.year;
+      _selectedMonth = widget.recordToEdit!.month;
+
+      List<CategoryConfig> historicalCats = [];
+      widget.recordToEdit!.allocationPercentages.forEach((key, value) {
+        historicalCats.add(CategoryConfig(name: key, percentage: value));
       });
-    });
+      _config = PercentageConfig(categories: historicalCats);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _calculate());
+    } else {
+      final now = DateTime.now();
+      _selectedYear = now.year;
+      _selectedMonth = now.month;
+
+      _firestoreService.getPercentageConfig().then((config) {
+        setState(() {
+          _config = config;
+        });
+      });
+    }
 
     _salaryController.addListener(_calculate);
     _extraIncomeController.addListener(_calculate);
@@ -75,7 +104,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
       if (_effectiveIncome < 0) _effectiveIncome = 0;
 
       _calculatedValues.clear();
-      // Calculate in the order of categories defined in settings
       for (var category in _config!.categories) {
         _calculatedValues[category.name] =
             _effectiveIncome * (category.percentage / 100.0);
@@ -90,14 +118,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
     await Future.delayed(const Duration(milliseconds: 100));
 
     if (_formKey.currentState!.validate()) {
-      if (_config == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Percentage settings are still loading."),
-          ),
-        );
-        return;
-      }
+      if (_config == null) return;
 
       final idString =
           '$_selectedYear${_selectedMonth.toString().padLeft(2, '0')}';
@@ -105,7 +126,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
       Map<String, double> allocations = {};
       Map<String, double> percentages = {};
 
-      // Store in the order defined in settings
       for (var category in _config!.categories) {
         allocations[category.name] = _calculatedValues[category.name] ?? 0.0;
         percentages[category.name] = category.percentage;
@@ -121,7 +141,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
         effectiveIncome: _effectiveIncome,
         allocations: allocations,
         allocationPercentages: percentages,
-        createdAt: Timestamp.now(),
+        createdAt: widget.recordToEdit?.createdAt ?? Timestamp.now(),
       );
 
       try {
@@ -129,8 +149,10 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
         if (mounted) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Record saved successfully!'),
+            SnackBar(
+              content: Text(
+                _isEditing ? 'Record updated!' : 'Record saved successfully!',
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -138,28 +160,25 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error saving record: $e'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
           );
         }
       }
     }
   }
 
-  // --- Keyboard Logic ---
+  // Keyboard Handlers
   void _handleKeyPress(String value) {
     if (_activeController == null) return;
     final controller = _activeController!;
     final text = controller.text;
     final selection = controller.selection;
-    final newText = text.replaceRange(selection.start, selection.end, value);
+    int start = selection.start >= 0 ? selection.start : text.length;
+    int end = selection.end >= 0 ? selection.end : text.length;
+    final newText = text.replaceRange(start, end, value);
     controller.value = TextEditingValue(
       text: newText,
-      selection: TextSelection.collapsed(
-        offset: selection.start + value.length,
-      ),
+      selection: TextSelection.collapsed(offset: start + value.length),
     );
   }
 
@@ -168,48 +187,36 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
     final controller = _activeController!;
     final text = controller.text;
     final selection = controller.selection;
-    if (selection.baseOffset > 0) {
-      final newText = text.replaceRange(
-        selection.start - 1,
-        selection.start,
-        '',
-      );
+    int start = selection.start >= 0 ? selection.start : text.length;
+    if (start > 0) {
+      final newText = text.replaceRange(start - 1, start, '');
       controller.value = TextEditingValue(
         text: newText,
-        selection: TextSelection.collapsed(offset: selection.start - 1),
+        selection: TextSelection.collapsed(offset: start - 1),
       );
     }
   }
 
   void _handleClear() {
-    if (_activeController == null) return;
-    _activeController!.clear();
+    _activeController?.clear();
   }
 
   void _handleEquals() {
     if (_activeController == null || _activeController!.text.isEmpty) return;
-
     String expression = _activeController!.text
         .replaceAll('×', '*')
         .replaceAll('÷', '/');
-
     try {
       Parser p = Parser();
       Expression exp = p.parse(expression);
       ContextModel cm = ContextModel();
       double result = exp.evaluate(EvaluationType.REAL, cm);
-
       _activeController!.text = result.toStringAsFixed(2);
       _activeController!.selection = TextSelection.fromPosition(
         TextPosition(offset: _activeController!.text.length),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid Expression'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      /* Ignore */
     }
   }
 
@@ -243,22 +250,16 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'New Monthly Record',
+                        _isEditing ? 'Edit Record' : 'New Monthly Record',
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 24),
                       _buildCalcFormField(
                         controller: _salaryController,
                         labelText: 'Salary*',
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Salary is mandatory';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Invalid number/expression';
-                          }
-                          return null;
-                        },
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? 'Required'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       _buildCalcFormField(
@@ -277,14 +278,55 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                         'Record for Month & Year',
                         style: Theme.of(context).textTheme.labelLarge,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
+
+                      // --- MODERN DROPDOWNS ---
                       Row(
                         children: [
-                          Expanded(child: _buildYearDropdown()),
+                          Expanded(
+                            child: ModernDropdownPill<int>(
+                              label: _selectedYear?.toString() ?? 'Year',
+                              isActive: _selectedYear != null,
+                              icon: Icons.calendar_today_outlined,
+                              isEnabled: !_isEditing, // Disable if editing
+                              onTap: () => showSelectionSheet<int>(
+                                context: context,
+                                title: 'Select Year',
+                                items: _years,
+                                labelBuilder: (y) => y.toString(),
+                                onSelect: (val) =>
+                                    setState(() => _selectedYear = val),
+                                selectedItem: _selectedYear,
+                              ),
+                            ),
+                          ),
                           const SizedBox(width: 16),
-                          Expanded(child: _buildMonthDropdown()),
+                          Expanded(
+                            child: ModernDropdownPill<int>(
+                              label: _selectedMonth != null
+                                  ? DateFormat(
+                                      'MMMM',
+                                    ).format(DateTime(0, _selectedMonth!))
+                                  : 'Month',
+                              isActive: _selectedMonth != null,
+                              icon: Icons.calendar_view_month_outlined,
+                              isEnabled: !_isEditing, // Disable if editing
+                              onTap: () => showSelectionSheet<int>(
+                                context: context,
+                                title: 'Select Month',
+                                items: _months,
+                                labelBuilder: (m) =>
+                                    DateFormat('MMMM').format(DateTime(0, m)),
+                                onSelect: (val) =>
+                                    setState(() => _selectedMonth = val),
+                                selectedItem: _selectedMonth,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
+
+                      // -----------------------
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
@@ -293,7 +335,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.all(16),
                           ),
-                          child: const Text('Record'),
+                          child: Text(_isEditing ? 'Update Record' : 'Record'),
                         ),
                       ),
                     ],
@@ -316,48 +358,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
           ),
         ],
       ),
-    );
-  }
-
-  InputDecoration _modernDropdownDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-    );
-  }
-
-  Widget _buildYearDropdown() {
-    return DropdownButtonFormField<int>(
-      value: _selectedYear,
-      decoration: _modernDropdownDecoration('Year'),
-      items: _years
-          .map(
-            (year) =>
-                DropdownMenuItem(value: year, child: Text(year.toString())),
-          )
-          .toList(),
-      onChanged: (value) => setState(() => _selectedYear = value),
-    );
-  }
-
-  Widget _buildMonthDropdown() {
-    return DropdownButtonFormField<int>(
-      value: _selectedMonth,
-      decoration: _modernDropdownDecoration('Month'),
-      items: _months
-          .map(
-            (month) => DropdownMenuItem(
-              value: month,
-              child: Text(DateFormat('MMMM').format(DateTime(0, month))),
-            ),
-          )
-          .toList(),
-      onChanged: (value) => setState(() => _selectedMonth = value),
     );
   }
 
@@ -393,8 +393,9 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
 
   Widget _buildCalculationsDisplay() {
     final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+    final sortedEntries = _calculatedValues.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
-    // Use the natural order from _config!.categories which respects user settings
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -413,19 +414,21 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const Divider(height: 24),
-          // Loop directly through the Ordered Categories
-          ..._config!.categories.map((category) {
-            final amount = _calculatedValues[category.name] ?? 0.0;
+          ...sortedEntries.map((entry) {
+            final percent = _config!.categories
+                .firstWhere(
+                  (c) => c.name == entry.key,
+                  orElse: () => CategoryConfig(name: '', percentage: 0),
+                )
+                .percentage;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  Text('${entry.key} (${percent.toStringAsFixed(0)}%)'),
                   Text(
-                    '${category.name} (${category.percentage.toStringAsFixed(0)}%)',
-                  ),
-                  Text(
-                    currencyFormat.format(amount),
+                    currencyFormat.format(entry.value),
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                 ],
@@ -438,7 +441,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
   }
 }
 
-// ... [Keyboard Class remains same]
 class _CalculatorKeyboard extends StatelessWidget {
   final void Function(String) onKeyPress;
   final VoidCallback onBackspace;
@@ -464,52 +466,35 @@ class _CalculatorKeyboard extends StatelessWidget {
         children: [
           Row(
             children: [
-              _buildKey('('),
-              _buildKey(')'),
-              _buildKey('C', onAction: onClear, isFunction: true),
-              _buildKey(
-                '⌫',
-                onAction: onBackspace,
-                isFunction: true,
-                icon: Icons.backspace_outlined,
-              ),
+              _k('('),
+              _k(')'),
+              _k('C', a: onClear, f: true),
+              _k('⌫', a: onBackspace, f: true, i: Icons.backspace_outlined),
             ],
           ),
           Row(
             children: [
-              _buildKey('7'),
-              _buildKey('8'),
-              _buildKey('9'),
-              _buildKey('÷', onAction: () => onKeyPress('/'), isFunction: true),
+              _k('7'),
+              _k('8'),
+              _k('9'),
+              _k('÷', a: () => onKeyPress('/'), f: true),
             ],
           ),
           Row(
             children: [
-              _buildKey('4'),
-              _buildKey('5'),
-              _buildKey('6'),
-              _buildKey('×', onAction: () => onKeyPress('*'), isFunction: true),
+              _k('4'),
+              _k('5'),
+              _k('6'),
+              _k('×', a: () => onKeyPress('*'), f: true),
             ],
           ),
+          Row(children: [_k('1'), _k('2'), _k('3'), _k('-', f: true)]),
           Row(
             children: [
-              _buildKey('1'),
-              _buildKey('2'),
-              _buildKey('3'),
-              _buildKey('-', isFunction: true),
-            ],
-          ),
-          Row(
-            children: [
-              _buildKey('.'),
-              _buildKey('0'),
-              _buildKey(
-                '=',
-                onAction: onEquals,
-                isFunction: true,
-                isEquals: true,
-              ),
-              _buildKey('+', isFunction: true),
+              _k('.'),
+              _k('0'),
+              _k('=', a: onEquals, f: true, e: true),
+              _k('+', f: true),
             ],
           ),
         ],
@@ -517,24 +502,24 @@ class _CalculatorKeyboard extends StatelessWidget {
     );
   }
 
-  Widget _buildKey(
-    String text, {
-    VoidCallback? onAction,
-    bool isFunction = false,
-    bool isEquals = false,
-    IconData? icon,
+  Widget _k(
+    String t, {
+    VoidCallback? a,
+    bool f = false,
+    bool e = false,
+    IconData? i,
   }) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.all(4.0),
-        child: isEquals
+        child: e
             ? FilledButton(
-                onPressed: onAction,
+                onPressed: a,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: Text(
-                  text,
+                  t,
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -542,19 +527,18 @@ class _CalculatorKeyboard extends StatelessWidget {
                 ),
               )
             : OutlinedButton(
-                onPressed: () =>
-                    onAction != null ? onAction() : onKeyPress(text),
+                onPressed: () => a != null ? a() : onKeyPress(t),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  foregroundColor: isFunction
+                  foregroundColor: f
                       ? Colors.cyanAccent.shade400
                       : Colors.white,
                   side: BorderSide(color: Colors.white.withOpacity(0.2)),
                 ),
-                child: icon != null
-                    ? Icon(icon, size: 20)
+                child: i != null
+                    ? Icon(i, size: 20)
                     : Text(
-                        text,
+                        t,
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,

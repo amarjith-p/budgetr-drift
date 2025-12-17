@@ -1,3 +1,4 @@
+import 'package:budget/features/dashboard/widgets/modern_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -27,22 +28,11 @@ class _SettlementScreenState extends State<SettlementScreen> {
 
   bool _isLoading = false;
   Settlement? _settlementData;
-  List<String> _categoryOrder = [];
 
   @override
   void initState() {
     super.initState();
     _loadDropdownData();
-    _fetchCategoryOrder();
-  }
-
-  Future<void> _fetchCategoryOrder() async {
-    try {
-      final config = await _firestoreService.getPercentageConfig();
-      setState(() {
-        _categoryOrder = config.categories.map((e) => e.name).toList();
-      });
-    } catch (_) {}
   }
 
   Future<void> _loadDropdownData() async {
@@ -100,10 +90,6 @@ class _SettlementScreenState extends State<SettlementScreen> {
     });
     final recordId =
         '$_selectedYear${_selectedMonth.toString().padLeft(2, '0')}';
-
-    // Refresh order just in case
-    await _fetchCategoryOrder();
-
     final settlement = await _firestoreService.getSettlementById(recordId);
     setState(() {
       _settlementData = settlement;
@@ -139,9 +125,43 @@ class _SettlementScreenState extends State<SettlementScreen> {
           children: [
             Row(
               children: [
-                Expanded(child: _buildYearDropdown()),
+                Expanded(
+                  child: ModernDropdownPill<int>(
+                    label: _selectedYear?.toString() ?? 'Year',
+                    isActive: _selectedYear != null,
+                    icon: Icons.calendar_today_outlined,
+                    onTap: () => showSelectionSheet<int>(
+                      context: context,
+                      title: 'Select Year',
+                      items: _availableYears,
+                      labelBuilder: (y) => y.toString(),
+                      onSelect: _onYearSelected,
+                      selectedItem: _selectedYear,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 16),
-                Expanded(child: _buildMonthDropdown()),
+                Expanded(
+                  child: ModernDropdownPill<int>(
+                    label: _selectedMonth != null
+                        ? DateFormat(
+                            'MMMM',
+                          ).format(DateTime(0, _selectedMonth!))
+                        : 'Month',
+                    isActive: _selectedMonth != null,
+                    icon: Icons.calendar_view_month_outlined,
+                    isEnabled: _selectedYear != null,
+                    onTap: () => showSelectionSheet<int>(
+                      context: context,
+                      title: 'Select Month',
+                      items: _availableMonthsForYear,
+                      labelBuilder: (m) =>
+                          DateFormat('MMMM').format(DateTime(0, m)),
+                      onSelect: (val) => setState(() => _selectedMonth = val),
+                      selectedItem: _selectedMonth,
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -163,52 +183,6 @@ class _SettlementScreenState extends State<SettlementScreen> {
         icon: const Icon(Icons.edit_document),
         label: const Text('Enter/Edit Settlement'),
       ),
-    );
-  }
-
-  InputDecoration _modernDropdownDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Theme.of(
-        context,
-      ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-    );
-  }
-
-  Widget _buildYearDropdown() {
-    return DropdownButtonFormField<int>(
-      value: _selectedYear,
-      decoration: _modernDropdownDecoration('Year'),
-      items: _availableYears
-          .map(
-            (year) =>
-                DropdownMenuItem(value: year, child: Text(year.toString())),
-          )
-          .toList(),
-      onChanged: _onYearSelected,
-    );
-  }
-
-  Widget _buildMonthDropdown() {
-    return DropdownButtonFormField<int>(
-      value: _selectedMonth,
-      decoration: _modernDropdownDecoration('Month'),
-      onChanged: _selectedYear == null
-          ? null
-          : (value) => setState(() => _selectedMonth = value),
-      items: _availableMonthsForYear
-          .map(
-            (month) => DropdownMenuItem(
-              value: month,
-              child: Text(DateFormat('MMMM').format(DateTime(0, month))),
-            ),
-          )
-          .toList(),
     );
   }
 
@@ -255,22 +229,12 @@ class _SettlementScreenState extends State<SettlementScreen> {
     );
   }
 
-  // Helper to sort keys based on _categoryOrder
-  List<String> _getSortedKeys(Map<String, double> dataMap) {
-    final keys = dataMap.keys.toList();
-    keys.sort((a, b) {
-      int indexA = _categoryOrder.indexOf(a);
-      int indexB = _categoryOrder.indexOf(b);
-      if (indexA == -1) indexA = 999;
-      if (indexB == -1) indexB = 999;
-      return indexA.compareTo(indexB);
-    });
-    return keys;
-  }
-
   Widget _buildSettlementChart(Settlement data) {
-    // USE SORTED KEYS
-    final keys = _getSortedKeys(data.allocations);
+    final keys = data.allocations.keys.toList()
+      ..sort(
+        (a, b) =>
+            (data.allocations[b] ?? 0).compareTo(data.allocations[a] ?? 0),
+      );
 
     return BarChart(
       BarChartData(
@@ -313,7 +277,6 @@ class _SettlementScreenState extends State<SettlementScreen> {
               getTitlesWidget: (value, meta) {
                 if (value.toInt() >= 0 && value.toInt() < keys.length) {
                   String text = keys[value.toInt()];
-                  // Show first 3 letters for label
                   if (text.length > 3) text = text.substring(0, 3);
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
@@ -357,20 +320,19 @@ class _SettlementScreenState extends State<SettlementScreen> {
   }
 
   Widget _buildSettlementTable(Settlement data) {
-    // USE SORTED KEYS
-    final keys = _getSortedKeys(data.allocations);
+    final sortedEntries = data.allocations.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     List<DataRow> rows = [];
 
-    for (var key in keys) {
-      final allocated = data.allocations[key] ?? 0.0;
+    for (var entry in sortedEntries) {
+      final key = entry.key;
+      final allocated = entry.value;
       final spent = data.expenses[key] ?? 0.0;
       final balance = allocated - spent;
-
       rows.add(_createDataRow(key, allocated, spent, balance));
     }
 
-    // Add Total Row
     rows.add(
       DataRow(
         cells: [
@@ -486,9 +448,7 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
 
   FinancialRecord? _budgetRecord;
   Settlement? _existingSettlement;
-  List<String> _categoryOrder = [];
 
-  // DYNAMIC CONTROLLERS
   final Map<String, TextEditingController> _controllers = {};
   double _totalExpense = 0.0;
 
@@ -499,16 +459,6 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
   void initState() {
     super.initState();
     _loadDropdownData();
-    _fetchCategoryOrder();
-  }
-
-  Future<void> _fetchCategoryOrder() async {
-    try {
-      final config = await _firestoreService.getPercentageConfig();
-      setState(() {
-        _categoryOrder = config.categories.map((e) => e.name).toList();
-      });
-    } catch (_) {}
   }
 
   @override
@@ -567,9 +517,6 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
     final recordId =
         '$_selectedYear${_selectedMonth.toString().padLeft(2, '0')}';
 
-    // Refresh category order
-    await _fetchCategoryOrder();
-
     try {
       final results = await Future.wait([
         _firestoreService.getRecordById(recordId),
@@ -580,7 +527,6 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
         _budgetRecord = results[0] as FinancialRecord;
         _existingSettlement = results[1] as Settlement?;
 
-        // Initialize controllers for every allocation category found
         _controllers.clear();
         _budgetRecord!.allocations.forEach((key, _) {
           double initialValue = 0.0;
@@ -615,7 +561,6 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
   Future<void> _onSettle() async {
     if (_budgetRecord == null) return;
 
-    // Collect expenses from controllers
     Map<String, double> expenses = {};
     _controllers.forEach((key, ctrl) {
       expenses[key] = double.tryParse(ctrl.text) ?? 0.0;
@@ -652,7 +597,6 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
     }
   }
 
-  // --- Keyboard Handling (Same as before) ---
   void _handleKeyPress(String value) {
     if (_activeController == null) return;
     final controller = _activeController!;
@@ -731,9 +675,41 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
         children: [
           Row(
             children: [
-              Expanded(child: _buildYearDropdown()),
+              Expanded(
+                child: ModernDropdownPill<int>(
+                  label: _selectedYear?.toString() ?? 'Year',
+                  isActive: _selectedYear != null,
+                  icon: Icons.calendar_today_outlined,
+                  onTap: () => showSelectionSheet<int>(
+                    context: context,
+                    title: 'Select Year',
+                    items: _availableYears,
+                    labelBuilder: (y) => y.toString(),
+                    onSelect: _onYearSelected,
+                    selectedItem: _selectedYear,
+                  ),
+                ),
+              ),
               const SizedBox(width: 16),
-              Expanded(child: _buildMonthDropdown()),
+              Expanded(
+                child: ModernDropdownPill<int>(
+                  label: _selectedMonth != null
+                      ? DateFormat('MMMM').format(DateTime(0, _selectedMonth!))
+                      : 'Month',
+                  isActive: _selectedMonth != null,
+                  icon: Icons.calendar_view_month_outlined,
+                  isEnabled: _selectedYear != null,
+                  onTap: () => showSelectionSheet<int>(
+                    context: context,
+                    title: 'Select Month',
+                    items: _availableMonthsForYear,
+                    labelBuilder: (m) =>
+                        DateFormat('MMMM').format(DateTime(0, m)),
+                    onSelect: (val) => setState(() => _selectedMonth = val),
+                    selectedItem: _selectedMonth,
+                  ),
+                ),
+              ),
               IconButton(
                 icon: const Icon(Icons.downloading),
                 onPressed: _fetchData,
@@ -785,75 +761,21 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
     );
   }
 
-  InputDecoration _modernDropdownDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Theme.of(
-        context,
-      ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-    );
-  }
-
-  Widget _buildYearDropdown() {
-    return DropdownButtonFormField<int>(
-      value: _selectedYear,
-      decoration: _modernDropdownDecoration('Year'),
-      items: _availableYears
-          .map(
-            (year) =>
-                DropdownMenuItem(value: year, child: Text(year.toString())),
-          )
-          .toList(),
-      onChanged: _onYearSelected,
-    );
-  }
-
-  Widget _buildMonthDropdown() {
-    return DropdownButtonFormField<int>(
-      value: _selectedMonth,
-      decoration: _modernDropdownDecoration('Month'),
-      onChanged: _selectedYear == null
-          ? null
-          : (value) => setState(() => _selectedMonth = value),
-      items: _availableMonthsForYear
-          .map(
-            (month) => DropdownMenuItem(
-              value: month,
-              child: Text(DateFormat('MMMM').format(DateTime(0, month))),
-            ),
-          )
-          .toList(),
-    );
-  }
-
   Widget _buildSettlementForm() {
     final totalBalance = _budgetRecord!.effectiveIncome - _totalExpense;
 
-    // SORT KEYS FOR FORM DISPLAY
-    final keys = _budgetRecord!.allocations.keys.toList();
-    keys.sort((a, b) {
-      int indexA = _categoryOrder.indexOf(a);
-      int indexB = _categoryOrder.indexOf(b);
-      if (indexA == -1) indexA = 999;
-      if (indexB == -1) indexB = 999;
-      return indexA.compareTo(indexB);
-    });
+    final sortedEntries = _budgetRecord!.allocations.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return GestureDetector(
       onTap: () => setState(() => _isKeyboardVisible = false),
       child: ListView(
         children: [
-          // DYNAMIC LIST GENERATION (SORTED)
-          ...keys.map((key) {
+          ...sortedEntries.map((entry) {
             return _buildSettlementRow(
-              title: key,
-              allocated: _budgetRecord!.allocations[key]!,
-              controller: _controllers[key]!,
+              title: entry.key,
+              allocated: entry.value,
+              controller: _controllers[entry.key]!,
             );
           }),
 

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -37,7 +38,7 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
 }
 
 // -----------------------------------------------------------------------------
-// TAB 1: TOTAL NET WORTH (Original Functionality)
+// TAB 1: TOTAL NET WORTH
 // -----------------------------------------------------------------------------
 class _NetWorthTab extends StatefulWidget {
   const _NetWorthTab();
@@ -57,6 +58,37 @@ class _NetWorthTabState extends State<_NetWorthTab> {
   int? _filterYear;
   int? _filterMonth;
 
+  Future<void> _deleteRecord(String id) async {
+    bool confirm =
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Delete Record?'),
+            content: const Text(
+              'Are you sure you want to delete this record? This cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (confirm) {
+      await _firestoreService.deleteNetWorthRecord(id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,11 +102,8 @@ class _NetWorthTabState extends State<_NetWorthTab> {
             return Center(child: Text('Error: ${snapshot.error}'));
 
           var records = snapshot.data ?? [];
-          records.sort(
-            (a, b) => a.date.compareTo(b.date),
-          ); // Sort Oldest first for chart
+          records.sort((a, b) => a.date.compareTo(b.date));
 
-          // Prepare Data
           List<Map<String, dynamic>> processedData = [];
           for (int i = 0; i < records.length; i++) {
             double diff = (i > 0)
@@ -83,7 +112,6 @@ class _NetWorthTabState extends State<_NetWorthTab> {
             processedData.add({'record': records[i], 'diff': diff});
           }
 
-          // Apply Filters
           List<Map<String, dynamic>> filteredData = processedData.where((data) {
             final record = data['record'] as NetWorthRecord;
             bool matchesYear =
@@ -93,14 +121,13 @@ class _NetWorthTabState extends State<_NetWorthTab> {
             return matchesYear && matchesMonth;
           }).toList();
 
-          // Prepare Display List (Newest First)
           final displayList = List<Map<String, dynamic>>.from(
             filteredData.reversed,
           );
 
           return Column(
             children: [
-              _buildFilters(records),
+              _buildModernFilters(records),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.only(bottom: 80),
@@ -130,7 +157,8 @@ class _NetWorthTabState extends State<_NetWorthTab> {
     );
   }
 
-  Widget _buildFilters(List<NetWorthRecord> allRecords) {
+  // --- MODERN FILTER IMPLEMENTATION ---
+  Widget _buildModernFilters(List<NetWorthRecord> allRecords) {
     final years = allRecords.map((e) => e.date.year).toSet().toList();
     years.sort((a, b) => b.compareTo(a));
 
@@ -138,51 +166,140 @@ class _NetWorthTabState extends State<_NetWorthTab> {
       padding: const EdgeInsets.all(16.0),
       child: Row(
         children: [
+          // Year Pill
           Expanded(
-            child: DropdownButtonFormField<int>(
-              value: _filterYear,
-              decoration: _inputDecoration(context, 'Year'),
-              items: [
-                const DropdownMenuItem<int>(
-                  value: null,
-                  child: Text('All Time'),
-                ),
-                ...years.map(
-                  (y) => DropdownMenuItem(value: y, child: Text('$y')),
-                ),
-              ],
-              onChanged: (val) => setState(() {
-                _filterYear = val;
-                if (val == null) _filterMonth = null;
-              }),
+            child: _ModernFilterPill<int>(
+              label: _filterYear?.toString() ?? 'All Years',
+              isActive: _filterYear != null,
+              icon: Icons.calendar_today_outlined,
+              onTap: () => _showSelectionSheet<int>(
+                title: 'Select Year',
+                items: years,
+                labelBuilder: (y) => y.toString(),
+                onSelect: (val) => setState(() {
+                  _filterYear = val;
+                  if (val == null) _filterMonth = null;
+                }),
+                selectedItem: _filterYear,
+                showReset: true,
+              ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
+          // Month Pill
           Expanded(
-            child: DropdownButtonFormField<int>(
-              value: _filterMonth,
-              decoration: _inputDecoration(context, 'Month'),
-              items: [
-                const DropdownMenuItem<int>(
-                  value: null,
-                  child: Text('All Months'),
-                ),
-                ...List.generate(
-                  12,
-                  (index) => DropdownMenuItem(
-                    value: index + 1,
-                    child: Text(
-                      DateFormat('MMMM').format(DateTime(0, index + 1)),
-                    ),
-                  ),
-                ),
-              ],
-              onChanged: _filterYear == null
-                  ? null
-                  : (val) => setState(() => _filterMonth = val),
+            child: _ModernFilterPill<int>(
+              label: _filterMonth != null
+                  ? DateFormat('MMMM').format(DateTime(0, _filterMonth!))
+                  : 'All Months',
+              isActive: _filterMonth != null,
+              icon: Icons.calendar_view_month_outlined,
+              isEnabled: _filterYear != null, // Only enable if year is selected
+              onTap: () => _showSelectionSheet<int>(
+                title: 'Select Month',
+                items: List.generate(12, (i) => i + 1),
+                labelBuilder: (m) => DateFormat('MMMM').format(DateTime(0, m)),
+                onSelect: (val) => setState(() => _filterMonth = val),
+                selectedItem: _filterMonth,
+                showReset: true,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showSelectionSheet<T>({
+    required String title,
+    required List<T> items,
+    required String Function(T) labelBuilder,
+    required Function(T?) onSelect,
+    T? selectedItem,
+    bool showReset = false,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xff0D1B2A).withOpacity(0.95),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleLarge),
+                    if (showReset)
+                      TextButton(
+                        onPressed: () {
+                          onSelect(null);
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          'Reset',
+                          style: TextStyle(color: Colors.redAccent),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              SizedBox(
+                height: 300,
+                child: ListView.builder(
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final isSelected = item == selectedItem;
+                    return ListTile(
+                      title: Text(
+                        labelBuilder(item),
+                        style: TextStyle(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.white70,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? Icon(
+                              Icons.check,
+                              color: Theme.of(context).colorScheme.primary,
+                            )
+                          : null,
+                      onTap: () {
+                        onSelect(item);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -288,6 +405,12 @@ class _NetWorthTabState extends State<_NetWorthTab> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
+          DataColumn(
+            label: Text(
+              'Action',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
         rows: displayList.map((data) {
           final record = data['record'] as NetWorthRecord;
@@ -308,6 +431,16 @@ class _NetWorthTabState extends State<_NetWorthTab> {
                   ),
                 ),
               ),
+              DataCell(
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete,
+                    color: Colors.redAccent,
+                    size: 20,
+                  ),
+                  onPressed: () => _deleteRecord(record.id),
+                ),
+              ),
             ],
           );
         }).toList(),
@@ -317,7 +450,7 @@ class _NetWorthTabState extends State<_NetWorthTab> {
 }
 
 // -----------------------------------------------------------------------------
-// TAB 2: SPLITS ANALYSIS (New Feature)
+// TAB 2: SPLITS ANALYSIS
 // -----------------------------------------------------------------------------
 class _NetWorthSplitsTab extends StatefulWidget {
   const _NetWorthSplitsTab();
@@ -337,6 +470,37 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
   int? _filterYear;
   int? _filterMonth;
 
+  Future<void> _deleteSplit(String id) async {
+    bool confirm =
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Delete Record?'),
+            content: const Text(
+              'Are you sure you want to delete this split record?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (confirm) {
+      await _firestoreService.deleteNetWorthSplit(id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -351,7 +515,6 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
 
           var records = snapshot.data ?? [];
 
-          // Filters
           var filteredRecords = records.where((record) {
             bool matchesYear =
                 _filterYear == null || record.date.year == _filterYear;
@@ -362,7 +525,7 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
 
           return Column(
             children: [
-              _buildFilters(records),
+              _buildModernFilters(records),
               Expanded(
                 child: filteredRecords.isEmpty
                     ? const Center(child: Text('No split records found'))
@@ -393,28 +556,46 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
                                           fontSize: 16,
                                         ),
                                       ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: split.effectiveSavings >= 0
-                                              ? Colors.green.withOpacity(0.2)
-                                              : Colors.red.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: split.effectiveSavings >= 0
+                                                  ? Colors.green.withOpacity(
+                                                      0.2,
+                                                    )
+                                                  : Colors.red.withOpacity(0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              'Savings: ${_currencyFormat.format(split.effectiveSavings)}',
+                                              style: TextStyle(
+                                                color:
+                                                    split.effectiveSavings >= 0
+                                                    ? Colors.greenAccent
+                                                    : Colors.redAccent,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                        child: Text(
-                                          'Savings: ${_currencyFormat.format(split.effectiveSavings)}',
-                                          style: TextStyle(
-                                            color: split.effectiveSavings >= 0
-                                                ? Colors.greenAccent
-                                                : Colors.redAccent,
-                                            fontWeight: FontWeight.bold,
+                                          const SizedBox(width: 8),
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete,
+                                              color: Colors.redAccent,
+                                              size: 20,
+                                            ),
+                                            onPressed: () =>
+                                                _deleteSplit(split.id),
+                                            constraints: const BoxConstraints(),
+                                            padding: EdgeInsets.zero,
                                           ),
-                                        ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -487,6 +668,152 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
     );
   }
 
+  // Reuse the modern filter logic here
+  Widget _buildModernFilters(List<NetWorthSplit> allRecords) {
+    final years = allRecords.map((e) => e.date.year).toSet().toList();
+    years.sort((a, b) => b.compareTo(a));
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ModernFilterPill<int>(
+              label: _filterYear?.toString() ?? 'All Years',
+              isActive: _filterYear != null,
+              icon: Icons.calendar_today_outlined,
+              onTap: () => _showSelectionSheet<int>(
+                title: 'Select Year',
+                items: years,
+                labelBuilder: (y) => y.toString(),
+                onSelect: (val) => setState(() {
+                  _filterYear = val;
+                  if (val == null) _filterMonth = null;
+                }),
+                selectedItem: _filterYear,
+                showReset: true,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _ModernFilterPill<int>(
+              label: _filterMonth != null
+                  ? DateFormat('MMMM').format(DateTime(0, _filterMonth!))
+                  : 'All Months',
+              isActive: _filterMonth != null,
+              icon: Icons.calendar_view_month_outlined,
+              isEnabled: _filterYear != null,
+              onTap: () => _showSelectionSheet<int>(
+                title: 'Select Month',
+                items: List.generate(12, (i) => i + 1),
+                labelBuilder: (m) => DateFormat('MMMM').format(DateTime(0, m)),
+                onSelect: (val) => setState(() => _filterMonth = val),
+                selectedItem: _filterMonth,
+                showReset: true,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Duplicate _showSelectionSheet because it's in a different State class (or move to common file, but here keeping isolated)
+  void _showSelectionSheet<T>({
+    required String title,
+    required List<T> items,
+    required String Function(T) labelBuilder,
+    required Function(T?) onSelect,
+    T? selectedItem,
+    bool showReset = false,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xff0D1B2A).withOpacity(0.95),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleLarge),
+                    if (showReset)
+                      TextButton(
+                        onPressed: () {
+                          onSelect(null);
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          'Reset',
+                          style: TextStyle(color: Colors.redAccent),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              SizedBox(
+                height: 300,
+                child: ListView.builder(
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final isSelected = item == selectedItem;
+                    return ListTile(
+                      title: Text(
+                        labelBuilder(item),
+                        style: TextStyle(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.white70,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? Icon(
+                              Icons.check,
+                              color: Theme.of(context).colorScheme.primary,
+                            )
+                          : null,
+                      onTap: () {
+                        onSelect(item);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _row(String label, double amount, Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -522,68 +849,87 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
       ),
     );
   }
+}
 
-  Widget _buildFilters(List<NetWorthSplit> allRecords) {
-    // Unique years
-    final years = allRecords.map((e) => e.date.year).toSet().toList();
-    years.sort((a, b) => b.compareTo(a));
+// -----------------------------------------------------------------------------
+// MODERN FILTER PILL WIDGET
+// -----------------------------------------------------------------------------
+class _ModernFilterPill<T> extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isEnabled;
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: DropdownButtonFormField<int>(
-              value: _filterYear,
-              decoration: _inputDecoration(context, 'Year'),
-              items: [
-                const DropdownMenuItem<int>(
-                  value: null,
-                  child: Text('All Time'),
-                ),
-                ...years.map(
-                  (y) => DropdownMenuItem(value: y, child: Text('$y')),
-                ),
-              ],
-              onChanged: (val) => setState(() {
-                _filterYear = val;
-                if (val == null) _filterMonth = null;
-              }),
-            ),
+  const _ModernFilterPill({
+    required this.label,
+    required this.isActive,
+    required this.icon,
+    required this.onTap,
+    this.isEnabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: isEnabled ? onTap : null,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isActive
+              ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
+              : Theme.of(context).colorScheme.surfaceContainerHighest
+                    .withOpacity(isEnabled ? 0.3 : 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isActive
+                ? Theme.of(context).colorScheme.primary.withOpacity(0.5)
+                : Colors.white.withOpacity(isEnabled ? 0.1 : 0.05),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: DropdownButtonFormField<int>(
-              value: _filterMonth,
-              decoration: _inputDecoration(context, 'Month'),
-              items: [
-                const DropdownMenuItem<int>(
-                  value: null,
-                  child: Text('All Months'),
-                ),
-                ...List.generate(
-                  12,
-                  (index) => DropdownMenuItem(
-                    value: index + 1,
-                    child: Text(
-                      DateFormat('MMMM').format(DateTime(0, index + 1)),
-                    ),
-                  ),
-                ),
-              ],
-              onChanged: _filterYear == null
-                  ? null
-                  : (val) => setState(() => _filterMonth = val),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isEnabled
+                  ? (isActive
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.white70)
+                  : Colors.white24,
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: isEnabled
+                    ? (isActive
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.white)
+                    : Colors.white24,
+              ),
+            ),
+            const SizedBox(width: 4),
+            if (isEnabled)
+              Icon(
+                Icons.keyboard_arrow_down,
+                size: 16,
+                color: isActive
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.white54,
+              ),
+          ],
+        ),
       ),
     );
   }
 }
 
 // -----------------------------------------------------------------------------
-// ADD SHEET: TOTAL NET WORTH
+// ADD SHEET: TOTAL NET WORTH (Unchanged)
 // -----------------------------------------------------------------------------
 class _AddNetWorthSheet extends StatefulWidget {
   const _AddNetWorthSheet();
@@ -606,7 +952,6 @@ class _AddNetWorthSheetState extends State<_AddNetWorthSheet> {
     if (mounted) Navigator.pop(context);
   }
 
-  // Keyboard Handlers Reuse Logic
   void _onKey(String val) => _handleKeyPress(_amountController, val);
   void _onBack() => _handleBackspace(_amountController);
   void _onClear() => _amountController.clear();
@@ -634,7 +979,7 @@ class _AddNetWorthSheetState extends State<_AddNetWorthSheet> {
 }
 
 // -----------------------------------------------------------------------------
-// ADD SHEET: NET WORTH SPLITS
+// ADD SHEET: NET WORTH SPLITS (Unchanged)
 // -----------------------------------------------------------------------------
 class _AddNetWorthSplitSheet extends StatefulWidget {
   const _AddNetWorthSplitSheet();
@@ -644,7 +989,6 @@ class _AddNetWorthSplitSheet extends StatefulWidget {
 
 class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
   final _firestoreService = FirestoreService();
-
   final _netIncomeCtrl = TextEditingController();
   final _netExpenseCtrl = TextEditingController();
   final _capGainCtrl = TextEditingController();
@@ -679,7 +1023,6 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
     if (mounted) Navigator.pop(context);
   }
 
-  // Keyboard Handlers
   void _onKey(String val) {
     if (_activeCtrl != null) _handleKeyPress(_activeCtrl!, val);
   }
@@ -777,23 +1120,8 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
 }
 
 // -----------------------------------------------------------------------------
-// SHARED UTILS & WIDGETS
+// SHARED HELPERS & WIDGETS
 // -----------------------------------------------------------------------------
-
-InputDecoration _inputDecoration(BuildContext context, String label) {
-  return InputDecoration(
-    labelText: label,
-    filled: true,
-    fillColor: Theme.of(
-      context,
-    ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide.none,
-    ),
-  );
-}
-
 Widget _buildTextField(
   BuildContext context,
   String label,
@@ -913,9 +1241,6 @@ class _BaseInputSheet extends StatelessWidget {
   }
 }
 
-// -----------------------------------------------------------------------------
-// LOGIC HELPERS
-// -----------------------------------------------------------------------------
 void _handleKeyPress(TextEditingController ctrl, String value) {
   final text = ctrl.text;
   final selection = ctrl.selection;
@@ -957,9 +1282,6 @@ void _handleEquals(TextEditingController ctrl) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// CALCULATOR KEYBOARD
-// -----------------------------------------------------------------------------
 class _CalculatorKeyboard extends StatelessWidget {
   final void Function(String) onKeyPress;
   final VoidCallback onBackspace;

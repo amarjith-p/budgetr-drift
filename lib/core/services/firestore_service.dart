@@ -37,6 +37,20 @@ class FirestoreService {
     return FinancialRecord.fromFirestore(doc);
   }
 
+  Future<void> deleteFinancialRecord(String id) async {
+    final batch = _db.batch();
+
+    // 1. Delete the Budget Record
+    final financeRef = _db.collection('financial_records').doc(id);
+    batch.delete(financeRef);
+
+    // 2. Delete the Settlement Record for that same month (if exists)
+    final settlementRef = _db.collection('settlements').doc(id);
+    batch.delete(settlementRef);
+
+    await batch.commit();
+  }
+
   // ---------------------------------------------------------------------------
   // SETTINGS & CONFIGURATION
   // ---------------------------------------------------------------------------
@@ -174,6 +188,11 @@ class FirestoreService {
     return _db.collection('net_worth').add(record.toMap());
   }
 
+  // NEW: Delete Net Worth Record
+  Future<void> deleteNetWorthRecord(String id) {
+    return _db.collection('net_worth').doc(id).delete();
+  }
+
   // ---------------------------------------------------------------------------
   // NET WORTH SPLITS (NEW)
   // ---------------------------------------------------------------------------
@@ -191,5 +210,9 @@ class FirestoreService {
 
   Future<void> addNetWorthSplit(NetWorthSplit split) {
     return _db.collection('net_worth_splits').add(split.toMap());
+  }
+
+  Future<void> deleteNetWorthSplit(String id) {
+    return _db.collection('net_worth_splits').doc(id).delete();
   }
 }

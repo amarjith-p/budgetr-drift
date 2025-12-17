@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/models/financial_record_model.dart';
@@ -6,62 +7,119 @@ import '../../settings/screens/settings_screen.dart';
 import '../../settlement/screens/settlement_screen.dart';
 import '../widgets/add_record_sheet.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends State<DashboardScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-  List<String> _categoryOrder = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchCategoryOrder();
-  }
-
-  // Fetch the master order from settings
-  Future<void> _fetchCategoryOrder() async {
-    try {
-      final config = await _firestoreService.getPercentageConfig();
-      if (mounted) {
-        setState(() {
-          _categoryOrder = config.categories.map((e) => e.name).toList();
-        });
-      }
-    } catch (e) {
-      // Ignore errors, default order will be used
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final FirestoreService firestoreService = FirestoreService();
     final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
-    void _showAddRecordSheet() {
+    void showAddRecordSheet([FinancialRecord? recordToEdit]) {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        builder: (context) => const AddRecordSheet(),
-      ).then((_) => _fetchCategoryOrder()); // Refresh order if settings changed
+        builder: (context) => AddRecordSheet(recordToEdit: recordToEdit),
+      );
     }
 
-    void _navigateToSettings() {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (context) => const SettingsScreen()))
-          .then((_) => _fetchCategoryOrder()); // Refresh order on return
+    void confirmDelete(String id) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete Budget Record?'),
+          content: const Text(
+            'This will permanently delete this month\'s record. This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                firestoreService.deleteFinancialRecord(id);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
     }
 
-    void _navigateToSettlement() {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (context) => const SettlementScreen()));
+    void showActionSheet(FinancialRecord record) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (context) => BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xff0D1B2A).withOpacity(0.9),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+              border: Border(
+                top: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.grey,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Text(
+                  DateFormat(
+                    'MMMM yyyy',
+                  ).format(DateTime(record.year, record.month)),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildActionButton(
+                      context,
+                      icon: Icons.edit_outlined,
+                      label: 'Edit',
+                      color: Colors.blueAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        showAddRecordSheet(record);
+                      },
+                    ),
+                    _buildActionButton(
+                      context,
+                      icon: Icons.delete_outline,
+                      label: 'Delete',
+                      color: Colors.redAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        confirmDelete(record.id);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -70,25 +128,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.receipt_long_outlined),
-            onPressed: _navigateToSettlement,
-            tooltip: 'Monthly Settlement',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (c) => const SettlementScreen()),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: _navigateToSettings,
-            tooltip: 'Settings',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (c) => const SettingsScreen()),
+            ),
           ),
         ],
       ),
       body: StreamBuilder<List<FinancialRecord>>(
-        stream: _firestoreService.getFinancialRecords(),
+        stream: firestoreService.getFinancialRecords(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
+          if (snapshot.hasError)
             return Center(child: Text('Error: ${snapshot.error}'));
-          }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
               child: Text(
@@ -106,78 +166,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
             itemCount: records.length,
             itemBuilder: (context, index) {
               final record = records[index];
-              final displayDate = DateTime(record.year, record.month);
-              final headerFormat = DateFormat('MMMM yyyy');
+              final sortedAllocations = record.allocations.entries.toList()
+                ..sort((a, b) => b.value.compareTo(a.value));
 
-              // SORTING LOGIC:
-              // Convert map to list
-              final sortedAllocations = record.allocations.entries.toList();
-
-              // Sort based on the index in _categoryOrder
-              sortedAllocations.sort((a, b) {
-                int indexA = _categoryOrder.indexOf(a.key);
-                int indexB = _categoryOrder.indexOf(b.key);
-
-                // If not found in order (deleted category), put at end
-                if (indexA == -1) indexA = 999;
-                if (indexB == -1) indexB = 999;
-
-                return indexA.compareTo(indexB);
-              });
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        headerFormat.format(displayDate),
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleLarge?.copyWith(color: Colors.white),
-                      ),
-                      const Divider(height: 20, color: Colors.white12),
-                      _buildRecordDetailRow(
-                        'Salary:',
-                        currencyFormat.format(record.salary),
-                        context,
-                      ),
-                      _buildRecordDetailRow(
-                        'Extra Income:',
-                        currencyFormat.format(record.extraIncome),
-                        context,
-                      ),
-                      _buildRecordDetailRow(
-                        'EMI:',
-                        currencyFormat.format(record.emi),
-                        context,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Effective Income: ${currencyFormat.format(record.effectiveIncome)}',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
+              return GestureDetector(
+                onLongPress: () => showActionSheet(record),
+                child: Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              DateFormat(
+                                'MMMM yyyy',
+                              ).format(DateTime(record.year, record.month)),
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(color: Colors.white),
                             ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // RENDER SORTED LIST
-                      ...sortedAllocations.map((entry) {
-                        final percent =
-                            record.allocationPercentages[entry.key]
-                                ?.toStringAsFixed(0) ??
-                            '?';
-                        return _buildRecordDetailRow(
-                          '${entry.key} ($percent%):',
-                          currencyFormat.format(entry.value),
+                            // Helper hint for interaction
+                            const Icon(
+                              Icons.touch_app_outlined,
+                              size: 16,
+                              color: Colors.white24,
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 20, color: Colors.white12),
+                        _buildRecordDetailRow(
+                          'Salary:',
+                          currencyFormat.format(record.salary),
                           context,
-                        );
-                      }),
-                    ],
+                        ),
+                        if (record.extraIncome > 0)
+                          _buildRecordDetailRow(
+                            'Extra Income:',
+                            currencyFormat.format(record.extraIncome),
+                            context,
+                          ),
+                        if (record.emi > 0)
+                          _buildRecordDetailRow(
+                            'EMI:',
+                            currencyFormat.format(record.emi),
+                            context,
+                          ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Effective Income: ${currencyFormat.format(record.effectiveIncome)}',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...sortedAllocations.map((entry) {
+                          final percent =
+                              record.allocationPercentages[entry.key]
+                                  ?.toStringAsFixed(0) ??
+                              '?';
+                          return _buildRecordDetailRow(
+                            '${entry.key} ($percent%):',
+                            currencyFormat.format(entry.value),
+                            context,
+                          );
+                        }),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -186,9 +248,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddRecordSheet,
+        onPressed: () => showAddRecordSheet(),
         icon: const Icon(Icons.add),
         label: const Text('Add Record'),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 120,
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
       ),
     );
   }
