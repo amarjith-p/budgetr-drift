@@ -4,12 +4,15 @@ import '../models/percentage_config_model.dart';
 import '../models/settlement_model.dart';
 import '../models/mf_transaction_model.dart';
 import '../models/mf_portfolio_snapshot_model.dart';
-import '../models/net_worth_model.dart'; // Import the new model
+import '../models/net_worth_model.dart';
+import '../models/net_worth_split_model.dart'; // Import the new split model
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // ... [Keep existing FinancialRecord methods] ...
+  // ---------------------------------------------------------------------------
+  // FINANCIAL RECORDS (DASHBOARD)
+  // ---------------------------------------------------------------------------
   Stream<List<FinancialRecord>> getFinancialRecords() {
     return _db
         .collection('financial_records')
@@ -34,7 +37,9 @@ class FirestoreService {
     return FinancialRecord.fromFirestore(doc);
   }
 
-  // ... [Keep existing Config & Settlement methods] ...
+  // ---------------------------------------------------------------------------
+  // SETTINGS & CONFIGURATION
+  // ---------------------------------------------------------------------------
   Future<PercentageConfig> getPercentageConfig() async {
     final doc = await _db.collection('settings').doc('percentages').get();
     if (doc.exists) {
@@ -48,6 +53,9 @@ class FirestoreService {
     return _db.collection('settings').doc('percentages').set(config.toMap());
   }
 
+  // ---------------------------------------------------------------------------
+  // SETTLEMENTS
+  // ---------------------------------------------------------------------------
   Future<List<Map<String, int>>> getAvailableMonthsForSettlement() async {
     final snapshot = await _db.collection('financial_records').get();
     final uniqueMonths = <String, Map<String, int>>{};
@@ -87,7 +95,9 @@ class FirestoreService {
         .set(settlement.toMap());
   }
 
-  // ... [Keep existing MF methods] ...
+  // ---------------------------------------------------------------------------
+  // MUTUAL FUNDS
+  // ---------------------------------------------------------------------------
   Stream<List<MfTransaction>> getMfTransactions() {
     return _db
         .collection('mf_transactions')
@@ -145,8 +155,9 @@ class FirestoreService {
     return _db.collection('mf_transactions').doc(id).delete();
   }
 
-  // --- NEW NET WORTH METHODS ---
-
+  // ---------------------------------------------------------------------------
+  // NET WORTH (TOTAL)
+  // ---------------------------------------------------------------------------
   Stream<List<NetWorthRecord>> getNetWorthRecords() {
     return _db
         .collection('net_worth')
@@ -161,5 +172,24 @@ class FirestoreService {
 
   Future<void> addNetWorthRecord(NetWorthRecord record) {
     return _db.collection('net_worth').add(record.toMap());
+  }
+
+  // ---------------------------------------------------------------------------
+  // NET WORTH SPLITS (NEW)
+  // ---------------------------------------------------------------------------
+  Stream<List<NetWorthSplit>> getNetWorthSplits() {
+    return _db
+        .collection('net_worth_splits')
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => NetWorthSplit.fromFirestore(doc))
+              .toList(),
+        );
+  }
+
+  Future<void> addNetWorthSplit(NetWorthSplit split) {
+    return _db.collection('net_worth_splits').add(split.toMap());
   }
 }
