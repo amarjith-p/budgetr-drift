@@ -4,6 +4,7 @@ import '../../dashboard/screens/dashboard_screen.dart';
 import '../../settlement/screens/settlement_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../mutual_funds/screens/mf_tracker_screen.dart';
+import '../../net_worth/screens/net_worth_screen.dart'; // Import New Screen
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -92,6 +93,19 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+                // --- NEW MENU ITEM ---
+                _GlassMenuCard(
+                  icon: Icons.monetization_on_outlined,
+                  title: 'Net Worth',
+                  subtitle: 'Track your total wealth',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NetWorthScreen(),
+                    ),
+                  ),
+                ),
+                // ---------------------
                 _GlassMenuCard(
                   icon: Icons.ssid_chart_outlined,
                   title: 'Mutual Funds',

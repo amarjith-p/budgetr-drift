@@ -4,10 +4,12 @@ import '../models/percentage_config_model.dart';
 import '../models/settlement_model.dart';
 import '../models/mf_transaction_model.dart';
 import '../models/mf_portfolio_snapshot_model.dart';
+import '../models/net_worth_model.dart'; // Import the new model
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  // ... [Keep existing FinancialRecord methods] ...
   Stream<List<FinancialRecord>> getFinancialRecords() {
     return _db
         .collection('financial_records')
@@ -32,6 +34,7 @@ class FirestoreService {
     return FinancialRecord.fromFirestore(doc);
   }
 
+  // ... [Keep existing Config & Settlement methods] ...
   Future<PercentageConfig> getPercentageConfig() async {
     final doc = await _db.collection('settings').doc('percentages').get();
     if (doc.exists) {
@@ -84,6 +87,7 @@ class FirestoreService {
         .set(settlement.toMap());
   }
 
+  // ... [Keep existing MF methods] ...
   Stream<List<MfTransaction>> getMfTransactions() {
     return _db
         .collection('mf_transactions')
@@ -139,5 +143,23 @@ class FirestoreService {
 
   Future<void> deleteMfTransaction(String id) {
     return _db.collection('mf_transactions').doc(id).delete();
+  }
+
+  // --- NEW NET WORTH METHODS ---
+
+  Stream<List<NetWorthRecord>> getNetWorthRecords() {
+    return _db
+        .collection('net_worth')
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => NetWorthRecord.fromFirestore(doc))
+              .toList(),
+        );
+  }
+
+  Future<void> addNetWorthRecord(NetWorthRecord record) {
+    return _db.collection('net_worth').add(record.toMap());
   }
 }
