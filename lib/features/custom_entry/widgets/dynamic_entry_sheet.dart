@@ -1,4 +1,5 @@
 import 'package:budget/features/dashboard/widgets/calculator_keyboard.dart';
+import 'package:budget/features/dashboard/widgets/modern_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,7 +8,7 @@ import '../../../core/services/firestore_service.dart';
 
 class DynamicEntrySheet extends StatefulWidget {
   final CustomTemplate template;
-  final CustomRecord? recordToEdit; // NEW: Edit support
+  final CustomRecord? recordToEdit;
 
   const DynamicEntrySheet({
     super.key,
@@ -33,49 +34,50 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     _isEditing = widget.recordToEdit != null;
 
     for (var field in widget.template.fields) {
-      // 1. Get Initial Value (either from existing record or default)
       dynamic initialVal;
       if (_isEditing && widget.recordToEdit!.data.containsKey(field.name)) {
         initialVal = widget.recordToEdit!.data[field.name];
       }
 
-      if (field.type != CustomFieldType.date) {
-        _controllers[field.name] = TextEditingController(
-          text: initialVal?.toString() ?? '',
-        );
-      } else {
-        // Date Logic
+      // Initialize data containers
+      if (field.type == CustomFieldType.date) {
         if (initialVal is Timestamp)
           _formData[field.name] = initialVal.toDate();
         else if (initialVal is DateTime)
           _formData[field.name] = initialVal;
         else
           _formData[field.name] = DateTime.now();
+      } else if (field.type == CustomFieldType.dropdown) {
+        _formData[field.name] = initialVal; // String or null
+      } else {
+        // String, Number, Currency
+        _controllers[field.name] = TextEditingController(
+          text: initialVal?.toString() ?? '',
+        );
       }
     }
   }
 
   Future<void> _save() async {
     for (var field in widget.template.fields) {
-      if (field.type == CustomFieldType.number) {
+      if (field.type == CustomFieldType.number ||
+          field.type == CustomFieldType.currency) {
         _formData[field.name] =
             double.tryParse(_controllers[field.name]!.text) ?? 0.0;
       } else if (field.type == CustomFieldType.string) {
         _formData[field.name] = _controllers[field.name]!.text;
       }
+      // Date and Dropdown are already in _formData
     }
 
     final record = CustomRecord(
-      id: widget.recordToEdit?.id ?? '', // Preserve ID if editing
+      id: widget.recordToEdit?.id ?? '',
       templateId: widget.template.id,
       data: _formData,
       createdAt: widget.recordToEdit?.createdAt ?? DateTime.now(),
     );
 
     if (_isEditing) {
-      // Note: You need to add updateCustomRecord to your service if not already there.
-      // For now, delete + add is a simple hack, but update is better.
-      // Assuming you added updateCustomRecord to service:
       await FirestoreService().updateCustomRecord(record);
     } else {
       await FirestoreService().addCustomRecord(record);
@@ -84,17 +86,10 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     if (mounted) Navigator.pop(context);
   }
 
-  // ... [Keep rest of the file (build, _buildFieldInput, etc.) same as before]
-
-  // Need to add updateCustomRecord to service? Or reuse logic?
-  // Let's stick to basic add logic for now, but to support true update,
-  // ensure your FirestoreService has an update method.
-
-  // ...
-
   void _reset() {
     _controllers.values.forEach((c) => c.clear());
     setState(() {
+      _formData.clear();
       for (var field in widget.template.fields) {
         if (field.type == CustomFieldType.date)
           _formData[field.name] = DateTime.now();
@@ -190,6 +185,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
   }
 
   Widget _buildFieldInput(CustomFieldConfig field) {
+    // 1. DATE
     if (field.type == CustomFieldType.date) {
       final val = _formData[field.name] as DateTime;
       return Padding(
@@ -199,7 +195,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
             final picked = await showDatePicker(
               context: context,
               initialDate: val,
-              firstDate: DateTime(2000),
+              firstDate: DateTime(1900),
               lastDate: DateTime(2100),
             );
             if (picked != null) setState(() => _formData[field.name] = picked);
@@ -228,7 +224,31 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
       );
     }
 
-    final isNum = field.type == CustomFieldType.number;
+    // 2. DROPDOWN
+    if (field.type == CustomFieldType.dropdown) {
+      final val = _formData[field.name];
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: ModernDropdownPill<String>(
+          label: val ?? 'Select ${field.name}',
+          isActive: val != null,
+          icon: Icons.arrow_drop_down_circle_outlined,
+          onTap: () => showSelectionSheet<String>(
+            context: context,
+            title: 'Select ${field.name}',
+            items: field.dropdownOptions ?? [],
+            labelBuilder: (s) => s,
+            onSelect: (v) => setState(() => _formData[field.name] = v),
+            selectedItem: val,
+          ),
+        ),
+      );
+    }
+
+    // 3. TEXT / NUMBER / CURRENCY
+    final isNum =
+        field.type == CustomFieldType.number ||
+        field.type == CustomFieldType.currency;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
@@ -245,6 +265,10 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
         decoration: InputDecoration(
           labelText: field.name,
           border: const OutlineInputBorder(),
+          // Add Symbol for Currency
+          prefixText: field.type == CustomFieldType.currency
+              ? '${field.currencySymbol} '
+              : null,
           prefixIcon: Icon(isNum ? Icons.onetwothree : Icons.text_fields),
         ),
       ),

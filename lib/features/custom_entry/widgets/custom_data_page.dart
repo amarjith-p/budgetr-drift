@@ -1,8 +1,10 @@
+import 'package:budget/features/dashboard/widgets/modern_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../core/models/custom_data_models.dart';
 import '../../../core/services/firestore_service.dart';
+import '../screens/template_editor_screen.dart';
 import 'dynamic_entry_sheet.dart';
 
 class CustomDataPage extends StatefulWidget {
@@ -20,7 +22,6 @@ class _CustomDataPageState extends State<CustomDataPage>
   @override
   bool get wantKeepAlive => true;
 
-  // Updated: Handle both Add and Edit
   void _showEntrySheet([CustomRecord? recordToEdit]) {
     showModalBottomSheet(
       context: context,
@@ -28,7 +29,16 @@ class _CustomDataPageState extends State<CustomDataPage>
       backgroundColor: Colors.transparent,
       builder: (context) => DynamicEntrySheet(
         template: widget.template,
-        recordToEdit: recordToEdit, // Pass existing record
+        recordToEdit: recordToEdit,
+      ),
+    );
+  }
+
+  void _editTemplate() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (c) => TemplateEditorScreen(templateToEdit: widget.template),
       ),
     );
   }
@@ -45,7 +55,11 @@ class _CustomDataPageState extends State<CustomDataPage>
         )
         .toList();
     final validY = widget.template.fields
-        .where((f) => f.type == CustomFieldType.number)
+        .where(
+          (f) =>
+              f.type == CustomFieldType.number ||
+              f.type == CustomFieldType.currency,
+        )
         .toList();
 
     showDialog(
@@ -57,39 +71,36 @@ class _CustomDataPageState extends State<CustomDataPage>
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButton<String>(
-                  hint: const Text('X-Axis (Date/Text)'),
-                  value: xField,
-                  isExpanded: true,
-                  items: validX
-                      .map(
-                        (f) => DropdownMenuItem(
-                          value: f.name,
-                          child: Text(f.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (val) => setModalState(() => xField = val),
+                ModernDropdownPill<String>(
+                  label: xField ?? 'X-Axis (Date/Text)',
+                  isActive: xField != null,
+                  icon: Icons.horizontal_rule,
+                  onTap: () => showSelectionSheet<String>(
+                    context: context,
+                    title: 'X-Axis',
+                    items: validX.map((f) => f.name).toList(),
+                    labelBuilder: (s) => s,
+                    onSelect: (v) => setModalState(() => xField = v),
+                    selectedItem: xField,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                DropdownButton<String>(
-                  hint: const Text('Y-Axis (Number)'),
-                  value: yField,
-                  isExpanded: true,
-                  items: validY
-                      .map(
-                        (f) => DropdownMenuItem(
-                          value: f.name,
-                          child: Text(f.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (val) => setModalState(() => yField = val),
+                ModernDropdownPill<String>(
+                  label: yField ?? 'Y-Axis (Number)',
+                  isActive: yField != null,
+                  icon: Icons.vertical_align_bottom,
+                  onTap: () => showSelectionSheet<String>(
+                    context: context,
+                    title: 'Y-Axis',
+                    items: validY.map((f) => f.name).toList(),
+                    labelBuilder: (s) => s,
+                    onSelect: (v) => setModalState(() => yField = v),
+                    selectedItem: yField,
+                  ),
                 ),
               ],
             ),
             actions: [
-              // NEW: Remove Chart Option
               if (widget.template.xAxisField != null)
                 TextButton(
                   onPressed: () async {
@@ -188,7 +199,7 @@ class _CustomDataPageState extends State<CustomDataPage>
     super.build(context);
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showEntrySheet(), // Add Mode
+        onPressed: () => _showEntrySheet(),
         icon: const Icon(Icons.add),
         label: const Text('Add Entry'),
       ),
@@ -205,15 +216,23 @@ class _CustomDataPageState extends State<CustomDataPage>
 
           final records = snapshot.data ?? [];
 
-          // Calculate Totals
+          // Calculate Totals (SAFE PARSING)
           Map<String, double> totals = {};
           for (var field in widget.template.fields) {
-            if (field.type == CustomFieldType.number && field.isSumRequired) {
-              totals[field.name] = records.fold(
-                0.0,
-                (sum, r) =>
-                    sum + ((r.data[field.name] as num?)?.toDouble() ?? 0.0),
-              );
+            if ((field.type == CustomFieldType.number ||
+                    field.type == CustomFieldType.currency) &&
+                field.isSumRequired) {
+              totals[field.name] = records.fold(0.0, (sum, r) {
+                final rawVal = r.data[field.name];
+                double val = 0.0;
+                // Handle both numbers and strings safely
+                if (rawVal is num) {
+                  val = rawVal.toDouble();
+                } else if (rawVal is String) {
+                  val = double.tryParse(rawVal) ?? 0.0;
+                }
+                return sum + val;
+              });
             }
           }
 
@@ -224,13 +243,26 @@ class _CustomDataPageState extends State<CustomDataPage>
                 alignment: Alignment.centerRight,
                 child: Padding(
                   padding: const EdgeInsets.only(top: 8, right: 8),
-                  child: IconButton(
-                    onPressed: _deleteSheet,
-                    icon: const Icon(
-                      Icons.delete_forever_outlined,
-                      color: Colors.redAccent,
-                    ),
-                    tooltip: 'Delete this Sheet',
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: _editTemplate,
+                        icon: const Icon(
+                          Icons.edit_note,
+                          color: Colors.blueAccent,
+                        ),
+                        tooltip: 'Edit Sheet Structure',
+                      ),
+                      IconButton(
+                        onPressed: _deleteSheet,
+                        icon: const Icon(
+                          Icons.delete_forever_outlined,
+                          color: Colors.redAccent,
+                        ),
+                        tooltip: 'Delete this Sheet',
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -324,7 +356,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                         const DataColumn(label: Text('Actions')),
                       ],
                       rows: [
-                        // 1. Data Rows
+                        // Data Rows
                         ...records.map(
                           (r) => DataRow(
                             cells: [
@@ -334,7 +366,19 @@ class _CustomDataPageState extends State<CustomDataPage>
                                 if (val != null) {
                                   if (f.type == CustomFieldType.date &&
                                       val is DateTime) {
-                                    display = DateFormat('dd MMM').format(val);
+                                    display = DateFormat(
+                                      'dd MMM yyyy',
+                                    ).format(val);
+                                  } else if (f.type ==
+                                      CustomFieldType.currency) {
+                                    // Safe parsing for cell display
+                                    double numVal = 0.0;
+                                    if (val is num)
+                                      numVal = val.toDouble();
+                                    else if (val is String)
+                                      numVal = double.tryParse(val) ?? 0.0;
+                                    display =
+                                        '${f.currencySymbol}${numVal.toStringAsFixed(2)}';
                                   } else {
                                     display = val.toString();
                                   }
@@ -345,7 +389,6 @@ class _CustomDataPageState extends State<CustomDataPage>
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Edit Button
                                     IconButton(
                                       icon: const Icon(
                                         Icons.edit,
@@ -356,8 +399,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                                       constraints: const BoxConstraints(),
                                       padding: EdgeInsets.zero,
                                     ),
-                                    const SizedBox(width: 12),
-                                    // Delete Button
+                                    const SizedBox(width: 8),
                                     IconButton(
                                       icon: const Icon(
                                         Icons.delete,
@@ -375,24 +417,29 @@ class _CustomDataPageState extends State<CustomDataPage>
                           ),
                         ),
 
-                        // 2. Footer Total Row
+                        // Grand Total Row
                         if (totals.isNotEmpty)
                           DataRow(
                             color: MaterialStateProperty.all(
                               Theme.of(
                                 context,
-                              ).colorScheme.primaryContainer.withOpacity(0.2),
+                              ).colorScheme.primaryContainer.withOpacity(0.3),
                             ),
                             cells: [
                               ...widget.template.fields.map((f) {
                                 if (totals.containsKey(f.name)) {
-                                  // Full decimal display (e.g. 12345.67)
+                                  String amount = totals[f.name]!
+                                      .toStringAsFixed(2);
+                                  if (f.type == CustomFieldType.currency) {
+                                    amount = '${f.currencySymbol}$amount';
+                                  }
                                   return DataCell(
                                     Text(
-                                      totals[f.name]!.toStringAsFixed(2),
+                                      amount,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
+                                        fontSize: 13,
                                       ),
                                     ),
                                   );
@@ -438,18 +485,68 @@ class _CustomDataPageState extends State<CustomDataPage>
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     List<FlSpot> spots = [];
-    for (int i = 0; i < sorted.length; i++) {
+    double minY = double.infinity;
+    double maxY = double.negativeInfinity;
+
+    // Linear Regression Variables
+    double sumX = 0;
+    double sumY = 0;
+    double sumXY = 0;
+    double sumXX = 0;
+    int n = sorted.length;
+
+    for (int i = 0; i < n; i++) {
       double val = 0.0;
       var raw = sorted[i].data[yKey];
+      // Safe parsing for chart data
       if (raw is num)
         val = raw.toDouble();
       else if (raw is String)
         val = double.tryParse(raw) ?? 0.0;
 
       spots.add(FlSpot(i.toDouble(), val));
+
+      if (val < minY) minY = val;
+      if (val > maxY) maxY = val;
+
+      // Regression Stats
+      sumX += i;
+      sumY += val;
+      sumXY += (i * val);
+      sumXX += (i * i);
     }
 
     if (spots.isEmpty) return const SizedBox.shrink();
+
+    // Calculate Best Fit Line (y = mx + c)
+    List<FlSpot> trendSpots = [];
+    if (n > 1) {
+      double slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+      double intercept = (sumY - slope * sumX) / n;
+
+      for (int i = 0; i < n; i++) {
+        trendSpots.add(FlSpot(i.toDouble(), slope * i + intercept));
+      }
+    } else {
+      trendSpots.add(FlSpot(0, spots[0].y));
+    }
+
+    // Gradient Logic
+    List<Color> gradientColors;
+    List<double> gradientStops;
+
+    if (minY >= 0) {
+      gradientColors = [Colors.green, Colors.green];
+      gradientStops = [0.0, 1.0];
+    } else if (maxY <= 0) {
+      gradientColors = [Colors.red, Colors.red];
+      gradientStops = [0.0, 1.0];
+    } else {
+      double zeroStop = (0 - minY) / (maxY - minY);
+      zeroStop = zeroStop.clamp(0.0, 1.0);
+      gradientColors = [Colors.red, Colors.red, Colors.green, Colors.green];
+      gradientStops = [0.0, zeroStop, zeroStop, 1.0];
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -483,15 +580,18 @@ class _CustomDataPageState extends State<CustomDataPage>
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
+                interval: 1,
                 getTitlesWidget: (val, meta) {
                   int index = val.toInt();
-                  if (index >= 0 && index < sorted.length) {
+                  if (index >= 0 &&
+                      index < sorted.length &&
+                      val == index.toDouble()) {
                     final d = sorted[index].data[xKey];
                     String label = '';
                     if (d is DateTime)
-                      label = DateFormat('dd/MM').format(d);
+                      label = DateFormat('dd MMM yy').format(d);
                     else if (d is String)
-                      label = d.length > 3 ? d.substring(0, 3) : d;
+                      label = d.length > 5 ? d.substring(0, 5) : d;
 
                     return Padding(
                       padding: const EdgeInsets.only(top: 8.0),
@@ -505,15 +605,37 @@ class _CustomDataPageState extends State<CustomDataPage>
           ),
           borderData: FlBorderData(show: false),
           lineBarsData: [
+            // Linear Trend Line
+            LineChartBarData(
+              spots: trendSpots,
+              isCurved: false,
+              barWidth: 2,
+              color: Colors.white.withOpacity(0.3),
+              dashArray: [5, 5],
+              dotData: const FlDotData(show: false),
+            ),
+            // Actual Data Line
             LineChartBarData(
               spots: spots,
               isCurved: true,
               barWidth: 3,
-              color: Theme.of(context).colorScheme.primary,
+              gradient: LinearGradient(
+                colors: gradientColors,
+                stops: gradientStops,
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
               dotData: const FlDotData(show: true),
               belowBarData: BarAreaData(
                 show: true,
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                gradient: LinearGradient(
+                  colors: gradientColors
+                      .map((c) => c.withOpacity(0.1))
+                      .toList(),
+                  stops: gradientStops,
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
               ),
             ),
           ],

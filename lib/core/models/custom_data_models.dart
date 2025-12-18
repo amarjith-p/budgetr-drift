@@ -1,22 +1,31 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum CustomFieldType { string, number, date }
+// NEW: Added currency and dropdown types
+enum CustomFieldType { string, number, date, currency, dropdown }
 
 class CustomFieldConfig {
   String name;
   CustomFieldType type;
   bool isSumRequired;
 
+  // NEW: Configuration for specific types
+  String? currencySymbol;
+  List<String>? dropdownOptions;
+
   CustomFieldConfig({
     required this.name,
     required this.type,
     this.isSumRequired = false,
+    this.currencySymbol,
+    this.dropdownOptions,
   });
 
   Map<String, dynamic> toMap() => {
     'name': name,
     'type': type.index,
     'isSumRequired': isSumRequired,
+    'currencySymbol': currencySymbol,
+    'dropdownOptions': dropdownOptions,
   };
 
   factory CustomFieldConfig.fromMap(Map<String, dynamic> map) =>
@@ -24,6 +33,10 @@ class CustomFieldConfig {
         name: map['name'],
         type: CustomFieldType.values[map['type']],
         isSumRequired: map['isSumRequired'] ?? false,
+        currencySymbol: map['currencySymbol'],
+        dropdownOptions: map['dropdownOptions'] != null
+            ? List<String>.from(map['dropdownOptions'])
+            : null,
       );
 }
 

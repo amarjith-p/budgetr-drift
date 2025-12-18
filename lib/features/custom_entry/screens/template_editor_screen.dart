@@ -4,7 +4,9 @@ import '../../../core/models/custom_data_models.dart';
 import '../../../core/services/firestore_service.dart';
 
 class TemplateEditorScreen extends StatefulWidget {
-  const TemplateEditorScreen({super.key});
+  final CustomTemplate? templateToEdit;
+
+  const TemplateEditorScreen({super.key, this.templateToEdit});
 
   @override
   State<TemplateEditorScreen> createState() => _TemplateEditorScreenState();
@@ -14,6 +16,32 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
   final _formKey = GlobalKey<FormState>();
   String _screenName = '';
   List<CustomFieldConfig> _fields = [];
+  bool _isEditing = false;
+
+  // Track original types to enforce restrictions
+  final Map<String, CustomFieldType> _originalTypes = {};
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.templateToEdit != null) {
+      _isEditing = true;
+      _screenName = widget.templateToEdit!.name;
+
+      _fields = widget.templateToEdit!.fields.map((f) {
+        _originalTypes[f.name] = f.type; // Store original type
+        return CustomFieldConfig(
+          name: f.name,
+          type: f.type,
+          isSumRequired: f.isSumRequired,
+          currencySymbol: f.currencySymbol,
+          dropdownOptions: f.dropdownOptions != null
+              ? List.from(f.dropdownOptions!)
+              : null,
+        );
+      }).toList();
+    }
+  }
 
   void _addField() {
     setState(() {
@@ -37,12 +65,30 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
         return;
       }
 
+      for (var f in _fields) {
+        if (f.type == CustomFieldType.dropdown &&
+            (f.dropdownOptions == null || f.dropdownOptions!.isEmpty)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Add options for dropdown: ${f.name}")),
+          );
+          return;
+        }
+      }
+
       final template = CustomTemplate(
-        id: '',
+        id: widget.templateToEdit?.id ?? '',
         name: _screenName,
         fields: _fields,
+        xAxisField: widget.templateToEdit?.xAxisField,
+        yAxisField: widget.templateToEdit?.yAxisField,
       );
-      await FirestoreService().addCustomTemplate(template);
+
+      if (_isEditing) {
+        await FirestoreService().updateCustomTemplate(template);
+      } else {
+        await FirestoreService().addCustomTemplate(template);
+      }
+
       if (mounted) Navigator.pop(context);
     }
   }
@@ -50,7 +96,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Design New Form')),
+      appBar: AppBar(title: Text(_isEditing ? 'Edit Form' : 'Design New Form')),
       body: Form(
         key: _formKey,
         child: Column(
@@ -58,8 +104,9 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextFormField(
+                initialValue: _screenName,
                 decoration: const InputDecoration(
-                  labelText: 'Screen Name (e.g. Daily Expenses)',
+                  labelText: 'Screen Name',
                   border: OutlineInputBorder(),
                 ),
                 validator: (val) =>
@@ -83,11 +130,12 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
                     key: ValueKey(_fields[index]),
                     margin: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 4,
+                      vertical: 8,
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.all(12.0),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
@@ -98,6 +146,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
                                   initialValue: _fields[index].name,
                                   decoration: const InputDecoration(
                                     labelText: 'Field Name',
+                                    isDense: true,
                                   ),
                                   onChanged: (val) => _fields[index].name = val,
                                   validator: (val) => val == null || val.isEmpty
@@ -114,44 +163,109 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
                           Row(
                             children: [
                               const SizedBox(width: 36),
                               Expanded(
                                 child: ModernDropdownPill<CustomFieldType>(
-                                  label: _fields[index].type.name.toUpperCase(),
+                                  label: _getTypeLabel(_fields[index].type),
                                   isActive: true,
-                                  icon: Icons.category,
-                                  onTap: () =>
-                                      showSelectionSheet<CustomFieldType>(
-                                        context: context,
-                                        title: 'Field Type',
-                                        items: CustomFieldType.values,
-                                        labelBuilder: (t) =>
-                                            t.name.toUpperCase(),
-                                        onSelect: (val) => setState(
-                                          () => _fields[index].type = val!,
-                                        ),
-                                        selectedItem: _fields[index].type,
-                                      ),
+                                  icon: _getTypeIcon(_fields[index].type),
+                                  onTap: () => showSelectionSheet<CustomFieldType>(
+                                    context: context,
+                                    title: 'Field Type',
+                                    items: CustomFieldType.values,
+                                    labelBuilder: (t) => _getTypeLabel(t),
+                                    onSelect: (val) {
+                                      // --- BLOCKING LOGIC ---
+                                      if (_isEditing &&
+                                          _originalTypes.containsKey(
+                                            _fields[index].name,
+                                          )) {
+                                        final oldType =
+                                            _originalTypes[_fields[index]
+                                                .name]!;
+                                        if (oldType == CustomFieldType.string &&
+                                            (val == CustomFieldType.number ||
+                                                val ==
+                                                    CustomFieldType.currency)) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Cannot change 'Text' to 'Number' for existing fields (Risk of Data Crash). Create a new field instead.",
+                                              ),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                          return; // Stop the change
+                                        }
+                                      }
+                                      // ----------------------
+
+                                      setState(() {
+                                        _fields[index].type = val!;
+                                        _fields[index].isSumRequired = false;
+                                        _fields[index].currencySymbol =
+                                            val == CustomFieldType.currency
+                                            ? '₹'
+                                            : null;
+                                        _fields[index].dropdownOptions =
+                                            val == CustomFieldType.dropdown
+                                            ? []
+                                            : null;
+                                      });
+                                    },
+                                    selectedItem: _fields[index].type,
+                                  ),
                                 ),
                               ),
-                              if (_fields[index].type == CustomFieldType.number)
-                                Row(
-                                  children: [
-                                    Checkbox(
-                                      value: _fields[index].isSumRequired,
-                                      onChanged: (val) => setState(
-                                        () =>
-                                            _fields[index].isSumRequired = val!,
-                                      ),
-                                    ),
-                                    const Text('Total?'),
-                                  ],
-                                ),
                             ],
                           ),
+
+                          if (_fields[index].type == CustomFieldType.number ||
+                              _fields[index].type == CustomFieldType.currency)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 36, top: 8),
+                              child: Row(
+                                children: [
+                                  Checkbox(
+                                    value: _fields[index].isSumRequired,
+                                    onChanged: (val) => setState(
+                                      () => _fields[index].isSumRequired = val!,
+                                    ),
+                                  ),
+                                  const Text('Calculate Total?'),
+                                  if (_fields[index].type ==
+                                      CustomFieldType.currency) ...[
+                                    const Spacer(),
+                                    const Text("Symbol: "),
+                                    DropdownButton<String>(
+                                      value:
+                                          _fields[index].currencySymbol ?? '₹',
+                                      underline: Container(),
+                                      items: ['₹', '\$', '€', '£']
+                                          .map(
+                                            (s) => DropdownMenuItem(
+                                              value: s,
+                                              child: Text(s),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged: (val) => setState(
+                                        () =>
+                                            _fields[index].currencySymbol = val,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+
+                          if (_fields[index].type == CustomFieldType.dropdown)
+                            _buildDropdownConfig(index),
                         ],
                       ),
                     ),
@@ -173,9 +287,101 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
         child: FilledButton(
           onPressed: _save,
           style: FilledButton.styleFrom(padding: const EdgeInsets.all(16)),
-          child: const Text('Create Screen'),
+          child: Text(_isEditing ? 'Update Form' : 'Create Form'),
         ),
       ),
     );
+  }
+
+  Widget _buildDropdownConfig(int index) {
+    final controller = TextEditingController();
+    return Padding(
+      padding: const EdgeInsets.only(left: 36, top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Options:",
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: (_fields[index].dropdownOptions ?? [])
+                .map(
+                  (opt) => Chip(
+                    label: Text(opt),
+                    onDeleted: () => setState(
+                      () => _fields[index].dropdownOptions!.remove(opt),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    hintText: 'Add option',
+                    isDense: true,
+                  ),
+                  onSubmitted: (val) {
+                    if (val.isNotEmpty) {
+                      setState(() {
+                        _fields[index].dropdownOptions ??= [];
+                        _fields[index].dropdownOptions!.add(val);
+                      });
+                    }
+                  },
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: () {
+                  if (controller.text.isNotEmpty) {
+                    setState(() {
+                      _fields[index].dropdownOptions ??= [];
+                      _fields[index].dropdownOptions!.add(controller.text);
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getTypeLabel(CustomFieldType type) {
+    switch (type) {
+      case CustomFieldType.string:
+        return 'Text';
+      case CustomFieldType.number:
+        return 'Number';
+      case CustomFieldType.date:
+        return 'Date';
+      case CustomFieldType.currency:
+        return 'Currency';
+      case CustomFieldType.dropdown:
+        return 'Dropdown';
+    }
+  }
+
+  IconData _getTypeIcon(CustomFieldType type) {
+    switch (type) {
+      case CustomFieldType.string:
+        return Icons.text_fields;
+      case CustomFieldType.number:
+        return Icons.onetwothree;
+      case CustomFieldType.date:
+        return Icons.calendar_today;
+      case CustomFieldType.currency:
+        return Icons.attach_money;
+      case CustomFieldType.dropdown:
+        return Icons.list;
+    }
   }
 }

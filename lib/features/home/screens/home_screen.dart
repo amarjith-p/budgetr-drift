@@ -96,7 +96,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 // --- NEW MENU ITEM ---
                 _GlassMenuCard(
-                  icon: Icons.monetization_on_outlined,
+                  icon: Icons.currency_rupee,
                   title: 'Net Worth',
                   subtitle: 'Track your total wealth',
                   onTap: () => Navigator.push(
@@ -107,21 +107,21 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 // ---------------------
-                _GlassMenuCard(
-                  icon: Icons.ssid_chart_outlined,
-                  title: 'Mutual Funds',
-                  subtitle: 'Track investments',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MfTrackerScreen(),
-                    ),
-                  ),
-                ),
+                // _GlassMenuCard(
+                //   icon: Icons.ssid_chart_outlined,
+                //   title: 'Mutual Funds',
+                //   subtitle: 'Track investments',
+                //   onTap: () => Navigator.push(
+                //     context,
+                //     MaterialPageRoute(
+                //       builder: (context) => const MfTrackerScreen(),
+                //     ),
+                //   ),
+                // ),
                 _GlassMenuCard(
                   icon: Icons.dashboard_customize_outlined,
-                  title: 'Custom Data',
-                  subtitle: 'Your personalized trackers',
+                  title: 'Custom Data Entry',
+                  subtitle: 'Your personalized data trackers',
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -131,8 +131,8 @@ class HomeScreen extends StatelessWidget {
                 ),
                 _GlassMenuCard(
                   icon: Icons.settings_suggest_outlined,
-                  title: 'Configuration',
-                  subtitle: 'Adjust calculation percentages',
+                  title: 'Budget Settings',
+                  subtitle: 'Adjust Budget Buckets',
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
