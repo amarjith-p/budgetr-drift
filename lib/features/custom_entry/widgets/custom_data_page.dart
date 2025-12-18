@@ -20,12 +20,16 @@ class _CustomDataPageState extends State<CustomDataPage>
   @override
   bool get wantKeepAlive => true;
 
-  void _showAddSheet() {
+  // Updated: Handle both Add and Edit
+  void _showEntrySheet([CustomRecord? recordToEdit]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DynamicEntrySheet(template: widget.template),
+      builder: (context) => DynamicEntrySheet(
+        template: widget.template,
+        recordToEdit: recordToEdit, // Pass existing record
+      ),
     );
   }
 
@@ -33,7 +37,6 @@ class _CustomDataPageState extends State<CustomDataPage>
     String? xField = widget.template.xAxisField;
     String? yField = widget.template.yAxisField;
 
-    // Only allow appropriate fields
     final validX = widget.template.fields
         .where(
           (f) =>
@@ -86,6 +89,20 @@ class _CustomDataPageState extends State<CustomDataPage>
               ],
             ),
             actions: [
+              // NEW: Remove Chart Option
+              if (widget.template.xAxisField != null)
+                TextButton(
+                  onPressed: () async {
+                    widget.template.xAxisField = null;
+                    widget.template.yAxisField = null;
+                    await _service.updateCustomTemplate(widget.template);
+                    if (mounted) Navigator.pop(context);
+                  },
+                  child: const Text(
+                    'Remove Chart',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel'),
@@ -171,7 +188,7 @@ class _CustomDataPageState extends State<CustomDataPage>
     super.build(context);
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddSheet,
+        onPressed: () => _showEntrySheet(), // Add Mode
         icon: const Icon(Icons.add),
         label: const Text('Add Entry'),
       ),
@@ -203,7 +220,6 @@ class _CustomDataPageState extends State<CustomDataPage>
           return ListView(
             padding: const EdgeInsets.only(bottom: 100),
             children: [
-              // 1. Top Controls (Delete Sheet) - No Big Header
               Align(
                 alignment: Alignment.centerRight,
                 child: Padding(
@@ -219,53 +235,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                 ),
               ),
 
-              // 2. Totals Display
-              if (totals.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Wrap(
-                    spacing: 24,
-                    runSpacing: 16,
-                    children: totals.entries
-                        .map(
-                          (e) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                e.key,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                              Text(
-                                NumberFormat.compact().format(e.value),
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-
-              // 3. Chart Section
+              // Chart Section
               if (widget.template.xAxisField != null &&
                   widget.template.yAxisField != null &&
                   records.isNotEmpty) ...[
@@ -295,7 +265,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                   ),
                 ),
                 SizedBox(
-                  height: 250, // Fixed height to prevent blink/crash
+                  height: 250,
                   child: _buildChart(
                     records,
                     widget.template.xAxisField!,
@@ -317,7 +287,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                 ),
               ],
 
-              // 4. Data Table
+              // Data Table
               if (records.isNotEmpty)
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -351,41 +321,97 @@ class _CustomDataPageState extends State<CustomDataPage>
                             ),
                           ),
                         ),
-                        const DataColumn(label: Text('Action')),
+                        const DataColumn(label: Text('Actions')),
                       ],
-                      rows: records
-                          .map(
-                            (r) => DataRow(
-                              cells: [
-                                ...widget.template.fields.map((f) {
-                                  final val = r.data[f.name];
-                                  String display = '-';
-                                  if (val != null) {
-                                    if (f.type == CustomFieldType.date &&
-                                        val is DateTime) {
-                                      display = DateFormat(
-                                        'dd MMM',
-                                      ).format(val);
-                                    } else {
-                                      display = val.toString();
-                                    }
+                      rows: [
+                        // 1. Data Rows
+                        ...records.map(
+                          (r) => DataRow(
+                            cells: [
+                              ...widget.template.fields.map((f) {
+                                final val = r.data[f.name];
+                                String display = '-';
+                                if (val != null) {
+                                  if (f.type == CustomFieldType.date &&
+                                      val is DateTime) {
+                                    display = DateFormat('dd MMM').format(val);
+                                  } else {
+                                    display = val.toString();
                                   }
-                                  return DataCell(Text(display));
-                                }),
-                                DataCell(
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      size: 18,
-                                      color: Colors.redAccent,
+                                }
+                                return DataCell(Text(display));
+                              }),
+                              DataCell(
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Edit Button
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        size: 18,
+                                        color: Colors.blueAccent,
+                                      ),
+                                      onPressed: () => _showEntrySheet(r),
+                                      constraints: const BoxConstraints(),
+                                      padding: EdgeInsets.zero,
                                     ),
-                                    onPressed: () => _deleteRecord(r.id),
-                                  ),
+                                    const SizedBox(width: 12),
+                                    // Delete Button
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        size: 18,
+                                        color: Colors.redAccent,
+                                      ),
+                                      onPressed: () => _deleteRecord(r.id),
+                                      constraints: const BoxConstraints(),
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // 2. Footer Total Row
+                        if (totals.isNotEmpty)
+                          DataRow(
+                            color: MaterialStateProperty.all(
+                              Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer.withOpacity(0.2),
                             ),
-                          )
-                          .toList(),
+                            cells: [
+                              ...widget.template.fields.map((f) {
+                                if (totals.containsKey(f.name)) {
+                                  // Full decimal display (e.g. 12345.67)
+                                  return DataCell(
+                                    Text(
+                                      totals[f.name]!.toStringAsFixed(2),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  );
+                                } else if (f == widget.template.fields.first) {
+                                  return const DataCell(
+                                    Text(
+                                      'TOTAL',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return const DataCell(Text(''));
+                              }),
+                              const DataCell(Text('')),
+                            ],
+                          ),
+                      ],
                     ),
                   ),
                 )

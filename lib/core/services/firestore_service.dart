@@ -274,4 +274,11 @@ class FirestoreService {
   Future<void> deleteCustomRecord(String id) {
     return _db.collection('custom_records').doc(id).delete();
   }
+
+  Future<void> updateCustomRecord(CustomRecord record) {
+    return _db
+        .collection('custom_records')
+        .doc(record.id)
+        .update(record.toMap());
+  }
 }

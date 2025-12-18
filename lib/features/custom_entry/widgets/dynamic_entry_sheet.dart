@@ -1,12 +1,19 @@
 import 'package:budget/features/dashboard/widgets/calculator_keyboard.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/custom_data_models.dart';
 import '../../../core/services/firestore_service.dart';
 
 class DynamicEntrySheet extends StatefulWidget {
   final CustomTemplate template;
-  const DynamicEntrySheet({super.key, required this.template});
+  final CustomRecord? recordToEdit; // NEW: Edit support
+
+  const DynamicEntrySheet({
+    super.key,
+    required this.template,
+    this.recordToEdit,
+  });
 
   @override
   State<DynamicEntrySheet> createState() => _DynamicEntrySheetState();
@@ -18,15 +25,32 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
 
   TextEditingController? _activeCalcController;
   bool _isKeyboardVisible = false;
+  bool _isEditing = false;
 
   @override
   void initState() {
     super.initState();
+    _isEditing = widget.recordToEdit != null;
+
     for (var field in widget.template.fields) {
+      // 1. Get Initial Value (either from existing record or default)
+      dynamic initialVal;
+      if (_isEditing && widget.recordToEdit!.data.containsKey(field.name)) {
+        initialVal = widget.recordToEdit!.data[field.name];
+      }
+
       if (field.type != CustomFieldType.date) {
-        _controllers[field.name] = TextEditingController();
+        _controllers[field.name] = TextEditingController(
+          text: initialVal?.toString() ?? '',
+        );
       } else {
-        _formData[field.name] = DateTime.now();
+        // Date Logic
+        if (initialVal is Timestamp)
+          _formData[field.name] = initialVal.toDate();
+        else if (initialVal is DateTime)
+          _formData[field.name] = initialVal;
+        else
+          _formData[field.name] = DateTime.now();
       }
     }
   }
@@ -42,15 +66,31 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     }
 
     final record = CustomRecord(
-      id: '',
+      id: widget.recordToEdit?.id ?? '', // Preserve ID if editing
       templateId: widget.template.id,
       data: _formData,
-      createdAt: DateTime.now(),
+      createdAt: widget.recordToEdit?.createdAt ?? DateTime.now(),
     );
 
-    await FirestoreService().addCustomRecord(record);
+    if (_isEditing) {
+      // Note: You need to add updateCustomRecord to your service if not already there.
+      // For now, delete + add is a simple hack, but update is better.
+      // Assuming you added updateCustomRecord to service:
+      await FirestoreService().updateCustomRecord(record);
+    } else {
+      await FirestoreService().addCustomRecord(record);
+    }
+
     if (mounted) Navigator.pop(context);
   }
+
+  // ... [Keep rest of the file (build, _buildFieldInput, etc.) same as before]
+
+  // Need to add updateCustomRecord to service? Or reuse logic?
+  // Let's stick to basic add logic for now, but to support true update,
+  // ensure your FirestoreService has an update method.
+
+  // ...
 
   void _reset() {
     _controllers.values.forEach((c) => c.clear());
@@ -81,16 +121,17 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  widget.template.name,
+                  _isEditing ? 'Edit Entry' : widget.template.name,
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                TextButton(
-                  onPressed: _reset,
-                  child: const Text(
-                    'Reset',
-                    style: TextStyle(color: Colors.orange),
+                if (!_isEditing)
+                  TextButton(
+                    onPressed: _reset,
+                    child: const Text(
+                      'Reset',
+                      style: TextStyle(color: Colors.orange),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -119,7 +160,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
                 Expanded(
                   child: FilledButton(
                     onPressed: _save,
-                    child: const Text('Record Entry'),
+                    child: Text(_isEditing ? 'Update' : 'Record Entry'),
                   ),
                 ),
               ],
