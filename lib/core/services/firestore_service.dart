@@ -1,3 +1,4 @@
+import 'package:budget/core/models/custom_data_models.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/financial_record_model.dart';
 import '../models/percentage_config_model.dart';
@@ -214,5 +215,49 @@ class FirestoreService {
 
   Future<void> deleteNetWorthSplit(String id) {
     return _db.collection('net_worth_splits').doc(id).delete();
+  }
+
+  // --- CUSTOM DATA ENTRY ---
+  Stream<List<CustomTemplate>> getCustomTemplates() {
+    return _db
+        .collection('custom_templates')
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .map(
+          (s) => s.docs.map((d) => CustomTemplate.fromFirestore(d)).toList(),
+        );
+  }
+
+  Future<void> addCustomTemplate(CustomTemplate template) {
+    return _db.collection('custom_templates').add(template.toMap());
+  }
+
+  Future<void> updateCustomTemplate(CustomTemplate template) {
+    return _db
+        .collection('custom_templates')
+        .doc(template.id)
+        .update(template.toMap());
+  }
+
+  Future<void> deleteCustomTemplate(String id) async {
+    // Note: In production, you should also delete all records linked to this template
+    return _db.collection('custom_templates').doc(id).delete();
+  }
+
+  Stream<List<CustomRecord>> getCustomRecords(String templateId) {
+    return _db
+        .collection('custom_records')
+        .where('templateId', isEqualTo: templateId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((s) => s.docs.map((d) => CustomRecord.fromFirestore(d)).toList());
+  }
+
+  Future<void> addCustomRecord(CustomRecord record) {
+    return _db.collection('custom_records').add(record.toMap());
+  }
+
+  Future<void> deleteCustomRecord(String id) {
+    return _db.collection('custom_records').doc(id).delete();
   }
 }

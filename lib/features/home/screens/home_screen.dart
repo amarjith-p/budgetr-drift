@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/features/custom_entry/screens/custom_entry_dashboard.dart';
 import 'package:flutter/material.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../settlement/screens/settlement_screen.dart';
@@ -114,6 +115,17 @@ class HomeScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const MfTrackerScreen(),
+                    ),
+                  ),
+                ),
+                _GlassMenuCard(
+                  icon: Icons.dashboard_customize_outlined,
+                  title: 'Custom Data',
+                  subtitle: 'Your personalized trackers',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CustomEntryDashboard(),
                     ),
                   ),
                 ),
