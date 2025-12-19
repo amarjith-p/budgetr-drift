@@ -314,7 +314,7 @@ class FirestoreService {
     return _db
         .collection('custom_records')
         .where('templateId', isEqualTo: templateId)
-        .orderBy('createdAt', descending: true)
+        .orderBy('createdAt', descending: false)
         .snapshots()
         .map((s) => s.docs.map((d) => CustomRecord.fromFirestore(d)).toList());
   }
