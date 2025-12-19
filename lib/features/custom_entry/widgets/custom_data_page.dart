@@ -22,13 +22,18 @@ class _CustomDataPageState extends State<CustomDataPage>
   @override
   bool get wantKeepAlive => true;
 
-  void _showEntrySheet([CustomRecord? recordToEdit]) {
+  // FIX 1: Accept 'existingRecords' so we can calculate the next Serial No.
+  void _showEntrySheet(
+    List<CustomRecord> existingRecords, [
+    CustomRecord? recordToEdit,
+  ]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => DynamicEntrySheet(
         template: widget.template,
+        existingRecords: existingRecords, // Pass the list here
         recordToEdit: recordToEdit,
       ),
     );
@@ -51,7 +56,8 @@ class _CustomDataPageState extends State<CustomDataPage>
         .where(
           (f) =>
               f.type == CustomFieldType.string ||
-              f.type == CustomFieldType.date,
+              f.type == CustomFieldType.date ||
+              f.type == CustomFieldType.serial,
         )
         .toList();
     final validY = widget.template.fields
@@ -197,284 +203,298 @@ class _CustomDataPageState extends State<CustomDataPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showEntrySheet(),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Entry'),
-      ),
-      body: StreamBuilder<List<CustomRecord>>(
-        stream: _service.getCustomRecords(widget.template.id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
 
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
+    // FIX 2: StreamBuilder is now at the top level
+    // This allows us to access 'records' for the FloatingActionButton
+    return StreamBuilder<List<CustomRecord>>(
+      stream: _service.getCustomRecords(widget.template.id),
+      builder: (context, snapshot) {
+        final records = snapshot.data ?? [];
 
-          final records = snapshot.data ?? [];
+        return Scaffold(
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () =>
+                _showEntrySheet(records), // Pass records for auto-increment
+            icon: const Icon(Icons.add),
+            label: const Text('Add Entry'),
+          ),
+          body: Builder(
+            builder: (context) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-          // Calculate Totals (SAFE PARSING)
-          Map<String, double> totals = {};
-          for (var field in widget.template.fields) {
-            if ((field.type == CustomFieldType.number ||
-                    field.type == CustomFieldType.currency) &&
-                field.isSumRequired) {
-              totals[field.name] = records.fold(0.0, (sum, r) {
-                final rawVal = r.data[field.name];
-                double val = 0.0;
-                if (rawVal is num) {
-                  val = rawVal.toDouble();
-                } else if (rawVal is String) {
-                  val = double.tryParse(rawVal) ?? 0.0;
+              if (snapshot.hasError) {
+                return Center(child: Text("Error: ${snapshot.error}"));
+              }
+
+              // Calculate Totals
+              Map<String, double> totals = {};
+              for (var field in widget.template.fields) {
+                if ((field.type == CustomFieldType.number ||
+                        field.type == CustomFieldType.currency) &&
+                    field.isSumRequired) {
+                  totals[field.name] = records.fold(0.0, (sum, r) {
+                    final rawVal = r.data[field.name];
+                    double val = 0.0;
+                    if (rawVal is num) {
+                      val = rawVal.toDouble();
+                    } else if (rawVal is String) {
+                      val = double.tryParse(rawVal) ?? 0.0;
+                    }
+                    return sum + val;
+                  });
                 }
-                return sum + val;
-              });
-            }
-          }
+              }
 
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 100),
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8, right: 8),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: _editTemplate,
-                        icon: const Icon(
-                          Icons.edit_note,
-                          color: Colors.blueAccent,
-                        ),
-                        tooltip: 'Edit Sheet Structure',
+              return ListView(
+                padding: const EdgeInsets.only(bottom: 100),
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8, right: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: _editTemplate,
+                            icon: const Icon(
+                              Icons.edit_note,
+                              color: Colors.blueAccent,
+                            ),
+                            tooltip: 'Edit Sheet Structure',
+                          ),
+                          IconButton(
+                            onPressed: _deleteSheet,
+                            icon: const Icon(
+                              Icons.delete_forever_outlined,
+                              color: Colors.redAccent,
+                            ),
+                            tooltip: 'Delete this Sheet',
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        onPressed: _deleteSheet,
-                        icon: const Icon(
-                          Icons.delete_forever_outlined,
-                          color: Colors.redAccent,
-                        ),
-                        tooltip: 'Delete this Sheet',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Chart Section
-              if (widget.template.xAxisField != null &&
-                  widget.template.yAxisField != null &&
-                  records.isNotEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Trend Analysis',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.copyWith(color: Colors.white54),
-                      ),
-                      InkWell(
-                        onTap: _configureChart,
-                        child: const Icon(
-                          Icons.settings,
-                          size: 16,
-                          color: Colors.white54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  height: 250,
-                  child: _buildChart(
-                    records,
-                    widget.template.xAxisField!,
-                    widget.template.yAxisField!,
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ] else if (records.isNotEmpty) ...[
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16, bottom: 8),
-                    child: TextButton.icon(
-                      onPressed: _configureChart,
-                      icon: const Icon(Icons.show_chart, size: 18),
-                      label: const Text('Add Chart'),
                     ),
                   ),
-                ),
-              ],
 
-              // Data Table
-              if (records.isNotEmpty)
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white24),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: DataTable(
-                      headingRowColor: MaterialStateProperty.all(
-                        Colors.white.withOpacity(0.1),
+                  // Chart Section
+                  if (widget.template.xAxisField != null &&
+                      widget.template.yAxisField != null &&
+                      records.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
                       ),
-                      dataRowColor: MaterialStateProperty.all(
-                        Colors.transparent,
-                      ),
-                      columnSpacing: 24,
-                      border: TableBorder.symmetric(
-                        inside: BorderSide(
-                          color: Colors.white.withOpacity(0.1),
-                        ),
-                      ),
-                      columns: [
-                        ...widget.template.fields.map(
-                          (f) => DataColumn(
-                            label: Text(
-                              f.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Trend Analysis',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.white54),
+                          ),
+                          InkWell(
+                            onTap: _configureChart,
+                            child: const Icon(
+                              Icons.settings,
+                              size: 16,
+                              color: Colors.white54,
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: 250,
+                      child: _buildChart(
+                        records,
+                        widget.template.xAxisField!,
+                        widget.template.yAxisField!,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ] else if (records.isNotEmpty) ...[
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 16, bottom: 8),
+                        child: TextButton.icon(
+                          onPressed: _configureChart,
+                          icon: const Icon(Icons.show_chart, size: 18),
+                          label: const Text('Add Chart'),
                         ),
-                        const DataColumn(label: Text('Actions')),
-                      ],
-                      rows: [
-                        // Data Rows
-                        ...records.map(
-                          (r) => DataRow(
-                            cells: [
-                              ...widget.template.fields.map((f) {
-                                final val = r.data[f.name];
-                                String display = '-';
-                                if (val != null) {
-                                  if (f.type == CustomFieldType.date &&
-                                      val is DateTime) {
-                                    display = DateFormat(
-                                      'dd MMM yyyy',
-                                    ).format(val);
-                                  } else if (f.type ==
-                                      CustomFieldType.currency) {
-                                    double numVal = 0.0;
-                                    if (val is num)
-                                      numVal = val.toDouble();
-                                    else if (val is String)
-                                      numVal = double.tryParse(val) ?? 0.0;
-                                    display =
-                                        '${f.currencySymbol}${numVal.toStringAsFixed(2)}';
-                                  } else {
-                                    display = val.toString();
-                                  }
-                                }
-                                return DataCell(Text(display));
-                              }),
-                              DataCell(
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.edit,
-                                        size: 18,
-                                        color: Colors.blueAccent,
-                                      ),
-                                      onPressed: () => _showEntrySheet(r),
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        size: 18,
-                                        color: Colors.redAccent,
-                                      ),
-                                      onPressed: () => _deleteRecord(r.id),
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                  ],
+                      ),
+                    ),
+                  ],
+
+                  // Data Table
+                  if (records.isNotEmpty)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white24),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DataTable(
+                          headingRowColor: MaterialStateProperty.all(
+                            Colors.white.withOpacity(0.1),
+                          ),
+                          dataRowColor: MaterialStateProperty.all(
+                            Colors.transparent,
+                          ),
+                          columnSpacing: 24,
+                          border: TableBorder.symmetric(
+                            inside: BorderSide(
+                              color: Colors.white.withOpacity(0.1),
+                            ),
+                          ),
+                          columns: [
+                            ...widget.template.fields.map(
+                              (f) => DataColumn(
+                                label: Text(
+                                  f.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-
-                        // Grand Total Row
-                        if (totals.isNotEmpty)
-                          DataRow(
-                            color: MaterialStateProperty.all(
-                              Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer.withOpacity(0.3),
                             ),
-                            cells: [
-                              ...widget.template.fields.map((f) {
-                                if (totals.containsKey(f.name)) {
-                                  String amount = totals[f.name]!
-                                      .toStringAsFixed(2);
-                                  if (f.type == CustomFieldType.currency) {
-                                    amount = '${f.currencySymbol}$amount';
-                                  }
-                                  return DataCell(
-                                    Text(
-                                      amount,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                      ),
+                            const DataColumn(label: Text('Actions')),
+                          ],
+                          rows: [
+                            // Data Rows
+                            ...records.map(
+                              (r) => DataRow(
+                                cells: [
+                                  ...widget.template.fields.map((f) {
+                                    final val = r.data[f.name];
+                                    String display = '-';
+                                    if (val != null) {
+                                      if (f.type == CustomFieldType.date &&
+                                          val is DateTime) {
+                                        display = DateFormat(
+                                          'dd MMM yyyy',
+                                        ).format(val);
+                                      } else if (f.type ==
+                                          CustomFieldType.currency) {
+                                        double numVal = 0.0;
+                                        if (val is num)
+                                          numVal = val.toDouble();
+                                        else if (val is String)
+                                          numVal = double.tryParse(val) ?? 0.0;
+                                        display =
+                                            '${f.currencySymbol}${numVal.toStringAsFixed(2)}';
+                                      } else if (f.type ==
+                                          CustomFieldType.serial) {
+                                        // Serial Formatting
+                                        display =
+                                            '${f.serialPrefix ?? ''}$val${f.serialSuffix ?? ''}';
+                                      } else {
+                                        display = val.toString();
+                                      }
+                                    }
+                                    return DataCell(Text(display));
+                                  }),
+                                  DataCell(
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            size: 18,
+                                            color: Colors.blueAccent,
+                                          ),
+                                          // FIX 3: Pass existing records when editing too!
+                                          onPressed: () =>
+                                              _showEntrySheet(records, r),
+                                          constraints: const BoxConstraints(),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            size: 18,
+                                            color: Colors.redAccent,
+                                          ),
+                                          onPressed: () => _deleteRecord(r.id),
+                                          constraints: const BoxConstraints(),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                      ],
                                     ),
-                                  );
-                                } else if (f == widget.template.fields.first) {
-                                  return const DataCell(
-                                    Text(
-                                      'TOTAL',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  );
-                                }
-                                return const DataCell(Text(''));
-                              }),
-                              const DataCell(Text('')),
-                            ],
-                          ),
-                      ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Grand Total Row
+                            if (totals.isNotEmpty)
+                              DataRow(
+                                color: MaterialStateProperty.all(
+                                  Theme.of(context).colorScheme.primaryContainer
+                                      .withOpacity(0.3),
+                                ),
+                                cells: [
+                                  ...widget.template.fields.map((f) {
+                                    if (totals.containsKey(f.name)) {
+                                      String amount = totals[f.name]!
+                                          .toStringAsFixed(2);
+                                      if (f.type == CustomFieldType.currency) {
+                                        amount = '${f.currencySymbol}$amount';
+                                      }
+                                      return DataCell(
+                                        Text(
+                                          amount,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      );
+                                    } else if (f ==
+                                        widget.template.fields.first) {
+                                      return const DataCell(
+                                        Text(
+                                          'TOTAL',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    return const DataCell(Text(''));
+                                  }),
+                                  const DataCell(Text('')),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    const Padding(
+                      padding: EdgeInsets.only(top: 80),
+                      child: Center(
+                        child: Text(
+                          "No records yet.\nTap + to add data.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white38),
+                        ),
+                      ),
                     ),
-                  ),
-                )
-              else
-                const Padding(
-                  padding: EdgeInsets.only(top: 80),
-                  child: Center(
-                    child: Text(
-                      "No records yet.\nTap + to add data.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white38),
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -507,7 +527,6 @@ class _CustomDataPageState extends State<CustomDataPage>
       if (val < minY) minY = val;
       if (val > maxY) maxY = val;
 
-      // Regression Stats
       sumX += i;
       sumY += val;
       sumXY += (i * val);
@@ -545,10 +564,10 @@ class _CustomDataPageState extends State<CustomDataPage>
       gradientStops = [0.0, zeroStop, zeroStop, 1.0];
     }
 
-    // Dynamic Interval
+    // Dynamic Interval (Count / 4)
     double interval = 1.0;
-    if (sorted.length > 5) {
-      interval = (sorted.length / 5).ceilToDouble();
+    if (sorted.length > 4) {
+      interval = (sorted.length / 4).ceilToDouble();
     }
 
     return Container(
@@ -562,16 +581,16 @@ class _CustomDataPageState extends State<CustomDataPage>
       ),
       child: LineChart(
         LineChartData(
-          // ... [Keep existing lineTouchData, gridData, titlesData, borderData] ...
+          // Uses getTooltipColor (Supported in newer fl_chart)
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              // tooltipBgColor: const Color(0xFF263238).withOpacity(0.9), // OLD 0.40.0+ syntax
               getTooltipColor: (spot) =>
-                  const Color(0xFF263238).withOpacity(0.9), // NEW syntax
+                  const Color(0xFF263238).withOpacity(0.9),
               tooltipRoundedRadius: 8,
               getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                 return touchedBarSpots.map((barSpot) {
-                  if (barSpot.barIndex == 0) return null; // Hide Trend Tooltip
+                  // Hide Trend Line Tooltip
+                  if (barSpot.barIndex == 0) return null;
 
                   final index = barSpot.x.toInt();
                   if (index >= 0 && index < sorted.length) {
@@ -579,6 +598,8 @@ class _CustomDataPageState extends State<CustomDataPage>
                     String xLabel = '';
                     if (d is DateTime) {
                       xLabel = DateFormat('dd MMM yyyy').format(d);
+                    } else if (d is int) {
+                      xLabel = d.toString();
                     } else {
                       xLabel = d.toString();
                     }
@@ -596,7 +617,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                           style: TextStyle(
                             color: barSpot.y < 0
                                 ? Colors.redAccent
-                                : Colors.greenAccent, // Dynamic Tooltip Color
+                                : Colors.greenAccent,
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
@@ -642,6 +663,8 @@ class _CustomDataPageState extends State<CustomDataPage>
                       label = DateFormat('dd MMM yy').format(d);
                     else if (d is String)
                       label = d.length > 5 ? d.substring(0, 5) : d;
+                    else
+                      label = d.toString();
 
                     return Padding(
                       padding: const EdgeInsets.only(top: 8.0),
@@ -655,7 +678,7 @@ class _CustomDataPageState extends State<CustomDataPage>
           ),
           borderData: FlBorderData(show: false),
           lineBarsData: [
-            // Linear Trend Line
+            // Trend Line
             LineChartBarData(
               spots: trendSpots,
               isCurved: false,
@@ -664,7 +687,7 @@ class _CustomDataPageState extends State<CustomDataPage>
               dashArray: [5, 5],
               dotData: const FlDotData(show: false),
             ),
-            // Actual Data Line
+            // Data Line
             LineChartBarData(
               spots: spots,
               isCurved: true,
@@ -675,15 +698,12 @@ class _CustomDataPageState extends State<CustomDataPage>
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
               ),
-              // FIX: Custom Dot Painter to color dots Red/Green based on value
               dotData: FlDotData(
                 show: true,
                 getDotPainter: (spot, percent, barData, index) {
                   return FlDotCirclePainter(
                     radius: 4,
-                    color: spot.y < 0
-                        ? Colors.red
-                        : Colors.green, // Logic for Dot Color
+                    color: spot.y < 0 ? Colors.red : Colors.green,
                     strokeWidth: 2,
                     strokeColor: Colors.white,
                   );

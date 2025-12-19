@@ -18,7 +18,6 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
   List<CustomFieldConfig> _fields = [];
   bool _isEditing = false;
 
-  // Track original types to enforce restrictions
   final Map<String, CustomFieldType> _originalTypes = {};
 
   @override
@@ -29,7 +28,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
       _screenName = widget.templateToEdit!.name;
 
       _fields = widget.templateToEdit!.fields.map((f) {
-        _originalTypes[f.name] = f.type; // Store original type
+        _originalTypes[f.name] = f.type;
         return CustomFieldConfig(
           name: f.name,
           type: f.type,
@@ -38,6 +37,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
           dropdownOptions: f.dropdownOptions != null
               ? List.from(f.dropdownOptions!)
               : null,
+          serialPrefix: f.serialPrefix,
+          serialSuffix: f.serialSuffix,
         );
       }).toList();
     }
@@ -178,7 +179,6 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
                                     items: CustomFieldType.values,
                                     labelBuilder: (t) => _getTypeLabel(t),
                                     onSelect: (val) {
-                                      // --- BLOCKING LOGIC ---
                                       if (_isEditing &&
                                           _originalTypes.containsKey(
                                             _fields[index].name,
@@ -195,15 +195,14 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
                                           ).showSnackBar(
                                             const SnackBar(
                                               content: Text(
-                                                "Cannot change 'Text' to 'Number' for existing fields (Risk of Data Crash). Create a new field instead.",
+                                                "Cannot change 'Text' to 'Number'. Create a new field instead.",
                                               ),
                                               backgroundColor: Colors.red,
                                             ),
                                           );
-                                          return; // Stop the change
+                                          return;
                                         }
                                       }
-                                      // ----------------------
 
                                       setState(() {
                                         _fields[index].type = val!;
@@ -216,6 +215,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
                                             val == CustomFieldType.dropdown
                                             ? []
                                             : null;
+                                        _fields[index].serialPrefix = null;
+                                        _fields[index].serialSuffix = null;
                                       });
                                     },
                                     selectedItem: _fields[index].type,
@@ -266,6 +267,38 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
 
                           if (_fields[index].type == CustomFieldType.dropdown)
                             _buildDropdownConfig(index),
+
+                          if (_fields[index].type == CustomFieldType.serial)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 36, top: 8),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextFormField(
+                                      initialValue: _fields[index].serialPrefix,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Prefix (e.g. INV-)',
+                                        isDense: true,
+                                      ),
+                                      onChanged: (val) =>
+                                          _fields[index].serialPrefix = val,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: TextFormField(
+                                      initialValue: _fields[index].serialSuffix,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Suffix',
+                                        isDense: true,
+                                      ),
+                                      onChanged: (val) =>
+                                          _fields[index].serialSuffix = val,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -367,6 +400,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
         return 'Currency';
       case CustomFieldType.dropdown:
         return 'Dropdown';
+      case CustomFieldType.serial:
+        return 'Serial No.';
     }
   }
 
@@ -382,6 +417,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
         return Icons.attach_money;
       case CustomFieldType.dropdown:
         return Icons.list;
+      case CustomFieldType.serial:
+        return Icons.numbers;
     }
   }
 }
