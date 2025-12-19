@@ -288,20 +288,18 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
   }
 
   Widget _buildSerialConfig(int index) {
-    bool hasPrefix =
-        _fields[index].serialPrefix != null &&
-        _fields[index].serialPrefix!.isNotEmpty;
-    bool hasSuffix =
-        _fields[index].serialSuffix != null &&
-        _fields[index].serialSuffix!.isNotEmpty;
-    bool hasConfig = hasPrefix || hasSuffix;
+    // FIX: Check for nullability only.
+    // We want the switch to be ON if the value is defined (even if empty string)
+    // We only want it OFF if the value is null.
+    bool hasConfig =
+        _fields[index].serialPrefix != null ||
+        _fields[index].serialSuffix != null;
 
     return Padding(
       padding: const EdgeInsets.only(left: 36, top: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // FIX: Changed Row layout to prevent overflow on small screens
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -320,9 +318,11 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
                     onChanged: (val) {
                       setState(() {
                         if (val) {
+                          // Initialize as empty strings (not null) so fields appear
                           _fields[index].serialPrefix = '';
                           _fields[index].serialSuffix = '';
                         } else {
+                          // Set to null to hide fields
                           _fields[index].serialPrefix = null;
                           _fields[index].serialSuffix = null;
                         }
