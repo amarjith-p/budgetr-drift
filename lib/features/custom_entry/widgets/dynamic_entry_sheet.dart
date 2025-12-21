@@ -25,13 +25,18 @@ class DynamicEntrySheet extends StatefulWidget {
 class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
   final Map<String, dynamic> _formData = {};
   final Map<String, TextEditingController> _controllers = {};
-  final Map<String, FocusNode> _focusNodes = {}; // NEW: Manage FocusNodes
+  final Map<String, FocusNode> _focusNodes = {};
 
   TextEditingController? _activeCalcController;
-  FocusNode? _activeFocusNode; // NEW
+  FocusNode? _activeFocusNode;
   bool _isKeyboardVisible = false;
-  bool _useSystemKeyboard = false; // NEW
+  bool _useSystemKeyboard = false;
   bool _isEditing = false;
+
+  // Theme
+  final Color _bgColor = const Color(0xff0D1B2A);
+  final Color _inputColor = const Color(0xFF1B263B);
+  final Color _accentColor = const Color(0xFF3A86FF);
 
   @override
   void initState() {
@@ -43,7 +48,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
   @override
   void dispose() {
     _controllers.values.forEach((c) => c.dispose());
-    _focusNodes.values.forEach((f) => f.dispose()); // Dispose nodes
+    _focusNodes.values.forEach((f) => f.dispose());
     super.dispose();
   }
 
@@ -54,7 +59,6 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
         initialVal = widget.recordToEdit!.data[field.name];
       }
 
-      // Initialize Focus Node
       if (!_focusNodes.containsKey(field.name)) {
         _focusNodes[field.name] = FocusNode();
       }
@@ -77,9 +81,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
           int maxSerial = 0;
           for (var r in widget.existingRecords) {
             var val = r.data[field.name];
-            if (val is int) {
-              if (val > maxSerial) maxSerial = val;
-            }
+            if (val is int && val > maxSerial) maxSerial = val;
           }
           int next = maxSerial + 1;
           _controllers[field.name] = TextEditingController(
@@ -95,7 +97,6 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     }
   }
 
-  // --- Keyboard Logic ---
   void _setActive(TextEditingController ctrl, FocusNode node) {
     setState(() {
       _activeCalcController = ctrl;
@@ -129,10 +130,6 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
 
   void _handleNext() {
     if (_activeFocusNode == null) return;
-
-    // Get editable fields only (number/currency) for custom keyboard flow
-    // Or all fields if we want to jump to text fields too (though custom keyboard won't work there)
-    // Let's stick to fields that use the calculator keyboard for consistency
     final fields = widget.template.fields
         .where(
           (f) =>
@@ -183,7 +180,6 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     } else {
       await CustomEntryService().addCustomRecord(record);
     }
-
     if (mounted) Navigator.pop(context);
   }
 
@@ -199,7 +195,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: _bgColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
@@ -208,21 +204,36 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  _isEditing ? 'Edit Entry' : widget.template.name,
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  _isEditing ? 'Edit Entry' : 'New ${widget.template.name}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 if (!_isEditing)
                   TextButton(
                     onPressed: _reset,
-                    child: const Text(
+                    child: Text(
                       'Reset',
-                      style: TextStyle(color: Colors.orange),
+                      style: TextStyle(color: Colors.orange[300]),
                     ),
                   ),
               ],
@@ -244,14 +255,34 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                      foregroundColor: Colors.white70,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
                     child: const Text('Cancel'),
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: FilledButton(
+                  child: ElevatedButton(
                     onPressed: _save,
-                    child: Text(_isEditing ? 'Update' : 'Record Entry'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _accentColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      _isEditing ? 'Update Entry' : 'Save Record',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ],
@@ -294,25 +325,48 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
               initialDate: val,
               firstDate: DateTime(1900),
               lastDate: DateTime(2100),
+              builder: (context, child) {
+                return Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: ColorScheme.dark(
+                      primary: _accentColor,
+                      surface: const Color(0xFF1B263B),
+                    ),
+                  ),
+                  child: child!,
+                );
+              },
             );
             if (picked != null) setState(() => _formData[field.name] = picked);
           },
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.white24),
-              borderRadius: BorderRadius.circular(12),
+              color: _inputColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.calendar_today, size: 18),
-                const SizedBox(width: 12),
-                Text(DateFormat('dd MMM yyyy').format(val)),
-                const Spacer(),
-                Text(
-                  field.name,
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                Icon(Icons.calendar_today, size: 20, color: _accentColor),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      field.name,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      DateFormat('dd MMM yyyy').format(val),
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -328,7 +382,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
         child: ModernDropdownPill<String>(
           label: val ?? 'Select ${field.name}',
           isActive: val != null,
-          icon: Icons.arrow_drop_down_circle_outlined,
+          icon: Icons.expand_circle_down_outlined,
           onTap: () => showSelectionSheet<String>(
             context: context,
             title: 'Select ${field.name}',
@@ -341,39 +395,29 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
       );
     }
 
-    if (field.type == CustomFieldType.serial) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16.0),
-        child: TextFormField(
-          controller: _controllers[field.name],
-          readOnly: true,
-          style: const TextStyle(color: Colors.grey),
-          decoration: InputDecoration(
-            labelText: field.name,
-            border: const OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.tag),
-            prefixText: field.serialPrefix,
-            suffixText: field.serialSuffix,
-            filled: true,
-            fillColor: Colors.black12,
-          ),
-        ),
-      );
-    }
-
     final isNum =
         field.type == CustomFieldType.number ||
         field.type == CustomFieldType.currency;
+    final isSerial = field.type == CustomFieldType.serial;
+
+    // --- ICON LOGIC ---
+    IconData inputIcon = Icons.text_fields;
+    if (isSerial)
+      inputIcon = Icons.tag;
+    else if (field.type == CustomFieldType.currency)
+      inputIcon = Icons.currency_rupee; // FIXED
+    else if (field.type == CustomFieldType.number)
+      inputIcon = Icons.dialpad; // FIXED
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
         controller: _controllers[field.name],
-        focusNode: _focusNodes[field.name], // Bind FocusNode
-        readOnly: isNum ? !_useSystemKeyboard : false, // Logic for readOnly
-        keyboardType: isNum
-            ? TextInputType.number
-            : TextInputType.text, // Set keyboard type
-        onTap: isNum
+        focusNode: _focusNodes[field.name],
+        readOnly: isSerial ? true : (isNum ? !_useSystemKeyboard : false),
+        keyboardType: isNum ? TextInputType.number : TextInputType.text,
+        style: TextStyle(color: isSerial ? Colors.white38 : Colors.white),
+        onTap: (isNum && !isSerial)
             ? () => _setActive(
                 _controllers[field.name]!,
                 _focusNodes[field.name]!,
@@ -381,11 +425,28 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
             : () => setState(() => _isKeyboardVisible = false),
         decoration: InputDecoration(
           labelText: field.name,
-          border: const OutlineInputBorder(),
+          labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+
+          // --- NULL CURRENCY FIX ---
           prefixText: field.type == CustomFieldType.currency
-              ? '${field.currencySymbol} '
-              : null,
-          prefixIcon: Icon(isNum ? Icons.onetwothree : Icons.text_fields),
+              ? '${field.currencySymbol ?? '₹'} '
+              : (isSerial ? field.serialPrefix : null),
+
+          suffixText: isSerial ? field.serialSuffix : null,
+          prefixIcon: Icon(
+            inputIcon,
+            color: isSerial ? Colors.white24 : _accentColor,
+          ),
+          filled: true,
+          fillColor: _inputColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: _accentColor),
+          ),
         ),
       ),
     );

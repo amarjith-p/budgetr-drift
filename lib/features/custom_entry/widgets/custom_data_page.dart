@@ -2,7 +2,7 @@ import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../../core/widgets/modern_dropdown.dart'; // Updated
+import '../../../core/widgets/modern_dropdown.dart';
 import '../../../core/models/custom_data_models.dart';
 import '../../../core/services/firestore_service.dart';
 import '../screens/template_editor_screen.dart';
@@ -20,6 +20,15 @@ class CustomDataPage extends StatefulWidget {
 class _CustomDataPageState extends State<CustomDataPage>
     with AutomaticKeepAliveClientMixin {
   final CustomEntryService _service = CustomEntryService();
+
+  // Theme
+  final Color _glassColor = const Color(0xFF1B263B).withOpacity(0.5);
+  final Color _accentColor = const Color(0xFF3A86FF);
+  final Color _bgColor = const Color(0xff0D1B2A);
+
+  // Chart Colors
+  final Color _positiveColor = const Color(0xFF00E676);
+  final Color _negativeColor = const Color(0xFFFF5252);
 
   @override
   bool get wantKeepAlive => true;
@@ -70,72 +79,172 @@ class _CustomDataPageState extends State<CustomDataPage>
         )
         .toList();
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
-          return AlertDialog(
-            title: const Text('Configure Chart'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ModernDropdownPill<String>(
-                  label: xField ?? 'X-Axis (Date/Text)',
-                  isActive: xField != null,
-                  icon: Icons.horizontal_rule,
-                  onTap: () => showSelectionSheet<String>(
-                    context: context,
-                    title: 'X-Axis',
-                    items: validX.map((f) => f.name).toList(),
-                    labelBuilder: (s) => s,
-                    onSelect: (v) => setModalState(() => xField = v),
-                    selectedItem: xField,
+          String? errorMessage;
+
+          return StatefulBuilder(
+            builder: (context, setInnerState) {
+              return Container(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                decoration: BoxDecoration(
+                  color: _bgColor,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  border: Border(
+                    top: BorderSide(color: Colors.white.withOpacity(0.1)),
                   ),
                 ),
-                const SizedBox(height: 16),
-                ModernDropdownPill<String>(
-                  label: yField ?? 'Y-Axis (Number)',
-                  isActive: yField != null,
-                  icon: Icons.vertical_align_bottom,
-                  onTap: () => showSelectionSheet<String>(
-                    context: context,
-                    title: 'Y-Axis',
-                    items: validY.map((f) => f.name).toList(),
-                    labelBuilder: (s) => s,
-                    onSelect: (v) => setModalState(() => yField = v),
-                    selectedItem: yField,
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      'Configure Chart',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    ModernDropdownPill<String>(
+                      label: xField ?? 'Select X-Axis (Date/Text)',
+                      isActive: xField != null,
+                      icon: Icons.horizontal_rule,
+                      onTap: () => showSelectionSheet<String>(
+                        context: context,
+                        title: 'X-Axis',
+                        items: validX.map((f) => f.name).toList(),
+                        labelBuilder: (s) => s,
+                        onSelect: (v) => setInnerState(() {
+                          xField = v;
+                          errorMessage = null;
+                        }),
+                        selectedItem: xField,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ModernDropdownPill<String>(
+                      label: yField ?? 'Select Y-Axis (Number)',
+                      isActive: yField != null,
+                      icon: Icons.vertical_align_bottom,
+                      onTap: () => showSelectionSheet<String>(
+                        context: context,
+                        title: 'Y-Axis',
+                        items: validY.map((f) => f.name).toList(),
+                        labelBuilder: (s) => s,
+                        onSelect: (v) => setInnerState(() {
+                          yField = v;
+                          errorMessage = null;
+                        }),
+                        selectedItem: yField,
+                      ),
+                    ),
+
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        errorMessage!,
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 32),
+
+                    Row(
+                      children: [
+                        if (widget.template.xAxisField != null)
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 12.0),
+                              child: OutlinedButton(
+                                onPressed: () async {
+                                  widget.template.xAxisField = null;
+                                  widget.template.yAxisField = null;
+                                  await _service.updateCustomTemplate(
+                                    widget.template,
+                                  );
+                                  if (mounted) Navigator.pop(context);
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(
+                                    color: Colors.redAccent.withOpacity(0.5),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Remove',
+                                  style: TextStyle(color: Colors.redAccent),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              if (xField == null || yField == null) {
+                                setInnerState(() {
+                                  errorMessage =
+                                      "Please select both X and Y axes";
+                                });
+                                return;
+                              }
+
+                              widget.template.xAxisField = xField;
+                              widget.template.yAxisField = yField;
+                              await _service.updateCustomTemplate(
+                                widget.template,
+                              );
+                              if (mounted) Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _accentColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: const Text(
+                              'Save Configuration',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            actions: [
-              if (widget.template.xAxisField != null)
-                TextButton(
-                  onPressed: () async {
-                    widget.template.xAxisField = null;
-                    widget.template.yAxisField = null;
-                    await _service.updateCustomTemplate(widget.template);
-                    if (mounted) Navigator.pop(context);
-                  },
-                  child: const Text(
-                    'Remove Chart',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () async {
-                  widget.template.xAxisField = xField;
-                  widget.template.yAxisField = yField;
-                  await _service.updateCustomTemplate(widget.template);
-                  if (mounted) Navigator.pop(context);
-                },
-                child: const Text('Save'),
-              ),
-            ],
+              );
+            },
           );
         },
       ),
@@ -147,14 +256,22 @@ class _CustomDataPageState extends State<CustomDataPage>
         await showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Delete Sheet?'),
+            backgroundColor: const Color(0xFF0D1B2A),
+            title: const Text(
+              'Delete Sheet?',
+              style: TextStyle(color: Colors.white),
+            ),
             content: Text(
               'Are you sure you want to delete "${widget.template.name}"?\n\nThis will permanently delete the sheet structure AND all its entered data.',
+              style: const TextStyle(color: Colors.white70),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white70),
+                ),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
@@ -178,12 +295,22 @@ class _CustomDataPageState extends State<CustomDataPage>
         await showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Delete Entry?'),
-            content: const Text('This cannot be undone.'),
+            backgroundColor: const Color(0xFF0D1B2A),
+            title: const Text(
+              'Delete Entry?',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: const Text(
+              'This cannot be undone.',
+              style: TextStyle(color: Colors.white70),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white70),
+                ),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
@@ -211,11 +338,16 @@ class _CustomDataPageState extends State<CustomDataPage>
         final records = snapshot.data ?? [];
 
         return Scaffold(
+          backgroundColor: Colors.transparent,
           floatingActionButton: FloatingActionButton.extended(
             heroTag: 'custom_data_fab_${widget.template.id}',
+            backgroundColor: _accentColor,
             onPressed: () => _showEntrySheet(records),
             icon: const Icon(Icons.add),
-            label: const Text('Add Entry'),
+            label: const Text(
+              'Add Entry',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
           body: Builder(
             builder: (context) {
@@ -224,10 +356,14 @@ class _CustomDataPageState extends State<CustomDataPage>
               }
 
               if (snapshot.hasError) {
-                return Center(child: Text("Error: ${snapshot.error}"));
+                return Center(
+                  child: Text(
+                    "Error: ${snapshot.error}",
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                );
               }
 
-              // Calculate Totals
               Map<String, double> totals = {};
               for (var field in widget.template.fields) {
                 if ((field.type == CustomFieldType.number ||
@@ -247,38 +383,56 @@ class _CustomDataPageState extends State<CustomDataPage>
               }
 
               return ListView(
-                padding: const EdgeInsets.only(bottom: 100),
+                padding: const EdgeInsets.fromLTRB(0, 180, 0, 100),
                 children: [
-                  // Top Controls (Edit/Delete)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 8, right: 8),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: _editTemplate,
-                            icon: const Icon(
-                              Icons.edit_note,
-                              color: Colors.blueAccent,
-                            ),
-                            tooltip: 'Edit Sheet Structure',
+                  Container(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _glassColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.05)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "${records.length} Records",
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontWeight: FontWeight.bold,
                           ),
-                          IconButton(
-                            onPressed: _deleteSheet,
-                            icon: const Icon(
-                              Icons.delete_forever_outlined,
-                              color: Colors.redAccent,
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: _editTemplate,
+                              icon: const Icon(
+                                Icons.settings_suggest_outlined,
+                                color: Colors.white70,
+                              ),
+                              tooltip: 'Edit Structure',
                             ),
-                            tooltip: 'Delete this Sheet',
-                          ),
-                        ],
-                      ),
+                            IconButton(
+                              onPressed: _deleteSheet,
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Colors.redAccent,
+                              ),
+                              tooltip: 'Delete Sheet',
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
 
-                  // Chart Section
                   if (widget.template.xAxisField != null &&
                       widget.template.yAxisField != null &&
                       records.isNotEmpty) ...[
@@ -292,13 +446,16 @@ class _CustomDataPageState extends State<CustomDataPage>
                         children: [
                           Text(
                             'Trend Analysis',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: Colors.white54),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           InkWell(
                             onTap: _configureChart,
                             child: const Icon(
-                              Icons.settings,
+                              Icons.tune,
                               size: 16,
                               color: Colors.white54,
                             ),
@@ -306,8 +463,24 @@ class _CustomDataPageState extends State<CustomDataPage>
                         ],
                       ),
                     ),
-                    SizedBox(
+                    Container(
                       height: 250,
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      padding: const EdgeInsets.only(
+                        right: 16,
+                        top: 24,
+                        bottom: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _glassColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.05),
+                        ),
+                      ),
                       child: _buildChart(
                         records,
                         widget.template.xAxisField!,
@@ -322,62 +495,70 @@ class _CustomDataPageState extends State<CustomDataPage>
                         padding: const EdgeInsets.only(right: 16, bottom: 8),
                         child: TextButton.icon(
                           onPressed: _configureChart,
-                          icon: const Icon(Icons.show_chart, size: 18),
+                          icon: const Icon(Icons.bar_chart, size: 18),
                           label: const Text('Add Chart'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: _accentColor,
+                          ),
                         ),
                       ),
                     ),
                   ],
 
-                  // Data Table
                   if (records.isNotEmpty)
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Container(
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white24),
-                          borderRadius: BorderRadius.circular(12),
+                          color: _glassColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.05),
+                          ),
                         ),
                         child: DataTable(
                           headingRowColor: MaterialStateProperty.all(
-                            Colors.white.withOpacity(0.1),
+                            Colors.white.withOpacity(0.05),
                           ),
                           dataRowColor: MaterialStateProperty.all(
                             Colors.transparent,
                           ),
-                          columnSpacing: 20.0,
-                          border: TableBorder.symmetric(
-                            inside: BorderSide(
-                              color: Colors.white.withOpacity(0.1),
+                          columnSpacing: 24.0,
+                          horizontalMargin: 20,
+                          dividerThickness: 0.5,
+                          border: TableBorder(
+                            horizontalInside: BorderSide(
+                              color: Colors.white.withOpacity(0.05),
+                              width: 1,
                             ),
                           ),
                           columns: [
-                            // DYNAMIC FIELDS ONLY (No forced Sl. No)
                             ...widget.template.fields.map(
                               (f) => DataColumn(
                                 label: Text(
-                                  f.name,
-                                  style: const TextStyle(
+                                  f.name.toUpperCase(),
+                                  style: TextStyle(
+                                    color: _accentColor,
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ),
                             ),
-                            const DataColumn(label: Text('Actions')),
+                            const DataColumn(label: Text('')),
                           ],
                           rows: [
-                            // Data Rows
                             ...records.map(
                               (r) => DataRow(
                                 cells: [
-                                  // Field Values
                                   ...widget.template.fields.map((f) {
                                     final val = r.data[f.name];
                                     String display = '-';
                                     if (val != null) {
                                       if (f.type == CustomFieldType.date &&
                                           val is DateTime) {
+                                        // --- DATE FIX: CHANGED TO FULL YEAR ---
                                         display = DateFormat(
                                           'dd MMM yyyy',
                                         ).format(val);
@@ -389,20 +570,24 @@ class _CustomDataPageState extends State<CustomDataPage>
                                         else if (val is String)
                                           numVal = double.tryParse(val) ?? 0.0;
                                         display =
-                                            '${f.currencySymbol}${numVal.toStringAsFixed(2)}';
+                                            '${f.currencySymbol ?? '₹'}${numVal.toStringAsFixed(2)}';
                                       } else if (f.type ==
                                           CustomFieldType.serial) {
-                                        // SERIAL NUMBER DISPLAY logic
                                         display =
                                             '${f.serialPrefix ?? ''}$val${f.serialSuffix ?? ''}';
                                       } else {
                                         display = val.toString();
                                       }
                                     }
-                                    return DataCell(Text(display));
+                                    return DataCell(
+                                      Text(
+                                        display,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                    );
                                   }),
-
-                                  // Actions
                                   DataCell(
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -410,24 +595,24 @@ class _CustomDataPageState extends State<CustomDataPage>
                                         IconButton(
                                           icon: const Icon(
                                             Icons.edit,
-                                            size: 18,
-                                            color: Colors.blueAccent,
+                                            size: 16,
+                                            color: Colors.white54,
                                           ),
                                           onPressed: () =>
                                               _showEntrySheet(records, r),
-                                          constraints: const BoxConstraints(),
                                           padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
                                         ),
-                                        const SizedBox(width: 8),
+                                        const SizedBox(width: 12),
                                         IconButton(
                                           icon: const Icon(
                                             Icons.delete,
-                                            size: 18,
+                                            size: 16,
                                             color: Colors.redAccent,
                                           ),
                                           onPressed: () => _deleteRecord(r.id),
-                                          constraints: const BoxConstraints(),
                                           padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
                                         ),
                                       ],
                                     ),
@@ -435,13 +620,10 @@ class _CustomDataPageState extends State<CustomDataPage>
                                 ],
                               ),
                             ),
-
-                            // Grand Total Row
                             if (totals.isNotEmpty)
                               DataRow(
                                 color: MaterialStateProperty.all(
-                                  Theme.of(context).colorScheme.primaryContainer
-                                      .withOpacity(0.3),
+                                  _accentColor.withOpacity(0.1),
                                 ),
                                 cells: [
                                   ...widget.template.fields.map((f) {
@@ -449,14 +631,15 @@ class _CustomDataPageState extends State<CustomDataPage>
                                       String amount = totals[f.name]!
                                           .toStringAsFixed(2);
                                       if (f.type == CustomFieldType.currency) {
-                                        amount = '${f.currencySymbol}$amount';
+                                        amount =
+                                            '${f.currencySymbol ?? '₹'}$amount';
                                       }
                                       return DataCell(
                                         Text(
                                           amount,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.white,
+                                            color: _accentColor,
                                             fontSize: 13,
                                           ),
                                         ),
@@ -468,6 +651,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                                           'TOTAL',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
+                                            color: Colors.white,
                                           ),
                                         ),
                                       );
@@ -482,13 +666,24 @@ class _CustomDataPageState extends State<CustomDataPage>
                       ),
                     )
                   else
-                    const Padding(
-                      padding: EdgeInsets.only(top: 80),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 80),
                       child: Center(
-                        child: Text(
-                          "No records yet.\nTap + to add data.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white38),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.table_rows_outlined,
+                              size: 48,
+                              color: Colors.white.withOpacity(0.1),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              "No records found",
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.3),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -501,21 +696,15 @@ class _CustomDataPageState extends State<CustomDataPage>
     );
   }
 
+  // ... (Chart logic unchanged) ...
   Widget _buildChart(List<CustomRecord> records, String xKey, String yKey) {
     var sorted = List<CustomRecord>.from(records)
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
     List<FlSpot> spots = [];
     double minY = double.infinity;
     double maxY = double.negativeInfinity;
 
-    double sumX = 0;
-    double sumY = 0;
-    double sumXY = 0;
-    double sumXX = 0;
-    int n = sorted.length;
-
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < sorted.length; i++) {
       double val = 0.0;
       var raw = sorted[i].data[yKey];
       if (raw is num)
@@ -524,197 +713,153 @@ class _CustomDataPageState extends State<CustomDataPage>
         val = double.tryParse(raw) ?? 0.0;
 
       spots.add(FlSpot(i.toDouble(), val));
-
       if (val < minY) minY = val;
       if (val > maxY) maxY = val;
-
-      sumX += i;
-      sumY += val;
-      sumXY += (i * val);
-      sumXX += (i * i);
     }
 
     if (spots.isEmpty) return const SizedBox.shrink();
 
-    List<FlSpot> trendSpots = [];
-    if (n > 1) {
-      double slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-      double intercept = (sumY - slope * sumX) / n;
-      for (int i = 0; i < n; i++) {
-        trendSpots.add(FlSpot(i.toDouble(), slope * i + intercept));
-      }
-    } else {
-      trendSpots.add(FlSpot(0, spots[0].y));
+    List<Color> gradientColors = [_positiveColor, _positiveColor];
+    List<double> stops = [0.0, 1.0];
+
+    if (minY < 0 && maxY > 0) {
+      double zeroPos = (0 - minY) / (maxY - minY);
+      gradientColors = [
+        _negativeColor,
+        _negativeColor,
+        _positiveColor,
+        _positiveColor,
+      ];
+      stops = [0.0, zeroPos, zeroPos, 1.0];
+    } else if (maxY <= 0) {
+      gradientColors = [_negativeColor, _negativeColor];
     }
 
     double interval = 1.0;
-    if (sorted.length > 5) {
-      interval = (sorted.length / 5).ceilToDouble();
-    }
+    if (sorted.length > 4) interval = (sorted.length / 4).ceilToDouble();
 
-    List<Color> gradientColors;
-    List<double> gradientStops;
+    return LineChart(
+      LineChartData(
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (spot) =>
+                const Color(0xFF0D1B2A).withOpacity(0.95),
+            tooltipRoundedRadius: 8,
+            getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+              return touchedBarSpots.map((barSpot) {
+                final index = barSpot.x.toInt();
+                if (index >= 0 && index < sorted.length) {
+                  final d = sorted[index].data[xKey];
+                  String xLabel = (d is DateTime)
+                      ? DateFormat('dd MMM').format(d)
+                      : d.toString();
+                  Color valColor = barSpot.y > 0
+                      ? _positiveColor
+                      : _negativeColor;
 
-    if (minY >= 0) {
-      gradientColors = [Colors.green, Colors.green];
-      gradientStops = [0.0, 1.0];
-    } else if (maxY <= 0) {
-      gradientColors = [Colors.red, Colors.red];
-      gradientStops = [0.0, 1.0];
-    } else {
-      double zeroStop = (0 - minY) / (maxY - minY);
-      zeroStop = zeroStop.clamp(0.0, 1.0);
-      gradientColors = [Colors.red, Colors.red, Colors.green, Colors.green];
-      gradientStops = [0.0, zeroStop, zeroStop, 1.0];
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.only(right: 16, top: 16, bottom: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: LineChart(
-        LineChartData(
-          lineTouchData: LineTouchData(
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (spot) =>
-                  const Color(0xFF263238).withOpacity(0.9),
-              tooltipRoundedRadius: 8,
-              getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
-                return touchedBarSpots.map((barSpot) {
-                  if (barSpot.barIndex == 0) return null; // Hide trend line
-
-                  final index = barSpot.x.toInt();
-                  if (index >= 0 && index < sorted.length) {
-                    final d = sorted[index].data[xKey];
-                    String xLabel = '';
-                    if (d is DateTime) {
-                      xLabel = DateFormat('dd MMM yyyy').format(d);
-                    } else {
-                      xLabel = d.toString();
-                    }
-
-                    return LineTooltipItem(
-                      '$xLabel\n',
-                      const TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: NumberFormat.decimalPattern().format(barSpot.y),
-                          style: TextStyle(
-                            color: barSpot.y < 0
-                                ? Colors.redAccent
-                                : Colors.greenAccent,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  return LineTooltipItem(
+                    '$xLabel\n',
+                    const TextStyle(color: Colors.white70, fontSize: 10),
+                    children: [
+                      TextSpan(
+                        text: NumberFormat.compact().format(barSpot.y),
+                        style: TextStyle(
+                          color: valColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                      ],
-                    );
-                  }
-                  return null;
-                }).toList();
+                      ),
+                    ],
+                  );
+                }
+                return null;
+              }).toList();
+            },
+          ),
+        ),
+        gridData: const FlGridData(show: false),
+        titlesData: FlTitlesData(
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 32,
+              getTitlesWidget: (val, _) => Text(
+                NumberFormat.compact().format(val),
+                style: const TextStyle(fontSize: 10, color: Colors.white30),
+              ),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 42,
+              interval: interval,
+              getTitlesWidget: (val, meta) {
+                int index = val.toInt();
+                if (index >= 0 &&
+                    index < sorted.length &&
+                    val == index.toDouble()) {
+                  final d = sorted[index].data[xKey];
+                  String label = (d is DateTime)
+                      ? DateFormat('dd/MM').format(d)
+                      : d.toString();
+                  return SideTitleWidget(
+                    axisSide: meta.axisSide,
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.white30,
+                      ),
+                    ),
+                  );
+                }
+                return const Text('');
               },
             ),
           ),
-          gridData: const FlGridData(show: false),
-          titlesData: FlTitlesData(
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
+        ),
+        borderData: FlBorderData(show: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            barWidth: 3,
+            gradient: LinearGradient(
+              colors: gradientColors,
+              stops: stops,
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
             ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
+            dotData: FlDotData(
+              show: true,
+              getDotPainter: (spot, percent, barData, index) {
+                Color dotColor = spot.y > 0 ? _positiveColor : _negativeColor;
+                return FlDotCirclePainter(
+                  radius: 4,
+                  color: dotColor,
+                  strokeWidth: 2,
+                  strokeColor: Colors.white.withOpacity(0.8),
+                );
+              },
             ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (val, _) => Text(
-                  NumberFormat.compact().format(val),
-                  style: const TextStyle(fontSize: 10),
-                ),
-              ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                interval: interval,
-                getTitlesWidget: (val, meta) {
-                  int index = val.toInt();
-                  if (index >= 0 &&
-                      index < sorted.length &&
-                      val == index.toDouble()) {
-                    final d = sorted[index].data[xKey];
-                    String label = '';
-                    if (d is DateTime)
-                      label = DateFormat('dd MMM yy').format(d);
-                    else if (d is String)
-                      label = d.length > 5 ? d.substring(0, 5) : d;
-                    else
-                      label = d.toString();
-
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(label, style: const TextStyle(fontSize: 10)),
-                    );
-                  }
-                  return const Text('');
-                },
-              ),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: trendSpots,
-              isCurved: false,
-              barWidth: 2,
-              color: Colors.white.withOpacity(0.3),
-              dashArray: [5, 5],
-              dotData: const FlDotData(show: false),
-            ),
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              barWidth: 3,
+            belowBarData: BarAreaData(
+              show: true,
               gradient: LinearGradient(
-                colors: gradientColors,
-                stops: gradientStops,
+                colors: gradientColors.map((c) => c.withOpacity(0.1)).toList(),
+                stops: stops,
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
               ),
-              dotData: FlDotData(
-                show: true,
-                getDotPainter: (spot, percent, barData, index) {
-                  return FlDotCirclePainter(
-                    radius: 4,
-                    color: spot.y < 0 ? Colors.red : Colors.green,
-                    strokeWidth: 2,
-                    strokeColor: Colors.white,
-                  );
-                },
-              ),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  colors: gradientColors
-                      .map((c) => c.withOpacity(0.1))
-                      .toList(),
-                  stops: gradientStops,
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
