@@ -117,7 +117,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: Colors.transparent, // Important for full height layout
+      backgroundColor: Colors.transparent,
       builder: (context) => const SettlementInputSheet(),
     ).then((_) {
       if (_selectedYear != null && _selectedMonth != null) {
@@ -211,7 +211,6 @@ class _SettlementScreenState extends State<SettlementScreen> {
               ),
             ),
 
-            // ---------------------------
             const SizedBox(height: 24),
 
             // Content
@@ -261,7 +260,6 @@ class _SettlementScreenState extends State<SettlementScreen> {
           ),
         ),
       ),
-      // ---------------------------------------------
     );
   }
 
@@ -293,13 +291,10 @@ class _SettlementScreenState extends State<SettlementScreen> {
       );
     }
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(
-        bottom: 100.0,
-      ), // Extra padding for capsule
+      padding: const EdgeInsets.only(bottom: 100.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Chart Section
           Text(
             'Allocation vs. Expense',
             style: TextStyle(
@@ -331,7 +326,6 @@ class _SettlementScreenState extends State<SettlementScreen> {
 
           const SizedBox(height: 32),
 
-          // Table Section (Centered)
           Text(
             'Settlement Details',
             textAlign: TextAlign.center,
@@ -644,6 +638,9 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
   final _settingsService = SettingsService();
   final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
+  // --- SCROLL CONTROLLER ADDED ---
+  final ScrollController _scrollController = ScrollController();
+
   List<Map<String, int>> _yearMonthData = [];
   List<int> _availableYears = [];
   List<int> _availableMonthsForYear = [];
@@ -672,6 +669,7 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
   void dispose() {
     for (var controller in _controllers.values) controller.dispose();
     for (var node in _focusNodes.values) node.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -768,6 +766,20 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
     setState(() => _totalExpense = sum);
   }
 
+  // --- AUTO SCROLL LOGIC ---
+  void _scrollToInput(FocusNode node) {
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (node.context != null && mounted) {
+        Scrollable.ensureVisible(
+          node.context!,
+          alignment: 0.5,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
   void _setActive(TextEditingController ctrl, FocusNode node) {
     setState(() {
       _activeController = ctrl;
@@ -778,6 +790,8 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
         _isKeyboardVisible = false;
       }
     });
+    // Trigger scroll
+    _scrollToInput(node);
   }
 
   void _switchToSystemKeyboard() {
@@ -1119,6 +1133,8 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
     return GestureDetector(
       onTap: _closeKeyboard,
       child: ListView.builder(
+        // ATTACH THE SCROLL CONTROLLER
+        controller: _scrollController,
         itemCount: entries.length,
         itemBuilder: (context, index) {
           final entry = entries[index];
@@ -1161,7 +1177,7 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
             controller: controller,
             focusNode: focusNode,
             readOnly: !_useSystemKeyboard,
-            showCursor: true,
+            showCursor: true, // Show Cursor
             textAlign: TextAlign.end,
             keyboardType: TextInputType.number,
             style: const TextStyle(

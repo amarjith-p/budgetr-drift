@@ -27,6 +27,9 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
   final Map<String, TextEditingController> _controllers = {};
   final Map<String, FocusNode> _focusNodes = {};
 
+  // --- SCROLL CONTROLLER ---
+  final ScrollController _scrollController = ScrollController();
+
   TextEditingController? _activeCalcController;
   FocusNode? _activeFocusNode;
   bool _isKeyboardVisible = false;
@@ -49,6 +52,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
   void dispose() {
     _controllers.values.forEach((c) => c.dispose());
     _focusNodes.values.forEach((f) => f.dispose());
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -97,6 +101,20 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     }
   }
 
+  // --- AUTO SCROLL LOGIC ---
+  void _scrollToInput(FocusNode node) {
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (node.context != null && mounted) {
+        Scrollable.ensureVisible(
+          node.context!,
+          alignment: 0.5,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
   void _setActive(TextEditingController ctrl, FocusNode node) {
     setState(() {
       _activeCalcController = ctrl;
@@ -108,6 +126,8 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
         _isKeyboardVisible = false;
       }
     });
+    // Trigger scroll
+    _scrollToInput(node);
   }
 
   void _closeKeyboard() {
@@ -202,7 +222,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         children: [
           // Handle
           Center(
@@ -246,6 +266,8 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
           // Form Fields (Scrollable)
           Flexible(
             child: ListView(
+              // ATTACH SCROLL CONTROLLER
+              controller: _scrollController,
               shrinkWrap: true,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               children: widget.template.fields
