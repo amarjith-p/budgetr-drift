@@ -6,7 +6,7 @@ import 'package:math_expressions/math_expressions.dart';
 import '../../../core/widgets/date_filter_row.dart';
 import '../../../core/models/net_worth_model.dart';
 import '../../../core/models/net_worth_split_model.dart';
-import '../../../core/services/firestore_service.dart';
+// import '../../../core/services/firestore_service.dart';
 import '../../../core/widgets/calculator_keyboard.dart';
 import '../../../core/widgets/modern_dropdown.dart';
 import '../services/net_worth_service.dart';
@@ -19,6 +19,7 @@ class NetWorthScreen extends StatefulWidget {
 }
 
 class _NetWorthScreenState extends State<NetWorthScreen> {
+  // ... (Code remains same as before)
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -41,25 +42,26 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
   }
 }
 
+// ... (_NetWorthTab, _NetWorthTabState, _NetWorthSplitsTab, _NetWorthSplitsTabState remain unchanged)
+// JUST ensure _NetWorthTabState uses _AddNetWorthSheet and _NetWorthSplitsTabState uses _AddNetWorthSplitSheet correctly.
+// I will paste the Tab classes briefly to maintain context, but the heavy lifting is in the Sheets below.
+
 // -----------------------------------------------------------------------------
-// TAB 1: TOTAL NET WORTH
+// TAB 1: TOTAL NET WORTH (Copy logic from previous, but focusing on SHEETS below)
 // -----------------------------------------------------------------------------
 class _NetWorthTab extends StatefulWidget {
   const _NetWorthTab();
-
   @override
   State<_NetWorthTab> createState() => _NetWorthTabState();
 }
 
 class _NetWorthTabState extends State<_NetWorthTab> {
-  // final FirestoreService _firestoreService = FirestoreService();
   final _netWorthService = NetWorthService();
   final NumberFormat _currencyFormat = NumberFormat.currency(
     locale: 'en_IN',
     symbol: '₹',
   );
   final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
-
   int? _filterYear;
   int? _filterMonth;
 
@@ -88,10 +90,7 @@ class _NetWorthTabState extends State<_NetWorthTab> {
           ),
         ) ??
         false;
-
-    if (confirm) {
-      await _netWorthService.deleteNetWorthRecord(id);
-    }
+    if (confirm) await _netWorthService.deleteNetWorthRecord(id);
   }
 
   @override
@@ -100,12 +99,10 @@ class _NetWorthTabState extends State<_NetWorthTab> {
       body: StreamBuilder<List<NetWorthRecord>>(
         stream: _netWorthService.getNetWorthRecords(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
-          }
           if (snapshot.hasError)
             return Center(child: Text('Error: ${snapshot.error}'));
-
           var records = snapshot.data ?? [];
           records.sort((a, b) => a.date.compareTo(b.date));
 
@@ -116,7 +113,6 @@ class _NetWorthTabState extends State<_NetWorthTab> {
                 : 0;
             processedData.add({'record': records[i], 'diff': diff});
           }
-
           List<Map<String, dynamic>> filteredData = processedData.where((data) {
             final record = data['record'] as NetWorthRecord;
             bool matchesYear =
@@ -125,7 +121,6 @@ class _NetWorthTabState extends State<_NetWorthTab> {
                 _filterMonth == null || record.date.month == _filterMonth;
             return matchesYear && matchesMonth;
           }).toList();
-
           final displayList = List<Map<String, dynamic>>.from(
             filteredData.reversed,
           );
@@ -150,7 +145,7 @@ class _NetWorthTabState extends State<_NetWorthTab> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'net_worth_fab', // FIXED: Unique Tag
+        heroTag: 'net_worth_fab',
         onPressed: () => showModalBottomSheet(
           context: context,
           isScrollControlled: true,
@@ -163,11 +158,9 @@ class _NetWorthTabState extends State<_NetWorthTab> {
     );
   }
 
-  // --- MODERN FILTER IMPLEMENTATION (Refactored) ---
   Widget _buildModernFilters(List<NetWorthRecord> allRecords) {
     final years = allRecords.map((e) => e.date.year).toSet().toList();
     years.sort((a, b) => b.compareTo(a));
-
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: DateFilterRow(
@@ -190,7 +183,6 @@ class _NetWorthTabState extends State<_NetWorthTab> {
       final record = chronologicalData[i]['record'] as NetWorthRecord;
       spots.add(FlSpot(i.toDouble(), record.amount));
     }
-
     return Container(
       height: 250,
       margin: const EdgeInsets.all(16),
@@ -330,11 +322,10 @@ class _NetWorthTabState extends State<_NetWorthTab> {
 }
 
 // -----------------------------------------------------------------------------
-// TAB 2: SPLITS ANALYSIS
+// TAB 2: SPLITS ANALYSIS (Same Logic)
 // -----------------------------------------------------------------------------
 class _NetWorthSplitsTab extends StatefulWidget {
   const _NetWorthSplitsTab();
-
   @override
   State<_NetWorthSplitsTab> createState() => _NetWorthSplitsTabState();
 }
@@ -346,7 +337,6 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
     symbol: '₹',
   );
   final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
-
   int? _filterYear;
   int? _filterMonth;
 
@@ -375,10 +365,7 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
           ),
         ) ??
         false;
-
-    if (confirm) {
-      await _netWorthService.deleteNetWorthSplit(id);
-    }
+    if (confirm) await _netWorthService.deleteNetWorthSplit(id);
   }
 
   @override
@@ -387,14 +374,11 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
       body: StreamBuilder<List<NetWorthSplit>>(
         stream: _netWorthService.getNetWorthSplits(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
-          }
           if (snapshot.hasError)
             return Center(child: Text('Error: ${snapshot.error}'));
-
           var records = snapshot.data ?? [];
-
           var filteredRecords = records.where((record) {
             bool matchesYear =
                 _filterYear == null || record.date.year == _filterYear;
@@ -534,7 +518,7 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'net_worth_split_fab', // FIXED: Unique Tag
+        heroTag: 'net_worth_split_fab',
         onPressed: () => showModalBottomSheet(
           context: context,
           isScrollControlled: true,
@@ -549,55 +533,21 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
     );
   }
 
-  // Reuse the shared modern filter logic here
   Widget _buildModernFilters(List<NetWorthSplit> allRecords) {
     final years = allRecords.map((e) => e.date.year).toSet().toList();
     years.sort((a, b) => b.compareTo(a));
-
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: ModernDropdownPill<int>(
-              label: _filterYear?.toString() ?? 'All Years',
-              isActive: _filterYear != null,
-              icon: Icons.calendar_today_outlined,
-              onTap: () => showSelectionSheet<int>(
-                context: context,
-                title: 'Select Year',
-                items: years,
-                labelBuilder: (y) => y.toString(),
-                onSelect: (val) => setState(() {
-                  _filterYear = val;
-                  if (val == null) _filterMonth = null;
-                }),
-                selectedItem: _filterYear,
-                showReset: true,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ModernDropdownPill<int>(
-              label: _filterMonth != null
-                  ? DateFormat('MMMM').format(DateTime(0, _filterMonth!))
-                  : 'All Months',
-              isActive: _filterMonth != null,
-              icon: Icons.calendar_view_month_outlined,
-              isEnabled: _filterYear != null,
-              onTap: () => showSelectionSheet<int>(
-                context: context,
-                title: 'Select Month',
-                items: List.generate(12, (i) => i + 1),
-                labelBuilder: (m) => DateFormat('MMMM').format(DateTime(0, m)),
-                onSelect: (val) => setState(() => _filterMonth = val),
-                selectedItem: _filterMonth,
-                showReset: true,
-              ),
-            ),
-          ),
-        ],
+      child: DateFilterRow(
+        selectedYear: _filterYear,
+        selectedMonth: _filterMonth,
+        availableYears: years,
+        availableMonths: List.generate(12, (i) => i + 1),
+        onYearSelected: (val) => setState(() {
+          _filterYear = val;
+          if (val == null) _filterMonth = null;
+        }),
+        onMonthSelected: (val) => setState(() => _filterMonth = val),
       ),
     );
   }
@@ -640,7 +590,7 @@ class _NetWorthSplitsTabState extends State<_NetWorthSplitsTab> {
 }
 
 // -----------------------------------------------------------------------------
-// ADD SHEET: TOTAL NET WORTH
+// UPDATED: ADD SHEET FOR TOTAL NET WORTH
 // -----------------------------------------------------------------------------
 class _AddNetWorthSheet extends StatefulWidget {
   const _AddNetWorthSheet();
@@ -651,8 +601,18 @@ class _AddNetWorthSheet extends StatefulWidget {
 class _AddNetWorthSheetState extends State<_AddNetWorthSheet> {
   final _netWorthService = NetWorthService();
   final _amountController = TextEditingController();
+  final _amountFocus = FocusNode(); // NEW
   DateTime _selectedDate = DateTime.now();
+
   bool _isKeyboardVisible = false;
+  bool _useSystemKeyboard = false; // NEW
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _amountFocus.dispose();
+    super.dispose();
+  }
 
   Future<void> _save() async {
     final amount = double.tryParse(_amountController.text);
@@ -663,11 +623,28 @@ class _AddNetWorthSheetState extends State<_AddNetWorthSheet> {
     if (mounted) Navigator.pop(context);
   }
 
-  void _onKey(String val) =>
-      CalculatorKeyboard.handleKeyPress(_amountController, val);
-  void _onBack() => CalculatorKeyboard.handleBackspace(_amountController);
-  void _onClear() => _amountController.clear();
-  void _onEq() => CalculatorKeyboard.handleEquals(_amountController);
+  // KEYBOARD LOGIC
+  void _activate(TextEditingController ctrl, FocusNode node) {
+    setState(() {
+      _isKeyboardVisible = !_useSystemKeyboard;
+      if (_useSystemKeyboard) {
+        FocusScope.of(context).requestFocus(node);
+      }
+    });
+  }
+
+  void _closeKeyboard() {
+    setState(() => _isKeyboardVisible = false);
+    FocusScope.of(context).unfocus();
+  }
+
+  void _switchToSystem() {
+    setState(() {
+      _useSystemKeyboard = true;
+      _isKeyboardVisible = false;
+    });
+    FocusScope.of(context).requestFocus(_amountFocus);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -677,13 +654,18 @@ class _AddNetWorthSheetState extends State<_AddNetWorthSheet> {
       onDatePick: (d) => setState(() => _selectedDate = d),
       onSave: _save,
       isKeyboardVisible: _isKeyboardVisible,
-      keyboardCallbacks: (_onKey, _onBack, _onClear, _onEq),
+      // Pass the new logic here
+      activeController: _amountController,
+      onClose: _closeKeyboard,
+      onSwitchSystem: _switchToSystem,
       children: [
         _buildTextField(
           context,
           'Total Amount in Hand',
           _amountController,
-          () => setState(() => _isKeyboardVisible = true),
+          _amountFocus, // Pass FocusNode
+          () => _activate(_amountController, _amountFocus),
+          _useSystemKeyboard,
         ),
       ],
     );
@@ -691,7 +673,7 @@ class _AddNetWorthSheetState extends State<_AddNetWorthSheet> {
 }
 
 // -----------------------------------------------------------------------------
-// ADD SHEET: NET WORTH SPLITS
+// UPDATED: ADD SHEET FOR NET WORTH SPLITS
 // -----------------------------------------------------------------------------
 class _AddNetWorthSplitSheet extends StatefulWidget {
   const _AddNetWorthSplitSheet();
@@ -700,7 +682,8 @@ class _AddNetWorthSplitSheet extends StatefulWidget {
 }
 
 class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
-  final _firestoreService = NetWorthService();
+  final _netWorthService = NetWorthService();
+
   final _netIncomeCtrl = TextEditingController();
   final _netExpenseCtrl = TextEditingController();
   final _capGainCtrl = TextEditingController();
@@ -708,19 +691,99 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
   final _nonCalcIncomeCtrl = TextEditingController();
   final _nonCalcExpenseCtrl = TextEditingController();
 
+  // Focus Nodes
+  final _netIncomeFocus = FocusNode();
+  final _netExpenseFocus = FocusNode();
+  final _capGainFocus = FocusNode();
+  final _capLossFocus = FocusNode();
+  final _nonCalcIncomeFocus = FocusNode();
+  final _nonCalcExpenseFocus = FocusNode();
+
+  // List for "Next" navigation
+  late List<FocusNode> _focusNodes;
+  late List<TextEditingController> _controllers;
+
   TextEditingController? _activeCtrl;
+  FocusNode? _activeFocus; // Track active focus
+
   DateTime _selectedDate = DateTime.now();
   bool _isKeyboardVisible = false;
+  bool _useSystemKeyboard = false;
 
-  void _setActive(TextEditingController ctrl) {
+  @override
+  void initState() {
+    super.initState();
+    _focusNodes = [
+      _netIncomeFocus,
+      _netExpenseFocus,
+      _capGainFocus,
+      _capLossFocus,
+      _nonCalcIncomeFocus,
+      _nonCalcExpenseFocus,
+    ];
+    _controllers = [
+      _netIncomeCtrl,
+      _netExpenseCtrl,
+      _capGainCtrl,
+      _capLossCtrl,
+      _nonCalcIncomeCtrl,
+      _nonCalcExpenseCtrl,
+    ];
+  }
+
+  @override
+  void dispose() {
+    for (var c in _controllers) c.dispose();
+    for (var f in _focusNodes) f.dispose();
+    super.dispose();
+  }
+
+  void _setActive(TextEditingController ctrl, FocusNode node) {
     setState(() {
       _activeCtrl = ctrl;
-      _isKeyboardVisible = true;
+      _activeFocus = node;
+      if (!_useSystemKeyboard) {
+        _isKeyboardVisible = true;
+        // Request focus to show cursor
+        FocusScope.of(context).requestFocus(node);
+      } else {
+        _isKeyboardVisible = false;
+      }
     });
   }
 
+  void _closeKeyboard() {
+    setState(() => _isKeyboardVisible = false);
+    FocusScope.of(context).unfocus();
+  }
+
+  void _switchToSystem() {
+    setState(() {
+      _useSystemKeyboard = true;
+      _isKeyboardVisible = false;
+    });
+    if (_activeFocus != null) {
+      FocusScope.of(context).unfocus();
+      Future.delayed(const Duration(milliseconds: 50), () {
+        FocusScope.of(context).requestFocus(_activeFocus);
+      });
+    }
+  }
+
+  void _handleNext() {
+    if (_activeFocus == null) return;
+    int index = _focusNodes.indexOf(_activeFocus!);
+    if (index != -1 && index < _focusNodes.length - 1) {
+      // Move to next
+      _setActive(_controllers[index + 1], _focusNodes[index + 1]);
+    } else {
+      // Done or Last field
+      _closeKeyboard();
+    }
+  }
+
   Future<void> _save() async {
-    await _firestoreService.addNetWorthSplit(
+    await _netWorthService.addNetWorthSplit(
       NetWorthSplit(
         id: '',
         date: _selectedDate,
@@ -735,23 +798,6 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
     if (mounted) Navigator.pop(context);
   }
 
-  void _onKey(String val) {
-    if (_activeCtrl != null)
-      CalculatorKeyboard.handleKeyPress(_activeCtrl!, val);
-  }
-
-  void _onBack() {
-    if (_activeCtrl != null) CalculatorKeyboard.handleBackspace(_activeCtrl!);
-  }
-
-  void _onClear() {
-    _activeCtrl?.clear();
-  }
-
-  void _onEq() {
-    if (_activeCtrl != null) CalculatorKeyboard.handleEquals(_activeCtrl!);
-  }
-
   @override
   Widget build(BuildContext context) {
     return _BaseInputSheet(
@@ -760,7 +806,10 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
       onDatePick: (d) => setState(() => _selectedDate = d),
       onSave: _save,
       isKeyboardVisible: _isKeyboardVisible,
-      keyboardCallbacks: (_onKey, _onBack, _onClear, _onEq),
+      activeController: _activeCtrl,
+      onClose: _closeKeyboard,
+      onSwitchSystem: _switchToSystem,
+      onNext: _handleNext,
       children: [
         Row(
           children: [
@@ -769,7 +818,9 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
                 context,
                 'Net Income',
                 _netIncomeCtrl,
-                () => _setActive(_netIncomeCtrl),
+                _netIncomeFocus,
+                () => _setActive(_netIncomeCtrl, _netIncomeFocus),
+                _useSystemKeyboard,
               ),
             ),
             const SizedBox(width: 12),
@@ -778,7 +829,9 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
                 context,
                 'Net Expense',
                 _netExpenseCtrl,
-                () => _setActive(_netExpenseCtrl),
+                _netExpenseFocus,
+                () => _setActive(_netExpenseCtrl, _netExpenseFocus),
+                _useSystemKeyboard,
               ),
             ),
           ],
@@ -791,7 +844,9 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
                 context,
                 'Capital Gain',
                 _capGainCtrl,
-                () => _setActive(_capGainCtrl),
+                _capGainFocus,
+                () => _setActive(_capGainCtrl, _capGainFocus),
+                _useSystemKeyboard,
               ),
             ),
             const SizedBox(width: 12),
@@ -800,7 +855,9 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
                 context,
                 'Capital Loss',
                 _capLossCtrl,
-                () => _setActive(_capLossCtrl),
+                _capLossFocus,
+                () => _setActive(_capLossCtrl, _capLossFocus),
+                _useSystemKeyboard,
               ),
             ),
           ],
@@ -813,7 +870,9 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
                 context,
                 'Non-Calc Income',
                 _nonCalcIncomeCtrl,
-                () => _setActive(_nonCalcIncomeCtrl),
+                _nonCalcIncomeFocus,
+                () => _setActive(_nonCalcIncomeCtrl, _nonCalcIncomeFocus),
+                _useSystemKeyboard,
               ),
             ),
             const SizedBox(width: 12),
@@ -822,7 +881,9 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
                 context,
                 'Non-Calc Expense',
                 _nonCalcExpenseCtrl,
-                () => _setActive(_nonCalcExpenseCtrl),
+                _nonCalcExpenseFocus,
+                () => _setActive(_nonCalcExpenseCtrl, _nonCalcExpenseFocus),
+                _useSystemKeyboard,
               ),
             ),
           ],
@@ -833,18 +894,23 @@ class _AddNetWorthSplitSheetState extends State<_AddNetWorthSplitSheet> {
 }
 
 // -----------------------------------------------------------------------------
-// SHARED HELPERS & WIDGETS
+// UPDATED: SHARED HELPERS & WIDGETS
 // -----------------------------------------------------------------------------
 Widget _buildTextField(
   BuildContext context,
   String label,
   TextEditingController ctrl,
+  FocusNode focusNode, // Added FocusNode
   VoidCallback onTap,
+  bool useSystemKeyboard, // Added flag
 ) {
   return TextFormField(
     controller: ctrl,
-    readOnly: true,
+    focusNode: focusNode,
+    readOnly: !useSystemKeyboard, // Controlled by flag
     showCursor: true,
+    keyboardType:
+        TextInputType.number, // Enable numeric pad for system keyboard
     onTap: onTap,
     decoration: InputDecoration(
       labelText: label,
@@ -861,8 +927,10 @@ class _BaseInputSheet extends StatelessWidget {
   final Function(DateTime) onDatePick;
   final VoidCallback onSave;
   final bool isKeyboardVisible;
-  final (Function(String), VoidCallback, VoidCallback, VoidCallback)
-  keyboardCallbacks;
+  final TextEditingController? activeController; // Changed from tuple
+  final VoidCallback onClose;
+  final VoidCallback onSwitchSystem;
+  final VoidCallback? onNext; // Added Next callback
   final List<Widget> children;
 
   const _BaseInputSheet({
@@ -871,7 +939,10 @@ class _BaseInputSheet extends StatelessWidget {
     required this.onDatePick,
     required this.onSave,
     required this.isKeyboardVisible,
-    required this.keyboardCallbacks,
+    this.activeController,
+    required this.onClose,
+    required this.onSwitchSystem,
+    this.onNext,
     required this.children,
   });
 
@@ -888,7 +959,6 @@ class _BaseInputSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // FIXED: Wrapped content in Flexible + ScrollView to prevent overflow
           Flexible(
             child: SingleChildScrollView(
               child: Padding(
@@ -946,15 +1016,22 @@ class _BaseInputSheet extends StatelessWidget {
               ),
             ),
           ),
-          // Keyboard stays fixed at the bottom
           AnimatedSize(
             duration: const Duration(milliseconds: 250),
-            child: isKeyboardVisible
+            child: isKeyboardVisible && activeController != null
                 ? CalculatorKeyboard(
-                    onKeyPress: keyboardCallbacks.$1,
-                    onBackspace: keyboardCallbacks.$2,
-                    onClear: keyboardCallbacks.$3,
-                    onEquals: keyboardCallbacks.$4,
+                    onKeyPress: (val) => CalculatorKeyboard.handleKeyPress(
+                      activeController!,
+                      val,
+                    ),
+                    onBackspace: () =>
+                        CalculatorKeyboard.handleBackspace(activeController!),
+                    onClear: () => activeController!.clear(),
+                    onEquals: () =>
+                        CalculatorKeyboard.handleEquals(activeController!),
+                    onClose: onClose,
+                    onSwitchToSystem: onSwitchSystem,
+                    onNext: onNext,
                   )
                 : const SizedBox.shrink(),
           ),

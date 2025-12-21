@@ -6,8 +6,9 @@ class CalculatorKeyboard extends StatelessWidget {
   final VoidCallback onBackspace;
   final VoidCallback onClear;
   final VoidCallback onEquals;
-  final VoidCallback? onClose; // NEW
-  final VoidCallback? onSwitchToSystem; // NEW
+  final VoidCallback? onClose;
+  final VoidCallback? onSwitchToSystem;
+  final VoidCallback? onNext; // NEW: Callback for Next button
 
   const CalculatorKeyboard({
     super.key,
@@ -17,6 +18,7 @@ class CalculatorKeyboard extends StatelessWidget {
     required this.onEquals,
     this.onClose,
     this.onSwitchToSystem,
+    this.onNext,
   });
 
   // Static helpers (Unchanged)
@@ -68,22 +70,21 @@ class CalculatorKeyboard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black26,
             blurRadius: 10,
-            offset: const Offset(0, -2),
+            offset: Offset(0, -2),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // NEW: Control Row
+          // Control Row
           SizedBox(
             height: 48,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 if (onSwitchToSystem != null)
                   TextButton.icon(
@@ -93,9 +94,17 @@ class CalculatorKeyboard extends StatelessWidget {
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white70,
                     ),
-                  )
-                else
-                  const SizedBox(),
+                  ),
+                const Spacer(),
+                // NEW: Next Button
+                if (onNext != null)
+                  IconButton(
+                    icon: const Icon(Icons.arrow_forward_ios_rounded, size: 20),
+                    onPressed: onNext,
+                    tooltip: 'Next Field',
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.keyboard_hide_outlined),
                   onPressed: onClose,

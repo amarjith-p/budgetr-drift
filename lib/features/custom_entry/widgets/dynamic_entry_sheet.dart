@@ -4,18 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/custom_data_models.dart';
-import '../../../core/services/firestore_service.dart';
 import '../services/custom_entry_service.dart';
 
 class DynamicEntrySheet extends StatefulWidget {
   final CustomTemplate template;
-  final List<CustomRecord> existingRecords; // Used for calculating next serial
+  final List<CustomRecord> existingRecords;
   final CustomRecord? recordToEdit;
 
   const DynamicEntrySheet({
     super.key,
     required this.template,
-    this.existingRecords = const [], // Default empty
+    this.existingRecords = const [],
     this.recordToEdit,
   });
 
@@ -26,9 +25,12 @@ class DynamicEntrySheet extends StatefulWidget {
 class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
   final Map<String, dynamic> _formData = {};
   final Map<String, TextEditingController> _controllers = {};
+  final Map<String, FocusNode> _focusNodes = {}; // NEW: Manage FocusNodes
 
   TextEditingController? _activeCalcController;
+  FocusNode? _activeFocusNode; // NEW
   bool _isKeyboardVisible = false;
+  bool _useSystemKeyboard = false; // NEW
   bool _isEditing = false;
 
   @override
@@ -38,11 +40,23 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     _initializeFields();
   }
 
+  @override
+  void dispose() {
+    _controllers.values.forEach((c) => c.dispose());
+    _focusNodes.values.forEach((f) => f.dispose()); // Dispose nodes
+    super.dispose();
+  }
+
   void _initializeFields() {
     for (var field in widget.template.fields) {
       dynamic initialVal;
       if (_isEditing && widget.recordToEdit!.data.containsKey(field.name)) {
         initialVal = widget.recordToEdit!.data[field.name];
+      }
+
+      // Initialize Focus Node
+      if (!_focusNodes.containsKey(field.name)) {
+        _focusNodes[field.name] = FocusNode();
       }
 
       if (field.type == CustomFieldType.date) {
@@ -55,15 +69,11 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
       } else if (field.type == CustomFieldType.dropdown) {
         _formData[field.name] = initialVal;
       } else if (field.type == CustomFieldType.serial) {
-        // AUTO GENERATE SERIAL (If New)
         if (_isEditing) {
           _controllers[field.name] = TextEditingController(
             text: initialVal?.toString() ?? '',
           );
-          // For serial, we might store just the number, but display prefix+num+suffix.
-          // Editor displays what is stored. Assuming integer stored.
         } else {
-          // Calculate max serial
           int maxSerial = 0;
           for (var r in widget.existingRecords) {
             var val = r.data[field.name];
@@ -85,6 +95,68 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     }
   }
 
+  // --- Keyboard Logic ---
+  void _setActive(TextEditingController ctrl, FocusNode node) {
+    setState(() {
+      _activeCalcController = ctrl;
+      _activeFocusNode = node;
+      if (!_useSystemKeyboard) {
+        _isKeyboardVisible = true;
+        FocusScope.of(context).requestFocus(node);
+      } else {
+        _isKeyboardVisible = false;
+      }
+    });
+  }
+
+  void _closeKeyboard() {
+    setState(() => _isKeyboardVisible = false);
+    FocusScope.of(context).unfocus();
+  }
+
+  void _switchToSystem() {
+    setState(() {
+      _useSystemKeyboard = true;
+      _isKeyboardVisible = false;
+    });
+    if (_activeFocusNode != null) {
+      FocusScope.of(context).unfocus();
+      Future.delayed(const Duration(milliseconds: 50), () {
+        FocusScope.of(context).requestFocus(_activeFocusNode);
+      });
+    }
+  }
+
+  void _handleNext() {
+    if (_activeFocusNode == null) return;
+
+    // Get editable fields only (number/currency) for custom keyboard flow
+    // Or all fields if we want to jump to text fields too (though custom keyboard won't work there)
+    // Let's stick to fields that use the calculator keyboard for consistency
+    final fields = widget.template.fields
+        .where(
+          (f) =>
+              f.type == CustomFieldType.number ||
+              f.type == CustomFieldType.currency,
+        )
+        .toList();
+
+    int currentIndex = -1;
+    for (int i = 0; i < fields.length; i++) {
+      if (_focusNodes[fields[i].name] == _activeFocusNode) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    if (currentIndex != -1 && currentIndex < fields.length - 1) {
+      final nextField = fields[currentIndex + 1];
+      _setActive(_controllers[nextField.name]!, _focusNodes[nextField.name]!);
+    } else {
+      _closeKeyboard();
+    }
+  }
+
   Future<void> _save() async {
     for (var field in widget.template.fields) {
       if (field.type == CustomFieldType.number ||
@@ -94,7 +166,6 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
       } else if (field.type == CustomFieldType.string) {
         _formData[field.name] = _controllers[field.name]!.text;
       } else if (field.type == CustomFieldType.serial) {
-        // Ensure serial is stored as INT if possible
         _formData[field.name] =
             int.tryParse(_controllers[field.name]!.text) ?? 1;
       }
@@ -120,7 +191,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     _controllers.values.forEach((c) => c.clear());
     setState(() {
       _formData.clear();
-      _initializeFields(); // Re-calc serials and dates
+      _initializeFields();
     });
   }
 
@@ -157,7 +228,6 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
               ],
             ),
           ),
-
           Flexible(
             child: ListView(
               shrinkWrap: true,
@@ -167,7 +237,6 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
                   .toList(),
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.all(24),
             child: Row(
@@ -188,7 +257,6 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
               ],
             ),
           ),
-
           AnimatedSize(
             duration: const Duration(milliseconds: 250),
             child: _isKeyboardVisible
@@ -203,6 +271,9 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
                     onClear: () => _activeCalcController!.clear(),
                     onEquals: () =>
                         CalculatorKeyboard.handleEquals(_activeCalcController!),
+                    onClose: _closeKeyboard,
+                    onSwitchToSystem: _switchToSystem,
+                    onNext: _handleNext,
                   )
                 : const SizedBox.shrink(),
           ),
@@ -270,7 +341,6 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
       );
     }
 
-    // SERIAL NUMBER: Read-Only with Visual Prefix/Suffix
     if (field.type == CustomFieldType.serial) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 16.0),
@@ -298,14 +368,16 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
         controller: _controllers[field.name],
-        readOnly: isNum,
+        focusNode: _focusNodes[field.name], // Bind FocusNode
+        readOnly: isNum ? !_useSystemKeyboard : false, // Logic for readOnly
+        keyboardType: isNum
+            ? TextInputType.number
+            : TextInputType.text, // Set keyboard type
         onTap: isNum
-            ? () {
-                setState(() {
-                  _activeCalcController = _controllers[field.name];
-                  _isKeyboardVisible = true;
-                });
-              }
+            ? () => _setActive(
+                _controllers[field.name]!,
+                _focusNodes[field.name]!,
+              )
             : () => setState(() => _isKeyboardVisible = false),
         decoration: InputDecoration(
           labelText: field.name,

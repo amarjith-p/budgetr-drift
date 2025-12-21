@@ -10,7 +10,7 @@ import '../../../core/models/settlement_model.dart';
 import '../../../core/models/percentage_config_model.dart';
 import '../../../core/widgets/date_filter_row.dart';
 import '../services/settlement_service.dart';
-import '../../dashboard/services/dashboard_service.dart'; // Needs this for RecordById
+import '../../dashboard/services/dashboard_service.dart';
 import '../../settings/services/settings_service.dart';
 
 class SettlementScreen extends StatefulWidget {
@@ -21,7 +21,6 @@ class SettlementScreen extends StatefulWidget {
 }
 
 class _SettlementScreenState extends State<SettlementScreen> {
-  // final _firestoreService = FirestoreService();
   final _settlementService = SettlementService();
   final _settingsService = SettingsService();
   final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
@@ -139,8 +138,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
               availableMonths: _availableMonthsForYear,
               onYearSelected: _onYearSelected,
               onMonthSelected: (val) => setState(() => _selectedMonth = val),
-              showRefresh:
-                  false, // Or true if you want the download icon inside the row
+              showRefresh: false,
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -157,7 +155,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'settlement_fab', // FIXED: Unique Tag
+        heroTag: 'settlement_fab',
         onPressed: _showSettlementInputSheet,
         icon: const Icon(Icons.edit_document),
         label: const Text('Enter/Edit Settlement'),
@@ -202,7 +200,6 @@ class _SettlementScreenState extends State<SettlementScreen> {
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          // FIXED: Wrapped in horizontal scroll view
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: _buildSettlementTable(_settlementData!),
@@ -444,9 +441,8 @@ class SettlementInputSheet extends StatefulWidget {
 }
 
 class _SettlementInputSheetState extends State<SettlementInputSheet> {
-  // final _firestoreService = FirestoreService();
   final _settlementService = SettlementService();
-  final _dashboardService = DashboardService(); // Add this
+  final _dashboardService = DashboardService();
   final _settingsService = SettingsService();
   final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
@@ -599,6 +595,45 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
     FocusScope.of(context).unfocus();
   }
 
+  // NEW: Logic to find the next controller in order and focus it
+  void _handleNext() {
+    if (_activeController == null) return;
+
+    // Use the sorted list logic to determine order
+    final entries = _budgetRecord!.allocations.entries.toList();
+    if (_percentageConfig != null) {
+      entries.sort((a, b) {
+        int idxA = _percentageConfig!.categories.indexWhere(
+          (c) => c.name == a.key,
+        );
+        int idxB = _percentageConfig!.categories.indexWhere(
+          (c) => c.name == b.key,
+        );
+        if (idxA == -1) idxA = 999;
+        if (idxB == -1) idxB = 999;
+        return idxA.compareTo(idxB);
+      });
+    } else {
+      entries.sort((a, b) => b.value.compareTo(a.value));
+    }
+
+    // Find index of current active controller
+    int currentIndex = -1;
+    for (int i = 0; i < entries.length; i++) {
+      if (_controllers[entries[i].key] == _activeController) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    if (currentIndex != -1 && currentIndex < entries.length - 1) {
+      final nextKey = entries[currentIndex + 1].key;
+      _setActive(_controllers[nextKey]!, _focusNodes[nextKey]!);
+    } else {
+      _closeKeyboard(); // Close if last field
+    }
+  }
+
   Future<void> _onSettle() async {
     _closeKeyboard();
     if (_budgetRecord == null) return;
@@ -736,8 +771,9 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
                     onClear: () => _activeController!.clear(),
                     onEquals: () =>
                         CalculatorKeyboard.handleEquals(_activeController!),
-                    onClose: _closeKeyboard,
-                    onSwitchToSystem: _switchToSystemKeyboard,
+                    onClose: _closeKeyboard, // WIRED
+                    onSwitchToSystem: _switchToSystemKeyboard, // WIRED
+                    onNext: _handleNext, // WIRED
                   )
                 : const SizedBox.shrink(),
           ),
@@ -849,7 +885,7 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
         child: TextFormField(
           controller: controller,
           focusNode: focusNode,
-          readOnly: !_useSystemKeyboard,
+          readOnly: !_useSystemKeyboard, // Uses system keyboard flag
           showCursor: true,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(

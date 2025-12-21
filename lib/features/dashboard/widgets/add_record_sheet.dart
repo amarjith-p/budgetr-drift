@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-// Updated Imports
 import '../../../core/widgets/calculator_keyboard.dart';
 import '../../../core/widgets/modern_dropdown.dart';
 import '../../../core/models/financial_record_model.dart';
 import '../../../core/models/percentage_config_model.dart';
-// import '../../../core/services/firestore_service.dart';
 import '../services/dashboard_service.dart';
 import '../../settings/services/settings_service.dart';
 
@@ -21,7 +19,6 @@ class AddRecordSheet extends StatefulWidget {
 
 class _AddRecordSheetState extends State<AddRecordSheet> {
   final _formKey = GlobalKey<FormState>();
-  // final _firestoreService = FirestoreService();
   final _dashboardService = DashboardService();
   final _settingsService = SettingsService();
 
@@ -51,7 +48,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
 
   bool _isKeyboardVisible = false;
   bool _isEditing = false;
-  bool _useSystemKeyboard = false; // Toggle state
+  bool _useSystemKeyboard = false;
 
   @override
   void initState() {
@@ -130,7 +127,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
 
       if (!_useSystemKeyboard) {
         _isKeyboardVisible = true;
-        // Request focus to show cursor even if readOnly
         FocusScope.of(context).requestFocus(node);
       } else {
         _isKeyboardVisible = false;
@@ -143,7 +139,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
       _useSystemKeyboard = true;
       _isKeyboardVisible = false;
     });
-    // Re-request focus to trigger system keyboard
     if (_activeFocusNode != null) {
       FocusScope.of(context).unfocus();
       Future.delayed(const Duration(milliseconds: 50), () {
@@ -155,6 +150,17 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
   void _closeKeyboard() {
     setState(() => _isKeyboardVisible = false);
     FocusScope.of(context).unfocus();
+  }
+
+  // NEW: Logic to jump to the next field
+  void _handleNext() {
+    if (_activeFocusNode == _salaryFocus) {
+      _setActive(_extraIncomeController, _extraFocus);
+    } else if (_activeFocusNode == _extraFocus) {
+      _setActive(_emiController, _emiFocus);
+    } else {
+      _closeKeyboard(); // Close if we are at the last field
+    }
   }
 
   Future<void> _onRecordPressed() async {
@@ -349,8 +355,9 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                     onClear: () => _activeController!.clear(),
                     onEquals: () =>
                         CalculatorKeyboard.handleEquals(_activeController!),
-                    onClose: _closeKeyboard,
-                    onSwitchToSystem: _switchToSystemKeyboard,
+                    onClose: _closeKeyboard, // WIRED
+                    onSwitchToSystem: _switchToSystemKeyboard, // WIRED
+                    onNext: _handleNext, // WIRED
                   )
                 : const SizedBox.shrink(),
           ),
@@ -368,7 +375,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
-      readOnly: !_useSystemKeyboard,
+      readOnly: !_useSystemKeyboard, // Uses the state variable
       showCursor: true,
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
