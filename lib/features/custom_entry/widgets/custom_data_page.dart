@@ -251,6 +251,7 @@ class _CustomDataPageState extends State<CustomDataPage>
     );
   }
 
+  // ... (Delete methods same as before) ...
   Future<void> _deleteSheet() async {
     bool confirm =
         await showDialog(
@@ -383,7 +384,8 @@ class _CustomDataPageState extends State<CustomDataPage>
               }
 
               return ListView(
-                padding: const EdgeInsets.fromLTRB(0, 180, 0, 100),
+                // FIX: Removed large top padding (was 180) to fix gap/scrolling feel
+                padding: const EdgeInsets.fromLTRB(0, 16, 0, 100),
                 children: [
                   Container(
                     margin: const EdgeInsets.symmetric(
@@ -558,7 +560,6 @@ class _CustomDataPageState extends State<CustomDataPage>
                                     if (val != null) {
                                       if (f.type == CustomFieldType.date &&
                                           val is DateTime) {
-                                        // --- DATE FIX: CHANGED TO FULL YEAR ---
                                         display = DateFormat(
                                           'dd MMM yyyy',
                                         ).format(val);
@@ -864,4 +865,3 @@ class _CustomDataPageState extends State<CustomDataPage>
     );
   }
 }
-// 

@@ -39,14 +39,16 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard>
           return _buildEmptyState();
         }
 
-        // --- MAIN DASHBOARD (Using DefaultTabController for perfect Sync) ---
+        // --- MAIN DASHBOARD ---
         return DefaultTabController(
           length: templates.length,
           child: Scaffold(
             backgroundColor: _bgColor,
-            extendBodyBehindAppBar: true,
+            // FIX 1: Disable extending body behind app bar to prevent overlap
+            extendBodyBehindAppBar: false,
             appBar: AppBar(
-              backgroundColor: Colors.transparent,
+              // FIX 2: Solid background color so header is opaque
+              backgroundColor: _bgColor,
               elevation: 0,
               centerTitle: true,
               systemOverlayStyle: SystemUiOverlayStyle.light,
@@ -86,7 +88,7 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard>
                 ),
                 const SizedBox(width: 8),
               ],
-              // --- MODERN GLASS TAB BAR ---
+              // --- MODERN TAB BAR ---
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(80),
                 child: Container(
@@ -95,7 +97,7 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard>
                   decoration: BoxDecoration(
                     color: const Color(
                       0xFF1B263B,
-                    ).withOpacity(0.8), // Glass Base
+                    ), // Solid/Darker background for tab container
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.white.withOpacity(0.08)),
                   ),
@@ -148,7 +150,7 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard>
               children: [
                 _buildAmbientGlow(_accentColor),
 
-                // --- BODY (Handles Swiping Automatically) ---
+                // --- BODY ---
                 TabBarView(
                   physics: const BouncingScrollPhysics(),
                   children: templates.map((t) {
@@ -289,7 +291,10 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [accentColor.withOpacity(0.25), Colors.transparent],
+                colors: [
+                  accentColor.withOpacity(0.15),
+                  Colors.transparent,
+                ], // Reduced opacity slightly
                 center: Alignment.center,
                 radius: 0.6,
               ),
@@ -306,7 +311,7 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard>
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFFF72585).withOpacity(0.15),
+                  const Color(0xFFF72585).withOpacity(0.1),
                   Colors.transparent,
                 ],
                 center: Alignment.center,
@@ -319,4 +324,3 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard>
     );
   }
 }
-// 
