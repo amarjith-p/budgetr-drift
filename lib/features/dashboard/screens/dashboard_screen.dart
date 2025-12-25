@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:local_auth/local_auth.dart';
+// Removed: import 'package:local_auth/local_auth.dart';
 
 import '../../../core/models/financial_record_model.dart';
 import '../services/dashboard_service.dart';
@@ -21,7 +21,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final DashboardService _dashboardService = DashboardService();
-  final LocalAuthentication auth = LocalAuthentication();
+  // Removed: final LocalAuthentication auth = LocalAuthentication();
 
   // Infinite Scroll Logic
   final int _initialIndex = 12 * 50;
@@ -216,28 +216,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (confirm != true) return;
 
-    // 2. Secure Auth
-    bool authenticated = false;
-    try {
-      authenticated = await auth.authenticate(
-        localizedReason: 'Authenticate to confirm deletion',
-        options: const AuthenticationOptions(stickyAuth: true),
-      );
-    } on PlatformException catch (_) {
-      return;
-    }
+    // Removed: Secure Auth Check
 
-    if (authenticated) {
-      // 3. Delete (Service handles cascading delete of Settlement)
-      await _dashboardService.deleteFinancialRecord(record.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Budget & Settlement data deleted."),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
+    // 2. Delete (Service handles cascading delete of Settlement)
+    await _dashboardService.deleteFinancialRecord(record.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Budget & Settlement data deleted."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -362,7 +351,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           if (hasData) ...[
                             // --- Refactored Widget: Summary Card ---
-                            // PASSED THE NEW CALLBACK
                             DashboardSummaryCard(
                               record: currentRecord,
                               currencyFormat: _currencyFormat,
@@ -402,25 +390,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       right: 0,
                       child: Center(
                         child: GestureDetector(
-                          onTap: () async {
+                          onTap: () {
                             if (hasData) {
-                              // PROTECT EXISTING DATA
-                              bool authenticated = false;
-                              try {
-                                authenticated = await auth.authenticate(
-                                  localizedReason:
-                                      'Authenticate to edit this budget',
-                                  options: const AuthenticationOptions(
-                                    stickyAuth: true,
-                                  ),
-                                );
-                              } on PlatformException catch (_) {
-                                return;
-                              }
-
-                              if (authenticated) {
-                                _showAddRecordSheet(currentRecord);
-                              }
+                              // REMOVED: Authentication Check
+                              _showAddRecordSheet(currentRecord);
                             } else {
                               // CREATE NEW (Use passed date)
                               _showAddRecordSheet(null);

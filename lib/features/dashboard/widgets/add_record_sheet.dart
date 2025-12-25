@@ -206,7 +206,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
     _closeKeyboard();
     if (_config == null) return;
     if (_salaryController.text.isEmpty) {
-      // Use Dialog here too, just in case
       if (mounted) {
         showDialog(
           context: context,
@@ -239,74 +238,86 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
     final idString =
         '$_selectedYear${_selectedMonth.toString().padLeft(2, '0')}';
 
-    // --- SECURITY CHECK START ---
+    // --- SMART SECURITY CHECK ---
     try {
+      // 1. Check if record actually exists in DB
       final docSnapshot = await FirebaseFirestore.instance
           .collection(FirebaseConstants.financialRecords)
           .doc(idString)
           .get();
 
+      // 2. Only authenticate if we are overwriting/updating existing data
       if (docSnapshot.exists) {
-        // If we are overwriting a record...
-        // Check if it's the SAME record we are currently editing.
-        bool isSameRecord =
-            widget.recordToEdit != null && widget.recordToEdit!.id == idString;
+        bool authenticated = false;
+        try {
+          authenticated = await _auth.authenticate(
+            localizedReason: 'Authenticate to update existing budget',
+            options: const AuthenticationOptions(stickyAuth: true),
+          );
+        } on PlatformException catch (_) {
+          // Handle auth errors (user cancelled, etc.)
+          return;
+        }
 
-        // If it's NOT the same record (meaning we changed the date to an existing one)
-        // OR we started in Create mode (recordToEdit is null) but found a conflict...
-        if (!isSameRecord) {
-          bool authenticated = false;
-          try {
-            authenticated = await _auth.authenticate(
-              localizedReason:
-                  'Record already exists for this month. Authenticate to overwrite.',
-              options: const AuthenticationOptions(stickyAuth: true),
-            );
-          } on PlatformException catch (_) {
-            // Ignore error, authenticated remains false
-          }
-
-          if (!authenticated) {
-            if (mounted) {
-              // FIX: Use showDialog instead of SnackBar to ensure visibility over BottomSheet
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  backgroundColor: _bgColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: Colors.white.withOpacity(0.1)),
-                  ),
-                  title: const Text(
-                    "Authentication Failed",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  content: const Text(
-                    "Authentication is required to overwrite an existing budget record.",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text("OK", style: TextStyle(color: _accentColor)),
-                    ),
-                  ],
+        if (!authenticated) {
+          if (mounted) {
+            // FIX: Use showDialog instead of SnackBar so it appears OVER the BottomSheet
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: _bgColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.white.withOpacity(0.1)),
                 ),
-              );
-            }
-            return; // Abort Save
+                title: const Text(
+                  "Authentication Failed",
+                  style: TextStyle(color: Colors.white),
+                ),
+                content: const Text(
+                  "Authentication is required to update an existing budget record.",
+                  style: TextStyle(color: Colors.white70),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text("OK", style: TextStyle(color: _accentColor)),
+                  ),
+                ],
+              ),
+            );
           }
+          return; // Abort Save
         }
       }
     } catch (e) {
+      // Handle network/firestore errors gracefully with a Dialog
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error checking record: $e")));
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: _bgColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+            title: const Text("Error", style: TextStyle(color: Colors.white)),
+            content: Text(
+              "Error checking record: $e",
+              style: const TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text("OK", style: TextStyle(color: _accentColor)),
+              ),
+            ],
+          ),
+        );
       }
       return;
     }
-    // --- SECURITY CHECK END ---
+    // --- END SECURITY CHECK ---
 
     // Calculate Allocations using the ORDERED config
     Map<String, double> allocations = {};
@@ -375,39 +386,50 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      // Always allow date change (even in edit mode)
+                      // Date selection disabled during Edit
                       Row(
                         children: [
                           // Year Pill
                           GestureDetector(
-                            onTap: () => showSelectionSheet<int>(
-                              context: context,
-                              title: 'Select Year',
-                              items: _years,
-                              labelBuilder: (y) => y.toString(),
-                              onSelect: (v) =>
-                                  setState(() => _selectedYear = v),
-                              selectedItem: _selectedYear,
+                            onTap: _isEditing
+                                ? null
+                                : () => showSelectionSheet<int>(
+                                    context: context,
+                                    title: 'Select Year',
+                                    items: _years,
+                                    labelBuilder: (y) => y.toString(),
+                                    onSelect: (v) =>
+                                        setState(() => _selectedYear = v),
+                                    selectedItem: _selectedYear,
+                                  ),
+                            child: Opacity(
+                              opacity: _isEditing ? 0.5 : 1.0,
+                              child: _datePill(_selectedYear.toString()),
                             ),
-                            child: _datePill(_selectedYear.toString()),
                           ),
                           const SizedBox(width: 8),
                           // Month Pill
                           GestureDetector(
-                            onTap: () => showSelectionSheet<int>(
-                              context: context,
-                              title: 'Select Month',
-                              items: _months,
-                              labelBuilder: (m) =>
-                                  DateFormat('MMM').format(DateTime(0, m)),
-                              onSelect: (v) =>
-                                  setState(() => _selectedMonth = v),
-                              selectedItem: _selectedMonth,
-                            ),
-                            child: _datePill(
-                              DateFormat(
-                                'MMM',
-                              ).format(DateTime(0, _selectedMonth!)),
+                            onTap: _isEditing
+                                ? null
+                                : () => showSelectionSheet<int>(
+                                    context: context,
+                                    title: 'Select Month',
+                                    items: _months,
+                                    labelBuilder: (m) => DateFormat(
+                                      'MMM',
+                                    ).format(DateTime(0, m)),
+                                    onSelect: (v) =>
+                                        setState(() => _selectedMonth = v),
+                                    selectedItem: _selectedMonth,
+                                  ),
+                            child: Opacity(
+                              opacity: _isEditing ? 0.5 : 1.0,
+                              child: _datePill(
+                                DateFormat(
+                                  'MMM',
+                                ).format(DateTime(0, _selectedMonth!)),
+                              ),
                             ),
                           ),
                         ],
