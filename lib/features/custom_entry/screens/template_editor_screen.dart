@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/widgets/modern_dropdown.dart';
 import '../../../core/models/custom_data_models.dart';
-import '../../../core/services/firestore_service.dart';
 import '../services/custom_entry_service.dart';
 
 class TemplateEditorScreen extends StatefulWidget {

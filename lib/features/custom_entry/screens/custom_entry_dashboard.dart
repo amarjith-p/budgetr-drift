@@ -3,7 +3,6 @@ import 'package:budget/features/custom_entry/services/custom_entry_service.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/models/custom_data_models.dart';
-import '../../../core/services/firestore_service.dart';
 import 'template_editor_screen.dart';
 import '../widgets/custom_data_page.dart';
 

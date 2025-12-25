@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../core/widgets/modern_dropdown.dart';
 import '../../../core/models/custom_data_models.dart';
-import '../../../core/services/firestore_service.dart';
 import '../screens/template_editor_screen.dart';
 import 'dynamic_entry_sheet.dart';
 import '../services/custom_entry_service.dart';

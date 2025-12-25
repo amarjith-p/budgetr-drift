@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter/services.dart';
 import '../../../core/models/percentage_config_model.dart';
-import '../../../core/services/firestore_service.dart';
 import '../services/settings_service.dart';
 
 class SettingsScreen extends StatefulWidget {
