@@ -4,6 +4,9 @@ import '../../custom_entry/screens/custom_entry_dashboard.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../net_worth/screens/net_worth_screen.dart';
 import '../../settlement/screens/settlement_screen.dart';
+// --- 1. Add this Import ---
+import '../../investment/screens/investment_screen.dart';
+
 import '../widgets/home_app_bar.dart';
 import '../widgets/home_bottom_bar.dart';
 import '../widgets/home_feature_card.dart';
@@ -69,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 10),
                   Text(
-                    "Welcome Back", // Added a small welcome text
+                    "Welcome Back",
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.6),
                       fontSize: 14,
@@ -93,6 +96,14 @@ class HomeScreen extends StatelessWidget {
                           icon: Icons.pie_chart_outline,
                           color: const Color(0xFF4361EE),
                           destination: const DashboardScreen(),
+                        ),
+                        // --- 2. NEW INVESTMENT CARD ADDED HERE ---
+                        HomeFeatureCard(
+                          title: "Investments",
+                          subtitle: "Stocks & Mutual Funds",
+                          icon: Icons.show_chart_rounded, // Trending Up Icon
+                          color: const Color(0xFFFF9F1C), // Orange Accent
+                          destination: const InvestmentScreen(),
                         ),
                         HomeFeatureCard(
                           title: "Net Worth",
