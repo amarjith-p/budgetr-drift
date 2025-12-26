@@ -7,7 +7,9 @@ import '../services/investment_service.dart';
 import '../widgets/add_investment_sheet.dart';
 import '../widgets/investment_summary_card.dart';
 import '../widgets/investment_list_item.dart';
-import '../widgets/portfolio_allocation_chart.dart'; // Chart
+// Note: portfolio_allocation_chart.dart is now used inside investment_summary_card.dart,
+// so we don't necessarily need to import it here unless we use it elsewhere,
+// but keeping imports clean is good practice.
 
 enum SortOption {
   valueHighLow,
@@ -38,7 +40,6 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
   );
 
   String _searchQuery = "";
-  // Sets for Multi-Selection
   final Set<InvestmentType> _filterTypes = {};
   final Set<String> _filterBuckets = {};
 
@@ -143,7 +144,10 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -151,7 +155,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
     if (confirm == true) await _service.deleteInvestment(id);
   }
 
-  // --- Filter Sheet (Multi-Select) ---
+  // --- Filter Sheet ---
   void _showFilterSheet(List<String> availableBuckets) {
     FocusScope.of(context).unfocus();
     _searchFocusNode.unfocus();
@@ -277,10 +281,11 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                           selected: _filterBuckets.contains(b),
                           onSelected: (s) {
                             setSheetState(() {
-                              if (s)
+                              if (s) {
                                 _filterBuckets.add(b);
-                              else
+                              } else {
                                 _filterBuckets.remove(b);
+                              }
                             });
                             setState(() {});
                           },
@@ -381,10 +386,11 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
       selected: isSelected,
       onSelected: (s) {
         setSheetState(() {
-          if (s)
+          if (s) {
             _filterTypes.add(type);
-          else
+          } else {
             _filterTypes.remove(type);
+          }
         });
         setState(() {});
       },
@@ -487,8 +493,9 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
               child: StreamBuilder<List<InvestmentRecord>>(
                 stream: _service.getInvestments(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting)
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: ModernLoader());
+                  }
 
                   var records = snapshot.data ?? [];
 
@@ -550,14 +557,11 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                         child: InvestmentSummaryCard(
                           invested: totalInvested,
                           current: totalCurrent,
-                          dayGain: totalDayGain, // Pass Day Gain
+                          dayGain: totalDayGain,
                           currencyFormat: _currencyFormat,
+                          records: records, // Pass filtered records
                         ),
                       ),
-
-                      // NEW: Chart Integration
-                      if (records.isNotEmpty)
-                        PortfolioAllocationChart(records: records),
 
                       const SizedBox(height: 16),
 
