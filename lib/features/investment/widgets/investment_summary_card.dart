@@ -4,12 +4,14 @@ import 'package:intl/intl.dart';
 class InvestmentSummaryCard extends StatelessWidget {
   final double invested;
   final double current;
+  final double dayGain; // NEW
   final NumberFormat currencyFormat;
 
   const InvestmentSummaryCard({
     super.key,
     required this.invested,
     required this.current,
+    required this.dayGain, // NEW
     required this.currencyFormat,
   });
 
@@ -18,6 +20,7 @@ class InvestmentSummaryCard extends StatelessWidget {
     final totalReturn = current - invested;
     final returnPercent = invested == 0 ? 0.0 : (totalReturn / invested) * 100;
     final isProfit = totalReturn >= 0;
+    final isDayProfit = dayGain >= 0;
 
     return Container(
       width: double.infinity,
@@ -54,6 +57,8 @@ class InvestmentSummaryCard extends StatelessWidget {
                   fontSize: 14,
                 ),
               ),
+
+              // Total Return Pill
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -95,6 +100,32 @@ class InvestmentSummaryCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildSubMetric("Invested", invested, currencyFormat),
+
+              // NEW: Day's Gain
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    "Day's Gain",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "${isDayProfit ? '+' : ''}${currencyFormat.format(dayGain)}",
+                    style: TextStyle(
+                      color: isDayProfit
+                          ? Colors.greenAccent
+                          : Colors.redAccent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+
               _buildSubMetric(
                 "Total Return",
                 totalReturn,

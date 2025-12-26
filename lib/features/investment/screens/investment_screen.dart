@@ -7,6 +7,7 @@ import '../services/investment_service.dart';
 import '../widgets/add_investment_sheet.dart';
 import '../widgets/investment_summary_card.dart';
 import '../widgets/investment_list_item.dart';
+import '../widgets/portfolio_allocation_chart.dart'; // Chart
 
 enum SortOption {
   valueHighLow,
@@ -37,7 +38,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
   );
 
   String _searchQuery = "";
-  // CHANGED: Sets for Multi-Selection
+  // Sets for Multi-Selection
   final Set<InvestmentType> _filterTypes = {};
   final Set<String> _filterBuckets = {};
 
@@ -150,7 +151,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
     if (confirm == true) await _service.deleteInvestment(id);
   }
 
-  // --- Filter Sheet (Multi-Select Support) ---
+  // --- Filter Sheet (Multi-Select) ---
   void _showFilterSheet(List<String> availableBuckets) {
     FocusScope.of(context).unfocus();
     _searchFocusNode.unfocus();
@@ -191,12 +192,11 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                       _searchFocusNode.unfocus();
 
                       setSheetState(() {
-                        // Reset to Defaults
                         _filterTypes.clear();
                         _filterBuckets.clear();
                         _currentSort = SortOption.valueHighLow;
                       });
-                      setState(() {}); // Update Main Screen
+                      setState(() {});
 
                       Navigator.pop(context);
                     },
@@ -370,7 +370,6 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
     );
   }
 
-  // Updated to handle Sets
   Widget _buildFilterChip(
     String label,
     InvestmentType type,
@@ -493,7 +492,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
 
                   var records = snapshot.data ?? [];
 
-                  // --- 1. FILTER LOGIC (Updated for Multi-Select) ---
+                  // --- 1. FILTER LOGIC ---
                   if (_searchQuery.isNotEmpty) {
                     records = records
                         .where(
@@ -514,7 +513,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                         .toList();
                   }
 
-                  // --- 2. CALCULATE TOTALS (After Filter) ---
+                  // --- 2. CALCULATE TOTALS ---
                   final totalInvested = records.fold(
                     0.0,
                     (sum, item) => sum + item.totalInvested,
@@ -522,6 +521,10 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                   final totalCurrent = records.fold(
                     0.0,
                     (sum, item) => sum + item.currentValue,
+                  );
+                  final totalDayGain = records.fold(
+                    0.0,
+                    (sum, item) => sum + item.dayReturn,
                   );
 
                   // --- 3. SORT ---
@@ -547,9 +550,15 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                         child: InvestmentSummaryCard(
                           invested: totalInvested,
                           current: totalCurrent,
+                          dayGain: totalDayGain, // Pass Day Gain
                           currencyFormat: _currencyFormat,
                         ),
                       ),
+
+                      // NEW: Chart Integration
+                      if (records.isNotEmpty)
+                        PortfolioAllocationChart(records: records),
+
                       const SizedBox(height: 16),
 
                       Expanded(

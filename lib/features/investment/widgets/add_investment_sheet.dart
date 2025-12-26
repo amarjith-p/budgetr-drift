@@ -19,13 +19,14 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
   final _service = InvestmentService();
   Timer? _debounce;
 
-  // Data
+  // Data State
   late InvestmentType _selectedType;
   DateTime _purchaseDate = DateTime.now();
   InvestmentSearchResult? _selectedAsset;
   bool _isSelectionValid = false;
+  double _capturedPreviousClose = 0.0; // Day Gain Logic
 
-  // UI
+  // UI State
   bool _isSearching = false;
   List<InvestmentSearchResult> _searchResults = [];
   bool _showResults = false;
@@ -49,9 +50,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
   final _priceFocus = FocusNode();
   final _totalFocus = FocusNode();
   final _currentPriceFocus = FocusNode();
-
-  // Captured Focus Node for Autocomplete
-  FocusNode? _bucketFocusNode;
+  FocusNode? _bucketFocusNode; // For transition
 
   @override
   void initState() {
@@ -66,6 +65,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
       _totalController.text = (r.quantity * r.averagePrice).toStringAsFixed(2);
       _currentPriceController.text = r.currentPrice.toString();
       _bucketController.text = r.bucket;
+      _capturedPreviousClose = r.previousClose;
 
       _selectedAsset = InvestmentSearchResult(
         symbol: r.symbol,
@@ -100,11 +100,24 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
     _priceFocus.dispose();
     _totalFocus.dispose();
     _currentPriceFocus.dispose();
-    // _bucketFocusNode is managed by Autocomplete, no need to dispose
     super.dispose();
   }
 
-  // --- 1. KEYBOARD LOGIC ---
+  // --- 1. KEYBOARD & SCROLL LOGIC (RESTORED) ---
+
+  void _scrollToInput(FocusNode node) {
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (node.context != null && mounted) {
+        Scrollable.ensureVisible(
+          node.context!,
+          alignment: 0.5,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
   void _onFieldTap(TextEditingController controller, FocusNode node) {
     if (_systemKeyboardActive) return;
 
@@ -115,6 +128,8 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
       _activeFocusNode = node;
       _showCustomKeyboard = true;
     });
+
+    _scrollToInput(node); // Auto-scroll restored
   }
 
   void _handleKeyboardClose() {
@@ -147,7 +162,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
     } else if (_activeMathController == _totalController) {
       _onFieldTap(_currentPriceController, _currentPriceFocus);
     } else if (_activeMathController == _currentPriceController) {
-      // TRANSITION TO BUCKET (System Keyboard)
+      // Transition to Bucket (System Keyboard)
       setState(() {
         _showCustomKeyboard = false;
         _activeMathController = null;
@@ -245,19 +260,21 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
     });
 
     if (_selectedType != InvestmentType.other) {
-      final price = await _service.fetchLivePrice(item.symbol, _selectedType);
+      final data = await _service.fetchPriceData(item.symbol, _selectedType);
       if (mounted) {
         setState(() {
           _isSearching = false;
-          _currentPriceController.text = price.toString();
+          _currentPriceController.text = data['price'].toString();
+          _capturedPreviousClose = data['prev']!;
           if (_priceController.text.isEmpty)
-            _priceController.text = price.toString();
+            _priceController.text = data['price'].toString();
         });
       }
     } else {
       final existing = await _service.findExactMatch(item.symbol, 'General');
       if (existing != null && mounted) {
         _currentPriceController.text = existing.currentPrice.toString();
+        _capturedPreviousClose = existing.previousClose;
       }
     }
   }
@@ -274,6 +291,11 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
       );
     }
 
+    if (_selectedType == InvestmentType.other && _capturedPreviousClose == 0) {
+      _capturedPreviousClose =
+          double.tryParse(_currentPriceController.text) ?? 0;
+    }
+
     final bucket = _bucketController.text.isEmpty
         ? 'General'
         : _bucketController.text;
@@ -286,6 +308,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
       quantity: double.parse(_qtyController.text),
       averagePrice: double.parse(_priceController.text),
       currentPrice: double.parse(_currentPriceController.text),
+      previousClose: _capturedPreviousClose,
       bucket: bucket,
       lastPurchasedDate: _purchaseDate,
       lastUpdated: DateTime.now(),
@@ -507,7 +530,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
-                                    ),
+                                    ), // FIXED
                                 onTap: () =>
                                     _onFieldTap(_qtyController, _qtyFocus),
                                 style: const TextStyle(color: Colors.white),
@@ -531,7 +554,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
-                                    ),
+                                    ), // FIXED
                                 onTap: () =>
                                     _onFieldTap(_priceController, _priceFocus),
                                 style: const TextStyle(color: Colors.white),
@@ -560,7 +583,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
-                                    ),
+                                    ), // FIXED
                                 onTap: () =>
                                     _onFieldTap(_totalController, _totalFocus),
                                 style: const TextStyle(
@@ -586,7 +609,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
-                                    ),
+                                    ), // FIXED
                                 onTap: () => _onFieldTap(
                                   _currentPriceController,
                                   _currentPriceFocus,
@@ -618,9 +641,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
                       onSelected: (val) => _bucketController.text = val,
                       fieldViewBuilder:
                           (context, controller, focusNode, onSubmitted) {
-                            // Capture the FocusNode provided by Autocomplete
-                            _bucketFocusNode = focusNode;
-
+                            _bucketFocusNode = focusNode; // CAPTURE
                             if (_bucketController.text.isNotEmpty &&
                                 controller.text.isEmpty) {
                               controller.text = _bucketController.text;
