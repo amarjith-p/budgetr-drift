@@ -6,7 +6,7 @@ class InvestmentListItem extends StatelessWidget {
   final InvestmentRecord item;
   final NumberFormat currencyFormat;
   final NumberFormat preciseFormat;
-  final VoidCallback onOptions; // Fix: Use callback instead of internal menu
+  final VoidCallback onOptions;
 
   const InvestmentListItem({
     super.key,
@@ -19,6 +19,7 @@ class InvestmentListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isProfit = item.totalReturn >= 0;
+    final isDayProfit = item.dayReturn >= 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -30,6 +31,7 @@ class InvestmentListItem extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +65,6 @@ class InvestmentListItem extends StatelessWidget {
                   ],
                 ),
               ),
-              // Option Button
               IconButton(
                 icon: const Icon(
                   Icons.more_vert,
@@ -77,30 +78,66 @@ class InvestmentListItem extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+
+          // Values Row (Updated Layout)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                preciseFormat.format(item.currentValue),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+              // Left: Current Value & Day Gain
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    preciseFormat.format(item.currentValue),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  // Day Gain Small
+                  Text(
+                    "Day: ${isDayProfit ? '+' : ''}${item.dayReturnPercentage.toStringAsFixed(2)}%",
+                    style: TextStyle(
+                      color: isDayProfit
+                          ? Colors.greenAccent
+                          : Colors.redAccent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                "${isProfit ? '+' : ''}${item.returnPercentage.toStringAsFixed(1)}% (${currencyFormat.format(item.totalReturn)})",
-                style: TextStyle(
-                  color: isProfit ? Colors.greenAccent : Colors.redAccent,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
+
+              // Right: Total Return
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    "${isProfit ? '+' : ''}${currencyFormat.format(item.totalReturn)}",
+                    style: TextStyle(
+                      color: isProfit ? Colors.greenAccent : Colors.redAccent,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    "All: ${isProfit ? '+' : ''}${item.returnPercentage.toStringAsFixed(2)}%",
+                    style: TextStyle(
+                      color: isProfit ? Colors.greenAccent : Colors.redAccent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 12),
           Divider(height: 1, color: Colors.white.withOpacity(0.1)),
           const SizedBox(height: 12),
+
+          // Footer
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -120,6 +157,7 @@ class InvestmentListItem extends StatelessWidget {
     );
   }
 
+  // ... helpers _getTypeName, _tag, _detailCol (Same as before) ...
   String _getTypeName(InvestmentType type) {
     switch (type) {
       case InvestmentType.stock:

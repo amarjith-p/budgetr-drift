@@ -15,15 +15,12 @@ class InvestmentService {
     InvestmentType type,
   ) async {
     if (query.length < 2) return [];
-
     if (type == InvestmentType.stock) return _searchYahooStocks(query);
     if (type == InvestmentType.mutualFund) return _searchMutualFunds(query);
     if (type == InvestmentType.other) return _searchLocalAssets(query);
-
     return [];
   }
 
-  // Local Search for "Others" (Finds previously added custom assets)
   Future<List<InvestmentSearchResult>> _searchLocalAssets(String query) async {
     final snapshot = await _db
         .collection(_collection)
@@ -43,7 +40,6 @@ class InvestmentService {
         )
         .toList();
 
-    // Simple deduplication by name
     final unique = <String>{};
     final distinct = <InvestmentSearchResult>[];
     for (var item in results) {
@@ -52,14 +48,58 @@ class InvestmentService {
     return distinct;
   }
 
-  // --- Price Fetching ---
-  Future<double> fetchLivePrice(String symbol, InvestmentType type) async {
-    if (type == InvestmentType.stock) return _fetchYahooPrice(symbol);
-    if (type == InvestmentType.mutualFund) return _fetchMfNav(symbol);
-    return 0.0; // Others: No live price
+  // --- NEW: Fetch Price Data (Returns Price & Prev Close) ---
+  Future<Map<String, double>> fetchPriceData(
+    String symbol,
+    InvestmentType type,
+  ) async {
+    if (type == InvestmentType.stock) return _fetchYahooPriceData(symbol);
+    if (type == InvestmentType.mutualFund) return _fetchMfNavData(symbol);
+    return {'price': 0.0, 'prev': 0.0};
   }
 
-  // --- API Helpers ---
+  // Yahoo Finance: Get Price & Chart Previous Close
+  Future<Map<String, double>> _fetchYahooPriceData(String symbol) async {
+    try {
+      final url = Uri.parse(
+        'https://query1.finance.yahoo.com/v8/finance/chart/$symbol?interval=1d&range=1d',
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final meta = data['chart']['result'][0]['meta'];
+        return {
+          'price': (meta['regularMarketPrice'] ?? 0.0).toDouble(),
+          'prev': (meta['chartPreviousClose'] ?? 0.0).toDouble(),
+        };
+      }
+    } catch (_) {}
+    return {'price': 0.0, 'prev': 0.0};
+  }
+
+  // MFAPI: Get Latest NAV & Previous NAV
+  Future<Map<String, double>> _fetchMfNavData(String code) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.mfapi.in/mf/$code'),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List navList = data['data'];
+        if (navList.isNotEmpty) {
+          final current = double.parse(navList[0]['nav'].toString());
+          // If history exists, get prev, else same as current
+          final prev = navList.length > 1
+              ? double.parse(navList[1]['nav'].toString())
+              : current;
+          return {'price': current, 'prev': prev};
+        }
+      }
+    } catch (_) {}
+    return {'price': 0.0, 'prev': 0.0};
+  }
+
+  // --- API Helpers (Search) ---
   Future<List<InvestmentSearchResult>> _searchYahooStocks(String query) async {
     try {
       final url = Uri.parse(
@@ -88,22 +128,6 @@ class InvestmentService {
     return [];
   }
 
-  Future<double> _fetchYahooPrice(String symbol) async {
-    try {
-      final url = Uri.parse(
-        'https://query1.finance.yahoo.com/v8/finance/chart/$symbol?interval=1d&range=1d',
-      );
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final meta = data['chart']['result'][0]['meta'];
-        return (meta['regularMarketPrice'] ?? meta['chartPreviousClose'] ?? 0.0)
-            .toDouble();
-      }
-    } catch (_) {}
-    return 0.0;
-  }
-
   Future<List<InvestmentSearchResult>> _searchMutualFunds(String query) async {
     try {
       if (_cachedMfList == null) {
@@ -126,19 +150,6 @@ class InvestmentService {
           .toList();
     } catch (_) {}
     return [];
-  }
-
-  Future<double> _fetchMfNav(String code) async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://api.mfapi.in/mf/$code'),
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return double.parse(data['data'][0]['nav'].toString());
-      }
-    } catch (_) {}
-    return 0.0;
   }
 
   // --- Firestore CRUD ---
@@ -193,6 +204,7 @@ class InvestmentService {
       'quantity': newQty,
       'averagePrice': newAvg,
       'currentPrice': newRec.currentPrice,
+      'previousClose': newRec.previousClose, // Update Prev Close
       'lastPurchasedDate': Timestamp.fromDate(newRec.lastPurchasedDate),
       'lastUpdated': Timestamp.now(),
     });
@@ -204,10 +216,12 @@ class InvestmentService {
     for (var doc in docs.docs) {
       final r = InvestmentRecord.fromFirestore(doc);
       if (r.type == InvestmentType.other) continue;
-      final price = await fetchLivePrice(r.symbol, r.type);
-      if (price > 0) {
+
+      final data = await fetchPriceData(r.symbol, r.type);
+      if (data['price']! > 0) {
         batch.update(doc.reference, {
-          'currentPrice': price,
+          'currentPrice': data['price'],
+          'previousClose': data['prev'], // Update Prev Close
           'lastUpdated': Timestamp.now(),
         });
       }
