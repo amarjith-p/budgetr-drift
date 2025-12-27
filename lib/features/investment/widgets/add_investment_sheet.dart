@@ -46,6 +46,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
   final _bucketController = TextEditingController();
 
   // Focus Nodes
+  final _searchFocus = FocusNode(); // ADDED: To navigate back to search
   final _qtyFocus = FocusNode();
   final _priceFocus = FocusNode();
   final _totalFocus = FocusNode();
@@ -96,6 +97,8 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
     _totalController.dispose();
     _currentPriceController.dispose();
     _bucketController.dispose();
+
+    _searchFocus.dispose();
     _qtyFocus.dispose();
     _priceFocus.dispose();
     _totalFocus.dispose();
@@ -103,7 +106,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
     super.dispose();
   }
 
-  // --- 1. KEYBOARD & SCROLL LOGIC (RESTORED) ---
+  // --- 1. KEYBOARD & SCROLL LOGIC ---
 
   void _scrollToInput(FocusNode node) {
     Future.delayed(const Duration(milliseconds: 300), () {
@@ -129,7 +132,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
       _showCustomKeyboard = true;
     });
 
-    _scrollToInput(node); // Auto-scroll restored
+    _scrollToInput(node);
   }
 
   void _handleKeyboardClose() {
@@ -173,6 +176,32 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
         FocusScope.of(context).requestFocus(_bucketFocusNode);
       } else {
         FocusScope.of(context).unfocus();
+      }
+    }
+  }
+
+  // --- ADDED: Previous Field Logic ---
+  void _handlePreviousField() {
+    if (_activeMathController == _currentPriceController) {
+      _onFieldTap(_totalController, _totalFocus);
+    } else if (_activeMathController == _totalController) {
+      _onFieldTap(_priceController, _priceFocus);
+    } else if (_activeMathController == _priceController) {
+      _onFieldTap(_qtyController, _qtyFocus);
+    } else if (_activeMathController == _qtyController) {
+      // Transition back to Search (System Keyboard)
+      if (widget.recordToEdit == null) {
+        // Only if not editing, as search is disabled in edit mode
+        setState(() {
+          _showCustomKeyboard = false;
+          _activeMathController = null;
+          _activeFocusNode = null;
+        });
+        FocusScope.of(context).requestFocus(_searchFocus);
+        _scrollToInput(_searchFocus);
+      } else {
+        // If editing, just close keyboard or do nothing
+        _handleKeyboardClose();
       }
     }
   }
@@ -393,6 +422,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
                     ),
                     TextFormField(
                       controller: _searchController,
+                      focusNode: _searchFocus, // ADDED: Assigned FocusNode
                       enabled: widget.recordToEdit == null,
                       style: const TextStyle(color: Colors.white),
                       decoration: _inputDecoration("eg. Gold, Bitcoin...")
@@ -530,7 +560,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
-                                    ), // FIXED
+                                    ),
                                 onTap: () =>
                                     _onFieldTap(_qtyController, _qtyFocus),
                                 style: const TextStyle(color: Colors.white),
@@ -554,7 +584,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
-                                    ), // FIXED
+                                    ),
                                 onTap: () =>
                                     _onFieldTap(_priceController, _priceFocus),
                                 style: const TextStyle(color: Colors.white),
@@ -583,7 +613,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
-                                    ), // FIXED
+                                    ),
                                 onTap: () =>
                                     _onFieldTap(_totalController, _totalFocus),
                                 style: const TextStyle(
@@ -609,7 +639,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
-                                    ), // FIXED
+                                    ),
                                 onTap: () => _onFieldTap(
                                   _currentPriceController,
                                   _currentPriceFocus,
@@ -706,6 +736,7 @@ class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
               onClose: _handleKeyboardClose,
               onSwitchToSystem: _switchToSystem,
               onNext: _handleNextField,
+              onPrevious: _handlePreviousField, // ADDED
             ),
         ],
       ),

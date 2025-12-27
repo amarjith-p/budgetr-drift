@@ -231,6 +231,44 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
     }
   }
 
+  // --- NEW: Handle Previous Logic ---
+  void _handlePrevious() {
+    if (_activeController == null) return;
+
+    // Use same sort logic to ensure we navigate in visual order
+    final entries = _budgetRecord!.allocations.entries.toList();
+    if (_percentageConfig != null) {
+      entries.sort((a, b) {
+        int idxA = _percentageConfig!.categories.indexWhere(
+          (c) => c.name == a.key,
+        );
+        int idxB = _percentageConfig!.categories.indexWhere(
+          (c) => c.name == b.key,
+        );
+        if (idxA == -1) idxA = 999;
+        if (idxB == -1) idxB = 999;
+        return idxA.compareTo(idxB);
+      });
+    } else {
+      entries.sort((a, b) => b.value.compareTo(a.value));
+    }
+
+    int currentIndex = -1;
+    for (int i = 0; i < entries.length; i++) {
+      if (_controllers[entries[i].key] == _activeController) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    if (currentIndex > 0) {
+      final prevKey = entries[currentIndex - 1].key;
+      _setActive(_controllers[prevKey]!, _focusNodes[prevKey]!);
+    } else {
+      _closeKeyboard();
+    }
+  }
+
   Future<void> _onSettle() async {
     _closeKeyboard();
     if (_budgetRecord == null) return;
@@ -373,6 +411,8 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
                     onClose: _closeKeyboard,
                     onSwitchToSystem: _switchToSystemKeyboard,
                     onNext: _handleNext,
+                    onPrevious:
+                        _handlePrevious, // ADDED: Connected to previous logic
                   )
                 : const SizedBox.shrink(),
           ),

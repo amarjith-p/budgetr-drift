@@ -106,7 +106,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _recalculateFormulas());
   }
 
-  // --- FORMULA ENGINE (BODMAS, No %) ---
+  // --- FORMULA ENGINE ---
   void _recalculateFormulas() {
     final formulaFields = widget.template.fields
         .where(
@@ -277,30 +277,81 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     }
   }
 
-  void _handleNext() {
-    if (_activeFocusNode == null) return;
-    final fields = widget.template.fields
+  // --- UNIFIED NAVIGATION (Next & Back) ---
+  void _navigateRelative(String currentFieldName, int step) {
+    // 1. Identify all navigable input fields (String, Number, Currency)
+    final inputFields = widget.template.fields
         .where(
           (f) =>
+              f.type == CustomFieldType.string ||
               f.type == CustomFieldType.number ||
               f.type == CustomFieldType.currency,
         )
         .toList();
 
-    int currentIndex = -1;
-    for (int i = 0; i < fields.length; i++) {
-      if (_focusNodes[fields[i].name] == _activeFocusNode) {
-        currentIndex = i;
-        break;
+    // 2. Find current index
+    final currentIndex = inputFields.indexWhere(
+      (f) => f.name == currentFieldName,
+    );
+
+    // 3. Move relative
+    if (currentIndex != -1) {
+      final targetIndex = currentIndex + step;
+
+      // Check bounds
+      if (targetIndex >= 0 && targetIndex < inputFields.length) {
+        final targetField = inputFields[targetIndex];
+        final targetNode = _focusNodes[targetField.name]!;
+        final targetController = _controllers[targetField.name]!;
+
+        if (targetField.type == CustomFieldType.number ||
+            targetField.type == CustomFieldType.currency) {
+          // Go to Custom Keyboard (or System if toggled)
+          _setActive(targetController, targetNode);
+        } else {
+          // Go to System Keyboard (for Text)
+          setState(() {
+            _isKeyboardVisible = false;
+            _activeFocusNode = targetNode;
+          });
+          FocusScope.of(context).requestFocus(targetNode);
+          _scrollToInput(targetNode);
+        }
+      } else {
+        // Out of bounds (start or end), close keyboard
+        _closeKeyboard();
       }
     }
+  }
 
-    if (currentIndex != -1 && currentIndex < fields.length - 1) {
-      final nextField = fields[currentIndex + 1];
-      _setActive(_controllers[nextField.name]!, _focusNodes[nextField.name]!);
+  // Handlers for Custom Keyboard
+  void _handleNext() {
+    if (_activeFocusNode == null) return;
+    String? currentName = _findActiveFieldName();
+    if (currentName != null) {
+      _navigateRelative(currentName, 1);
     } else {
       _closeKeyboard();
     }
+  }
+
+  void _handlePrevious() {
+    if (_activeFocusNode == null) return;
+    String? currentName = _findActiveFieldName();
+    if (currentName != null) {
+      _navigateRelative(currentName, -1);
+    } else {
+      _closeKeyboard();
+    }
+  }
+
+  String? _findActiveFieldName() {
+    for (var entry in _focusNodes.entries) {
+      if (entry.value == _activeFocusNode) {
+        return entry.key;
+      }
+    }
+    return null;
   }
 
   Future<void> _save() async {
@@ -435,6 +486,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
         color: _bgColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      // Fix for System Keyboard Pushing Content
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
@@ -527,7 +579,11 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
             ),
           ),
           AnimatedSize(
-            duration: const Duration(milliseconds: 250),
+            // FIX: Instantly collapse custom keyboard if System Keyboard (viewInsets > 0) is opening.
+            // This prevents "Double Keyboard Height" overflow during transition.
+            duration: MediaQuery.of(context).viewInsets.bottom > 0
+                ? Duration.zero
+                : const Duration(milliseconds: 250),
             child: _isKeyboardVisible
                 ? CalculatorKeyboard(
                     onKeyPress: (v) => CalculatorKeyboard.handleKeyPress(
@@ -543,6 +599,7 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
                     onClose: _closeKeyboard,
                     onSwitchToSystem: _switchToSystem,
                     onNext: _handleNext,
+                    onPrevious: _handlePrevious, // Handle Back button
                   )
                 : const SizedBox.shrink(),
           ),
@@ -639,6 +696,18 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     final isSerial = field.type == CustomFieldType.serial;
     final isFormula = field.type == CustomFieldType.formula;
 
+    // Determine if this is the last navigable field
+    final inputFields = widget.template.fields
+        .where(
+          (f) =>
+              f.type == CustomFieldType.string ||
+              f.type == CustomFieldType.number ||
+              f.type == CustomFieldType.currency,
+        )
+        .toList();
+    final isLastInput =
+        inputFields.isNotEmpty && inputFields.last.name == field.name;
+
     IconData inputIcon = Icons.text_fields;
     if (isSerial)
       inputIcon = Icons.tag;
@@ -661,6 +730,14 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
             : (isNum ? !_useSystemKeyboard : false),
 
         keyboardType: isNum ? TextInputType.number : TextInputType.text,
+
+        // --- AUTO NAVIGATION ---
+        textInputAction: isLastInput
+            ? TextInputAction.done
+            : TextInputAction.next,
+        onFieldSubmitted: (_) => _navigateRelative(field.name, 1),
+
+        // -----------------------
         style: TextStyle(
           color: (isSerial || isFormula) ? Colors.white70 : Colors.white,
           fontWeight: isFormula ? FontWeight.bold : FontWeight.normal,

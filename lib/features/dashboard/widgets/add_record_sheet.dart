@@ -202,6 +202,16 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
       _closeKeyboard();
   }
 
+  // --- NEW: Handle Previous Field ---
+  void _handlePrevious() {
+    if (_activeController == _emiController)
+      _setActive(_extraIncomeController, _extraFocus);
+    else if (_activeController == _extraIncomeController)
+      _setActive(_salaryController, _salaryFocus);
+    else
+      _closeKeyboard();
+  }
+
   Future<void> _save() async {
     _closeKeyboard();
     if (_config == null) return;
@@ -634,6 +644,8 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                     onClose: _closeKeyboard,
                     onSwitchToSystem: _switchToSystemKeyboard,
                     onNext: _handleNext,
+                    onPrevious:
+                        _handlePrevious, // ADDED: Connected to previous logic
                   )
                 : const SizedBox.shrink(),
           ),

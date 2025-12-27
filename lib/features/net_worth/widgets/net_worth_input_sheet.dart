@@ -98,6 +98,15 @@ class _NetWorthInputSheetState extends State<NetWorthInputSheet> {
     }
   }
 
+  // --- NEW: Handle Previous Field ---
+  void _handlePrevious() {
+    if (_activeController == _liabilitiesController) {
+      _setActive(_assetsController, _assetsFocus);
+    } else {
+      _closeKeyboard();
+    }
+  }
+
   Future<void> _save() async {
     _closeKeyboard();
     final assets = double.tryParse(_assetsController.text) ?? 0.0;
@@ -328,6 +337,7 @@ class _NetWorthInputSheetState extends State<NetWorthInputSheet> {
                     onClose: _closeKeyboard,
                     onSwitchToSystem: _switchToSystemKeyboard,
                     onNext: _handleNext,
+                    onPrevious: _handlePrevious, // Added Callback
                   )
                 : const SizedBox.shrink(),
           ),

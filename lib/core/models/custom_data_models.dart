@@ -67,6 +67,7 @@ class CustomTemplate {
   List<CustomFieldConfig> fields;
   String? xAxisField;
   String? yAxisField;
+  DateTime createdAt; // Added Field
 
   CustomTemplate({
     required this.id,
@@ -74,6 +75,7 @@ class CustomTemplate {
     required this.fields,
     this.xAxisField,
     this.yAxisField,
+    required this.createdAt,
   });
 
   Map<String, dynamic> toMap() => {
@@ -81,7 +83,8 @@ class CustomTemplate {
     'fields': fields.map((e) => e.toMap()).toList(),
     'xAxisField': xAxisField,
     'yAxisField': yAxisField,
-    'createdAt': FieldValue.serverTimestamp(),
+    // FIX: Preserve the existing creation time instead of resetting it
+    'createdAt': Timestamp.fromDate(createdAt),
   };
 
   factory CustomTemplate.fromFirestore(DocumentSnapshot doc) {
@@ -94,6 +97,10 @@ class CustomTemplate {
           .toList(),
       xAxisField: data['xAxisField'],
       yAxisField: data['yAxisField'],
+      // FIX: Use a stable fallback (Epoch 0) for missing timestamps to prevent random shuffling
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 }

@@ -19,10 +19,29 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard>
   final Color _bgColor = const Color(0xff0D1B2A);
   final Color _accentColor = const Color(0xFF3A86FF);
 
+  late Stream<List<CustomTemplate>> _templatesStream;
+  TabController? _tabController;
+
+  // Track the ID of the currently viewed template to persist selection across updates
+  String? _activeTemplateId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize stream once
+    _templatesStream = CustomEntryService().getCustomTemplates();
+  }
+
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<CustomTemplate>>(
-      stream: CustomEntryService().getCustomTemplates(),
+      stream: _templatesStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
@@ -31,133 +50,180 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard>
           );
         }
 
-        final templates = snapshot.data ?? [];
+        var templates = snapshot.data ?? [];
 
-        // --- EMPTY STATE ---
+        // --- 1. STABLE SORTING ---
+        // Explicitly sort client-side to ensure stability regardless of Firestore quirks
+        templates = List.from(templates);
+        templates.sort((a, b) {
+          int res = a.createdAt.compareTo(b.createdAt);
+          if (res == 0) return a.name.compareTo(b.name);
+          return res;
+        });
+
+        // --- 2. EMPTY STATE ---
         if (templates.isEmpty) {
           return _buildEmptyState();
         }
 
-        // --- MAIN DASHBOARD ---
-        return DefaultTabController(
-          length: templates.length,
-          child: Scaffold(
-            backgroundColor: _bgColor,
-            // FIX 1: Disable extending body behind app bar to prevent overlap
-            extendBodyBehindAppBar: false,
-            appBar: AppBar(
-              // FIX 2: Solid background color so header is opaque
-              backgroundColor: _bgColor,
-              elevation: 0,
-              centerTitle: true,
-              systemOverlayStyle: SystemUiOverlayStyle.light,
-              leading: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                onPressed: () => Navigator.pop(context),
-              ),
-              title: const Text(
-                'Custom Trackers',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              actions: [
-                IconButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (c) => const TemplateEditorScreen(),
-                    ),
-                  ),
-                  tooltip: 'Create New Tracker',
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.add, size: 20, color: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              // --- MODERN TAB BAR ---
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(80),
-                child: Container(
-                  height: 55,
-                  margin: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                  decoration: BoxDecoration(
-                    color: const Color(
-                      0xFF1B263B,
-                    ), // Solid/Darker background for tab container
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.08)),
-                  ),
-                  child: TabBar(
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    physics: const BouncingScrollPhysics(),
-                    dividerColor: Colors.transparent,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    labelColor: Colors.white,
-                    unselectedLabelColor: Colors.white54,
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                    padding: const EdgeInsets.all(4),
+        // --- 3. SYNC ACTIVE ID ---
+        // Find where our active template has moved to
+        int initialIndex = 0;
+        if (_activeTemplateId != null) {
+          final foundIndex = templates.indexWhere(
+            (t) => t.id == _activeTemplateId,
+          );
+          if (foundIndex != -1) {
+            initialIndex = foundIndex;
+          } else if (templates.isNotEmpty) {
+            // ID lost (deleted?), default to first
+            _activeTemplateId = templates.first.id;
+          }
+        } else {
+          // First load
+          _activeTemplateId = templates.first.id;
+        }
 
-                    // The "Magic" Indicator
-                    indicator: BoxDecoration(
-                      color: _accentColor,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _accentColor.withOpacity(0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    tabs: templates.map((t) {
-                      return Tab(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.dataset_outlined, size: 16),
-                              const SizedBox(width: 8),
-                              Text(t.name.toUpperCase()),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
+        // --- 4. MANAGE CONTROLLER ---
+        bool recreateController =
+            _tabController == null ||
+            _tabController!.length != templates.length;
+
+        if (recreateController) {
+          _tabController?.dispose();
+          _tabController = TabController(
+            length: templates.length,
+            vsync: this,
+            initialIndex: initialIndex,
+          );
+
+          // Update tracker when user swipes manually
+          _tabController!.addListener(() {
+            if (!_tabController!.indexIsChanging &&
+                _tabController!.index < templates.length) {
+              _activeTemplateId = templates[_tabController!.index].id;
+            }
+          });
+        } else {
+          // If controller exists, ensure it is on the correct tab
+          if (_tabController!.index != initialIndex) {
+            _tabController!.animateTo(initialIndex, duration: Duration.zero);
+          }
+        }
+
+        // --- MAIN DASHBOARD ---
+        return Scaffold(
+          backgroundColor: _bgColor,
+          extendBodyBehindAppBar: false,
+          appBar: AppBar(
+            backgroundColor: _bgColor,
+            elevation: 0,
+            centerTitle: true,
+            systemOverlayStyle: SystemUiOverlayStyle.light,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: const Text(
+              'Custom Trackers',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
               ),
             ),
-            body: Stack(
-              children: [
-                _buildAmbientGlow(_accentColor),
-
-                // --- BODY ---
-                TabBarView(
+            actions: [
+              IconButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (c) => const TemplateEditorScreen(),
+                  ),
+                ),
+                tooltip: 'Create New Tracker',
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add, size: 20, color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            // --- MODERN TAB BAR ---
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(80),
+              child: Container(
+                height: 55,
+                margin: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B263B),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
                   physics: const BouncingScrollPhysics(),
-                  children: templates.map((t) {
-                    return CustomDataPage(template: t);
+                  dividerColor: Colors.transparent,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white54,
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  indicator: BoxDecoration(
+                    color: _accentColor,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _accentColor.withOpacity(0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  tabs: templates.map((t) {
+                    return Tab(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.dataset_outlined, size: 16),
+                            const SizedBox(width: 8),
+                            Text(t.name.toUpperCase()),
+                          ],
+                        ),
+                      ),
+                    );
                   }).toList(),
                 ),
-              ],
+              ),
             ),
+          ),
+          body: Stack(
+            children: [
+              _buildAmbientGlow(_accentColor),
+
+              // --- BODY ---
+              TabBarView(
+                controller: _tabController,
+                physics: const BouncingScrollPhysics(),
+                children: templates.map((t) {
+                  return CustomDataPage(key: ValueKey(t.id), template: t);
+                }).toList(),
+              ),
+            ],
           ),
         );
       },
@@ -290,10 +356,7 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [
-                  accentColor.withOpacity(0.15),
-                  Colors.transparent,
-                ], // Reduced opacity slightly
+                colors: [accentColor.withOpacity(0.15), Colors.transparent],
                 center: Alignment.center,
                 radius: 0.6,
               ),

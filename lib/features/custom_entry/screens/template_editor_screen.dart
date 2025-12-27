@@ -19,7 +19,6 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
   List<CustomFieldConfig> _fields = [];
   bool _isEditing = false;
 
-  // Theme Colors
   final Color _bgColor = const Color(0xff0D1B2A);
   final Color _cardColor = const Color(0xFF1B263B).withOpacity(0.8);
   final Color _accentColor = const Color(0xFF3A86FF);
@@ -62,6 +61,21 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
   Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+
+      if (_screenName.trim().endsWith('AutoTracker')) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Name cannot end with 'AutoTracker'. This is reserved for system-generated sheets.",
+              ),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
+
       if (_fields.isEmpty) {
         ScaffoldMessenger.of(
           context,
@@ -75,6 +89,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
         fields: _fields,
         xAxisField: widget.templateToEdit?.xAxisField,
         yAxisField: widget.templateToEdit?.yAxisField,
+        // Preserve original createdAt on edit, or use now() for new
+        createdAt: widget.templateToEdit?.createdAt ?? DateTime.now(),
       );
 
       try {

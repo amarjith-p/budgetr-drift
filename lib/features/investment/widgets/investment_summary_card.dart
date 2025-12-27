@@ -10,6 +10,9 @@ class InvestmentSummaryCard extends StatelessWidget {
   final NumberFormat currencyFormat;
   final List<InvestmentRecord> records;
 
+  // Callback to trigger saving snapshot
+  final Function(double invested, double current, double dayGain) onRecordData;
+
   const InvestmentSummaryCard({
     super.key,
     required this.invested,
@@ -17,6 +20,7 @@ class InvestmentSummaryCard extends StatelessWidget {
     required this.dayGain,
     required this.currencyFormat,
     required this.records,
+    required this.onRecordData,
   });
 
   @override
@@ -28,7 +32,7 @@ class InvestmentSummaryCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20), // Reduced Padding
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -62,30 +66,63 @@ class InvestmentSummaryCard extends StatelessWidget {
                   fontSize: 13,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black26,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isProfit ? Icons.arrow_upward : Icons.arrow_downward,
-                      color: isProfit ? Colors.greenAccent : Colors.redAccent,
-                      size: 10,
+              // Status Indicator & Record Button
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      "${returnPercent.toStringAsFixed(2)}%",
-                      style: TextStyle(
-                        color: isProfit ? Colors.greenAccent : Colors.redAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isProfit ? Icons.arrow_upward : Icons.arrow_downward,
+                          color: isProfit
+                              ? Colors.greenAccent
+                              : Colors.redAccent,
+                          size: 10,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${returnPercent.toStringAsFixed(2)}%",
+                          style: TextStyle(
+                            color: isProfit
+                                ? Colors.greenAccent
+                                : Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // New Record Button
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => onRecordData(invested, current, dayGain),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.save_as_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),

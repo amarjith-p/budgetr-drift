@@ -32,6 +32,9 @@ class _CustomDataPageState extends State<CustomDataPage>
   @override
   bool get wantKeepAlive => true;
 
+  // Auto-Tracker detection logic
+  bool get _isAutoTracker => widget.template.name.endsWith('AutoTracker');
+
   // --- STALE DATA LOGIC START ---
   bool _isRowStale(CustomRecord record) {
     for (var field in widget.template.fields) {
@@ -221,37 +224,44 @@ class _CustomDataPageState extends State<CustomDataPage>
                     ),
                     const SizedBox(height: 24),
 
-                    ModernDropdownPill<String>(
-                      label: xField ?? 'Select X-Axis (Date/Text)',
-                      isActive: xField != null,
-                      icon: Icons.horizontal_rule,
-                      onTap: () => showSelectionSheet<String>(
-                        context: context,
-                        title: 'X-Axis',
-                        items: validX.map((f) => f.name).toList(),
-                        labelBuilder: (s) => s,
-                        onSelect: (v) => setInnerState(() {
-                          xField = v;
-                          errorMessage = null;
-                        }),
-                        selectedItem: xField,
+                    // --- Full Width Dropdowns ---
+                    SizedBox(
+                      width: double.infinity,
+                      child: ModernDropdownPill<String>(
+                        label: xField ?? 'Select X-Axis (Date/Text)',
+                        isActive: xField != null,
+                        icon: Icons.horizontal_rule,
+                        onTap: () => showSelectionSheet<String>(
+                          context: context,
+                          title: 'X-Axis',
+                          items: validX.map((f) => f.name).toList(),
+                          labelBuilder: (s) => s,
+                          onSelect: (v) => setInnerState(() {
+                            xField = v;
+                            errorMessage = null;
+                          }),
+                          selectedItem: xField,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ModernDropdownPill<String>(
-                      label: yField ?? 'Select Y-Axis (Number)',
-                      isActive: yField != null,
-                      icon: Icons.vertical_align_bottom,
-                      onTap: () => showSelectionSheet<String>(
-                        context: context,
-                        title: 'Y-Axis',
-                        items: validY.map((f) => f.name).toList(),
-                        labelBuilder: (s) => s,
-                        onSelect: (v) => setInnerState(() {
-                          yField = v;
-                          errorMessage = null;
-                        }),
-                        selectedItem: yField,
+                    SizedBox(
+                      width: double.infinity,
+                      child: ModernDropdownPill<String>(
+                        label: yField ?? 'Select Y-Axis (Number)',
+                        isActive: yField != null,
+                        icon: Icons.vertical_align_bottom,
+                        onTap: () => showSelectionSheet<String>(
+                          context: context,
+                          title: 'Y-Axis',
+                          items: validY.map((f) => f.name).toList(),
+                          labelBuilder: (s) => s,
+                          onSelect: (v) => setInnerState(() {
+                            yField = v;
+                            errorMessage = null;
+                          }),
+                          selectedItem: yField,
+                        ),
                       ),
                     ),
 
@@ -277,12 +287,17 @@ class _CustomDataPageState extends State<CustomDataPage>
                               padding: const EdgeInsets.only(right: 12.0),
                               child: OutlinedButton(
                                 onPressed: () async {
+                                  // --- FIX: Capture Navigator ---
+                                  final navigator = Navigator.of(context);
+
                                   widget.template.xAxisField = null;
                                   widget.template.yAxisField = null;
                                   await _service.updateCustomTemplate(
                                     widget.template,
                                   );
-                                  if (mounted) Navigator.pop(context);
+
+                                  // Use captured navigator
+                                  navigator.pop();
                                 },
                                 style: OutlinedButton.styleFrom(
                                   side: BorderSide(
@@ -315,12 +330,17 @@ class _CustomDataPageState extends State<CustomDataPage>
                                 return;
                               }
 
+                              // --- FIX: Capture Navigator ---
+                              final navigator = Navigator.of(context);
+
                               widget.template.xAxisField = xField;
                               widget.template.yAxisField = yField;
                               await _service.updateCustomTemplate(
                                 widget.template,
                               );
-                              if (mounted) Navigator.pop(context);
+
+                              // Use captured navigator
+                              navigator.pop();
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _accentColor,
@@ -437,16 +457,19 @@ class _CustomDataPageState extends State<CustomDataPage>
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          floatingActionButton: FloatingActionButton.extended(
-            heroTag: 'custom_data_fab_${widget.template.id}',
-            backgroundColor: _accentColor,
-            onPressed: () => _showEntrySheet(records),
-            icon: const Icon(Icons.add),
-            label: const Text(
-              'Add Entry',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
+          // Hide Add Entry FAB if this is an auto-generated Tracker
+          floatingActionButton: _isAutoTracker
+              ? null
+              : FloatingActionButton.extended(
+                  heroTag: 'custom_data_fab_${widget.template.id}',
+                  backgroundColor: _accentColor,
+                  onPressed: () => _showEntrySheet(records),
+                  icon: const Icon(Icons.add),
+                  label: const Text(
+                    'Add Entry',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
           body: Builder(
             builder: (context) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -535,6 +558,26 @@ class _CustomDataPageState extends State<CustomDataPage>
                   if (widget.template.xAxisField != null &&
                       widget.template.yAxisField != null &&
                       records.isNotEmpty) ...[
+                    // Configure Button above Chart
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: _configureChart,
+                          icon: const Icon(Icons.tune_rounded, size: 16),
+                          label: const Text("Configure Chart"),
+                          style: TextButton.styleFrom(
+                            foregroundColor: _accentColor,
+                            textStyle: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      ),
+                    ),
                     Container(
                       height: 250,
                       margin: const EdgeInsets.symmetric(
@@ -656,6 +699,13 @@ class _CustomDataPageState extends State<CustomDataPage>
                                           CustomFieldType.serial) {
                                         display =
                                             '${f.serialPrefix ?? ''}$val${f.serialSuffix ?? ''}';
+                                      } else if (f.type ==
+                                          CustomFieldType.number) {
+                                        // Standard Number display with Suffix support (e.g. %)
+                                        display = val.toString();
+                                        if (f.serialSuffix != null) {
+                                          display += f.serialSuffix!;
+                                        }
                                       } else {
                                         display = val.toString();
                                       }
@@ -694,18 +744,21 @@ class _CustomDataPageState extends State<CustomDataPage>
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.edit,
-                                            size: 16,
-                                            color: Colors.white54,
+                                        // Hide Edit button if auto-generated
+                                        if (!_isAutoTracker) ...[
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.edit,
+                                              size: 16,
+                                              color: Colors.white54,
+                                            ),
+                                            onPressed: () =>
+                                                _showEntrySheet(records, r),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
                                           ),
-                                          onPressed: () =>
-                                              _showEntrySheet(records, r),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                        ),
-                                        const SizedBox(width: 12),
+                                          const SizedBox(width: 12),
+                                        ],
                                         IconButton(
                                           icon: const Icon(
                                             Icons.delete,
@@ -722,7 +775,8 @@ class _CustomDataPageState extends State<CustomDataPage>
                                 ],
                               );
                             }),
-                            if (totals.isNotEmpty)
+                            // Hide Total Row if auto-generated
+                            if (totals.isNotEmpty && !_isAutoTracker)
                               DataRow(
                                 cells: [
                                   ...widget.template.fields.map((f) {

@@ -112,6 +112,22 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
       _closeKeyboard();
   }
 
+  // --- NEW: Handle Previous Field ---
+  void _handlePrevious() {
+    if (_activeController == _nonCalcExpenseCtrl)
+      _setActive(_nonCalcIncomeCtrl, _nonCalcIncomeFocus);
+    else if (_activeController == _nonCalcIncomeCtrl)
+      _setActive(_capLossCtrl, _capLossFocus);
+    else if (_activeController == _capLossCtrl)
+      _setActive(_capGainCtrl, _capGainFocus);
+    else if (_activeController == _capGainCtrl)
+      _setActive(_netExpenseCtrl, _netExpenseFocus);
+    else if (_activeController == _netExpenseCtrl)
+      _setActive(_netIncomeCtrl, _netIncomeFocus);
+    else
+      _closeKeyboard();
+  }
+
   Future<void> _save() async {
     _closeKeyboard();
 
@@ -373,6 +389,7 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
                     onClose: _closeKeyboard,
                     onSwitchToSystem: _switchToSystemKeyboard,
                     onNext: _handleNext,
+                    onPrevious: _handlePrevious, // Added Callback
                   )
                 : const SizedBox.shrink(),
           ),

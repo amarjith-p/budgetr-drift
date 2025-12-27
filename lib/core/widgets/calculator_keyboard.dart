@@ -8,7 +8,8 @@ class CalculatorKeyboard extends StatelessWidget {
   final VoidCallback onEquals;
   final VoidCallback? onClose;
   final VoidCallback? onSwitchToSystem;
-  final VoidCallback? onNext; // NEW: Callback for Next button
+  final VoidCallback? onNext;
+  final VoidCallback? onPrevious; // NEW: Callback for Previous button
 
   const CalculatorKeyboard({
     super.key,
@@ -19,6 +20,7 @@ class CalculatorKeyboard extends StatelessWidget {
     this.onClose,
     this.onSwitchToSystem,
     this.onNext,
+    this.onPrevious, // Add to constructor
   });
 
   // Static helpers (Unchanged)
@@ -96,7 +98,20 @@ class CalculatorKeyboard extends StatelessWidget {
                     ),
                   ),
                 const Spacer(),
-                // NEW: Next Button
+
+                // NEW: Previous Button
+                if (onPrevious != null)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 20,
+                    ),
+                    onPressed: onPrevious,
+                    tooltip: 'Previous Field',
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+
+                // Next Button
                 if (onNext != null)
                   IconButton(
                     icon: const Icon(Icons.arrow_forward_ios_rounded, size: 20),
@@ -104,6 +119,7 @@ class CalculatorKeyboard extends StatelessWidget {
                     tooltip: 'Next Field',
                     color: Theme.of(context).colorScheme.primary,
                   ),
+
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.keyboard_hide_outlined),

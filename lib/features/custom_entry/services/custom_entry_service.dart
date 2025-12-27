@@ -16,6 +16,66 @@ class CustomEntryService {
         );
   }
 
+  Future<String> ensureInvestmentTemplateExists(String templateName) async {
+    // 1. Check for existing template
+    final query = await _db
+        .collection(FirebaseConstants.customTemplates)
+        .where('name', isEqualTo: templateName)
+        .limit(1)
+        .get();
+
+    if (query.docs.isNotEmpty) {
+      return query.docs.first.id;
+    }
+
+    // 2. Create new template if it doesn't exist
+    final newTemplate = CustomTemplate(
+      id: '',
+      name: templateName,
+      createdAt: DateTime.now(), // Initialize createdAt
+      fields: [
+        CustomFieldConfig(name: 'Date', type: CustomFieldType.date),
+        CustomFieldConfig(
+          name: 'Invested',
+          type: CustomFieldType.currency,
+          currencySymbol: '₹',
+          isSumRequired: true,
+        ),
+        CustomFieldConfig(
+          name: 'Current Value',
+          type: CustomFieldType.currency,
+          currencySymbol: '₹',
+          isSumRequired: true,
+        ),
+        CustomFieldConfig(
+          name: 'Day Gain',
+          type: CustomFieldType.currency,
+          currencySymbol: '₹',
+          isSumRequired: true,
+        ),
+        CustomFieldConfig(
+          name: 'Total Return',
+          type: CustomFieldType.currency,
+          currencySymbol: '₹',
+          isSumRequired: true,
+        ),
+        CustomFieldConfig(
+          name: 'Return %',
+          type: CustomFieldType.number,
+          serialSuffix: '%',
+        ),
+      ],
+      xAxisField: 'Date',
+      yAxisField: 'Current Value',
+    );
+
+    final docRef = await _db
+        .collection(FirebaseConstants.customTemplates)
+        .add(newTemplate.toMap());
+
+    return docRef.id;
+  }
+
   Future<void> addCustomTemplate(CustomTemplate template) {
     return _db
         .collection(FirebaseConstants.customTemplates)
@@ -28,7 +88,7 @@ class CustomEntryService {
         .doc(template.id)
         .update(template.toMap());
 
-    // Backfill logic moved here
+    // Backfill logic
     for (var field in template.fields) {
       if (field.type == CustomFieldType.serial) {
         await _backfillSerialNumbers(template.id, field.name);
@@ -87,6 +147,14 @@ class CustomEntryService {
         .orderBy('createdAt', descending: false)
         .snapshots()
         .map((s) => s.docs.map((d) => CustomRecord.fromFirestore(d)).toList());
+  }
+
+  Future<List<CustomRecord>> fetchCustomRecords(String templateId) async {
+    final snapshot = await _db
+        .collection(FirebaseConstants.customRecords)
+        .where('templateId', isEqualTo: templateId)
+        .get();
+    return snapshot.docs.map((d) => CustomRecord.fromFirestore(d)).toList();
   }
 
   Future<int> getRecordCount(String templateId) async {
