@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/bank_list.dart';
-import '../../../core/widgets/modern_loader.dart';
+import '../../../core/widgets/modern_loader.dart'; // Import ModernLoader
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
 import '../widgets/add_credit_card_sheet.dart';
@@ -16,13 +16,10 @@ class CreditTrackerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final CreditService service = CreditService();
     final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
-
-    // Theme Colors
-    final bgColor = const Color(0xff0D1B2A);
     final accentColor = const Color(0xFF3A86FF);
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: const Color(0xff0D1B2A),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -49,20 +46,15 @@ class CreditTrackerScreen extends StatelessWidget {
       body: StreamBuilder<List<CreditCardModel>>(
         stream: service.getCreditCards(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: ModernLoader());
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty)
             return _buildEmptyState(context);
-          }
 
           final cards = snapshot.data!;
-
-          // CALCULATION LOGIC
           final double totalDebt = cards
               .where((c) => c.currentBalance > 0)
               .fold(0.0, (sum, c) => sum + c.currentBalance);
-
           final double totalSurplus = cards
               .where((c) => c.currentBalance < 0)
               .fold(0.0, (sum, c) => sum + c.currentBalance);
@@ -79,10 +71,6 @@ class CreditTrackerScreen extends StatelessWidget {
             label = "TOTAL SURPLUS";
             displayAmount = -totalSurplus;
             valueColor = const Color(0xFF4CC9F0);
-          } else {
-            label = "STATUS";
-            displayAmount = 0;
-            valueColor = const Color(0xFF00B4D8);
           }
 
           return Stack(
@@ -94,15 +82,12 @@ class CreditTrackerScreen extends StatelessWidget {
                     child: ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                       itemCount: cards.length,
-                      itemBuilder: (context, index) {
-                        final card = cards[index];
-                        return _buildCreditCard(
-                          context,
-                          card,
-                          accentColor,
-                          currency,
-                        );
-                      },
+                      itemBuilder: (context, index) => _buildCreditCard(
+                        context,
+                        cards[index],
+                        accentColor,
+                        currency,
+                      ),
                     ),
                   ),
                 ],
@@ -176,15 +161,11 @@ class CreditTrackerScreen extends StatelessWidget {
     Color color,
     NumberFormat currency,
   ) {
-    String displayString;
-    if (label == "STATUS") {
-      displayString = "All Settled";
-    } else if (amount > 0) {
-      displayString = "+ ${currency.format(amount)}";
-    } else {
-      displayString = currency.format(amount);
-    }
-
+    String displayString = label == "STATUS"
+        ? "All Settled"
+        : (amount > 0
+              ? "+ ${currency.format(amount)}"
+              : currency.format(amount));
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -215,25 +196,23 @@ class CreditTrackerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.credit_card_off,
-            size: 60,
-            color: Colors.white.withOpacity(0.2),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "No Credit Cards Added",
-            style: TextStyle(color: Colors.white54),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildEmptyState(BuildContext context) => Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.credit_card_off,
+          size: 60,
+          color: Colors.white.withOpacity(0.2),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          "No Credit Cards Added",
+          style: TextStyle(color: Colors.white54),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildCreditCard(
     BuildContext context,
@@ -292,11 +271,10 @@ class CreditTrackerScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          // --- UPDATED LOGO DISPLAY ---
                           Container(
-                            width: 36, // Fixed size for consistency
+                            width: 36,
                             height: 36,
-                            padding: const EdgeInsets.all(4), // Inner padding
+                            padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
@@ -305,25 +283,21 @@ class CreditTrackerScreen extends StatelessWidget {
                               child: Image.asset(
                                 BankConstants.getBankLogoPath(card.bankName),
                                 fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  // Fallback to Initials if image fails
-                                  return Center(
-                                    child: Text(
-                                      BankConstants.getBankInitials(
-                                        card.bankName,
-                                      ),
-                                      style: TextStyle(
-                                        color: accent,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 10,
-                                      ),
+                                errorBuilder: (c, e, s) => Center(
+                                  child: Text(
+                                    BankConstants.getBankInitials(
+                                      card.bankName,
                                     ),
-                                  );
-                                },
+                                    style: TextStyle(
+                                      color: accent,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                          // ---------------------------
                           const SizedBox(width: 10),
                           Text(
                             card.bankName.toUpperCase(),
@@ -578,10 +552,12 @@ class CreditTrackerScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(ctx);
+              Navigator.pop(ctx); // Close Dialog
+              _showLoadingDialog(context); // Show Loader
               try {
                 await CreditService().deleteCreditCard(card.id);
                 if (context.mounted) {
+                  Navigator.pop(context); // Close Loader
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("Account deleted successfully"),
@@ -591,6 +567,7 @@ class CreditTrackerScreen extends StatelessWidget {
                 }
               } catch (e) {
                 if (context.mounted) {
+                  Navigator.pop(context); // Close Loader
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text("Error: $e")));
@@ -610,26 +587,31 @@ class CreditTrackerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
-        ),
-      ],
+  void _showLoadingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: ModernLoader(size: 60)),
     );
   }
 
+  Widget _buildDetailRow(String label, String value) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(
+        label,
+        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+      ),
+      Text(
+        value,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 15,
+        ),
+      ),
+    ],
+  );
   String _getOrdinal(int number) {
     if (number >= 11 && number <= 13) return '${number}th';
     switch (number % 10) {

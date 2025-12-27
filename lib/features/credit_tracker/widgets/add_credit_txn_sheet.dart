@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import '../../../core/widgets/modern_dropdown.dart'; // Contains showSelectionSheet
+import '../../../core/widgets/modern_dropdown.dart';
+import '../../../core/widgets/modern_loader.dart'; // Import ModernLoader
 import '../../../core/models/percentage_config_model.dart';
 import '../../settings/services/settings_service.dart';
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
 
 class AddCreditTransactionSheet extends StatefulWidget {
-  const AddCreditTransactionSheet({super.key});
+  final CreditTransactionModel? transactionToEdit;
+
+  const AddCreditTransactionSheet({super.key, this.transactionToEdit});
 
   @override
   State<AddCreditTransactionSheet> createState() =>
@@ -20,21 +23,18 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
   final _amountCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
-  // Data
   CreditCardModel? _selectedCard;
   List<CreditCardModel> _cards = [];
   List<String> _buckets = [];
 
-  // Selections
   DateTime _date = DateTime.now();
   String? _selectedBucket;
-  String _type = 'Expense'; // 'Expense' or 'Income'
+  String _type = 'Expense';
   String? _category;
   String? _subCategory;
 
   bool _isLoading = false;
 
-  // Categories Map
   final Map<String, List<String>> _expenseCategories = {
     'Shopping': ['Clothing', 'Electronics', 'Groceries', 'Home'],
     'Food': ['Dining Out', 'Delivery', 'Drinks'],
@@ -57,7 +57,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
   }
 
   Future<void> _loadData() async {
-    // Load Cards
     final cardStream = CreditService().getCreditCards().first;
     final configFuture = SettingsService().getPercentageConfig();
 
@@ -69,9 +68,27 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
         final config = results[1] as PercentageConfig;
         _buckets = config.categories.map((e) => e.name).toList();
 
-        // NO DEFAULT SELECTION
-        _selectedCard = null;
-        _selectedBucket = null;
+        if (widget.transactionToEdit != null) {
+          final t = widget.transactionToEdit!;
+          _amountCtrl.text = t.amount.toStringAsFixed(2);
+          if (_amountCtrl.text.endsWith(".00")) {
+            _amountCtrl.text = t.amount.toStringAsFixed(0);
+          }
+          _notesCtrl.text = t.notes;
+          _date = t.date.toDate();
+          _type = t.type;
+          _category = t.category;
+          _subCategory = t.subCategory;
+          _selectedBucket = t.bucket.isNotEmpty ? t.bucket : null;
+
+          _selectedCard = _cards.firstWhere(
+            (c) => c.id == t.cardId,
+            orElse: () => _cards.isNotEmpty ? _cards.first : _cards[0],
+          );
+        } else {
+          _selectedCard = null;
+          _selectedBucket = null;
+        }
       });
     }
   }
@@ -81,11 +98,10 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
     setState(() => _isLoading = true);
 
     try {
-      // Determine bucket: User selected if Expense, else 'Repayment'
       final bucketValue = _type == 'Expense' ? (_selectedBucket!) : 'Repayment';
 
       final txn = CreditTransactionModel(
-        id: '',
+        id: widget.transactionToEdit?.id ?? '',
         cardId: _selectedCard!.id,
         amount: double.parse(_amountCtrl.text),
         date: Timestamp.fromDate(_date),
@@ -96,7 +112,12 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
         notes: _notesCtrl.text,
       );
 
-      await CreditService().addTransaction(txn);
+      if (widget.transactionToEdit != null) {
+        await CreditService().updateTransaction(txn);
+      } else {
+        await CreditService().addTransaction(txn);
+      }
+
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
@@ -110,6 +131,7 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.transactionToEdit != null;
     final categories = _type == 'Expense'
         ? _expenseCategories
         : _incomeCategories;
@@ -146,9 +168,9 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                "Add Transaction",
-                style: TextStyle(
+              Text(
+                isEditing ? "Edit Transaction" : "Add Transaction",
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -156,18 +178,22 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
               ),
               const SizedBox(height: 24),
 
-              // Card Selection (Mandatory)
-              _buildSelectField<CreditCardModel>(
-                label: "Credit Card",
-                value: _selectedCard,
-                items: _cards,
-                labelBuilder: (c) => "${c.bankName} - ${c.name}",
-                onSelect: (v) => setState(() => _selectedCard = v),
-                validator: (v) => v == null ? 'Please select a card' : null,
+              AbsorbPointer(
+                absorbing: isEditing,
+                child: Opacity(
+                  opacity: isEditing ? 0.5 : 1.0,
+                  child: _buildSelectField<CreditCardModel>(
+                    label: "Credit Card",
+                    value: _selectedCard,
+                    items: _cards,
+                    labelBuilder: (c) => "${c.bankName} - ${c.name}",
+                    onSelect: (v) => setState(() => _selectedCard = v),
+                    validator: (v) => v == null ? 'Please select a card' : null,
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
 
-              // Type (Income/Expense)
               Row(
                 children: [
                   Expanded(
@@ -189,10 +215,8 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Date & Time Picker
               InkWell(
                 onTap: () async {
-                  // 1. Pick Date
                   final pickedDate = await showDatePicker(
                     context: context,
                     initialDate: _date,
@@ -204,7 +228,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
 
                   if (pickedDate != null) {
                     if (!mounted) return;
-                    // 2. Pick Time
                     final pickedTime = await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay.fromDateTime(_date),
@@ -213,7 +236,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                     );
 
                     if (pickedTime != null) {
-                      // 3. Combine
                       setState(() {
                         _date = DateTime(
                           pickedDate.year,
@@ -243,7 +265,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Amount
               TextFormField(
                 controller: _amountCtrl,
                 keyboardType: TextInputType.number,
@@ -257,7 +278,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Bucket Selection (ONLY VISIBLE FOR EXPENSE)
               if (_type == 'Expense') ...[
                 _buildSelectField<String>(
                   label: "Budget Bucket",
@@ -270,7 +290,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                 const SizedBox(height: 16),
               ],
 
-              // Category & SubCategory (Dynamic Layout)
               Row(
                 children: [
                   Expanded(
@@ -281,12 +300,11 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                       labelBuilder: (v) => v,
                       onSelect: (v) => setState(() {
                         _category = v;
-                        _subCategory = null; // Reset sub
+                        _subCategory = null;
                       }),
                       validator: (v) => v == null ? 'Required' : null,
                     ),
                   ),
-                  // Only show Sub-Category if Category is selected
                   if (_category != null) ...[
                     const SizedBox(width: 12),
                     Expanded(
@@ -303,7 +321,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Notes
               TextFormField(
                 controller: _notesCtrl,
                 style: const TextStyle(color: Colors.white),
@@ -323,10 +340,20 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    "Add Transaction",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
+                  child: _isLoading
+                      // UPDATED: ModernLoader used here
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: ModernLoader(size: 24),
+                        )
+                      : Text(
+                          isEditing ? "Update Transaction" : "Add Transaction",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -350,7 +377,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
     );
   }
 
-  /// Improved Select Field using FormField
   Widget _buildSelectField<T>({
     required String label,
     required T? value,
