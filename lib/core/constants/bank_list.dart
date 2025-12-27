@@ -1,7 +1,7 @@
 class BankConstants {
   static const List<String> indianBanks = [
     'HDFC Bank',
-    'SBI (State Bank of India)',
+    'State Bank of India',
     'ICICI Bank',
     'Axis Bank',
     'Kotak Mahindra Bank',
@@ -21,10 +21,17 @@ class BankConstants {
     'Other',
   ];
 
-  // Helper to get asset path - Ensure you add these images to your assets folder
-  // Or use the getBankInitials method as a fallback
+  // Helper to get asset path
+  // Updates: Removes spaces and special characters to match filenames like 'hdfcbank.png'
   static String getBankLogoPath(String bankName) {
-    String formatted = bankName.split(' ')[0].toLowerCase();
+    if (bankName.isEmpty) return '';
+    // "HDFC Bank" -> "hdfcbank"
+    // "ICICI Bank" -> "icicibank"
+    final formatted = bankName
+        .toLowerCase()
+        .replaceAll(' ', '')
+        .replaceAll('(', '')
+        .replaceAll(')', '');
     return 'assets/banks/$formatted.png';
   }
 

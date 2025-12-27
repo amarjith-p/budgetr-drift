@@ -20,6 +20,33 @@ class CreditService {
     return _db.collection(FirebaseConstants.creditCards).add(card.toMap());
   }
 
+  Future<void> updateCreditCard(CreditCardModel card) async {
+    await _db
+        .collection(FirebaseConstants.creditCards)
+        .doc(card.id)
+        .update(card.toMap());
+  }
+
+  Future<void> deleteCreditCard(String cardId) async {
+    final batch = _db.batch();
+
+    // 1. Delete the Card Document
+    final cardRef = _db.collection(FirebaseConstants.creditCards).doc(cardId);
+    batch.delete(cardRef);
+
+    // 2. Delete all related Transactions
+    final txnsSnapshot = await _db
+        .collection(FirebaseConstants.creditTransactions)
+        .where('cardId', isEqualTo: cardId)
+        .get();
+
+    for (final doc in txnsSnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+  }
+
   // --- Transactions ---
   Stream<List<CreditTransactionModel>> getTransactionsForCard(String cardId) {
     return _db
