@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/bank_list.dart';
-import '../../../core/widgets/modern_dropdown.dart'; // Contains showSelectionSheet
+import '../../../core/widgets/modern_dropdown.dart';
+import '../../../core/widgets/modern_loader.dart'; // Import ModernLoader
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
 
@@ -53,16 +54,14 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
       final isEditing = widget.cardToEdit != null;
 
       final card = CreditCardModel(
-        id: isEditing ? widget.cardToEdit!.id : '', // Preserve ID if editing
+        id: isEditing ? widget.cardToEdit!.id : '',
         name: _nameCtrl.text,
         bankName: _selectedBank!,
         creditLimit: double.parse(_limitCtrl.text),
         billDate: _billDate,
         dueDate: _dueDate,
         createdAt: isEditing ? widget.cardToEdit!.createdAt : Timestamp.now(),
-        currentBalance: isEditing
-            ? widget.cardToEdit!.currentBalance
-            : 0.0, // Preserve balance
+        currentBalance: isEditing ? widget.cardToEdit!.currentBalance : 0.0,
       );
 
       if (isEditing) {
@@ -123,7 +122,6 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
               ),
               const SizedBox(height: 24),
 
-              // Card Name
               TextFormField(
                 controller: _nameCtrl,
                 style: const TextStyle(color: Colors.white),
@@ -132,7 +130,6 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Bank Dropdown (Mandatory)
               _buildSelectField<String>(
                 label: "Bank Name",
                 value: _selectedBank,
@@ -143,7 +140,6 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Limit
               TextFormField(
                 controller: _limitCtrl,
                 keyboardType: TextInputType.number,
@@ -153,7 +149,6 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Dates Row
               Row(
                 children: [
                   Expanded(
@@ -179,7 +174,6 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
               ),
               const SizedBox(height: 32),
 
-              // Save Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -193,13 +187,11 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
                     ),
                   ),
                   child: _isLoading
+                      // UPDATED: Use ModernLoader instead of CircularProgressIndicator
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
+                          height: 24,
+                          width: 24,
+                          child: ModernLoader(size: 24),
                         )
                       : Text(
                           widget.cardToEdit != null
@@ -233,7 +225,6 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
     );
   }
 
-  /// Improved Select Field using FormField for proper validation
   Widget _buildSelectField<T>({
     required String label,
     required T? value,
