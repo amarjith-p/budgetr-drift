@@ -9,6 +9,7 @@ class FinancialRecord {
   final int month;
   final double effectiveIncome;
   final Timestamp createdAt;
+  final Timestamp updatedAt; // NEW: Track updates
 
   // Dynamic Allocations: Key = Category Name, Value = Amount
   final Map<String, double> allocations;
@@ -24,6 +25,7 @@ class FinancialRecord {
     required this.month,
     required this.effectiveIncome,
     required this.createdAt,
+    required this.updatedAt, // Require in constructor
     required this.allocations,
     required this.allocationPercentages,
   });
@@ -75,6 +77,8 @@ class FinancialRecord {
       month: data['month'] ?? 0,
       effectiveIncome: (data['effectiveIncome'] ?? 0.0).toDouble(),
       createdAt: data['createdAt'] ?? Timestamp.now(),
+      // Use updatedAt if available, else fallback to createdAt, else Now
+      updatedAt: data['updatedAt'] ?? data['createdAt'] ?? Timestamp.now(),
       allocations: allocations,
       allocationPercentages: percentages,
     );
@@ -90,6 +94,7 @@ class FinancialRecord {
       'month': month,
       'effectiveIncome': effectiveIncome,
       'createdAt': createdAt,
+      'updatedAt': updatedAt, // Save to DB
       'allocations': allocations,
       'allocationPercentages': allocationPercentages,
     };

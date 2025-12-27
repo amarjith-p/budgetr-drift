@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart'; // Added for Timestamp
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/models/financial_record_model.dart';
@@ -5,13 +6,13 @@ import '../../../core/models/financial_record_model.dart';
 class DashboardSummaryCard extends StatelessWidget {
   final FinancialRecord record;
   final NumberFormat currencyFormat;
-  final VoidCallback onOptionsTap; // 1. New Callback
+  final VoidCallback onOptionsTap;
 
   const DashboardSummaryCard({
     super.key,
     required this.record,
     required this.currencyFormat,
-    required this.onOptionsTap, // 2. Require it
+    required this.onOptionsTap,
   });
 
   @override
@@ -25,8 +26,12 @@ class DashboardSummaryCard extends StatelessWidget {
     final totalDeductions = record.emi;
     final balance = record.effectiveIncome;
 
+    // Use updatedAt to show the last modified time
+    final String formattedDate = DateFormat(
+      'dd MMM yyyy : HH:mm',
+    ).format(record.updatedAt.toDate());
+
     return Stack(
-      // 3. Use Stack to position the icon
       children: [
         Container(
           padding: const EdgeInsets.all(24),
@@ -57,6 +62,17 @@ class DashboardSummaryCard extends StatelessWidget {
                   letterSpacing: 1.5,
                 ),
               ),
+              // --- NEW: As on Date Label ---
+              const SizedBox(height: 4),
+              Text(
+                "As on $formattedDate",
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.3),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              // -----------------------------
               const SizedBox(height: 8),
               Text(
                 currencyFormat.format(balance),
@@ -91,7 +107,6 @@ class DashboardSummaryCard extends StatelessWidget {
             ],
           ),
         ),
-        // 4. The "More Options" Icon
         Positioned(
           top: 8,
           right: 8,

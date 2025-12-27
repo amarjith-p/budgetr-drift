@@ -327,6 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   (r) =>
                       r.year == _currentDate.year &&
                       r.month == _currentDate.month,
+                  // FIX: Added required updatedAt param
                   orElse: () => FinancialRecord(
                     id: '',
                     salary: 0,
@@ -338,6 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     allocations: {},
                     allocationPercentages: {},
                     createdAt: Timestamp.now(),
+                    updatedAt: Timestamp.now(), // Added
                   ),
                 );
 

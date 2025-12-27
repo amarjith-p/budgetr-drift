@@ -347,7 +347,9 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
       effectiveIncome: _effectiveIncome,
       allocations: allocations,
       allocationPercentages: percentages,
+      // Preserve creation, set update to Now
       createdAt: widget.recordToEdit?.createdAt ?? Timestamp.now(),
+      updatedAt: Timestamp.now(),
     );
 
     await _dashboardService.setFinancialRecord(record);
