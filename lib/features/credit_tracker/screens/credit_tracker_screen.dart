@@ -31,61 +31,108 @@ class CreditTrackerScreen extends StatelessWidget {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: StreamBuilder<List<CreditCardModel>>(
-        stream: service.getCreditCards(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: ModernLoader());
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return _buildEmptyState(context);
-          }
-
-          final cards = snapshot.data!;
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: cards.length,
-            itemBuilder: (context, index) {
-              final card = cards[index];
-              return _buildCreditCard(
-                context,
-                card,
-                cardColor,
-                accentColor,
-                currency,
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.small(
-            heroTag: "addCard",
-            backgroundColor: Colors.white12,
-            foregroundColor: Colors.white,
+        actions: [
+          // Moved "Add Card" to App Bar
+          IconButton(
             onPressed: () => showModalBottomSheet(
               context: context,
               isScrollControlled: true,
               backgroundColor: Colors.transparent,
               builder: (ctx) => const AddCreditCardSheet(),
             ),
-            child: const Icon(Icons.credit_card),
+            icon: const Icon(Icons.add_card),
+            tooltip: "Add New Card",
           ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: "addTxn",
-            backgroundColor: accentColor,
-            foregroundColor: Colors.white,
-            onPressed: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (ctx) => const AddCreditTransactionSheet(),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Stack(
+        children: [
+          StreamBuilder<List<CreditCardModel>>(
+            stream: service.getCreditCards(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: ModernLoader());
+              }
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return _buildEmptyState(context);
+              }
+
+              final cards = snapshot.data!;
+              return ListView.builder(
+                // Add padding at bottom so last card isn't covered by the floating button
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                itemCount: cards.length,
+                itemBuilder: (context, index) {
+                  final card = cards[index];
+                  return _buildCreditCard(
+                    context,
+                    card,
+                    cardColor,
+                    accentColor,
+                    currency,
+                  );
+                },
+              );
+            },
+          ),
+
+          // Modern "Add Transaction" Button (Pill Style)
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: GestureDetector(
+                onTap: () => showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => const AddCreditTransactionSheet(),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [accentColor, const Color(0xFF2563EB)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentColor.withOpacity(0.4),
+                        blurRadius: 20,
+                        spreadRadius: -5,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.add_rounded, color: Colors.white),
+                      SizedBox(width: 12),
+                      Text(
+                        "Add Transaction",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            child: const Icon(Icons.add),
           ),
         ],
       ),
@@ -158,7 +205,6 @@ class CreditTrackerScreen extends StatelessWidget {
                         fontSize: 14,
                       ),
                     ),
-                    // Use Image.asset(BankConstants.getBankLogoPath(card.bankName)) here if you have assets
                   ),
                 ),
                 const SizedBox(width: 16),

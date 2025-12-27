@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import '../../../core/widgets/modern_dropdown.dart'; // Contains ModernDropdownPill & showSelectionSheet
+import '../../../core/widgets/modern_dropdown.dart'; // Contains showSelectionSheet
 import '../../../core/models/percentage_config_model.dart';
 import '../../settings/services/settings_service.dart';
 import '../models/credit_models.dart';
@@ -63,35 +63,49 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
 
     final results = await Future.wait([cardStream, configFuture]);
 
-    setState(() {
-      _cards = results[0] as List<CreditCardModel>;
-      final config = results[1] as PercentageConfig;
-      _buckets = config.categories.map((e) => e.name).toList();
+    if (mounted) {
+      setState(() {
+        _cards = results[0] as List<CreditCardModel>;
+        final config = results[1] as PercentageConfig;
+        _buckets = config.categories.map((e) => e.name).toList();
 
-      // Default selections
-      if (_cards.isNotEmpty) _selectedCard = _cards.first;
-      if (_buckets.isNotEmpty) _selectedBucket = _buckets.first;
-    });
+        // NO DEFAULT SELECTION
+        _selectedCard = null;
+        _selectedBucket = null;
+      });
+    }
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || _selectedCard == null) return;
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
-    final txn = CreditTransactionModel(
-      id: '',
-      cardId: _selectedCard!.id,
-      amount: double.parse(_amountCtrl.text),
-      date: Timestamp.fromDate(_date),
-      bucket: _selectedBucket ?? 'Unallocated',
-      type: _type,
-      category: _category ?? 'General',
-      subCategory: _subCategory ?? 'General',
-      notes: _notesCtrl.text,
-    );
+    try {
+      // Determine bucket: User selected if Expense, else 'Repayment'
+      final bucketValue = _type == 'Expense' ? (_selectedBucket!) : 'Repayment';
 
-    await CreditService().addTransaction(txn);
-    if (mounted) Navigator.pop(context);
+      final txn = CreditTransactionModel(
+        id: '',
+        cardId: _selectedCard!.id,
+        amount: double.parse(_amountCtrl.text),
+        date: Timestamp.fromDate(_date),
+        bucket: bucketValue,
+        type: _type,
+        category: _category!,
+        subCategory: _subCategory ?? 'General',
+        notes: _notesCtrl.text,
+      );
+
+      await CreditService().addTransaction(txn);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -142,21 +156,14 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
               ),
               const SizedBox(height: 24),
 
-              // Card Selection
-              DropdownButtonFormField<CreditCardModel>(
+              // Card Selection (Mandatory)
+              _buildSelectField<CreditCardModel>(
+                label: "Credit Card",
                 value: _selectedCard,
-                dropdownColor: const Color(0xFF1B263B),
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDeco('Select Credit Card'),
-                items: _cards
-                    .map(
-                      (c) => DropdownMenuItem(
-                        value: c,
-                        child: Text("${c.bankName} - ${c.name}"),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _selectedCard = v),
+                items: _cards,
+                labelBuilder: (c) => "${c.bankName} - ${c.name}",
+                onSelect: (v) => setState(() => _selectedCard = v),
+                validator: (v) => v == null ? 'Please select a card' : null,
               ),
               const SizedBox(height: 16),
 
@@ -182,10 +189,11 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Date
-              GestureDetector(
+              // Date & Time Picker
+              InkWell(
                 onTap: () async {
-                  final d = await showDatePicker(
+                  // 1. Pick Date
+                  final pickedDate = await showDatePicker(
                     context: context,
                     initialDate: _date,
                     firstDate: DateTime(2020),
@@ -193,30 +201,43 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                     builder: (context, child) =>
                         Theme(data: ThemeData.dark(), child: child!),
                   );
-                  if (d != null) setState(() => _date = d);
+
+                  if (pickedDate != null) {
+                    if (!mounted) return;
+                    // 2. Pick Time
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.fromDateTime(_date),
+                      builder: (context, child) =>
+                          Theme(data: ThemeData.dark(), child: child!),
+                    );
+
+                    if (pickedTime != null) {
+                      // 3. Combine
+                      setState(() {
+                        _date = DateTime(
+                          pickedDate.year,
+                          pickedDate.month,
+                          pickedDate.day,
+                          pickedTime.hour,
+                          pickedTime.minute,
+                        );
+                      });
+                    }
+                  }
                 },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 16,
+                borderRadius: BorderRadius.circular(12),
+                child: InputDecorator(
+                  decoration: _inputDeco('Date & Time').copyWith(
+                    suffixIcon: const Icon(
+                      Icons.calendar_today,
+                      color: Colors.white54,
+                      size: 18,
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        DateFormat('dd MMM yyyy').format(_date),
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      const Icon(
-                        Icons.calendar_today,
-                        color: Colors.white54,
-                        size: 18,
-                      ),
-                    ],
+                  child: Text(
+                    DateFormat('dd MMM yyyy, hh:mm a').format(_date),
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ),
@@ -232,82 +253,52 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                   fontWeight: FontWeight.bold,
                 ),
                 decoration: _inputDeco('Amount').copyWith(prefixText: '₹ '),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+                validator: (v) => v!.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
 
-              // Bucket Selection (Fixed)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Budget Bucket",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ModernDropdownPill(
-                    label: _selectedBucket ?? "Select Bucket",
-                    icon: Icons.pie_chart_outline,
-                    isActive: _selectedBucket != null,
-                    onTap: () => showSelectionSheet<String>(
-                      context: context,
-                      title: "Select Budget Bucket",
-                      items: _buckets,
-                      selectedItem: _selectedBucket,
-                      labelBuilder: (v) => v,
-                      onSelect: (v) => setState(() => _selectedBucket = v),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              // Bucket Selection (ONLY VISIBLE FOR EXPENSE)
+              if (_type == 'Expense') ...[
+                _buildSelectField<String>(
+                  label: "Budget Bucket",
+                  value: _selectedBucket,
+                  items: _buckets,
+                  labelBuilder: (v) => v,
+                  onSelect: (v) => setState(() => _selectedBucket = v),
+                  validator: (v) => v == null ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+              ],
 
-              // Category & SubCategory
+              // Category & SubCategory (Dynamic Layout)
               Row(
                 children: [
                   Expanded(
-                    child: DropdownButtonFormField<String>(
+                    child: _buildSelectField<String>(
+                      label: "Category",
                       value: _category,
-                      hint: const Text(
-                        "Category",
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                      dropdownColor: const Color(0xFF1B263B),
-                      style: const TextStyle(color: Colors.white),
-                      decoration: _inputDeco(''),
-                      items: categoryKeys
-                          .map(
-                            (c) => DropdownMenuItem(value: c, child: Text(c)),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() {
+                      items: categoryKeys,
+                      labelBuilder: (v) => v,
+                      onSelect: (v) => setState(() {
                         _category = v;
                         _subCategory = null; // Reset sub
                       }),
+                      validator: (v) => v == null ? 'Required' : null,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _subCategory,
-                      hint: const Text(
-                        "Sub-Category",
-                        style: TextStyle(color: Colors.white54),
+                  // Only show Sub-Category if Category is selected
+                  if (_category != null) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildSelectField<String>(
+                        label: "Sub-Category",
+                        value: _subCategory,
+                        items: subCategories,
+                        labelBuilder: (v) => v,
+                        onSelect: (v) => setState(() => _subCategory = v),
                       ),
-                      dropdownColor: const Color(0xFF1B263B),
-                      style: const TextStyle(color: Colors.white),
-                      decoration: _inputDeco(''),
-                      items: subCategories
-                          .map(
-                            (c) => DropdownMenuItem(value: c, child: Text(c)),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() => _subCategory = v),
                     ),
-                  ),
+                  ],
                 ],
               ),
               const SizedBox(height: 16),
@@ -326,6 +317,7 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                   onPressed: _isLoading ? null : _save,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3A86FF),
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -344,12 +336,81 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
     );
   }
 
+  InputDecoration _inputDeco(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.05),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+  }
+
+  /// Improved Select Field using FormField
+  Widget _buildSelectField<T>({
+    required String label,
+    required T? value,
+    required List<T> items,
+    required String Function(T) labelBuilder,
+    required Function(T) onSelect,
+    String? Function(T?)? validator,
+  }) {
+    return FormField<T>(
+      validator: validator,
+      initialValue: value,
+      builder: (FormFieldState<T> state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: () => showSelectionSheet<T>(
+                context: context,
+                title: "Select $label",
+                items: items,
+                selectedItem: value,
+                labelBuilder: labelBuilder,
+                onSelect: (v) {
+                  if (v != null) {
+                    onSelect(v);
+                    state.didChange(v);
+                  }
+                },
+              ),
+              borderRadius: BorderRadius.circular(12),
+              child: InputDecorator(
+                decoration: _inputDeco(label).copyWith(
+                  errorText: state.errorText,
+                  suffixIcon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Colors.white54,
+                  ),
+                ),
+                isEmpty: value == null,
+                child: Text(
+                  value != null ? labelBuilder(value) : '',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _typeButton(String label, Color color, bool isSelected) {
     return GestureDetector(
       onTap: () => setState(() {
         _type = label == 'Expense' ? 'Expense' : 'Income';
         _category = null;
         _subCategory = null;
+        if (_type == 'Income') {
+          _selectedBucket = null;
+        }
       }),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -368,20 +429,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
           ),
         ),
       ),
-    );
-  }
-
-  InputDecoration _inputDeco(String label) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-      filled: true,
-      fillColor: Colors.white.withOpacity(0.05),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
 }
