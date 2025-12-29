@@ -3,8 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_dropdown.dart';
 import '../../../core/widgets/modern_loader.dart';
-import '../../../core/widgets/calculator_keyboard.dart'; // Import Custom Keyboard
+import '../../../core/widgets/calculator_keyboard.dart';
 import '../../../core/models/percentage_config_model.dart';
+import '../../../core/models/transaction_category_model.dart';
+import '../../../core/services/category_service.dart';
 import '../../settings/services/settings_service.dart';
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
@@ -24,17 +26,16 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
   final _amountCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
-  // Focus Nodes
   final FocusNode _amountNode = FocusNode();
   final FocusNode _notesNode = FocusNode();
-
-  // Keys for Auto-Scroll
   final GlobalKey _amountFieldKey = GlobalKey();
   final GlobalKey _notesFieldKey = GlobalKey();
 
   CreditCardModel? _selectedCard;
   List<CreditCardModel> _cards = [];
   List<String> _buckets = [];
+
+  List<TransactionCategoryModel> _allCategories = [];
 
   DateTime _date = DateTime.now();
   String? _selectedBucket;
@@ -44,31 +45,20 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
 
   bool _isLoading = false;
   bool _showCustomKeyboard = false;
-
-  final Map<String, List<String>> _expenseCategories = {
-    'Shopping': ['Clothing', 'Electronics', 'Groceries', 'Home'],
-    'Food': ['Dining Out', 'Delivery', 'Drinks'],
-    'Travel': ['Flight', 'Cab', 'Hotel', 'Fuel'],
-    'Utilities': ['Phone', 'Internet', 'Electricity'],
-    'Entertainment': ['Movies', 'Subscription', 'Events'],
-    'Medical': ['Pharmacy', 'Doctor', 'Insurance'],
-    'Other': ['Miscellaneous'],
-  };
-
-  final Map<String, List<String>> _incomeCategories = {
-    'Repayment': ['Bill Payment', 'Refund'],
-    'Rewards': ['Cashback', 'Points Redemption'],
-  };
+  // ADDED: State to track if system keyboard is preferred for amount
+  bool _systemKeyboardActive = false;
 
   @override
   void initState() {
     super.initState();
     _loadData();
 
-    // Focus Listeners
     _amountNode.addListener(() {
       if (_amountNode.hasFocus) {
-        setState(() => _showCustomKeyboard = true);
+        // If we previously switched to system, keep it unless reset
+        if (!_systemKeyboardActive) {
+          setState(() => _showCustomKeyboard = true);
+        }
         _scrollToField(_amountFieldKey);
       }
     });
@@ -106,14 +96,23 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
   Future<void> _loadData() async {
     final cardStream = CreditService().getCreditCards().first;
     final configFuture = SettingsService().getPercentageConfig();
+    final categoriesStream = CategoryService().getCategories().first;
 
-    final results = await Future.wait([cardStream, configFuture]);
+    final results = await Future.wait([
+      cardStream,
+      configFuture,
+      categoriesStream,
+    ]);
 
     if (mounted) {
       setState(() {
         _cards = results[0] as List<CreditCardModel>;
         final config = results[1] as PercentageConfig;
+
         _buckets = config.categories.map((e) => e.name).toList();
+        _buckets.add('Out of Bucket');
+
+        _allCategories = results[2] as List<TransactionCategoryModel>;
 
         if (widget.transactionToEdit != null) {
           final t = widget.transactionToEdit!;
@@ -179,14 +178,28 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.transactionToEdit != null;
-    final categories = _type == 'Expense'
-        ? _expenseCategories
-        : _incomeCategories;
-    final categoryKeys = categories.keys.toList();
-    final subCategories =
-        (_category != null && categories.containsKey(_category))
-        ? categories[_category]!
-        : <String>[];
+
+    final relevantCategories = _allCategories
+        .where((c) => c.type == _type)
+        .toList();
+
+    final categoryKeys = relevantCategories.map((e) => e.name).toList();
+
+    List<String> subCategories = [];
+    if (_category != null) {
+      final selectedCatModel = relevantCategories.firstWhere(
+        (c) => c.name == _category,
+        orElse: () => relevantCategories.isNotEmpty
+            ? relevantCategories.first
+            : TransactionCategoryModel(
+                id: '',
+                name: '',
+                type: '',
+                subCategories: [],
+              ),
+      );
+      subCategories = selectedCatModel.subCategories;
+    }
 
     final bottomPadding = _showCustomKeyboard
         ? 0.0
@@ -271,7 +284,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
 
                     InkWell(
                       onTap: () async {
-                        // Dismiss keyboards when picking date
                         _amountNode.unfocus();
                         _notesNode.unfocus();
                         setState(() => _showCustomKeyboard = false);
@@ -324,14 +336,16 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Amount Field (Custom Keyboard)
                     TextFormField(
                       key: _amountFieldKey,
                       focusNode: _amountNode,
                       controller: _amountCtrl,
-                      keyboardType: TextInputType.none,
+                      // FIXED: Only disable system keyboard if using custom
+                      keyboardType: _systemKeyboardActive
+                          ? const TextInputType.numberWithOptions(decimal: true)
+                          : TextInputType.none,
                       showCursor: true,
-                      readOnly: true,
+                      readOnly: !_systemKeyboardActive,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -345,7 +359,10 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                         if (!_amountNode.hasFocus) {
                           FocusScope.of(context).requestFocus(_amountNode);
                         }
-                        setState(() => _showCustomKeyboard = true);
+                        setState(() {
+                          _showCustomKeyboard = true;
+                          _systemKeyboardActive = false; // Reset on tap
+                        });
                       },
                     ),
                     const SizedBox(height: 16),
@@ -393,7 +410,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Notes Field (System Keyboard)
                     TextFormField(
                       key: _notesFieldKey,
                       focusNode: _notesNode,
@@ -401,7 +417,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                       style: const TextStyle(color: Colors.white),
                       decoration: _inputDeco('Notes (Optional)'),
                       textInputAction: TextInputAction.done,
-                      // Hide KB on Done
                       onFieldSubmitted: (_) => _notesNode.unfocus(),
                     ),
                     const SizedBox(height: 32),
@@ -441,7 +456,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
             ),
           ),
 
-          // CUSTOM KEYBOARD
           if (_showCustomKeyboard)
             CalculatorKeyboard(
               onKeyPress: (val) =>
@@ -455,14 +469,25 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                 _amountNode.unfocus();
               },
               onPrevious: () {
-                // No previous field really suitable (Date is popup), so close/unfocus
                 setState(() => _showCustomKeyboard = false);
                 _amountNode.unfocus();
               },
               onNext: () {
-                // Next -> Focus Notes (System Keyboard)
                 setState(() => _showCustomKeyboard = false);
                 FocusScope.of(context).requestFocus(_notesNode);
+              },
+              // ADDED: Switch to System Keyboard
+              onSwitchToSystem: () {
+                setState(() {
+                  _showCustomKeyboard = false;
+                  _systemKeyboardActive = true;
+                });
+                // Re-request focus to trigger system keyboard
+                // Must lose focus first if it was readOnly
+                _amountNode.unfocus();
+                Future.delayed(const Duration(milliseconds: 100), () {
+                  FocusScope.of(context).requestFocus(_amountNode);
+                });
               },
             ),
         ],
@@ -501,7 +526,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
           children: [
             InkWell(
               onTap: () {
-                // Dismiss keyboard if open
                 _amountNode.unfocus();
                 _notesNode.unfocus();
                 setState(() => _showCustomKeyboard = false);

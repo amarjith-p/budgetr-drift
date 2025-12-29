@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../settings/screens/settings_screen.dart';
+import '../../settings/screens/configuration_menu_screen.dart'; // UPDATED IMPORT
 
 class HomeBottomBar extends StatelessWidget {
   const HomeBottomBar({super.key});
@@ -18,7 +18,10 @@ class HomeBottomBar extends StatelessWidget {
       child: ListTile(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const SettingsScreen()),
+          // UPDATED DESTINATION
+          MaterialPageRoute(
+            builder: (context) => const ConfigurationMenuScreen(),
+          ),
         ),
         leading: Container(
           padding: const EdgeInsets.all(8),
@@ -33,7 +36,7 @@ class HomeBottomBar extends StatelessWidget {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          "Manage Budget Buckets & Preferences",
+          "Buckets & Categories",
           style: TextStyle(color: Colors.white.withOpacity(0.5)),
         ),
         trailing: const Icon(

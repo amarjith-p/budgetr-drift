@@ -2,22 +2,40 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/bank_list.dart';
-import '../../../core/widgets/modern_loader.dart'; // Import ModernLoader
+import '../../../core/widgets/modern_loader.dart';
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
 import '../widgets/add_credit_card_sheet.dart';
 import '../widgets/add_credit_txn_sheet.dart';
 import 'card_detail_screen.dart';
 
-class CreditTrackerScreen extends StatelessWidget {
+class CreditTrackerScreen extends StatefulWidget {
   const CreditTrackerScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final CreditService service = CreditService();
-    final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
-    final accentColor = const Color(0xFF3A86FF);
+  State<CreditTrackerScreen> createState() => _CreditTrackerScreenState();
+}
 
+class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
+  final CreditService _service = CreditService();
+  final NumberFormat _currency = NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: '₹',
+  );
+  final Color _accentColor = const Color(0xFF3A86FF);
+
+  // Stream variable to prevent re-initialization on rebuilds
+  late Stream<List<CreditCardModel>> _cardsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize stream once
+    _cardsStream = _service.getCreditCards();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xff0D1B2A),
       appBar: AppBar(
@@ -44,12 +62,26 @@ class CreditTrackerScreen extends StatelessWidget {
         ],
       ),
       body: StreamBuilder<List<CreditCardModel>>(
-        stream: service.getCreditCards(),
+        stream: _cardsStream, // Use the persistent stream
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
+          // FIX: Only show loader if we are waiting AND have no data yet.
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const Center(child: ModernLoader());
-          if (!snapshot.hasData || snapshot.data!.isEmpty)
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                "Error: ${snapshot.error}",
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return _buildEmptyState(context);
+          }
 
           final cards = snapshot.data!;
           final double totalDebt = cards
@@ -77,7 +109,12 @@ class CreditTrackerScreen extends StatelessWidget {
             children: [
               Column(
                 children: [
-                  _buildTotalHeader(label, displayAmount, valueColor, currency),
+                  _buildTotalHeader(
+                    label,
+                    displayAmount,
+                    valueColor,
+                    _currency,
+                  ),
                   Expanded(
                     child: ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
@@ -85,8 +122,8 @@ class CreditTrackerScreen extends StatelessWidget {
                       itemBuilder: (context, index) => _buildCreditCard(
                         context,
                         cards[index],
-                        accentColor,
-                        currency,
+                        _accentColor,
+                        _currency,
                       ),
                     ),
                   ),
@@ -111,14 +148,14 @@ class CreditTrackerScreen extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [accentColor, const Color(0xFF2563EB)],
+                          colors: [_accentColor, const Color(0xFF2563EB)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(30),
                         boxShadow: [
                           BoxShadow(
-                            color: accentColor.withOpacity(0.4),
+                            color: _accentColor.withOpacity(0.4),
                             blurRadius: 20,
                             spreadRadius: -5,
                             offset: const Offset(0, 10),
@@ -552,10 +589,10 @@ class CreditTrackerScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(ctx); // Close Dialog
-              _showLoadingDialog(context); // Show Loader
+              Navigator.pop(ctx);
+              _showLoadingDialog(context);
               try {
-                await CreditService().deleteCreditCard(card.id);
+                await _service.deleteCreditCard(card.id);
                 if (context.mounted) {
                   Navigator.pop(context); // Close Loader
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -612,6 +649,7 @@ class CreditTrackerScreen extends StatelessWidget {
       ),
     ],
   );
+
   String _getOrdinal(int number) {
     if (number >= 11 && number <= 13) return '${number}th';
     switch (number % 10) {

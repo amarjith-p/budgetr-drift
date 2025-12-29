@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import '../../../core/widgets/modern_loader.dart';
+import '../../../core/models/transaction_category_model.dart';
+import '../../../core/services/category_service.dart';
+import '../../../core/constants/icon_constants.dart';
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
 import '../widgets/add_credit_txn_sheet.dart';
@@ -16,7 +19,6 @@ class CreditCardDetailScreen extends StatefulWidget {
 }
 
 class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
-  // --- Filter State ---
   String _selectedType = 'All';
   String _sortOption = 'Newest';
   DateTimeRange? _dateRange;
@@ -26,133 +28,173 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
   final Color _bgColor = const Color(0xff0D1B2A);
   final Color _accentColor = const Color(0xFF3A86FF);
 
+  late Stream<List<TransactionCategoryModel>> _categoryStream;
+  late Stream<List<CreditTransactionModel>> _transactionStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _categoryStream = CategoryService().getCategories();
+    _transactionStream = CreditService().getTransactionsForCard(widget.card.id);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        titleSpacing: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.card.name,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-            Text(
-              widget.card.bankName,
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
-            ),
-          ],
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          StreamBuilder<List<CreditTransactionModel>>(
-            stream: CreditService().getTransactionsForCard(widget.card.id),
-            builder: (context, snapshot) {
-              final hasData = snapshot.hasData && snapshot.data!.isNotEmpty;
-              return Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  IconButton(
-                    onPressed: hasData
-                        ? () => _openFilterSheet(context, snapshot.data!)
-                        : null,
-                    icon: const Icon(Icons.filter_list_rounded),
-                    tooltip: "Filter Transactions",
-                  ),
-                  if (_hasActiveFilters)
-                    Container(
-                      margin: const EdgeInsets.all(10),
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.redAccent,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                ],
+    return StreamBuilder<List<TransactionCategoryModel>>(
+      stream: _categoryStream,
+      builder: (context, catSnapshot) {
+        final Map<String, IconData> categoryIconMap = {};
+        if (catSnapshot.hasData) {
+          for (var cat in catSnapshot.data!) {
+            if (cat.iconCode != null) {
+              categoryIconMap[cat.name] = IconConstants.getIconByCode(
+                cat.iconCode!,
               );
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (_hasActiveFilters) _buildActiveFiltersList(),
-          Expanded(
-            child: StreamBuilder<List<CreditTransactionModel>>(
-              stream: CreditService().getTransactionsForCard(widget.card.id),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: ModernLoader());
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return _buildEmptyState("No transactions found.");
-                }
+            }
+          }
+        }
 
-                final filteredList = _applyFilters(snapshot.data!);
-
-                if (filteredList.isEmpty) {
-                  return _buildEmptyState(
-                    "No transactions match your filters.",
-                  );
-                }
-
-                final grouped = groupBy(filteredList, (
-                  CreditTransactionModel t,
-                ) {
-                  return DateFormat('MMMM yyyy').format(t.date.toDate());
-                });
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: grouped.length,
-                  itemBuilder: (context, index) {
-                    final month = grouped.keys.elementAt(index);
-                    final txns = grouped[month]!;
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text(
-                            month,
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                            ),
+        return Scaffold(
+          backgroundColor: _bgColor,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            titleSpacing: 0,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.card.name,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                Text(
+                  widget.card.bankName,
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              StreamBuilder<List<CreditTransactionModel>>(
+                stream: _transactionStream,
+                builder: (context, snapshot) {
+                  final hasData = snapshot.hasData && snapshot.data!.isNotEmpty;
+                  return Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      IconButton(
+                        onPressed: hasData
+                            ? () => _openFilterSheet(context, snapshot.data!)
+                            : null,
+                        icon: const Icon(Icons.filter_list_rounded),
+                        tooltip: "Filter Transactions",
+                      ),
+                      if (_hasActiveFilters)
+                        Container(
+                          margin: const EdgeInsets.all(10),
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
                           ),
                         ),
-                        ...txns
-                            .map(
-                              (t) => TransactionItem(
-                                txn: t,
-                                onEdit: () => _handleEdit(context, t),
-                                onDelete: () =>
-                                    _handleDeleteTransaction(context, t),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          body: Column(
+            children: [
+              if (_hasActiveFilters) _buildActiveFiltersList(),
+              Expanded(
+                child: StreamBuilder<List<CreditTransactionModel>>(
+                  stream: _transactionStream,
+                  builder: (context, snapshot) {
+                    // FIX: Robust loading check
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData) {
+                      return const Center(child: ModernLoader());
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          "Error: ${snapshot.error}",
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return _buildEmptyState("No transactions found.");
+                    }
+
+                    final filteredList = _applyFilters(snapshot.data!);
+
+                    if (filteredList.isEmpty) {
+                      return _buildEmptyState(
+                        "No transactions match your filters.",
+                      );
+                    }
+
+                    final grouped = groupBy(filteredList, (
+                      CreditTransactionModel t,
+                    ) {
+                      return DateFormat('MMMM yyyy').format(t.date.toDate());
+                    });
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: grouped.length,
+                      itemBuilder: (context, index) {
+                        final month = grouped.keys.elementAt(index);
+                        final txns = grouped[month]!;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Text(
+                                month,
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
                               ),
-                            )
-                            .toList(),
-                      ],
+                            ),
+                            ...txns
+                                .map(
+                                  (t) => TransactionItem(
+                                    txn: t,
+                                    iconData:
+                                        categoryIconMap[t.category] ??
+                                        Icons.category_outlined,
+                                    onEdit: () => _handleEdit(context, t),
+                                    onDelete: () =>
+                                        _handleDeleteTransaction(context, t),
+                                  ),
+                                )
+                                .toList(),
+                          ],
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // --- ACTIONS ---
   void _handleEdit(BuildContext context, CreditTransactionModel txn) {
     showModalBottomSheet(
       context: context,
@@ -192,15 +234,12 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(ctx); // Close confirmation dialog
-              _showLoadingDialog(context); // Show ModernLoader dialog
+              Navigator.pop(ctx);
+              _showLoadingDialog(context);
               try {
                 await CreditService().deleteTransaction(txn);
                 if (context.mounted) {
-                  Navigator.of(
-                    context,
-                    rootNavigator: true,
-                  ).pop(); // Close loader
+                  Navigator.of(context, rootNavigator: true).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("Transaction deleted"),
@@ -210,10 +249,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  Navigator.of(
-                    context,
-                    rootNavigator: true,
-                  ).pop(); // Close loader on error
+                  Navigator.of(context, rootNavigator: true).pop();
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text("Error: $e")));
@@ -233,7 +269,6 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     );
   }
 
-  // Helper to show blocking loader
   void _showLoadingDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -243,7 +278,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     );
   }
 
-  // --- FILTER LOGIC ---
+  // ... (Filter methods remain unchanged)
   List<CreditTransactionModel> _applyFilters(
     List<CreditTransactionModel> data,
   ) {
@@ -773,14 +808,17 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
   );
 }
 
+// TransactionItem remains same as previously provided
 class TransactionItem extends StatefulWidget {
   final CreditTransactionModel txn;
+  final IconData iconData;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const TransactionItem({
     super.key,
     required this.txn,
+    required this.iconData,
     required this.onEdit,
     required this.onDelete,
   });
@@ -796,11 +834,7 @@ class _TransactionItemState extends State<TransactionItem> {
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
     final isExpense = widget.txn.type == 'Expense';
-
-    // UPDATED: Red for Expense, Green for Income
     final amountColor = isExpense ? Colors.redAccent : Colors.greenAccent;
-
-    final iconData = _getCategoryIcon(widget.txn.category);
     final iconColor = isExpense ? const Color(0xFF3A86FF) : Colors.green;
 
     return GestureDetector(
@@ -835,7 +869,7 @@ class _TransactionItemState extends State<TransactionItem> {
               children: [
                 CircleAvatar(
                   backgroundColor: iconColor.withOpacity(0.1),
-                  child: Icon(iconData, color: iconColor, size: 20),
+                  child: Icon(widget.iconData, color: iconColor, size: 20),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -1036,30 +1070,4 @@ class _TransactionItemState extends State<TransactionItem> {
       ),
     ),
   );
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'Shopping':
-        return Icons.shopping_bag_outlined;
-      case 'Food':
-        return Icons.restaurant;
-      case 'Travel':
-        return Icons.flight;
-      case 'Utilities':
-        return Icons.lightbulb_outline;
-      case 'Entertainment':
-        return Icons.movie_outlined;
-      case 'Medical':
-        return Icons.local_hospital_outlined;
-      case 'Repayment':
-        return Icons.payment;
-      case 'Rewards':
-        return Icons.card_giftcard;
-      case 'Fuel':
-        return Icons.local_gas_station;
-      case 'Groceries':
-        return Icons.local_grocery_store;
-      default:
-        return Icons.category_outlined;
-    }
-  }
 }

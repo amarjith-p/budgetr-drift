@@ -5,6 +5,7 @@ class FirebaseConstants {
 
   // Settings
   static const String settings = 'settings';
+  static const String categories = 'transaction_categories';
 
   // Net Worth
   static const String netWorth = 'net_worth';

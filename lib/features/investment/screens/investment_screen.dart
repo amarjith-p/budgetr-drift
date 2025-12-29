@@ -630,6 +630,16 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                     Icons.search,
                     color: Colors.white.withOpacity(0.5),
                   ),
+                  // ADDED: Clear Button logic
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.white54),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = "");
+                          },
+                        )
+                      : null,
                   hintText: "Search portfolio...",
                   hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                   filled: true,

@@ -34,6 +34,8 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
   int _dueDate = 5;
   bool _isLoading = false;
   bool _showCustomKeyboard = false;
+  // ADDED: State to track keyboard type
+  bool _systemKeyboardActive = false;
 
   final Color _bgColor = const Color(0xff0D1B2A);
   final Color _accentColor = const Color(0xFF3A86FF);
@@ -55,7 +57,9 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
 
     _limitNode.addListener(() {
       if (_limitNode.hasFocus) {
-        setState(() => _showCustomKeyboard = true);
+        if (!_systemKeyboardActive) {
+          setState(() => _showCustomKeyboard = true);
+        }
         _scrollToField(_limitFieldKey);
       }
     });
@@ -131,8 +135,7 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // Adjust bottom padding: If custom keyboard is showing, use 0 (keyboard is part of column)
-    // If system keyboard is showing, use viewInsets
+    // Adjust bottom padding
     final bottomPadding = _showCustomKeyboard
         ? 0.0
         : MediaQuery.of(context).viewInsets.bottom;
@@ -187,7 +190,6 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
                       style: const TextStyle(color: Colors.white),
                       decoration: _inputDeco('Card Name (e.g. Regalia Gold)'),
                       textInputAction: TextInputAction.next,
-                      // SYSTEM KEYBOARD: Enter -> Next Field (Limit)
                       onFieldSubmitted: (_) {
                         FocusScope.of(context).requestFocus(_limitNode);
                       },
@@ -211,18 +213,23 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
                       key: _limitFieldKey,
                       focusNode: _limitNode,
                       controller: _limitCtrl,
-                      keyboardType: TextInputType.none, // Disable system kb
+                      // FIXED: Toggle based on system keyboard activity
+                      keyboardType: _systemKeyboardActive
+                          ? const TextInputType.numberWithOptions(decimal: true)
+                          : TextInputType.none,
                       showCursor: true,
-                      readOnly: true, // Prevent system actions
+                      readOnly: !_systemKeyboardActive,
                       style: const TextStyle(color: Colors.white),
                       decoration: _inputDeco('Credit Limit'),
                       validator: (v) => v!.trim().isEmpty ? 'Required' : null,
                       onTap: () {
-                        // Ensure custom keyboard shows on tap
                         if (!_limitNode.hasFocus) {
                           FocusScope.of(context).requestFocus(_limitNode);
                         }
-                        setState(() => _showCustomKeyboard = true);
+                        setState(() {
+                          _showCustomKeyboard = true;
+                          _systemKeyboardActive = false;
+                        });
                       },
                     ),
                     const SizedBox(height: 16),
@@ -299,15 +306,24 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
                 setState(() => _showCustomKeyboard = false);
                 _limitNode.unfocus();
               },
-              // Previous: Go back to Name Field
               onPrevious: () {
                 setState(() => _showCustomKeyboard = false);
                 FocusScope.of(context).requestFocus(_nameNode);
               },
-              // Next: No next field, maybe Close or Save? Let's just Close for now
               onNext: () {
                 setState(() => _showCustomKeyboard = false);
                 _limitNode.unfocus();
+              },
+              // ADDED: System Keyboard Logic
+              onSwitchToSystem: () {
+                setState(() {
+                  _showCustomKeyboard = false;
+                  _systemKeyboardActive = true;
+                });
+                _limitNode.unfocus();
+                Future.delayed(const Duration(milliseconds: 100), () {
+                  FocusScope.of(context).requestFocus(_limitNode);
+                });
               },
             ),
         ],
