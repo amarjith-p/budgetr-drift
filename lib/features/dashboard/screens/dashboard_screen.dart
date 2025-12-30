@@ -1,4 +1,5 @@
 import 'package:budget/core/widgets/modern_loader.dart';
+import 'package:budget/features/settlement/screens/settlement_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +11,7 @@ import '../widgets/add_record_sheet.dart';
 import '../widgets/dashboard_summary_card.dart';
 import '../widgets/budget_allocations_list.dart';
 import '../widgets/jump_to_date_sheet.dart';
-
+import '../widgets/budget_closure_sheet.dart';
 // --- DESIGN SYSTEM ---
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
@@ -124,7 +125,113 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BudgetrStyles.radiusM,
+              ),
+              child: ListTile(
+                onTap: () async {
+                  Navigator.pop(context); // Close Options Sheet
 
+                  // 1. Show Loading
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (c) => const Center(child: ModernLoader()),
+                  );
+
+                  // 2. Fetch Aggregated Spending
+                  final spendingMap = await _dashboardService
+                      .getMonthlyBucketSpending(record.year, record.month)
+                      .first;
+
+                  if (mounted) {
+                    Navigator.pop(context); // Close Loader
+
+                    // 3. Open Budget Closure Sheet (Read Only)
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      useSafeArea: true,
+                      builder: (context) => BudgetClosureSheet(
+                        record: record,
+                        spendingMap: spendingMap,
+                      ),
+                    );
+                  }
+                },
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.greenAccent.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_outline_rounded, // Changed icon to Lock
+                    color: Colors.greenAccent,
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  "Close & Lock Budget",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: const Text(
+                  "Finalize month and prevent changes",
+                  style: TextStyle(color: Colors.white38, fontSize: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // --- SETTLEMENT ANALYSIS OPTION ---
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BudgetrStyles.radiusM,
+              ),
+              child: ListTile(
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettlementScreen(),
+                    ),
+                  );
+                },
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purpleAccent.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.analytics_outlined,
+                    color: Colors.purpleAccent,
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  "Settlement Analysis",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: const Text(
+                  "View past settlements & stats",
+                  style: TextStyle(color: Colors.white38, fontSize: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             // Delete Action
             Container(
               width: double.infinity,

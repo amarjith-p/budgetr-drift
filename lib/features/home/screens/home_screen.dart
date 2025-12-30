@@ -103,13 +103,13 @@ class HomeScreen extends StatelessWidget {
                           color: const Color(0xFF2EC4B6),
                           destination: const NetWorthScreen(),
                         ),
-                        HomeFeatureCard(
-                          title: "Settlements",
-                          subtitle: "Month-end Settlements",
-                          icon: Icons.handshake_outlined,
-                          color: const Color(0xFF7209B7),
-                          destination: const SettlementScreen(),
-                        ),
+                        // HomeFeatureCard(
+                        //   title: "Settlements",
+                        //   subtitle: "Month-end Settlements",
+                        //   icon: Icons.handshake_outlined,
+                        //   color: const Color(0xFF7209B7),
+                        //   destination: const SettlementScreen(),
+                        // ),
                         HomeFeatureCard(
                           title: "Credit Tracker",
                           subtitle: "Cards & Repayments",

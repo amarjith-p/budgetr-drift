@@ -215,7 +215,8 @@ class _SettlementScreenState extends State<SettlementScreen> {
             ),
           ),
 
-          // Custom "FAB" positioned in the Stack to ensure Center alignment
+          // Custom "FAB" hidden safely as per new workflow requirement
+          /*
           Positioned(
             bottom: 20,
             left: 0,
@@ -258,6 +259,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
               ),
             ),
           ),
+          */
         ],
       ),
     );

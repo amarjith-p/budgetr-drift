@@ -44,6 +44,16 @@ class SettlementService {
     return null;
   }
 
+  /// NEW: Checks if a specific month is already settled
+  Future<bool> isMonthSettled(int year, int month) async {
+    final id = '$year${month.toString().padLeft(2, '0')}';
+    final doc = await _db
+        .collection(FirebaseConstants.settlements)
+        .doc(id)
+        .get();
+    return doc.exists;
+  }
+
   Future<void> saveSettlement(Settlement settlement) {
     return _db
         .collection(FirebaseConstants.settlements)

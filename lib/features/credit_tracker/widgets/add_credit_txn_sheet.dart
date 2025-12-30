@@ -8,7 +8,8 @@ import '../../../core/models/percentage_config_model.dart';
 import '../../../core/models/transaction_category_model.dart';
 import '../../../core/services/category_service.dart';
 import '../../settings/services/settings_service.dart';
-import '../../dashboard/services/dashboard_service.dart'; // Import DashboardService
+import '../../dashboard/services/dashboard_service.dart';
+import '../../settlement/services/settlement_service.dart';
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
 
@@ -37,7 +38,7 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
 
   // Buckets Logic
   List<String> _buckets = [];
-  List<String> _globalFallbackBuckets = []; // Store global config as fallback
+  List<String> _globalFallbackBuckets = [];
 
   List<TransactionCategoryModel> _allCategories = [];
 
@@ -51,10 +52,13 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
   bool _showCustomKeyboard = false;
   bool _systemKeyboardActive = false;
 
+  // Settlement State
+  bool _isMonthSettled = false;
+
   @override
   void initState() {
     super.initState();
-    _loadInitialData(); // Renamed from _loadData
+    _loadInitialData();
 
     _amountNode.addListener(() {
       if (_amountNode.hasFocus) {
@@ -109,7 +113,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
     if (mounted) {
       final config = results[1] as PercentageConfig;
 
-      // Store Global Defaults
       _globalFallbackBuckets = config.categories.map((e) => e.name).toList();
       _globalFallbackBuckets.add('Out of Bucket');
 
@@ -135,20 +138,37 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
             orElse: () => _cards.isNotEmpty ? _cards.first : _cards[0],
           );
         } else {
-          _selectedCard = _cards.isNotEmpty ? _cards[0] : null;
+          // CHANGE: No default card selected
+          _selectedCard = null;
           _selectedBucket = null;
         }
       });
 
-      // Now fetch the context-aware buckets for the selected date
       await _updateBucketsForDate(_date);
     }
   }
 
-  /// NEW: Fetches correct buckets based on the transaction date
   Future<void> _updateBucketsForDate(DateTime date) async {
     try {
-      // 1. Try to find a Budget Record for this specific month
+      // 1. Check if the month is already settled (Closed)
+      final isSettled = await SettlementService().isMonthSettled(
+        date.year,
+        date.month,
+      );
+
+      if (isSettled) {
+        // --- CASE: SETTLED ---
+        if (mounted) {
+          setState(() {
+            _isMonthSettled = true; // Set Flag
+            _buckets = ['Out of Bucket']; // Lock options
+            _selectedBucket = 'Out of Bucket'; // Force value
+          });
+        }
+        return;
+      }
+
+      // --- CASE: OPEN (Normal Flow) ---
       final record = await DashboardService().getRecordForMonth(
         date.year,
         date.month,
@@ -157,39 +177,32 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
       List<String> newBuckets = [];
 
       if (record != null) {
-        // Case A: Budget exists -> Use its buckets (Source of Truth for that month)
-        // Sort keys by value (highest allocation first) just for better UX
         final sortedEntries = record.allocations.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
         newBuckets = sortedEntries.map((e) => e.key).toList();
       } else {
-        // Case B: No budget (future/past/unset) -> Use Global Settings
         newBuckets = List.from(_globalFallbackBuckets);
       }
 
-      // Ensure 'Out of Bucket' is always an option
       if (!newBuckets.contains('Out of Bucket')) {
         newBuckets.add('Out of Bucket');
       }
 
       if (mounted) {
         setState(() {
+          _isMonthSettled = false; // Reset Flag
           _buckets = newBuckets;
 
-          // Validation: If previously selected bucket doesn't exist in new list, reset it
           if (_selectedBucket != null && !_buckets.contains(_selectedBucket)) {
-            // Optional: You could keep it to allow legacy data preservation,
-            // but resetting forces the user to pick a valid bucket for *that* month.
-            // We'll reset it to ensure consistency.
             _selectedBucket = null;
           }
         });
       }
     } catch (e) {
       debugPrint("Error fetching buckets for date: $e");
-      // Fallback on error
       if (mounted) {
         setState(() {
+          _isMonthSettled = false;
           _buckets = List.from(_globalFallbackBuckets);
         });
       }
@@ -301,6 +314,55 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                     ),
                     const SizedBox(height: 24),
 
+                    // --- Settlement Warning Banner ---
+                    if (_isMonthSettled && _type == 'Expense') ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 24),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.orange.withOpacity(0.5),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.lock_outline,
+                              color: Colors.orange,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "Budget Closed for this Month",
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "Transactions are forced to 'Out of Bucket'.",
+                                    style: TextStyle(
+                                      color: Colors.orange.withOpacity(0.8),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // -------------------------------------
                     AbsorbPointer(
                       absorbing: isEditing,
                       child: Opacity(
@@ -377,7 +439,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                             _date = newDate;
                           });
 
-                          // NEW: Refresh buckets based on new date
                           await _updateBucketsForDate(newDate);
                         }
                       },
@@ -432,7 +493,7 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                       _buildSelectField<String>(
                         label: "Budget Bucket",
                         value: _selectedBucket,
-                        items: _buckets, // Uses context-aware buckets
+                        items: _buckets,
                         labelBuilder: (v) => v,
                         onSelect: (v) => setState(() => _selectedBucket = v),
                         validator: (v) => v == null ? 'Required' : null,
@@ -537,13 +598,11 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
                 setState(() => _showCustomKeyboard = false);
                 FocusScope.of(context).requestFocus(_notesNode);
               },
-              // Switch to System Keyboard
               onSwitchToSystem: () {
                 setState(() {
                   _showCustomKeyboard = false;
                   _systemKeyboardActive = true;
                 });
-                // Re-request focus to trigger system keyboard
                 _amountNode.unfocus();
                 Future.delayed(const Duration(milliseconds: 100), () {
                   FocusScope.of(context).requestFocus(_amountNode);

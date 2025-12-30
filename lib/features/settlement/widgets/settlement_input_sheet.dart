@@ -17,7 +17,16 @@ import '../../../core/design/budgetr_styles.dart';
 import '../../../core/design/budgetr_components.dart';
 
 class SettlementInputSheet extends StatefulWidget {
-  const SettlementInputSheet({super.key});
+  final int? initialYear;
+  final int? initialMonth;
+  final Map<String, double>? prefilledExpenses;
+
+  const SettlementInputSheet({
+    super.key,
+    this.initialYear,
+    this.initialMonth,
+    this.prefilledExpenses,
+  });
 
   @override
   State<SettlementInputSheet> createState() => _SettlementInputSheetState();
@@ -51,6 +60,11 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
   @override
   void initState() {
     super.initState();
+    // If opened from Dashboard, set initial values immediately
+    if (widget.initialYear != null && widget.initialMonth != null) {
+      _selectedYear = widget.initialYear;
+      _selectedMonth = widget.initialMonth;
+    }
     _loadDropdownData();
   }
 
@@ -73,21 +87,40 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
     _availableYears = years;
     _percentageConfig = await _settingsService.getPercentageConfig();
 
-    final now = DateTime.now();
-    if (_availableYears.contains(now.year)) {
-      _selectedYear = now.year;
+    // Setup Available Months logic
+    if (_selectedYear != null) {
+      // If year was pre-selected or defaults to now
       final months = _yearMonthData
-          .where((data) => data['year'] == now.year)
+          .where((data) => data['year'] == _selectedYear)
           .map((data) => data['month']!)
           .toSet()
           .toList();
       months.sort((a, b) => b.compareTo(a));
       _availableMonthsForYear = months;
-      if (_availableMonthsForYear.contains(now.month)) {
-        _selectedMonth = now.month;
+    } else {
+      // Default to current year logic if nothing passed
+      final now = DateTime.now();
+      if (_availableYears.contains(now.year)) {
+        _selectedYear = now.year;
+        final months = _yearMonthData
+            .where((data) => data['year'] == now.year)
+            .map((data) => data['month']!)
+            .toSet()
+            .toList();
+        months.sort((a, b) => b.compareTo(a));
+        _availableMonthsForYear = months;
+        if (_availableMonthsForYear.contains(now.month)) {
+          _selectedMonth = now.month;
+        }
       }
     }
-    setState(() {});
+
+    // If we have both, fetch data immediately
+    if (_selectedYear != null && _selectedMonth != null) {
+      await _fetchData();
+    }
+
+    if (mounted) setState(() {});
   }
 
   void _onYearSelected(int? year) {
@@ -121,29 +154,39 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
         _settlementService.getSettlementById(recordId),
       ]);
 
-      setState(() {
-        _budgetRecord = results[0] as FinancialRecord;
-        _existingSettlement = results[1] as Settlement?;
+      if (mounted) {
+        setState(() {
+          _budgetRecord = results[0] as FinancialRecord;
+          _existingSettlement = results[1] as Settlement?;
 
-        _controllers.clear();
-        _focusNodes.clear();
+          _controllers.clear();
+          _focusNodes.clear();
 
-        _budgetRecord!.allocations.forEach((key, _) {
-          double initialValue = 0.0;
-          if (_existingSettlement != null &&
-              _existingSettlement!.expenses.containsKey(key)) {
-            initialValue = _existingSettlement!.expenses[key]!;
-          }
-          final ctrl = TextEditingController(
-            text: initialValue == 0 ? '' : initialValue.toString(),
-          );
-          ctrl.addListener(_calculateTotalExpense);
-          _controllers[key] = ctrl;
-          _focusNodes[key] = FocusNode();
+          _budgetRecord!.allocations.forEach((key, _) {
+            double initialValue = 0.0;
+
+            // Priority 1: Existing Saved Settlement
+            if (_existingSettlement != null &&
+                _existingSettlement!.expenses.containsKey(key)) {
+              initialValue = _existingSettlement!.expenses[key]!;
+            }
+            // Priority 2: Auto-filled from Dashboard (Pre-filled arguments)
+            else if (widget.prefilledExpenses != null &&
+                widget.prefilledExpenses!.containsKey(key)) {
+              initialValue = widget.prefilledExpenses![key]!;
+            }
+
+            final ctrl = TextEditingController(
+              text: initialValue == 0 ? '' : initialValue.toStringAsFixed(0),
+            );
+            ctrl.addListener(_calculateTotalExpense);
+            _controllers[key] = ctrl;
+            _focusNodes[key] = FocusNode();
+          });
+
+          _calculateTotalExpense();
         });
-
-        _calculateTotalExpense();
-      });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -164,6 +207,7 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
     setState(() => _totalExpense = sum);
   }
 
+  // ... (Rest of keyboard logic: _scrollToInput, _setActive, etc. unchanged)
   void _scrollToInput(FocusNode node) {
     Future.delayed(const Duration(milliseconds: 300), () {
       if (node.context != null && mounted) {
@@ -205,7 +249,6 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
 
   void _handleNext() {
     if (_activeController == null) return;
-
     final entries = _budgetRecord!.allocations.entries.toList();
     if (_percentageConfig != null) {
       entries.sort((a, b) {
@@ -241,7 +284,6 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
 
   void _handlePrevious() {
     if (_activeController == null) return;
-
     final entries = _budgetRecord!.allocations.entries.toList();
     if (_percentageConfig != null) {
       entries.sort((a, b) {
@@ -301,7 +343,9 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Settlement saved successfully!'),
+            content: Text(
+              'Settlement saved successfully! Budget is now closed.',
+            ),
             backgroundColor: BudgetrColors.success,
           ),
         );
@@ -342,6 +386,8 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
                           label: _selectedYear?.toString() ?? 'Year',
                           isActive: _selectedYear != null,
                           icon: Icons.calendar_today_outlined,
+                          // Disable dropdown if launched in "Auto-fill mode"
+                          isEnabled: widget.initialYear == null,
                           onTap: () => showSelectionSheet<int>(
                             context: context,
                             title: 'Select Year',
@@ -362,7 +408,9 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
                               : 'Month',
                           isActive: _selectedMonth != null,
                           icon: Icons.calendar_view_month_outlined,
-                          isEnabled: _selectedYear != null,
+                          isEnabled:
+                              _selectedYear != null &&
+                              widget.initialMonth == null,
                           onTap: () => showSelectionSheet<int>(
                             context: context,
                             title: 'Select Month',
@@ -376,7 +424,6 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Styled Fetch Button
                       Container(
                         decoration: BoxDecoration(
                           color: BudgetrColors.cardSurface,
@@ -440,6 +487,7 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
     );
   }
 
+  // ... (buildStickyBottomBar and buildSettlementForm from previous file remain same)
   Widget _buildStickyBottomBar() {
     final income = _budgetRecord!.effectiveIncome;
     final balance = income - _totalExpense;
@@ -517,9 +565,6 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
                 ),
               ),
               const SizedBox(width: 16),
-
-              // FIX: Replaced BudgetrButton with Manual GestureDetector
-              // This ensures the label is Solid White and never faded.
               Expanded(
                 child: GestureDetector(
                   onTap: _onSettle,
@@ -536,7 +581,7 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
                     child: const Text(
                       'Settle Budget',
                       style: TextStyle(
-                        color: Colors.white, // Forces Solid White
+                        color: Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
@@ -625,7 +670,7 @@ class _SettlementInputSheetState extends State<SettlementInputSheet> {
             decoration: InputDecoration(
               isDense: true,
               hintText: '0',
-              hintStyle: TextStyle(color: Colors.white24),
+              hintStyle: const TextStyle(color: Colors.white24),
               filled: true,
               fillColor: Colors.white.withOpacity(0.05),
               border: OutlineInputBorder(
