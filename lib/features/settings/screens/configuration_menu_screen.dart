@@ -28,7 +28,7 @@ class ConfigurationMenuScreen extends StatelessWidget {
             _buildMenuCard(
               context,
               title: "Budget Buckets",
-              subtitle: "Configure your 50/30/20 splits",
+              subtitle: "Configure your Budget Rules",
               icon: Icons.pie_chart_outline,
               color: const Color(0xFF3A86FF),
               onTap: () => Navigator.push(
