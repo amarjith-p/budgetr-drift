@@ -23,4 +23,20 @@ class SettingsService {
         .doc('percentages')
         .set(config.toMap());
   }
+
+  /// Checks if a Financial Record exists for the current month.
+  /// Uses 'financial_records' collection and queries by year/month fields.
+  Future<bool> hasCurrentMonthBudget() async {
+    final now = DateTime.now();
+
+    // We query for the year and month fields instead of guessing the Doc ID
+    final snapshot = await _db
+        .collection(FirebaseConstants.financialRecords)
+        .where('year', isEqualTo: now.year)
+        .where('month', isEqualTo: now.month)
+        .limit(1)
+        .get();
+
+    return snapshot.docs.isNotEmpty;
+  }
 }

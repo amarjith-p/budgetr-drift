@@ -21,6 +21,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isEditing = false;
   List<CategoryConfig> _categories = [];
 
+  // A deep copy of the original state for comparison
+  List<CategoryConfig> _initialCategories = [];
+
   // Track total for real-time feedback
   double _currentTotal = 0.0;
 
@@ -47,12 +50,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final config = await _settingsService.getPercentageConfig();
       setState(() {
         _categories = config.categories;
+
+        // --- CREATE DEEP COPY ---
+        // Creates fresh instances to ensure _initialCategories is not affected by UI edits
+        _initialCategories = config.categories
+            .map(
+              (c) => CategoryConfig(
+                name: c.name,
+                percentage: c.percentage,
+                note: c.note,
+              ),
+            )
+            .toList();
+
         _isLoading = false;
         _calculateTotal();
       });
     } catch (e) {
       setState(() => _isLoading = false);
     }
+  }
+
+  /// Checks if Name, Percentage, or Order has changed.
+  /// Ignores 'Note' and tiny floating-point differences.
+  bool _hasSignificantChanges() {
+    // 1. Check Length (Order/Add/Remove)
+    if (_categories.length != _initialCategories.length) {
+      return true;
+    }
+
+    // 2. Check each item
+    for (int i = 0; i < _categories.length; i++) {
+      final current = _categories[i];
+      final initial = _initialCategories[i];
+
+      // Check Name (Trimmed to avoid accidental space changes)
+      if (current.name.trim() != initial.name.trim()) {
+        return true;
+      }
+
+      // Check Percentage with Epsilon (tolerance for 15.0 vs 15.00001)
+      // This prevents false flags from floating point math
+      if ((current.percentage - initial.percentage).abs() > 0.01) {
+        return true;
+      }
+
+      // We explicitly IGNORE changes to 'note' here
+    }
+
+    return false;
   }
 
   Future<void> _authenticate() async {
@@ -108,9 +154,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _saveSettings() async {
     if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      _calculateTotal(); // Ensure total is fresh
+      // --- CRITICAL CHANGE ---
+      // We check for changes BEFORE calling .save().
+      // relying on 'onChanged' to have kept _categories up to date.
+      // calling .save() might re-parse "15" as 15.0 (losing precision)
+      // which would trigger a false warning if we checked after.
+      bool isSignificantChange = _hasSignificantChanges();
 
+      // Now we save to ensure any final formatting (like trimming) is applied
+      _formKey.currentState!.save();
+      _calculateTotal();
+
+      // 1. Validate Total is 100%
       if ((_currentTotal - 100.0).abs() > 0.1) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -127,34 +182,209 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
+      // 2. Logic Branch based on Significant Changes
+      if (!isSignificantChange) {
+        // If only notes changed (or nothing changed), save immediately without warning
+        await _performSave();
+        return;
+      }
+
+      // 3. Significant changes detected -> Check for existing budget
+      bool hasBudget = false;
       try {
-        await _settingsService.setPercentageConfig(
-          PercentageConfig(categories: _categories),
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Settings saved successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          setState(() {
-            _isEditing = false;
-          });
-        }
+        hasBudget = await _settingsService.hasCurrentMonthBudget();
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-          );
+        debugPrint("Error checking budget existence: $e");
+      }
+
+      if (hasBudget && mounted) {
+        final shouldProceed = await _showModernWarningSheet();
+        if (shouldProceed == true) {
+          await _performSave();
+        } else {
+          // User clicked "Cancel" -> Abort Edit Mode & Revert Changes
+          if (mounted) {
+            setState(() {
+              _isEditing = false;
+
+              // Reset _categories to the clean _initialCategories state
+              // We map a new list to ensure deep copy
+              _categories = _initialCategories
+                  .map(
+                    (c) => CategoryConfig(
+                      name: c.name,
+                      percentage: c.percentage,
+                      note: c.note,
+                    ),
+                  )
+                  .toList();
+
+              _calculateTotal();
+            });
+          }
         }
+      } else {
+        // No budget exists, safe to save
+        await _performSave();
+      }
+    }
+  }
+
+  Future<bool?> _showModernWarningSheet() {
+    return showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B263B),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orangeAccent.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orangeAccent,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Active Budget Detected",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "You are changing the core budget bucket structure (Name, Order, or Allocation %) while an active budget exists for the current month. This may alter how future transactions are categorized, but it won't automatically recalculate your existing month's data.If you wish to update existing budget, you'll need to do manually by deleting and recreating the budget for this month again.It will force you to update current month's transaction budget buckets to get the budget overview correct.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        "Change Anyway",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _performSave() async {
+    try {
+      await _settingsService.setPercentageConfig(
+        PercentageConfig(categories: _categories),
+      );
+
+      // Update _initialCategories to match the new state
+      // This prevents the warning from popping up again if they save twice
+      if (mounted) {
+        setState(() {
+          _initialCategories = _categories
+              .map(
+                (c) => CategoryConfig(
+                  name: c.name,
+                  percentage: c.percentage,
+                  note: c.note,
+                ),
+              )
+              .toList();
+
+          _isEditing = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Settings saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Determine status color for total
     Color statusColor = Colors.redAccent;
     if ((_currentTotal - 100.0).abs() < 0.1)
       statusColor = Colors.greenAccent;
@@ -196,7 +426,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ? const Center(child: ModernLoader())
           : Column(
               children: [
-                // --- Status Header (View Mode) ---
                 if (!_isEditing)
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -234,17 +463,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
 
-                // --- List Area ---
                 Expanded(
                   child: Form(
                     key: _formKey,
                     child: ReorderableListView.builder(
-                      padding: const EdgeInsets.fromLTRB(
-                        16,
-                        8,
-                        16,
-                        100,
-                      ), // Space for bottom bar
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                       itemCount: _categories.length,
                       buildDefaultDragHandles: _isEditing,
                       onReorder: (oldIndex, newIndex) {
@@ -264,7 +487,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
 
-      // --- Sticky Bottom Action Bar (Edit Mode) ---
       bottomNavigationBar: _isEditing
           ? Container(
               padding: const EdgeInsets.all(20),
@@ -359,20 +581,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: Column(
         children: [
-          // --- ROW 1: Name and Controls ---
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 4),
             child: Row(
               children: [
-                // Icon based on editing state
                 Icon(
                   _isEditing ? Icons.drag_indicator : Icons.label_outline,
                   color: Colors.white30,
                   size: 20,
                 ),
                 const SizedBox(width: 12),
-
-                // NAME INPUT (Expanded)
                 Expanded(
                   child: TextFormField(
                     initialValue: _categories[index].name,
@@ -397,8 +615,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onSaved: (val) => _categories[index].name = val!,
                   ),
                 ),
-
-                // Delete Button
                 if (_isEditing)
                   IconButton(
                     icon: const Icon(
@@ -412,17 +628,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-
-          // Divider
           Divider(color: Colors.white.withOpacity(0.05), height: 1),
-
-          // --- ROW 2: Percentage and Note ---
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // PERCENTAGE BOX
                 Container(
                   width: 90,
                   padding: const EdgeInsets.symmetric(
@@ -471,7 +682,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   _categories[index].percentage = double.parse(
                                     val,
                                   );
-                                  _calculateTotal(); // Update bottom bar instantly
+                                  _calculateTotal();
                                 }
                               },
                               onSaved: (val) => _categories[index].percentage =
@@ -487,10 +698,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
-
                 const SizedBox(width: 16),
-
-                // NOTE INPUT
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
