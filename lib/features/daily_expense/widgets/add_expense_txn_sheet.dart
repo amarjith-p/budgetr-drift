@@ -1,0 +1,779 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import '../../../core/widgets/modern_loader.dart';
+import '../../../core/widgets/calculator_keyboard.dart';
+import '../../../core/models/transaction_category_model.dart';
+import '../../../core/services/category_service.dart';
+import '../../settings/services/settings_service.dart';
+import '../../dashboard/services/dashboard_service.dart';
+import '../../settlement/services/settlement_service.dart';
+import '../models/expense_models.dart';
+import '../services/expense_service.dart';
+
+class AddExpenseTransactionSheet extends StatefulWidget {
+  final ExpenseTransactionModel? txnToEdit;
+  const AddExpenseTransactionSheet({super.key, this.txnToEdit});
+
+  @override
+  State<AddExpenseTransactionSheet> createState() =>
+      _AddExpenseTransactionSheetState();
+}
+
+class _AddExpenseTransactionSheetState
+    extends State<AddExpenseTransactionSheet> {
+  final _formKey = GlobalKey<FormState>();
+
+  final _amountCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
+
+  final FocusNode _amountNode = FocusNode();
+  final FocusNode _notesNode = FocusNode();
+
+  final GlobalKey _amountFieldKey = GlobalKey();
+  final GlobalKey _notesFieldKey = GlobalKey();
+
+  ExpenseAccountModel? _selectedAccount;
+  ExpenseAccountModel? _toAccount; // For Transfers
+
+  List<ExpenseAccountModel> _accounts = [];
+  List<String> _buckets = [];
+  List<String> _globalFallbackBuckets = [];
+  List<TransactionCategoryModel> _allCategories = [];
+
+  DateTime _date = DateTime.now();
+  String? _selectedBucket;
+  String _type = 'Expense';
+  String? _category;
+  String? _subCategory;
+
+  bool _isLoading = false;
+  bool _showCustomKeyboard = false;
+  bool _systemKeyboardActive = false;
+  bool _isMonthSettled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+
+    _amountNode.addListener(() {
+      if (_amountNode.hasFocus) {
+        if (!_systemKeyboardActive) {
+          setState(() => _showCustomKeyboard = true);
+        }
+        _scrollToField(_amountFieldKey);
+      }
+    });
+
+    _notesNode.addListener(() {
+      if (_notesNode.hasFocus) {
+        setState(() => _showCustomKeyboard = false);
+        _scrollToField(_notesFieldKey);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _notesCtrl.dispose();
+    _amountNode.dispose();
+    _notesNode.dispose();
+    super.dispose();
+  }
+
+  void _scrollToField(GlobalKey key) {
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (key.currentContext != null) {
+        Scrollable.ensureVisible(
+          key.currentContext!,
+          alignment: 0.5,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _loadData() async {
+    final accsFuture = ExpenseService().getAccounts().first;
+    final catsFuture = CategoryService().getCategories().first;
+    final configFuture = SettingsService().getPercentageConfig();
+
+    final results = await Future.wait([accsFuture, catsFuture, configFuture]);
+
+    if (mounted) {
+      final config = results[2] as dynamic;
+      _globalFallbackBuckets =
+          (config.categories as List).map((e) => e.name as String).toList();
+      _globalFallbackBuckets.add('Out of Bucket');
+
+      setState(() {
+        _accounts = results[0] as List<ExpenseAccountModel>;
+        _allCategories = results[1] as List<TransactionCategoryModel>;
+
+        if (widget.txnToEdit != null) {
+          final t = widget.txnToEdit!;
+          _amountCtrl.text = t.amount.toStringAsFixed(0);
+          _notesCtrl.text = t.notes;
+          _date = t.date.toDate();
+
+          // --- FIXED LOGIC: Detect Direction Correctly ---
+          if (t.type == 'Transfer Out') {
+            // Case 1: Editing the Sender's Transaction
+            _type = 'Transfer';
+            _selectedAccount = _accounts.firstWhere((a) => a.id == t.accountId,
+                orElse: () => _accounts.first);
+            _toAccount = _accounts.firstWhere(
+                (a) => a.id == t.transferAccountId,
+                orElse: () => _accounts.first);
+          } else if (t.type == 'Transfer In') {
+            // Case 2: Editing the Receiver's Transaction
+            _type = 'Transfer';
+            _selectedAccount = _accounts.firstWhere(
+                (a) => a.id == t.transferAccountId,
+                orElse: () => _accounts.first);
+            _toAccount = _accounts.firstWhere((a) => a.id == t.accountId,
+                orElse: () => _accounts.first);
+          } else {
+            // Standard Expense/Income
+            _type = t.type;
+            _selectedAccount = _accounts.firstWhere((a) => a.id == t.accountId,
+                orElse: () => _accounts.first);
+          }
+
+          _category = t.category;
+          _subCategory = t.subCategory;
+          _selectedBucket = t.bucket;
+        }
+      });
+      await _updateBucketsForDate(_date);
+    }
+  }
+
+  Future<void> _updateBucketsForDate(DateTime date) async {
+    try {
+      final isSettled =
+          await SettlementService().isMonthSettled(date.year, date.month);
+      if (isSettled) {
+        setState(() {
+          _isMonthSettled = true;
+          _buckets = ['Out of Bucket'];
+          _selectedBucket = 'Out of Bucket';
+        });
+        return;
+      }
+
+      final record =
+          await DashboardService().getRecordForMonth(date.year, date.month);
+      List<String> newBuckets = [];
+
+      if (record != null) {
+        final sortedEntries = record.allocations.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        newBuckets = sortedEntries.map((e) => e.key).toList();
+      } else {
+        newBuckets = List.from(_globalFallbackBuckets);
+      }
+
+      if (!newBuckets.contains('Out of Bucket')) {
+        newBuckets.add('Out of Bucket');
+      }
+
+      setState(() {
+        _isMonthSettled = false;
+        _buckets = newBuckets;
+        if (_selectedBucket != null && !_buckets.contains(_selectedBucket)) {
+          _selectedBucket = null;
+        }
+      });
+    } catch (e) {
+      setState(() => _buckets = List.from(_globalFallbackBuckets));
+    }
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedAccount == null) return;
+
+    if (_type == 'Transfer') {
+      if (_toAccount == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Please select a destination account")));
+        return;
+      }
+      if (_selectedAccount!.id == _toAccount!.id) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Cannot transfer to the same account")));
+        return;
+      }
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final double amount = double.tryParse(_amountCtrl.text) ?? 0.0;
+
+      bool isEditing = widget.txnToEdit != null;
+      bool isTransferOperation = _type == 'Transfer';
+      bool wasTransfer = isEditing &&
+          (widget.txnToEdit!.type == 'Transfer Out' ||
+              widget.txnToEdit!.type == 'Transfer In');
+
+      if (isTransferOperation || wasTransfer) {
+        // --- CLEAN EDIT STRATEGY for Transfers ---
+
+        // 1. Delete Old Transaction Pair First
+        if (isEditing) {
+          await ExpenseService().deleteTransaction(widget.txnToEdit!);
+        }
+
+        // 2. Create New Transaction Pair
+        if (_type == 'Transfer') {
+          final transferOut = ExpenseTransactionModel(
+            id: '',
+            accountId: _selectedAccount!.id,
+            amount: amount,
+            date: Timestamp.fromDate(_date),
+            bucket: 'Unallocated',
+            type: 'Transfer Out',
+            category: 'Transfer',
+            subCategory: 'General',
+            notes: _notesCtrl.text,
+            transferAccountId: _toAccount!.id,
+            transferAccountName: _toAccount!.name,
+            transferAccountBankName: _toAccount!.bankName, // NEW
+          );
+
+          final transferIn = ExpenseTransactionModel(
+            id: '',
+            accountId: _toAccount!.id,
+            amount: amount,
+            date: Timestamp.fromDate(_date),
+            bucket: 'Unallocated',
+            type: 'Transfer In',
+            category: 'Transfer',
+            subCategory: 'General',
+            notes: _notesCtrl.text,
+            transferAccountId: _selectedAccount!.id,
+            transferAccountName: _selectedAccount!.name,
+            transferAccountBankName: _selectedAccount!.bankName, // NEW
+          );
+
+          await ExpenseService().addTransaction(transferOut);
+          await ExpenseService().addTransaction(transferIn);
+        } else {
+          // Switched from Transfer to Expense/Income
+          final bucketValue =
+              _type == 'Expense' ? (_selectedBucket!) : 'Income';
+          final txn = ExpenseTransactionModel(
+            id: '',
+            accountId: _selectedAccount!.id,
+            amount: amount,
+            date: Timestamp.fromDate(_date),
+            bucket: bucketValue,
+            type: _type,
+            category: _category!,
+            subCategory: _subCategory ?? 'General',
+            notes: _notesCtrl.text,
+          );
+          await ExpenseService().addTransaction(txn);
+        }
+      } else {
+        // --- STANDARD EDIT ---
+        final bucketValue = _type == 'Expense' ? (_selectedBucket!) : 'Income';
+
+        final txn = ExpenseTransactionModel(
+          id: widget.txnToEdit?.id ?? '',
+          accountId: _selectedAccount!.id,
+          amount: amount,
+          date: Timestamp.fromDate(_date),
+          bucket: bucketValue,
+          type: _type,
+          category: _category!,
+          subCategory: _subCategory ?? 'General',
+          notes: _notesCtrl.text,
+        );
+
+        if (isEditing) {
+          await ExpenseService().updateTransaction(txn);
+        } else {
+          await ExpenseService().addTransaction(txn);
+        }
+      }
+
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final relevantCategories =
+        _allCategories.where((c) => c.type == _type).toList();
+    final categoryKeys = relevantCategories.map((e) => e.name).toList();
+
+    List<String> subCategories = [];
+    if (_category != null && _type != 'Transfer') {
+      final cat = relevantCategories.firstWhere((c) => c.name == _category,
+          orElse: () => relevantCategories.first);
+      subCategories = cat.subCategories;
+    }
+
+    final bottomPadding =
+        _showCustomKeyboard ? 0.0 : MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xff0D1B2A),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Flexible(
+          fit: FlexFit.loose,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Form(
+                key: _formKey,
+                child: Column(children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                      widget.txnToEdit != null
+                          ? "Edit Transaction"
+                          : "Log Transaction",
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+
+                  if (_isMonthSettled && _type == 'Expense')
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8)),
+                      child: const Text("Month Settled: Bucket locked.",
+                          style: TextStyle(color: Colors.orange)),
+                    ),
+
+                  // TYPE SELECTION
+                  Row(children: [
+                    Expanded(child: _typeBtn("Expense", Colors.redAccent)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _typeBtn("Income", Colors.greenAccent)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _typeBtn("Transfer", Colors.blueAccent)),
+                  ]),
+                  const SizedBox(height: 24),
+
+                  // FROM ACCOUNT
+                  _buildSelectField<ExpenseAccountModel>(
+                    _type == 'Transfer' ? "From Account" : "Account",
+                    _selectedAccount,
+                    _accounts,
+                    (a) => "${a.bankName} - ${a.name}",
+                    (v) => setState(() => _selectedAccount = v),
+                    validator: (v) => v == null ? "Required" : null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // TO ACCOUNT (Visible only for Transfer)
+                  if (_type == 'Transfer') ...[
+                    _buildSelectField<ExpenseAccountModel>(
+                      "To Account",
+                      _toAccount,
+                      _accounts
+                          .where((a) => a.id != _selectedAccount?.id)
+                          .toList(),
+                      (a) => "${a.bankName} - ${a.name}",
+                      (v) => setState(() => _toAccount = v),
+                      validator: (v) => v == null ? "Select Destination" : null,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  InkWell(
+                    onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InputDecorator(
+                      decoration: _inputDeco("Date").copyWith(
+                        suffixIcon: const Icon(Icons.calendar_today,
+                            color: Colors.white54, size: 18),
+                      ),
+                      child: Text(DateFormat('dd MMM, hh:mm a').format(_date),
+                          style: const TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // AMOUNT
+                  Container(
+                    key: _amountFieldKey,
+                    child: TextFormField(
+                      controller: _amountCtrl,
+                      focusNode: _amountNode,
+                      readOnly: !_systemKeyboardActive,
+                      showCursor: _systemKeyboardActive,
+                      keyboardType:
+                          TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold),
+                      decoration: _inputDeco("Amount").copyWith(
+                        prefixText: '₹ ',
+                      ),
+                      onTap: () {
+                        if (!_amountNode.hasFocus) {
+                          FocusScope.of(context).requestFocus(_amountNode);
+                        }
+                        setState(() {
+                          _showCustomKeyboard = true;
+                          _systemKeyboardActive = false;
+                        });
+                      },
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return "Required";
+                        final val = double.tryParse(v) ?? 0;
+                        if (val <= 0) return "Invalid";
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // EXPENSE SPECIFIC FIELDS
+                  if (_type == 'Expense') ...[
+                    _buildSelectField<String>(
+                      "Bucket",
+                      _selectedBucket,
+                      _buckets,
+                      (s) => s,
+                      (v) => setState(() => _selectedBucket = v),
+                      validator: (v) => v == null ? "Select Bucket" : null,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // CATEGORY (Hidden for Transfer)
+                  if (_type != 'Transfer') ...[
+                    Row(children: [
+                      Expanded(
+                          child: _buildSelectField<String>(
+                        "Category",
+                        _category,
+                        categoryKeys,
+                        (s) => s,
+                        (v) => setState(() {
+                          _category = v;
+                          _subCategory = null;
+                        }),
+                        validator: (v) => v == null ? "Required" : null,
+                      )),
+                      if (_category != null && subCategories.isNotEmpty) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildSelectField<String>(
+                                "Sub-Cat",
+                                _subCategory,
+                                subCategories,
+                                (s) => s,
+                                (v) => setState(() => _subCategory = v))),
+                      ]
+                    ]),
+                    const SizedBox(height: 16),
+                  ],
+
+                  Container(
+                    key: _notesFieldKey,
+                    child: TextFormField(
+                      controller: _notesCtrl,
+                      focusNode: _notesNode,
+                      style: const TextStyle(color: Colors.white),
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _save(),
+                      decoration: _inputDeco("Notes (Optional)"),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _type == 'Transfer'
+                            ? Colors.blueAccent
+                            : const Color(0xFF00B4D8),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: ModernLoader(size: 24))
+                          : Text(
+                              widget.txnToEdit != null ? "Update" : "Save",
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                    ),
+                  ),
+                ])),
+          ),
+        ),
+        if (_showCustomKeyboard)
+          CalculatorKeyboard(
+            onKeyPress: (v) =>
+                CalculatorKeyboard.handleKeyPress(_amountCtrl, v),
+            onBackspace: () => CalculatorKeyboard.handleBackspace(_amountCtrl),
+            onEquals: () => CalculatorKeyboard.handleEquals(_amountCtrl),
+            onClear: () => _amountCtrl.clear(),
+            onClose: () {
+              setState(() => _showCustomKeyboard = false);
+              _amountNode.unfocus();
+            },
+            onNext: () {
+              setState(() => _showCustomKeyboard = false);
+              FocusScope.of(context).requestFocus(_notesNode);
+            },
+            onSwitchToSystem: () {
+              setState(() {
+                _showCustomKeyboard = false;
+                _systemKeyboardActive = true;
+              });
+              _amountNode.unfocus();
+              Future.delayed(const Duration(milliseconds: 50), () {
+                FocusScope.of(context).requestFocus(_amountNode);
+              });
+            },
+            onPrevious: () {
+              setState(() => _showCustomKeyboard = false);
+              _amountNode.unfocus();
+            },
+          )
+      ]),
+    );
+  }
+
+  Future<void> _pickDate() async {
+    _amountNode.unfocus();
+    _notesNode.unfocus();
+    setState(() => _showCustomKeyboard = false);
+
+    final d = await showDatePicker(
+        context: context,
+        initialDate: _date,
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2030),
+        builder: (c, child) => Theme(data: ThemeData.dark(), child: child!));
+    if (d != null) {
+      final t = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.fromDateTime(_date),
+          builder: (c, child) => Theme(data: ThemeData.dark(), child: child!));
+      if (t != null) {
+        final newDate = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+        setState(() => _date = newDate);
+        await _updateBucketsForDate(newDate);
+      }
+    }
+  }
+
+  InputDecoration _inputDeco(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.05),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF00B4D8), width: 1.5),
+      ),
+      errorStyle: const TextStyle(color: Colors.redAccent),
+    );
+  }
+
+  Widget _typeBtn(String label, Color col) {
+    bool isSel = _type == label;
+    return GestureDetector(
+      onTap: () => setState(() {
+        _type = label;
+        _category = null;
+        _subCategory = null;
+        if (_type == 'Income' || _type == 'Transfer') _selectedBucket = null;
+      }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+            color: isSel ? col.withOpacity(0.2) : Colors.transparent,
+            border: Border.all(color: isSel ? col : Colors.white12),
+            borderRadius: BorderRadius.circular(8)),
+        child: Center(
+            child: Text(label,
+                style: TextStyle(
+                    color: isSel ? col : Colors.white54,
+                    fontWeight: FontWeight.bold))),
+      ),
+    );
+  }
+
+  Widget _buildSelectField<T>(String label, T? val, List<T> items,
+      String Function(T) labelGen, Function(T) onSel,
+      {String? Function(T?)? validator}) {
+    return FormField<T>(
+      validator: validator,
+      initialValue: val,
+      builder: (FormFieldState<T> state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: () {
+                _amountNode.unfocus();
+                _notesNode.unfocus();
+                setState(() => _showCustomKeyboard = false);
+
+                showSelectionSheet<T>(
+                    context: context,
+                    title: label,
+                    items: items,
+                    selectedItem: val,
+                    labelBuilder: labelGen,
+                    onSelect: (v) {
+                      if (v != null) {
+                        onSel(v);
+                        state.didChange(v);
+                      }
+                    });
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: InputDecorator(
+                  decoration: _inputDeco(label).copyWith(
+                    errorText: state.errorText,
+                    suffixIcon: const Icon(Icons.keyboard_arrow_down,
+                        color: Colors.white54),
+                  ),
+                  isEmpty: val == null,
+                  child: Text(val != null ? labelGen(val) : '',
+                      style: const TextStyle(color: Colors.white))),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void showSelectionSheet<T>({
+    required BuildContext context,
+    required String title,
+    required List<T> items,
+    T? selectedItem,
+    required String Function(T) labelBuilder,
+    required Function(T) onSelect,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xff1B263B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 16),
+              Center(
+                  child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(2)))),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(title,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final isSelected = item == selectedItem;
+                    return ListTile(
+                      onTap: () {
+                        onSelect(item);
+                        Navigator.pop(context);
+                      },
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      tileColor: isSelected
+                          ? const Color(0xFF00B4D8).withOpacity(0.2)
+                          : Colors.transparent,
+                      title: Text(labelBuilder(item),
+                          style: TextStyle(
+                              color: isSelected
+                                  ? const Color(0xFF00B4D8)
+                                  : Colors.white70,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal)),
+                      trailing: isSelected
+                          ? const Icon(Icons.check, color: Color(0xFF00B4D8))
+                          : null,
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}

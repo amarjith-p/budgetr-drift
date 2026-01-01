@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../../custom_entry/screens/custom_entry_dashboard.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../net_worth/screens/net_worth_screen.dart';
-import '../../settlement/screens/settlement_screen.dart';
+// import '../../settlement/screens/settlement_screen.dart'; // Keep commented if unused
 import '../../credit_tracker/screens/credit_tracker_screen.dart';
 import '../../investment/screens/investment_screen.dart';
+// ADD THIS IMPORT
+import '../../daily_expense/screens/daily_expense_screen.dart';
 
 import '../widgets/home_app_bar.dart';
 import '../widgets/home_bottom_bar.dart';
@@ -82,6 +84,7 @@ class HomeScreen extends StatelessWidget {
                       crossAxisSpacing: 16,
                       childAspectRatio: 0.85,
                       children: [
+                        // 1. Planning (Budgets)
                         HomeFeatureCard(
                           title: "Budgets",
                           subtitle: "Manage Monthly Budgets",
@@ -89,27 +92,18 @@ class HomeScreen extends StatelessWidget {
                           color: const Color(0xFF4361EE),
                           destination: const DashboardScreen(),
                         ),
+
+                        // 2. Tracking (Daily Expenses) - NEW
                         HomeFeatureCard(
-                          title: "Investments",
-                          subtitle: "Stocks & Mutual Funds",
-                          icon: Icons.show_chart_rounded,
-                          color: const Color(0xFFFF9F1C),
-                          destination: const InvestmentScreen(),
+                          title: "Daily Expenses",
+                          subtitle: "Track Cash & Bank Spends",
+                          icon: Icons.account_balance_wallet_outlined,
+                          color: const Color(
+                              0xFF00B4D8), // Matching the Cyan theme
+                          destination: const DailyExpenseScreen(),
                         ),
-                        HomeFeatureCard(
-                          title: "Net Worth",
-                          subtitle: "Track Your Networth",
-                          icon: Icons.currency_rupee,
-                          color: const Color(0xFF2EC4B6),
-                          destination: const NetWorthScreen(),
-                        ),
-                        // HomeFeatureCard(
-                        //   title: "Settlements",
-                        //   subtitle: "Month-end Settlements",
-                        //   icon: Icons.handshake_outlined,
-                        //   color: const Color(0xFF7209B7),
-                        //   destination: const SettlementScreen(),
-                        // ),
+
+                        // 3. Debt (Credit Cards)
                         HomeFeatureCard(
                           title: "Credit Tracker",
                           subtitle: "Cards & Repayments",
@@ -117,6 +111,26 @@ class HomeScreen extends StatelessWidget {
                           color: const Color(0xFFE63946),
                           destination: const CreditTrackerScreen(),
                         ),
+
+                        // 4. Growth (Investments)
+                        HomeFeatureCard(
+                          title: "Investments",
+                          subtitle: "Stocks & Mutual Funds",
+                          icon: Icons.show_chart_rounded,
+                          color: const Color(0xFFFF9F1C),
+                          destination: const InvestmentScreen(),
+                        ),
+
+                        // 5. Status (Net Worth)
+                        HomeFeatureCard(
+                          title: "Net Worth",
+                          subtitle: "Track Your Networth",
+                          icon: Icons.currency_rupee,
+                          color: const Color(0xFF2EC4B6),
+                          destination: const NetWorthScreen(),
+                        ),
+
+                        // 6. Tools (Custom Data)
                         HomeFeatureCard(
                           title: "Custom Data Entry",
                           subtitle: "Personal Data Trackers",

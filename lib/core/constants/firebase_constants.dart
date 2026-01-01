@@ -18,4 +18,7 @@ class FirebaseConstants {
   // Credit Tracker
   static const String creditCards = 'credit_cards';
   static const String creditTransactions = 'credit_transactions';
+
+  static const String expenseAccounts = 'expense_accounts';
+  static const String expenseTransactions = 'expense_transactions';
 }
