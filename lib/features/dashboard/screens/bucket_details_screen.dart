@@ -43,9 +43,8 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
   final ExpenseService _expenseService = ExpenseService();
   final CategoryService _categoryService = CategoryService();
 
-  // Separate maps for specific display requirements
-  Map<String, String> _accountNames = {}; // e.g. "Platinum", "Savings"
-  Map<String, String> _bankNames = {}; // e.g. "HDFC", "SBI"
+  Map<String, String> _accountNames = {};
+  Map<String, String> _bankNames = {};
   Map<String, IconData> _categoryIcons = {};
 
   double _budgetLimit = 0.0;
@@ -81,13 +80,11 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
       final Map<String, String> accNames = {};
       final Map<String, String> bankNames = {};
 
-      // Map Cards
       for (var c in cards) {
         accNames[c.id] = c.name;
         bankNames[c.id] = c.bankName;
       }
 
-      // Map Accounts
       for (var a in accounts) {
         accNames[a.id] = a.name;
         bankNames[a.id] = a.bankName;
@@ -228,7 +225,6 @@ class _BucketTransactionCardState extends State<BucketTransactionCard> {
     final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
     final isCredit = widget.txn.sourceType == TransactionSourceType.creditCard;
 
-    // Theme colors matching the app
     final primaryColor =
         isCredit ? const Color(0xFFE63946) : const Color(0xFF00B4D8);
 
@@ -335,15 +331,14 @@ class _BucketTransactionCardState extends State<BucketTransactionCard> {
 
             // --- EXPANDED DETAILS ---
             AnimatedCrossFade(
-              firstChild: const SizedBox.shrink(),
+              // FIX: Use infinite width with 0 height to prevent width interpolation issues (blinking)
+              firstChild: const SizedBox(width: double.infinity, height: 0),
               secondChild: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 12),
                   const Divider(color: Colors.white10),
                   const SizedBox(height: 8),
-
-                  // Row 1: Bank Name & Subcategory
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -382,8 +377,6 @@ class _BucketTransactionCardState extends State<BucketTransactionCard> {
                         ),
                     ],
                   ),
-
-                  // Row 2: Notes (if available)
                   if (widget.txn.notes.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text("Notes",

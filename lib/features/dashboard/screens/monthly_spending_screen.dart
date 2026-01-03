@@ -35,14 +35,11 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
   final ExpenseService _expenseService = ExpenseService();
   final CategoryService _categoryService = CategoryService();
 
-  // Separate maps for specific display requirements (Expanded View)
-  Map<String, String> _accountNames = {}; // e.g. "Platinum", "Savings"
-  Map<String, String> _bankNames = {}; // e.g. "HDFC", "SBI"
+  Map<String, String> _accountNames = {};
+  Map<String, String> _bankNames = {};
   Map<String, IconData> _categoryIcons = {};
 
   bool _isLoadingInfo = true;
-
-  // Filter State
   bool _hideOutOfBucket = false;
 
   @override
@@ -68,13 +65,11 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
       final Map<String, String> accNames = {};
       final Map<String, String> bankNames = {};
 
-      // Map Cards
       for (var c in cards) {
         accNames[c.id] = c.name;
         bankNames[c.id] = c.bankName;
       }
 
-      // Map Accounts
       for (var a in accounts) {
         accNames[a.id] = a.name;
         bankNames[a.id] = a.bankName;
@@ -141,7 +136,6 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
 
                 var transactions = snapshot.data ?? [];
 
-                // --- APPLY FILTER ---
                 if (_hideOutOfBucket) {
                   transactions = transactions
                       .where((t) => t.bucket != 'Out of Bucket')
@@ -175,17 +169,13 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
                 return ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // --- GLOBAL CHART ---
                     BucketTrendsChart(
                       transactions: transactions,
                       year: widget.record.year,
                       month: widget.record.month,
                       budgetLimit: totalBudget,
                     ),
-
                     const SizedBox(height: 8),
-
-                    // --- CUSTOM FILTER TOGGLE ---
                     GestureDetector(
                       onTap: () =>
                           setState(() => _hideOutOfBucket = !_hideOutOfBucket),
@@ -269,7 +259,6 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
                         ),
                       ),
                     ),
-
                     const Padding(
                       padding: EdgeInsets.only(left: 4, bottom: 12),
                       child: Text(
@@ -281,8 +270,6 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
                         ),
                       ),
                     ),
-
-                    // --- UNIFIED EXPANDABLE LIST ---
                     ...transactions.map((txn) => MonthlyTransactionCard(
                           txn: txn,
                           accountName: _accountNames[txn.sourceId] ?? "Unknown",
@@ -324,7 +311,6 @@ class _MonthlyTransactionCardState extends State<MonthlyTransactionCard> {
     final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
     final isCredit = widget.txn.sourceType == TransactionSourceType.creditCard;
 
-    // Theme colors matching the app
     final primaryColor =
         isCredit ? const Color(0xFFE63946) : const Color(0xFF00B4D8);
 
@@ -354,7 +340,6 @@ class _MonthlyTransactionCardState extends State<MonthlyTransactionCard> {
         ),
         child: Column(
           children: [
-            // --- HEADER ROW (ALWAYS VISIBLE) ---
             Row(
               children: [
                 Container(
@@ -415,7 +400,6 @@ class _MonthlyTransactionCardState extends State<MonthlyTransactionCard> {
                           ),
                         ],
                       ),
-                      // Bucket Tag (Specific to Monthly Spending Screen)
                       if (widget.txn.bucket.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
@@ -458,15 +442,14 @@ class _MonthlyTransactionCardState extends State<MonthlyTransactionCard> {
 
             // --- EXPANDED DETAILS ---
             AnimatedCrossFade(
-              firstChild: const SizedBox.shrink(),
+              // FIX: Use infinite width, 0 height to maintain width constraints during animation
+              firstChild: const SizedBox(width: double.infinity, height: 0),
               secondChild: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 12),
                   const Divider(color: Colors.white10),
                   const SizedBox(height: 8),
-
-                  // Row 1: Bank Name & Subcategory
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -505,8 +488,6 @@ class _MonthlyTransactionCardState extends State<MonthlyTransactionCard> {
                         ),
                     ],
                   ),
-
-                  // Row 2: Notes (if available)
                   if (widget.txn.notes.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text("Notes",
