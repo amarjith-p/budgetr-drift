@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
-import '../../credit_tracker/models/credit_models.dart';
+import '../models/dashboard_transaction.dart'; // NEW Import
 
 class BucketTrendsChart extends StatefulWidget {
-  final List<CreditTransactionModel> transactions;
+  // Updated Type:
+  final List<DashboardTransaction> transactions;
   final int year;
   final int month;
   final double budgetLimit;
@@ -146,17 +147,15 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
         widget.budgetLimit > 0 && _projectedTotal > widget.budgetLimit;
 
     // Colors
-    final Color actualColor = isTotalOverLimit
-        ? Colors.redAccent
-        : BudgetrColors.accent;
+    final Color actualColor =
+        isTotalOverLimit ? Colors.redAccent : BudgetrColors.accent;
     final Color projectedColor = isProjectedOverLimit
         ? Colors.redAccent.withOpacity(0.5)
         : Colors.white.withOpacity(0.3);
 
     // Header Text Colors
-    final Color totalTextColor = isTotalOverLimit
-        ? Colors.redAccent
-        : Colors.white;
+    final Color totalTextColor =
+        isTotalOverLimit ? Colors.redAccent : Colors.white;
     final Color projectedTextColor = isProjectedOverLimit
         ? Colors.redAccent
         : BudgetrColors.accent.withOpacity(0.7);
@@ -333,7 +332,6 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
                 maxX: _daysInMonth.toDouble(),
                 minY: 0,
                 maxY: _maxY,
-
                 extraLinesData: ExtraLinesData(
                   horizontalLines: [
                     if (widget.budgetLimit > 0)
@@ -376,7 +374,6 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
                       ),
                   ],
                 ),
-
                 lineBarsData: [
                   // Projection
                   if (_projectedSpots.isNotEmpty)
@@ -439,7 +436,6 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
                     ),
                   ),
                 ],
-
                 lineTouchData: LineTouchData(
                   touchTooltipData: LineTouchTooltipData(
                     tooltipRoundedRadius: 8,
@@ -447,8 +443,7 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
                     tooltipMargin: 16,
                     getTooltipItems: (touchedSpots) {
                       return touchedSpots.map((LineBarSpot touchedSpot) {
-                        final isProjection =
-                            touchedSpot.barIndex == 0 &&
+                        final isProjection = touchedSpot.barIndex == 0 &&
                             _projectedSpots.isNotEmpty;
                         final date = touchedSpot.x.toInt();
                         final amount = touchedSpot.y;

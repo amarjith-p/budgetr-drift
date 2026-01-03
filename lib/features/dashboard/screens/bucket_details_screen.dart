@@ -3,13 +3,22 @@ import 'package:intl/intl.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
 import '../../../core/widgets/modern_loader.dart';
-import '../../../core/constants/icon_constants.dart'; // Import IconConstants
-import '../../../core/services/category_service.dart'; // Import CategoryService
-import '../../../core/models/transaction_category_model.dart'; // Import CategoryModel
-import '../../../core/models/financial_record_model.dart'; // Import FinancialRecord
+import '../../../core/constants/icon_constants.dart';
+import '../../../core/services/category_service.dart';
+import '../../../core/models/transaction_category_model.dart';
+import '../../../core/models/financial_record_model.dart';
+
+// Credit Tracker
 import '../../credit_tracker/models/credit_models.dart';
 import '../../credit_tracker/services/credit_service.dart';
+
+// Daily Expense
+import '../../daily_expense/models/expense_models.dart';
+import '../../daily_expense/services/expense_service.dart';
+
+// Dashboard
 import '../services/dashboard_service.dart';
+import '../models/dashboard_transaction.dart';
 import '../widgets/bucket_trends_chart.dart';
 
 class BucketDetailsScreen extends StatefulWidget {
@@ -31,15 +40,14 @@ class BucketDetailsScreen extends StatefulWidget {
 class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
   final DashboardService _dashboardService = DashboardService();
   final CreditService _creditService = CreditService();
+  final ExpenseService _expenseService = ExpenseService();
   final CategoryService _categoryService = CategoryService();
 
-  final NumberFormat _currencyFormat = NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-  );
+  // Separate maps for specific display requirements
+  Map<String, String> _accountNames = {}; // e.g. "Platinum", "Savings"
+  Map<String, String> _bankNames = {}; // e.g. "HDFC", "SBI"
+  Map<String, IconData> _categoryIcons = {};
 
-  Map<String, String> _cardNames = {};
-  Map<String, IconData> _categoryIcons = {}; // Map to store resolved icons
   double _budgetLimit = 0.0;
   bool _isLoadingLimit = true;
 
@@ -50,48 +58,62 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
   }
 
   Future<void> _loadData() async {
-    // Fetch all required data in parallel
-    final results = await Future.wait([
-      _creditService.getCreditCards().first, // 0: Cards
-      _categoryService.getCategories().first, // 1: Categories
-      _dashboardService.getRecordForMonth(
-        widget.year,
-        widget.month,
-      ), // 2: Budget Record
-    ]);
+    try {
+      final results = await Future.wait([
+        _creditService.getCreditCards().first,
+        _expenseService.getAccounts().first,
+        _categoryService.getCategories().first,
+        _dashboardService.getRecordForMonth(widget.year, widget.month),
+      ]);
 
-    if (mounted) {
+      if (!mounted) return;
+
       final cards = results[0] as List<CreditCardModel>;
-      final categories = results[1] as List<TransactionCategoryModel>;
-      final record = results[2] as FinancialRecord?;
+      final accounts = results[1] as List<ExpenseAccountModel>;
+      final categories = results[2] as List<TransactionCategoryModel>;
+      final record = results[3] as FinancialRecord?;
 
       double limit = 0.0;
       if (record != null) {
         limit = record.allocations[widget.bucketName] ?? 0.0;
       }
 
-      setState(() {
-        // 1. Map Card IDs to Names
-        _cardNames = {for (var c in cards) c.id: "${c.bankName} - ${c.name}"};
+      final Map<String, String> accNames = {};
+      final Map<String, String> bankNames = {};
 
-        // 2. Map Category Names to Icons
+      // Map Cards
+      for (var c in cards) {
+        accNames[c.id] = c.name;
+        bankNames[c.id] = c.bankName;
+      }
+
+      // Map Accounts
+      for (var a in accounts) {
+        accNames[a.id] = a.name;
+        bankNames[a.id] = a.bankName;
+      }
+
+      setState(() {
+        _accountNames = accNames;
+        _bankNames = bankNames;
         _categoryIcons = {
           for (var c in categories)
             if (c.iconCode != null)
               c.name: IconConstants.getIconByCode(c.iconCode!),
         };
-
         _budgetLimit = limit;
         _isLoadingLimit = false;
       });
+    } catch (e) {
+      debugPrint("Error loading bucket data: $e");
+      if (mounted) setState(() => _isLoadingLimit = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final dateString = DateFormat(
-      'MMMM yyyy',
-    ).format(DateTime(widget.year, widget.month));
+    final dateString =
+        DateFormat('MMMM yyyy').format(DateTime(widget.year, widget.month));
 
     return Scaffold(
       backgroundColor: BudgetrColors.background,
@@ -104,9 +126,7 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
             Text(
               widget.bucketName,
               style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+                  color: Colors.white, fontWeight: FontWeight.bold),
             ),
             Text(
               dateString,
@@ -118,7 +138,7 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
       ),
       body: _isLoadingLimit
           ? const Center(child: ModernLoader())
-          : StreamBuilder<List<CreditTransactionModel>>(
+          : StreamBuilder<List<DashboardTransaction>>(
               stream: _dashboardService.getBucketTransactions(
                 widget.year,
                 widget.month,
@@ -136,18 +156,12 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.receipt_long_outlined,
-                          size: 64,
-                          color: Colors.white.withOpacity(0.1),
-                        ),
+                        Icon(Icons.receipt_long_outlined,
+                            size: 64, color: Colors.white.withOpacity(0.1)),
                         const SizedBox(height: 16),
-                        Text(
-                          "No transactions found",
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                          ),
-                        ),
+                        Text("No transactions found",
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.5))),
                       ],
                     ),
                   );
@@ -156,14 +170,12 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
                 return ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // --- CHART SECTION ---
                     BucketTrendsChart(
                       transactions: transactions,
                       year: widget.year,
                       month: widget.month,
                       budgetLimit: _budgetLimit,
                     ),
-
                     const Padding(
                       padding: EdgeInsets.only(left: 4, bottom: 12),
                       child: Text(
@@ -175,124 +187,228 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
                         ),
                       ),
                     ),
-
-                    // --- TRANSACTIONS LIST ---
-                    ...transactions.map((txn) {
-                      final cardName = _cardNames[txn.cardId] ?? "Unknown Card";
-                      // Resolve Icon: Use map or fallback to category default
-                      final iconData =
-                          _categoryIcons[txn.category] ??
-                          Icons.category_outlined;
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: BudgetrColors.cardSurface.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.05),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            // Dynamic Icon
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.05),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                iconData, // Uses the actual category icon
-                                color: Colors.white70,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    txn.category,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        DateFormat(
-                                          'dd MMM',
-                                        ).format(txn.date.toDate()),
-                                        style: const TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        width: 4,
-                                        height: 4,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white24,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          cardName,
-                                          style: const TextStyle(
-                                            color: BudgetrColors.accent,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (txn.notes.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Text(
-                                        txn.notes,
-                                        style: const TextStyle(
-                                          color: Colors.white38,
-                                          fontSize: 11,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              _currencyFormat.format(txn.amount),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                    ...transactions.map((txn) => BucketTransactionCard(
+                          txn: txn,
+                          accountName: _accountNames[txn.sourceId] ?? "Unknown",
+                          bankName: _bankNames[txn.sourceId] ?? "",
+                          iconData: _categoryIcons[txn.category] ??
+                              Icons.category_outlined,
+                        )),
                   ],
                 );
               },
             ),
+    );
+  }
+}
+
+class BucketTransactionCard extends StatefulWidget {
+  final DashboardTransaction txn;
+  final String accountName;
+  final String bankName;
+  final IconData iconData;
+
+  const BucketTransactionCard({
+    super.key,
+    required this.txn,
+    required this.accountName,
+    required this.bankName,
+    required this.iconData,
+  });
+
+  @override
+  State<BucketTransactionCard> createState() => _BucketTransactionCardState();
+}
+
+class _BucketTransactionCardState extends State<BucketTransactionCard> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+    final isCredit = widget.txn.sourceType == TransactionSourceType.creditCard;
+
+    // Theme colors matching the app
+    final primaryColor =
+        isCredit ? const Color(0xFFE63946) : const Color(0xFF00B4D8);
+
+    return GestureDetector(
+      onTap: () => setState(() => _isExpanded = !_isExpanded),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: BudgetrColors.cardSurface.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isExpanded
+                ? Colors.white.withOpacity(0.2)
+                : Colors.white.withOpacity(0.05),
+          ),
+          boxShadow: _isExpanded
+              ? [
+                  BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: const Offset(0, 4))
+                ]
+              : [],
+        ),
+        child: Column(
+          children: [
+            // --- HEADER ROW (ALWAYS VISIBLE) ---
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(widget.iconData, color: Colors.white70, size: 20),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.txn.category,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                              isCredit
+                                  ? Icons.credit_card
+                                  : Icons.account_balance,
+                              size: 10,
+                              color: primaryColor),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              widget.accountName,
+                              style: TextStyle(
+                                color: primaryColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                              width: 3,
+                              height: 3,
+                              decoration: const BoxDecoration(
+                                  color: Colors.white24,
+                                  shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Text(
+                            DateFormat('dd MMM')
+                                .format(widget.txn.date.toDate()),
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  currencyFormat.format(widget.txn.amount),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+
+            // --- EXPANDED DETAILS ---
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 8),
+
+                  // Row 1: Bank Name & Subcategory
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (widget.bankName.isNotEmpty)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Bank / Issuer",
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontSize: 10)),
+                              const SizedBox(height: 2),
+                              Text(widget.bankName,
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      if (widget.txn.subCategory.isNotEmpty &&
+                          widget.txn.subCategory != 'General')
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text("Subcategory",
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontSize: 10)),
+                              const SizedBox(height: 2),
+                              Text(widget.txn.subCategory,
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  // Row 2: Notes (if available)
+                  if (widget.txn.notes.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text("Notes",
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 10)),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.txn.notes,
+                      style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                ],
+              ),
+              crossFadeState: _isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

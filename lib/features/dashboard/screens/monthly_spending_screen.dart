@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/design/budgetr_colors.dart';
-import '../../../core/design/budgetr_styles.dart';
-import '../../../core/widgets/modern_loader.dart';
 import '../../../core/constants/icon_constants.dart';
+import '../../../core/widgets/modern_loader.dart';
 import '../../../core/services/category_service.dart';
 import '../../../core/models/transaction_category_model.dart';
 import '../../../core/models/financial_record_model.dart';
+
+// Credit Tracker
 import '../../credit_tracker/models/credit_models.dart';
 import '../../credit_tracker/services/credit_service.dart';
+
+// Daily Expense
+import '../../daily_expense/models/expense_models.dart';
+import '../../daily_expense/services/expense_service.dart';
+
+// Dashboard
 import '../services/dashboard_service.dart';
+import '../models/dashboard_transaction.dart'; // Unified Model
 import '../widgets/bucket_trends_chart.dart';
 
 class MonthlySpendingScreen extends StatefulWidget {
@@ -24,15 +32,14 @@ class MonthlySpendingScreen extends StatefulWidget {
 class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
   final DashboardService _dashboardService = DashboardService();
   final CreditService _creditService = CreditService();
+  final ExpenseService _expenseService = ExpenseService();
   final CategoryService _categoryService = CategoryService();
 
-  final NumberFormat _currencyFormat = NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-  );
-
-  Map<String, String> _cardNames = {};
+  // Separate maps for specific display requirements (Expanded View)
+  Map<String, String> _accountNames = {}; // e.g. "Platinum", "Savings"
+  Map<String, String> _bankNames = {}; // e.g. "HDFC", "SBI"
   Map<String, IconData> _categoryIcons = {};
+
   bool _isLoadingInfo = true;
 
   // Filter State
@@ -45,17 +52,37 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
   }
 
   Future<void> _loadMetadata() async {
-    final results = await Future.wait([
-      _creditService.getCreditCards().first,
-      _categoryService.getCategories().first,
-    ]);
+    try {
+      final results = await Future.wait([
+        _creditService.getCreditCards().first,
+        _expenseService.getAccounts().first,
+        _categoryService.getCategories().first,
+      ]);
 
-    if (mounted) {
+      if (!mounted) return;
+
       final cards = results[0] as List<CreditCardModel>;
-      final categories = results[1] as List<TransactionCategoryModel>;
+      final accounts = results[1] as List<ExpenseAccountModel>;
+      final categories = results[2] as List<TransactionCategoryModel>;
+
+      final Map<String, String> accNames = {};
+      final Map<String, String> bankNames = {};
+
+      // Map Cards
+      for (var c in cards) {
+        accNames[c.id] = c.name;
+        bankNames[c.id] = c.bankName;
+      }
+
+      // Map Accounts
+      for (var a in accounts) {
+        accNames[a.id] = a.name;
+        bankNames[a.id] = a.bankName;
+      }
 
       setState(() {
-        _cardNames = {for (var c in cards) c.id: "${c.bankName} - ${c.name}"};
+        _accountNames = accNames;
+        _bankNames = bankNames;
         _categoryIcons = {
           for (var c in categories)
             if (c.iconCode != null)
@@ -63,6 +90,9 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
         };
         _isLoadingInfo = false;
       });
+    } catch (e) {
+      debugPrint("Error loading metadata: $e");
+      if (mounted) setState(() => _isLoadingInfo = false);
     }
   }
 
@@ -99,7 +129,7 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
       ),
       body: _isLoadingInfo
           ? const Center(child: ModernLoader())
-          : StreamBuilder<List<CreditTransactionModel>>(
+          : StreamBuilder<List<DashboardTransaction>>(
               stream: _dashboardService.getMonthlyTransactions(
                 widget.record.year,
                 widget.record.month,
@@ -178,17 +208,6 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
                                 : Colors.white.withOpacity(0.05),
                             width: 1,
                           ),
-                          boxShadow: _hideOutOfBucket
-                              ? [
-                                  BoxShadow(
-                                    color: BudgetrColors.accent.withOpacity(
-                                      0.1,
-                                    ),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : [],
                         ),
                         child: Row(
                           children: [
@@ -238,51 +257,13 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
                                 ],
                               ),
                             ),
-                            // Custom Animated Switch
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              width: 48,
-                              height: 28,
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                color: _hideOutOfBucket
-                                    ? BudgetrColors.accent
-                                    : Colors.black26,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: AnimatedAlign(
-                                duration: const Duration(milliseconds: 250),
-                                curve: Curves.easeInOutBack,
-                                alignment: _hideOutOfBucket
-                                    ? Alignment.centerRight
-                                    : Alignment.centerLeft,
-                                child: Container(
-                                  width: 22,
-                                  height: 22,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      _hideOutOfBucket
-                                          ? Icons.close
-                                          : Icons.check,
-                                      size: 14,
-                                      color: _hideOutOfBucket
-                                          ? BudgetrColors.accent
-                                          : Colors.grey,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                            Icon(
+                              _hideOutOfBucket
+                                  ? Icons.check_circle
+                                  : Icons.circle_outlined,
+                              color: _hideOutOfBucket
+                                  ? BudgetrColors.accent
+                                  : Colors.white24,
                             ),
                           ],
                         ),
@@ -301,138 +282,256 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
                       ),
                     ),
 
-                    // --- LIST ---
-                    ...transactions.map((txn) {
-                      final cardName = _cardNames[txn.cardId] ?? "Unknown Card";
-                      final iconData =
-                          _categoryIcons[txn.category] ??
-                          Icons.category_outlined;
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: BudgetrColors.cardSurface.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.05),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.05),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                iconData,
-                                color: Colors.white70,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    txn.category,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        DateFormat(
-                                          'dd MMM',
-                                        ).format(txn.date.toDate()),
-                                        style: const TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        width: 4,
-                                        height: 4,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white24,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          cardName,
-                                          style: const TextStyle(
-                                            color: BudgetrColors.accent,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  // Show Bucket Tag for Context
-                                  if (txn.bucket.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: txn.bucket == 'Out of Bucket'
-                                              ? Colors.redAccent.withOpacity(
-                                                  0.2,
-                                                )
-                                              : Colors.white10,
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          txn.bucket,
-                                          style: TextStyle(
-                                            color: txn.bucket == 'Out of Bucket'
-                                                ? Colors.redAccent
-                                                : Colors.white54,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              _currencyFormat.format(txn.amount),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                    // --- UNIFIED EXPANDABLE LIST ---
+                    ...transactions.map((txn) => MonthlyTransactionCard(
+                          txn: txn,
+                          accountName: _accountNames[txn.sourceId] ?? "Unknown",
+                          bankName: _bankNames[txn.sourceId] ?? "",
+                          iconData: _categoryIcons[txn.category] ??
+                              Icons.category_outlined,
+                        )),
                   ],
                 );
               },
             ),
+    );
+  }
+}
+
+class MonthlyTransactionCard extends StatefulWidget {
+  final DashboardTransaction txn;
+  final String accountName;
+  final String bankName;
+  final IconData iconData;
+
+  const MonthlyTransactionCard({
+    super.key,
+    required this.txn,
+    required this.accountName,
+    required this.bankName,
+    required this.iconData,
+  });
+
+  @override
+  State<MonthlyTransactionCard> createState() => _MonthlyTransactionCardState();
+}
+
+class _MonthlyTransactionCardState extends State<MonthlyTransactionCard> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+    final isCredit = widget.txn.sourceType == TransactionSourceType.creditCard;
+
+    // Theme colors matching the app
+    final primaryColor =
+        isCredit ? const Color(0xFFE63946) : const Color(0xFF00B4D8);
+
+    return GestureDetector(
+      onTap: () => setState(() => _isExpanded = !_isExpanded),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: BudgetrColors.cardSurface.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isExpanded
+                ? Colors.white.withOpacity(0.2)
+                : Colors.white.withOpacity(0.05),
+          ),
+          boxShadow: _isExpanded
+              ? [
+                  BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: const Offset(0, 4))
+                ]
+              : [],
+        ),
+        child: Column(
+          children: [
+            // --- HEADER ROW (ALWAYS VISIBLE) ---
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(widget.iconData, color: Colors.white70, size: 20),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.txn.category,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                              isCredit
+                                  ? Icons.credit_card
+                                  : Icons.account_balance,
+                              size: 10,
+                              color: primaryColor),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              widget.accountName,
+                              style: TextStyle(
+                                color: primaryColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                              width: 3,
+                              height: 3,
+                              decoration: const BoxDecoration(
+                                  color: Colors.white24,
+                                  shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Text(
+                            DateFormat('dd MMM')
+                                .format(widget.txn.date.toDate()),
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      // Bucket Tag (Specific to Monthly Spending Screen)
+                      if (widget.txn.bucket.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: widget.txn.bucket == 'Out of Bucket'
+                                  ? Colors.redAccent.withOpacity(0.2)
+                                  : Colors.white10,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              widget.txn.bucket,
+                              style: TextStyle(
+                                color: widget.txn.bucket == 'Out of Bucket'
+                                    ? Colors.redAccent
+                                    : Colors.white54,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Text(
+                  currencyFormat.format(widget.txn.amount),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+
+            // --- EXPANDED DETAILS ---
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 8),
+
+                  // Row 1: Bank Name & Subcategory
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (widget.bankName.isNotEmpty)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Bank / Issuer",
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontSize: 10)),
+                              const SizedBox(height: 2),
+                              Text(widget.bankName,
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      if (widget.txn.subCategory.isNotEmpty &&
+                          widget.txn.subCategory != 'General')
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text("Subcategory",
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontSize: 10)),
+                              const SizedBox(height: 2),
+                              Text(widget.txn.subCategory,
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  // Row 2: Notes (if available)
+                  if (widget.txn.notes.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text("Notes",
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 10)),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.txn.notes,
+                      style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                ],
+              ),
+              crossFadeState: _isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
