@@ -5,8 +5,7 @@ import '../models/expense_models.dart';
 class ExpenseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // --- ACCOUNTS ---
-
+  // --- ACCOUNTS (Management Screen - All Accounts) ---
   Stream<List<ExpenseAccountModel>> getAccounts() {
     return _db
         .collection(FirebaseConstants.expenseAccounts)
@@ -16,8 +15,37 @@ class ExpenseService {
             s.docs.map((d) => ExpenseAccountModel.fromFirestore(d)).toList());
   }
 
+  // --- NEW: DASHBOARD ACCOUNTS (Filtered & Sorted) ---
+  Stream<List<ExpenseAccountModel>> getDashboardAccounts() {
+    return _db
+        .collection(FirebaseConstants.expenseAccounts)
+        .where('showOnDashboard', isEqualTo: true)
+        .orderBy('dashboardOrder', descending: false)
+        // Note: Firestore requires an index for 'showOnDashboard' + 'dashboardOrder'
+        .limit(6)
+        .snapshots()
+        .map((s) =>
+            s.docs.map((d) => ExpenseAccountModel.fromFirestore(d)).toList());
+  }
+
+  // --- NEW: UPDATE ORDER & VISIBILITY ---
+  Future<void> updateDashboardConfig(List<ExpenseAccountModel> accounts) async {
+    final batch = _db.batch();
+
+    for (var account in accounts) {
+      final ref =
+          _db.collection(FirebaseConstants.expenseAccounts).doc(account.id);
+      batch.update(ref, {
+        'showOnDashboard': account.showOnDashboard,
+        'dashboardOrder': account.dashboardOrder,
+      });
+    }
+
+    await batch.commit();
+  }
+
+  // ... (Rest of existing add/update/delete methods remain unchanged)
   Future<void> addAccount(ExpenseAccountModel account) {
-    // Use .set() with the generated ID to ensure Document ID matches Model ID
     return _db
         .collection(FirebaseConstants.expenseAccounts)
         .doc(account.id)
@@ -48,8 +76,6 @@ class ExpenseService {
     await batch.commit();
   }
 
-  // --- TRANSACTIONS ---
-
   Stream<List<ExpenseTransactionModel>> getTransactionsForAccount(
       String accountId) {
     return _db
@@ -64,15 +90,12 @@ class ExpenseService {
 
   Future<void> addTransaction(ExpenseTransactionModel txn) async {
     final batch = _db.batch();
-    // Use the ID generated in the sheet or generate a new one if empty
     final docId = txn.id.isNotEmpty
         ? txn.id
         : _db.collection(FirebaseConstants.expenseTransactions).doc().id;
-
     final txnRef =
         _db.collection(FirebaseConstants.expenseTransactions).doc(docId);
 
-    // Ensure the ID in the model matches the Document ID
     final txnToSave = ExpenseTransactionModel(
       id: docId,
       accountId: txn.accountId,
@@ -85,12 +108,11 @@ class ExpenseService {
       notes: txn.notes,
       transferAccountId: txn.transferAccountId,
       transferAccountName: txn.transferAccountName,
-      transferAccountBankName: txn.transferAccountBankName, // NEW
+      transferAccountBankName: txn.transferAccountBankName,
     );
 
     batch.set(txnRef, txnToSave.toMap());
 
-    // Update Balance Logic
     final accRef =
         _db.collection(FirebaseConstants.expenseAccounts).doc(txn.accountId);
     double delta = 0.0;
@@ -106,17 +128,14 @@ class ExpenseService {
   }
 
   Future<void> deleteTransaction(ExpenseTransactionModel txn) async {
-    // 1. Delete Main Transaction
     await _db
         .collection(FirebaseConstants.expenseTransactions)
         .doc(txn.id)
         .delete();
 
-    // 2. Revert Balance Effect
     await _updateAccountBalance(txn.accountId, txn.amount, txn.type,
         isAdding: false);
 
-    // 3. Handle Linked Transfer Deletion
     if (txn.type == 'Transfer Out' || txn.type == 'Transfer In') {
       final linkedType =
           txn.type == 'Transfer Out' ? 'Transfer In' : 'Transfer Out';
@@ -154,7 +173,6 @@ class ExpenseService {
 
       final oldTxn = ExpenseTransactionModel.fromFirestore(docSnapshot);
 
-      // 1. Calculate Net Change
       double oldEffect = 0.0;
       if (oldTxn.type == 'Expense' || oldTxn.type == 'Transfer Out') {
         oldEffect = -oldTxn.amount;
@@ -177,28 +195,21 @@ class ExpenseService {
     });
   }
 
-  // Helper to update balance cleanly
   Future<void> _updateAccountBalance(
       String accountId, double amount, String type,
       {required bool isAdding}) async {
     double change = 0.0;
-
     if (type == 'Expense' || type == 'Transfer Out') {
       change = -amount;
     } else if (type == 'Income' || type == 'Transfer In') {
       change = amount;
     }
-
-    if (!isAdding) {
-      change = -change;
-    }
+    if (!isAdding) change = -change;
 
     await _db
         .collection(FirebaseConstants.expenseAccounts)
         .doc(accountId)
-        .update({
-      'currentBalance': FieldValue.increment(change),
-    });
+        .update({'currentBalance': FieldValue.increment(change)});
   }
 
   Stream<List<ExpenseTransactionModel>> getAllRecentTransactions(

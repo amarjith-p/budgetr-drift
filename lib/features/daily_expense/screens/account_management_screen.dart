@@ -7,6 +7,7 @@ import '../models/expense_models.dart';
 import '../services/expense_service.dart';
 import '../widgets/add_account_sheet.dart';
 import '../widgets/bank_account_card.dart';
+import '../widgets/dashboard_account_config_sheet.dart';
 import 'account_detail_screen.dart';
 
 class AccountManagementScreen extends StatefulWidget {
@@ -30,10 +31,48 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
         title: const Text("My Wallet", style: TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          // --- UPDATED: Explicit "Customize" Button ---
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            child: TextButton.icon(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => const DashboardAccountConfigSheet(),
+                );
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              icon: const Icon(
+                Icons.tune_rounded,
+                size: 16,
+                color: Colors.white,
+              ),
+              label: const Text(
+                "Customize",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+
+          // Add Account Button
           IconButton(
             onPressed: () => _showAddAccountSheet(context, null),
             icon: const Icon(Icons.add),
-          )
+            tooltip: "Add Account",
+          ),
+          const SizedBox(width: 4),
         ],
       ),
       body: Stack(
@@ -144,7 +183,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // --- UPDATED SUMMARY ---
+                // --- SUMMARY ---
                 _buildDetailRow("Account Name", account.name),
                 const Divider(color: Colors.white10, height: 24),
 
@@ -224,7 +263,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       builder: (context) => AddAccountSheet(
         accountToEdit: accountToEdit,
         onAccountAdded: (data) async {
-          // If editing, preserve ID and CreatedAt
+          // If editing, preserve ID, CreatedAt and Dashboard Config
           // If adding, generate new ID and CreatedAt
           final newAccount = ExpenseAccountModel(
             id: accountToEdit?.id ??
@@ -237,6 +276,9 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
             accountNumber: data['accountNumber'],
             color: data['color'],
             createdAt: accountToEdit?.createdAt ?? Timestamp.now(),
+            // Preserve dashboard settings if editing
+            showOnDashboard: accountToEdit?.showOnDashboard ?? true,
+            dashboardOrder: accountToEdit?.dashboardOrder ?? 0,
           );
 
           try {

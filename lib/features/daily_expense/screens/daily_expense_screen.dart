@@ -22,7 +22,8 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
   @override
   void initState() {
     super.initState();
-    _accountsStream = _service.getAccounts();
+    // CHANGED: Use the dashboard specific stream to respect user order & limits
+    _accountsStream = _service.getDashboardAccounts();
   }
 
   @override
@@ -106,6 +107,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
           return const Center(child: ModernLoader());
         }
 
+        // The Service already limits to 6, but we keep .take(6) as a UI safeguard
         final accounts = snapshot.data ?? [];
         final displayAccounts = accounts.take(6).toList();
 
@@ -196,7 +198,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  // --- The "Gateway" Card (Renamed & Icon Updated) ---
+  // --- The "Gateway" Card ---
   Widget _buildAllAccountsCard(BuildContext context) {
     return GestureDetector(
       onTap: () {
@@ -237,7 +239,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                     end: Alignment.bottomRight,
                   ),
                 ),
-                // Changed Icon to Grid View (More appropriate for "All Accounts")
                 child: const Icon(Icons.grid_view_rounded,
                     size: 18, color: Color(0xFF00B4D8)),
               ),
@@ -247,7 +248,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "All Accounts", // Renamed from "My Wallet"
+                    "All Accounts",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -256,7 +257,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    "Manage & Edit", // More descriptive
+                    "Manage & Edit",
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.5),
                       fontSize: 10,

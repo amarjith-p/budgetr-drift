@@ -2,16 +2,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ExpenseAccountModel {
   final String id;
-  final String name; // e.g., "HDFC Savings"
-  final String bankName; // For Logo mapping
-  final String type; // 'Bank' or 'Cash'
+  final String name;
+  final String bankName;
+  final String type;
   final double currentBalance;
   final Timestamp createdAt;
 
-  // --- NEW FIELDS ADDED ---
-  final String accountType; // e.g., 'Savings Account', 'Salary Account'
-  final String accountNumber; // e.g., '8842' (Last 4 digits)
-  final int color; // Color value as int (e.g., 0xFF1E1E1E)
+  final String accountType;
+  final String accountNumber;
+  final int color;
+
+  // --- NEW DASHBOARD CONFIG FIELDS ---
+  final bool showOnDashboard; // Toggle visibility
+  final int dashboardOrder; // For Reordering
 
   ExpenseAccountModel({
     required this.id,
@@ -23,6 +26,8 @@ class ExpenseAccountModel {
     this.accountType = 'Savings Account',
     this.accountNumber = '',
     this.color = 0xFF1E1E1E,
+    this.showOnDashboard = true, // Default to visible
+    this.dashboardOrder = 0, // Default order
   });
 
   factory ExpenseAccountModel.fromFirestore(DocumentSnapshot doc) {
@@ -37,6 +42,9 @@ class ExpenseAccountModel {
       accountType: data['accountType'] ?? 'Savings Account',
       accountNumber: data['accountNumber'] ?? '',
       color: data['color'] ?? 0xFF1E1E1E,
+      // Map new fields
+      showOnDashboard: data['showOnDashboard'] ?? true,
+      dashboardOrder: data['dashboardOrder'] ?? 0,
     );
   }
 
@@ -50,25 +58,47 @@ class ExpenseAccountModel {
       'accountType': accountType,
       'accountNumber': accountNumber,
       'color': color,
+      // Save new fields
+      'showOnDashboard': showOnDashboard,
+      'dashboardOrder': dashboardOrder,
     };
+  }
+
+  // Helper for updates
+  ExpenseAccountModel copyWith({
+    bool? showOnDashboard,
+    int? dashboardOrder,
+  }) {
+    return ExpenseAccountModel(
+      id: id,
+      name: name,
+      bankName: bankName,
+      type: type,
+      currentBalance: currentBalance,
+      createdAt: createdAt,
+      accountType: accountType,
+      accountNumber: accountNumber,
+      color: color,
+      showOnDashboard: showOnDashboard ?? this.showOnDashboard,
+      dashboardOrder: dashboardOrder ?? this.dashboardOrder,
+    );
   }
 }
 
+// ... (ExpenseTransactionModel remains unchanged)
 class ExpenseTransactionModel {
   final String id;
   final String accountId;
   final double amount;
   final Timestamp date;
   final String bucket;
-  final String type; // 'Income', 'Expense', 'Transfer Out', 'Transfer In'
+  final String type;
   final String category;
   final String subCategory;
   final String notes;
-
-  // Fields for Transfer
   final String? transferAccountId;
   final String? transferAccountName;
-  final String? transferAccountBankName; // NEW FIELD
+  final String? transferAccountBankName;
 
   ExpenseTransactionModel({
     required this.id,
@@ -82,7 +112,7 @@ class ExpenseTransactionModel {
     required this.notes,
     this.transferAccountId,
     this.transferAccountName,
-    this.transferAccountBankName, // NEW
+    this.transferAccountBankName,
   });
 
   factory ExpenseTransactionModel.fromFirestore(DocumentSnapshot doc) {
@@ -99,7 +129,7 @@ class ExpenseTransactionModel {
       notes: data['notes'] ?? '',
       transferAccountId: data['transferAccountId'],
       transferAccountName: data['transferAccountName'],
-      transferAccountBankName: data['transferAccountBankName'], // NEW
+      transferAccountBankName: data['transferAccountBankName'],
     );
   }
 
@@ -115,7 +145,7 @@ class ExpenseTransactionModel {
       'notes': notes,
       'transferAccountId': transferAccountId,
       'transferAccountName': transferAccountName,
-      'transferAccountBankName': transferAccountBankName, // NEW
+      'transferAccountBankName': transferAccountBankName,
     };
   }
 }
