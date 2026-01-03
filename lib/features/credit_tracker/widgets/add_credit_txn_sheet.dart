@@ -138,7 +138,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
             orElse: () => _cards.isNotEmpty ? _cards.first : _cards[0],
           );
         } else {
-          // CHANGE: No default card selected
           _selectedCard = null;
           _selectedBucket = null;
         }
@@ -157,18 +156,17 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
       );
 
       if (isSettled) {
-        // --- CASE: SETTLED ---
         if (mounted) {
           setState(() {
-            _isMonthSettled = true; // Set Flag
-            _buckets = ['Out of Bucket']; // Lock options
-            _selectedBucket = 'Out of Bucket'; // Force value
+            _isMonthSettled = true;
+            _buckets = ['Out of Bucket'];
+            _selectedBucket = 'Out of Bucket';
           });
         }
         return;
       }
 
-      // --- CASE: OPEN (Normal Flow) ---
+      // 2. Fetch Record
       final record = await DashboardService().getRecordForMonth(
         date.year,
         date.month,
@@ -177,9 +175,23 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
       List<String> newBuckets = [];
 
       if (record != null) {
-        final sortedEntries = record.allocations.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-        newBuckets = sortedEntries.map((e) => e.key).toList();
+        // --- UPDATED LOGIC: Respect Dashboard Order ---
+        if (record.bucketOrder.isNotEmpty) {
+          // Use the saved display order
+          newBuckets = List.from(record.bucketOrder);
+
+          // Safety: Add any buckets in allocations that might be missing from order
+          for (var key in record.allocations.keys) {
+            if (!newBuckets.contains(key)) {
+              newBuckets.add(key);
+            }
+          }
+        } else {
+          // Legacy: Sort by allocation amount descending
+          final sortedEntries = record.allocations.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
+          newBuckets = sortedEntries.map((e) => e.key).toList();
+        }
       } else {
         newBuckets = List.from(_globalFallbackBuckets);
       }
@@ -190,7 +202,7 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
 
       if (mounted) {
         setState(() {
-          _isMonthSettled = false; // Reset Flag
+          _isMonthSettled = false;
           _buckets = newBuckets;
 
           if (_selectedBucket != null && !_buckets.contains(_selectedBucket)) {
@@ -249,9 +261,8 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
   Widget build(BuildContext context) {
     final isEditing = widget.transactionToEdit != null;
 
-    final relevantCategories = _allCategories
-        .where((c) => c.type == _type)
-        .toList();
+    final relevantCategories =
+        _allCategories.where((c) => c.type == _type).toList();
 
     final categoryKeys = relevantCategories.map((e) => e.name).toList();
 
@@ -271,9 +282,8 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
       subCategories = selectedCatModel.subCategories;
     }
 
-    final bottomPadding = _showCustomKeyboard
-        ? 0.0
-        : MediaQuery.of(context).viewInsets.bottom;
+    final bottomPadding =
+        _showCustomKeyboard ? 0.0 : MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
       padding: EdgeInsets.only(bottom: bottomPadding),
@@ -577,7 +587,6 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
               ),
             ),
           ),
-
           if (_showCustomKeyboard)
             CalculatorKeyboard(
               onKeyPress: (val) =>

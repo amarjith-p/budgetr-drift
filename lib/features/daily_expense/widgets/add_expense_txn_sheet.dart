@@ -119,9 +119,7 @@ class _AddExpenseTransactionSheetState
           _notesCtrl.text = t.notes;
           _date = t.date.toDate();
 
-          // --- FIXED LOGIC: Detect Direction Correctly ---
           if (t.type == 'Transfer Out') {
-            // Case 1: Editing the Sender's Transaction
             _type = 'Transfer';
             _selectedAccount = _accounts.firstWhere((a) => a.id == t.accountId,
                 orElse: () => _accounts.first);
@@ -129,7 +127,6 @@ class _AddExpenseTransactionSheetState
                 (a) => a.id == t.transferAccountId,
                 orElse: () => _accounts.first);
           } else if (t.type == 'Transfer In') {
-            // Case 2: Editing the Receiver's Transaction
             _type = 'Transfer';
             _selectedAccount = _accounts.firstWhere(
                 (a) => a.id == t.transferAccountId,
@@ -137,7 +134,6 @@ class _AddExpenseTransactionSheetState
             _toAccount = _accounts.firstWhere((a) => a.id == t.accountId,
                 orElse: () => _accounts.first);
           } else {
-            // Standard Expense/Income
             _type = t.type;
             _selectedAccount = _accounts.firstWhere((a) => a.id == t.accountId,
                 orElse: () => _accounts.first);
@@ -170,9 +166,20 @@ class _AddExpenseTransactionSheetState
       List<String> newBuckets = [];
 
       if (record != null) {
-        final sortedEntries = record.allocations.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-        newBuckets = sortedEntries.map((e) => e.key).toList();
+        // --- UPDATED LOGIC: Respect Dashboard Order ---
+        if (record.bucketOrder.isNotEmpty) {
+          newBuckets = List.from(record.bucketOrder);
+          for (var key in record.allocations.keys) {
+            if (!newBuckets.contains(key)) {
+              newBuckets.add(key);
+            }
+          }
+        } else {
+          // Legacy Sort
+          final sortedEntries = record.allocations.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
+          newBuckets = sortedEntries.map((e) => e.key).toList();
+        }
       } else {
         newBuckets = List.from(_globalFallbackBuckets);
       }
@@ -221,14 +228,10 @@ class _AddExpenseTransactionSheetState
               widget.txnToEdit!.type == 'Transfer In');
 
       if (isTransferOperation || wasTransfer) {
-        // --- CLEAN EDIT STRATEGY for Transfers ---
-
-        // 1. Delete Old Transaction Pair First
         if (isEditing) {
           await ExpenseService().deleteTransaction(widget.txnToEdit!);
         }
 
-        // 2. Create New Transaction Pair
         if (_type == 'Transfer') {
           final transferOut = ExpenseTransactionModel(
             id: '',
@@ -242,7 +245,7 @@ class _AddExpenseTransactionSheetState
             notes: _notesCtrl.text,
             transferAccountId: _toAccount!.id,
             transferAccountName: _toAccount!.name,
-            transferAccountBankName: _toAccount!.bankName, // NEW
+            transferAccountBankName: _toAccount!.bankName,
           );
 
           final transferIn = ExpenseTransactionModel(
@@ -257,13 +260,12 @@ class _AddExpenseTransactionSheetState
             notes: _notesCtrl.text,
             transferAccountId: _selectedAccount!.id,
             transferAccountName: _selectedAccount!.name,
-            transferAccountBankName: _selectedAccount!.bankName, // NEW
+            transferAccountBankName: _selectedAccount!.bankName,
           );
 
           await ExpenseService().addTransaction(transferOut);
           await ExpenseService().addTransaction(transferIn);
         } else {
-          // Switched from Transfer to Expense/Income
           final bucketValue =
               _type == 'Expense' ? (_selectedBucket!) : 'Income';
           final txn = ExpenseTransactionModel(
@@ -280,7 +282,6 @@ class _AddExpenseTransactionSheetState
           await ExpenseService().addTransaction(txn);
         }
       } else {
-        // --- STANDARD EDIT ---
         final bucketValue = _type == 'Expense' ? (_selectedBucket!) : 'Income';
 
         final txn = ExpenseTransactionModel(
@@ -362,7 +363,6 @@ class _AddExpenseTransactionSheetState
                           fontSize: 20,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
-
                   if (_isMonthSettled && _type == 'Expense')
                     Container(
                       margin: const EdgeInsets.only(bottom: 16),
@@ -373,8 +373,6 @@ class _AddExpenseTransactionSheetState
                       child: const Text("Month Settled: Bucket locked.",
                           style: TextStyle(color: Colors.orange)),
                     ),
-
-                  // TYPE SELECTION
                   Row(children: [
                     Expanded(child: _typeBtn("Expense", Colors.redAccent)),
                     const SizedBox(width: 8),
@@ -383,8 +381,6 @@ class _AddExpenseTransactionSheetState
                     Expanded(child: _typeBtn("Transfer", Colors.blueAccent)),
                   ]),
                   const SizedBox(height: 24),
-
-                  // FROM ACCOUNT
                   _buildSelectField<ExpenseAccountModel>(
                     _type == 'Transfer' ? "From Account" : "Account",
                     _selectedAccount,
@@ -394,8 +390,6 @@ class _AddExpenseTransactionSheetState
                     validator: (v) => v == null ? "Required" : null,
                   ),
                   const SizedBox(height: 16),
-
-                  // TO ACCOUNT (Visible only for Transfer)
                   if (_type == 'Transfer') ...[
                     _buildSelectField<ExpenseAccountModel>(
                       "To Account",
@@ -409,7 +403,6 @@ class _AddExpenseTransactionSheetState
                     ),
                     const SizedBox(height: 16),
                   ],
-
                   InkWell(
                     onTap: _pickDate,
                     borderRadius: BorderRadius.circular(12),
@@ -423,8 +416,6 @@ class _AddExpenseTransactionSheetState
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // AMOUNT
                   Container(
                     key: _amountFieldKey,
                     child: TextFormField(
@@ -459,8 +450,6 @@ class _AddExpenseTransactionSheetState
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // EXPENSE SPECIFIC FIELDS
                   if (_type == 'Expense') ...[
                     _buildSelectField<String>(
                       "Bucket",
@@ -472,8 +461,6 @@ class _AddExpenseTransactionSheetState
                     ),
                     const SizedBox(height: 16),
                   ],
-
-                  // CATEGORY (Hidden for Transfer)
                   if (_type != 'Transfer') ...[
                     Row(children: [
                       Expanded(
@@ -501,7 +488,6 @@ class _AddExpenseTransactionSheetState
                     ]),
                     const SizedBox(height: 16),
                   ],
-
                   Container(
                     key: _notesFieldKey,
                     child: TextFormField(
@@ -514,7 +500,6 @@ class _AddExpenseTransactionSheetState
                     ),
                   ),
                   const SizedBox(height: 24),
-
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
