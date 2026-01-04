@@ -42,8 +42,6 @@ class ExpenseService {
     await batch.commit();
   }
 
-  // ... (Account CRUD methods) ...
-
   Future<void> addAccount(ExpenseAccountModel account) async {
     final snapshot =
         await _db.collection(FirebaseConstants.expenseAccounts).count().get();
@@ -103,7 +101,7 @@ class ExpenseService {
     final txnRef =
         _db.collection(FirebaseConstants.expenseTransactions).doc(docId);
 
-    // FIX: Added linkedCreditCardId here so it gets saved to Firestore
+    // FIX: Included linkedCreditCardId here so it gets saved to Firestore
     final txnToSave = ExpenseTransactionModel(
       id: docId,
       accountId: txn.accountId,
@@ -117,7 +115,7 @@ class ExpenseService {
       transferAccountId: txn.transferAccountId,
       transferAccountName: txn.transferAccountName,
       transferAccountBankName: txn.transferAccountBankName,
-      linkedCreditCardId: txn.linkedCreditCardId, // <-- THIS WAS MISSING
+      linkedCreditCardId: txn.linkedCreditCardId,
     );
 
     batch.set(txnRef, txnToSave.toMap());
@@ -145,6 +143,7 @@ class ExpenseService {
     await _updateAccountBalance(txn.accountId, txn.amount, txn.type,
         isAdding: false);
 
+    // Standard delete: removes the linked transaction (e.g., Transfer In/Out)
     if (txn.type == 'Transfer Out' || txn.type == 'Transfer In') {
       final linkedType =
           txn.type == 'Transfer Out' ? 'Transfer In' : 'Transfer Out';
@@ -167,6 +166,19 @@ class ExpenseService {
             isAdding: false);
       }
     }
+  }
+
+  // --- NEW METHOD FOR SYNC ---
+  // Deletes a transaction from the current account only, WITHOUT searching for or deleting
+  // the linked transfer. This keeps the source transaction (Bank -> Pool) intact.
+  Future<void> deleteTransactionSingle(ExpenseTransactionModel txn) async {
+    await _db
+        .collection(FirebaseConstants.expenseTransactions)
+        .doc(txn.id)
+        .delete();
+
+    await _updateAccountBalance(txn.accountId, txn.amount, txn.type,
+        isAdding: false);
   }
 
   Future<void> updateTransaction(ExpenseTransactionModel newTxn) async {
@@ -200,7 +212,7 @@ class ExpenseService {
 
       transaction
           .update(accRef, {'currentBalance': FieldValue.increment(netChange)});
-      // updateTransaction uses toMap(), which already includes linkedCreditCardId, so this is fine.
+      // updateTransaction uses toMap(), which includes linkedCreditCardId
       transaction.update(txnRef, newTxn.toMap());
     });
   }

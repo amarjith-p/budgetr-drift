@@ -272,7 +272,7 @@ class _AddExpenseTransactionSheetState
             bucket: 'Unallocated',
             type: 'Transfer Out',
             category: 'Transfer',
-            subCategory: 'Credit Card Bill',
+            subCategory: 'Credit Card Payment',
             notes: _notesCtrl.text,
             transferAccountId: targetPoolAccount!.id, // To Pool
             transferAccountName: _selectedCreditCard!.name, // Display CC Name
@@ -289,7 +289,7 @@ class _AddExpenseTransactionSheetState
             bucket: 'Unallocated',
             type: 'Transfer In',
             category: 'Transfer',
-            subCategory: 'Credit Card Bill',
+            subCategory: 'Credit Card Payment',
             notes: _notesCtrl.text,
             transferAccountId: _selectedAccount!.id,
             transferAccountName: _selectedAccount!.name,
