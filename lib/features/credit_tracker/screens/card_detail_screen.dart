@@ -11,6 +11,9 @@ import '../models/credit_models.dart';
 import '../services/credit_service.dart';
 import '../widgets/add_credit_txn_sheet.dart';
 import '../utils/billing_cycle_utils.dart';
+// IMPORT NEW WIDGETS
+import '../widgets/credit_summary_card.dart';
+import '../widgets/transaction_list_item.dart';
 
 class CreditCardDetailScreen extends StatefulWidget {
   final CreditCardModel card;
@@ -200,11 +203,13 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
 
               return Column(
                 children: [
-                  _buildSmartSummary(
-                    currentUnbilledTotal,
-                    lastStatementDate,
-                    groupedHistory[lastStatementDate] ?? [],
-                    lastStatementPayments,
+                  // REPLACED WITH WIDGET
+                  CreditSummaryCard(
+                    currentUnbilled: currentUnbilledTotal,
+                    lastBillDate: lastStatementDate,
+                    lastBillTxns: groupedHistory[lastStatementDate] ?? [],
+                    payments: lastStatementPayments,
+                    card: widget.card,
                   ),
                   Expanded(
                     child: ListView(
@@ -212,7 +217,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                       children: [
                         if (currentCycleSpends.isNotEmpty) ...[
                           _buildSectionHeader("CURRENT CYCLE (UNBILLED)"),
-                          ...currentCycleSpends.map((t) => TransactionItem(
+                          ...currentCycleSpends.map((t) => TransactionListItem(
                                 txn: t,
                                 iconData: categoryIconMap[t.category] ??
                                     Icons.category_outlined,
@@ -266,7 +271,8 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                             children: [
                               _buildStatementHeader(date, billTotal,
                                   isLastStatement, statementPayments),
-                              ...statementExpenses.map((t) => TransactionItem(
+                              ...statementExpenses.map((t) =>
+                                  TransactionListItem(
                                     txn: t,
                                     iconData: categoryIconMap[t.category] ??
                                         Icons.category_outlined,
@@ -296,7 +302,8 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                                     ],
                                   ),
                                 ),
-                                ...statementPayments.map((t) => TransactionItem(
+                                ...statementPayments.map((t) =>
+                                    TransactionListItem(
                                       txn: t,
                                       iconData: Icons.payment,
                                       isIgnored:
@@ -357,182 +364,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     }
   }
 
-  Widget _buildSmartSummary(
-    double currentUnbilled,
-    DateTime lastBillDate,
-    List<CreditTransactionModel> lastBillTxns,
-    List<CreditTransactionModel> payments,
-  ) {
-    final currency =
-        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
-
-    // Calculate Due Date
-    final actualDueDate = BillingCycleUtils.getDueDateForStatement(
-        lastBillDate, widget.card.dueDate);
-    final daysRemaining = actualDueDate.difference(DateTime.now()).inDays;
-
-    final billExpenses = lastBillTxns
-        .where((t) =>
-            t.type == 'Expense' ||
-            (t.type == 'Income' &&
-                !BillingCycleUtils.isRepaymentCategory(t.category)))
-        .toList();
-
-    final billPayments = lastBillTxns
-        .where((t) =>
-            t.type == 'Income' &&
-            BillingCycleUtils.isRepaymentCategory(t.category))
-        .toList()
-      ..addAll(payments);
-
-    double billAmount = _calculateTotal(billExpenses);
-    double totalPaid = billPayments.fold(0.0, (sum, t) => sum + t.amount);
-
-    double netBillPosition = billAmount - totalPaid;
-    double remainingDue = 0;
-    double surplus = 0;
-
-    if (netBillPosition > 0) {
-      remainingDue = netBillPosition;
-    } else {
-      surplus = netBillPosition.abs();
-    }
-
-    double adjustedUnbilled = currentUnbilled - surplus;
-    bool isNetLiability = adjustedUnbilled > 0;
-
-    bool isPaidOff = billAmount > 0 && remainingDue <= 0;
-    bool isOverPaid = surplus > 0;
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFF1B263B), const Color(0xff0D1B2A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-        boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "NEW SPENDS",
-                  style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  isNetLiability
-                      ? "- ${currency.format(adjustedUnbilled)}"
-                      : "+ ${currency.format(adjustedUnbilled.abs())}",
-                  style: TextStyle(
-                      color: isNetLiability
-                          ? Colors.redAccent
-                          : Colors.greenAccent,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  isOverPaid ? "Adjusted with Surplus" : "Current Cycle",
-                  style: TextStyle(color: Colors.white38, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          Container(width: 1, height: 50, color: Colors.white10),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "LAST BILL",
-                      style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1),
-                    ),
-                    if (isPaidOff && !isOverPaid)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(4)),
-                        child: Text("PAID",
-                            style: TextStyle(
-                                color: Colors.greenAccent,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  isOverPaid
-                      ? "+ ${currency.format(surplus)}"
-                      : currency.format(remainingDue),
-                  style: TextStyle(
-                      color: isOverPaid
-                          ? Colors.greenAccent
-                          : (isPaidOff ? Colors.white60 : Colors.redAccent),
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                // UPDATED SUBTITLE LOGIC:
-                Text(
-                  isOverPaid
-                      ? "Surplus (Paid: ${currency.format(totalPaid)})"
-                      : (isPaidOff
-                          ? "Settled fully"
-                          : "Bill: ${currency.format(billAmount)}  •  Paid: ${currency.format(totalPaid)}"),
-                  style: TextStyle(color: Colors.white38, fontSize: 11),
-                ),
-
-                // DUE DATE LOGIC:
-                if (!isOverPaid && !isPaidOff)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      "Due: ${DateFormat('dd MMM').format(actualDueDate)}",
-                      style: TextStyle(
-                        color: daysRemaining < 3
-                            ? Colors.redAccent
-                            : Colors.orangeAccent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ... (Rest of helpers remain unchanged)
+  // Helper Methods
   Widget _buildStatementHeader(DateTime date, double total, bool isLastStmt,
       List<CreditTransactionModel> payments) {
     final currency =
@@ -697,55 +529,6 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
       _selectedBuckets.isNotEmpty ||
       _sortOption != 'Newest';
 
-  Widget _buildActiveFiltersList() {
-    return Container(
-      height: 50,
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          GestureDetector(
-            onTap: () => setState(() {
-              _selectedType = 'All';
-              _sortOption = 'Newest';
-              _dateRange = null;
-              _selectedCategories.clear();
-              _selectedBuckets.clear();
-            }),
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.redAccent.withOpacity(0.3))),
-              child: const Center(
-                  child: Text("Clear All",
-                      style: TextStyle(
-                          color: Colors.redAccent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11))),
-            ),
-          ),
-          if (_selectedType != 'All')
-            _buildFilterChip(
-                _selectedType, () => setState(() => _selectedType = 'All')),
-          if (_dateRange != null)
-            _buildFilterChip(
-                "Date Range", () => setState(() => _dateRange = null)),
-          ..._selectedCategories.map((c) => _buildFilterChip(
-              c, () => setState(() => _selectedCategories.remove(c)))),
-          ..._selectedBuckets.map((b) => _buildFilterChip(
-              "Bucket: $b", () => setState(() => _selectedBuckets.remove(b)))),
-          if (_sortOption != 'Newest')
-            _buildFilterChip("Sort: $_sortOption",
-                () => setState(() => _sortOption = 'Newest')),
-        ],
-      ),
-    );
-  }
-
   Widget _buildFilterChip(String label, VoidCallback onRemove) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
@@ -903,272 +686,4 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                   style: TextStyle(
                       color: _selectedType == l ? _accentColor : Colors.white54,
                       fontWeight: FontWeight.bold)))));
-}
-
-class TransactionItem extends StatefulWidget {
-  final CreditTransactionModel txn;
-  final IconData iconData;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onMarkAsRepayment;
-  final VoidCallback onIgnore;
-  final bool isIgnored;
-
-  const TransactionItem({
-    super.key,
-    required this.txn,
-    required this.iconData,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onMarkAsRepayment,
-    required this.onIgnore,
-    required this.isIgnored,
-  });
-
-  @override
-  State<TransactionItem> createState() => _TransactionItemState();
-}
-
-class _TransactionItemState extends State<TransactionItem> {
-  bool _isExpanded = false;
-
-  bool get _isUnverifiedTransfer =>
-      !widget.isIgnored &&
-      widget.txn.type == 'Income' &&
-      widget.txn.category.toLowerCase() == 'transfer';
-
-  @override
-  Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
-    final isExpense = widget.txn.type == 'Expense';
-    final amountColor = isExpense ? Colors.redAccent : Colors.greenAccent;
-    final iconColor = isExpense ? const Color(0xFF3A86FF) : Colors.green;
-
-    return GestureDetector(
-      onTap: () => setState(() => _isExpanded = !_isExpanded),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1B263B).withOpacity(0.5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: _isUnverifiedTransfer
-                  ? Colors.orangeAccent.withOpacity(0.5)
-                  : (_isExpanded
-                      ? Colors.white.withOpacity(0.2)
-                      : Colors.white.withOpacity(0.05))),
-          boxShadow: _isExpanded
-              ? [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
-                ]
-              : [],
-        ),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Stack(
-                  children: [
-                    CircleAvatar(
-                        backgroundColor: iconColor.withOpacity(0.1),
-                        child:
-                            Icon(widget.iconData, color: iconColor, size: 20)),
-                    if (_isUnverifiedTransfer)
-                      Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                  color: Colors.orangeAccent,
-                                  shape: BoxShape.circle))),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(widget.txn.category,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15)),
-                      if (widget.txn.subCategory.isNotEmpty &&
-                          widget.txn.subCategory != 'General')
-                        Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(widget.txn.subCategory,
-                                style: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
-                                    fontSize: 12))),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                        "${isExpense ? '-' : '+'} ${currency.format(widget.txn.amount)}",
-                        style: TextStyle(
-                            color: amountColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15)),
-                    const SizedBox(height: 4),
-                    Text(DateFormat('dd MMM').format(widget.txn.date.toDate()),
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 11)),
-                  ],
-                ),
-              ],
-            ),
-            if (_isUnverifiedTransfer)
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                    color: Colors.orangeAccent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: Colors.orangeAccent.withOpacity(0.3))),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: const [
-                      Icon(Icons.warning_amber_rounded,
-                          color: Colors.orangeAccent, size: 16),
-                      SizedBox(width: 8),
-                      Text("Action Required",
-                          style: TextStyle(
-                              color: Colors.orangeAccent,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold))
-                    ]),
-                    const SizedBox(height: 4),
-                    const Text("Is this a Bill Repayment?",
-                        style: TextStyle(color: Colors.white70, fontSize: 12)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: GestureDetector(
-                                onTap: widget.onMarkAsRepayment,
-                                child: Container(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 8),
-                                    decoration: BoxDecoration(
-                                        color: Colors.green.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                            color:
-                                                Colors.green.withOpacity(0.3))),
-                                    child: const Center(
-                                        child: Text("Mark as Repayment",
-                                            style: TextStyle(
-                                                color: Colors.green,
-                                                fontSize: 11,
-                                                fontWeight:
-                                                    FontWeight.bold)))))),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: GestureDetector(
-                                onTap: widget.onIgnore,
-                                child: Container(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 8),
-                                    decoration: BoxDecoration(
-                                        color: Colors.grey.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border:
-                                            Border.all(color: Colors.white12)),
-                                    child: const Center(
-                                        child: Text("Ignore",
-                                            style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 11)))))),
-                      ],
-                    )
-                  ],
-                ),
-              ),
-            AnimatedCrossFade(
-              firstChild: const SizedBox.shrink(),
-              secondChild: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  const Divider(color: Colors.white10),
-                  const SizedBox(height: 8),
-                  if (widget.txn.notes.isNotEmpty) ...[
-                    Text("Notes:",
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(widget.txn.notes,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13)),
-                    const SizedBox(height: 20),
-                  ],
-                  Row(children: [
-                    Expanded(
-                        child: _buildActionButton(
-                            icon: Icons.edit_outlined,
-                            label: "Edit",
-                            color: Colors.white,
-                            onTap: widget.onEdit)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: _buildActionButton(
-                            icon: Icons.delete_outline,
-                            label: "Delete",
-                            color: Colors.redAccent,
-                            onTap: widget.onDelete))
-                  ]),
-                ],
-              ),
-              crossFadeState: _isExpanded
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 300),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-          {required IconData icon,
-          required String label,
-          required Color color,
-          required VoidCallback onTap}) =>
-      InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: color.withOpacity(0.2))),
-              child:
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(icon, size: 18, color: color),
-                const SizedBox(width: 8),
-                Text(label,
-                    style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13))
-              ])));
 }

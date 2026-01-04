@@ -1,13 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../core/constants/bank_list.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
 import '../widgets/add_credit_card_sheet.dart';
 import '../widgets/add_credit_txn_sheet.dart';
-import 'card_detail_screen.dart';
+// IMPORT NEW WIDGETS
+import '../widgets/credit_status_header.dart';
+import '../widgets/credit_card_list_item.dart';
 
 class CreditTrackerScreen extends StatefulWidget {
   const CreditTrackerScreen({super.key});
@@ -111,21 +112,30 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                 children: [
                   Column(
                     children: [
-                      _buildTotalHeader(
-                        label,
-                        displayAmount,
-                        valueColor,
-                        _currency,
+                      // REPLACED WITH WIDGET
+                      CreditStatusHeader(
+                        label: label,
+                        amount: displayAmount,
+                        color: valueColor,
+                        currency: _currency,
                       ),
                       Expanded(
                         child: ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                           itemCount: cards.length,
-                          itemBuilder: (context, index) => _buildCreditCard(
-                            context,
-                            cards[index],
-                            _accentColor,
-                            _currency,
+                          itemBuilder: (context, index) => CreditCardListItem(
+                            card: cards[index],
+                            accentColor: _accentColor,
+                            currency: _currency,
+                            onEdit: () => showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (c) =>
+                                  AddCreditCardSheet(cardToEdit: cards[index]),
+                            ),
+                            onDelete: () =>
+                                _handleDelete(context, cards[index]),
                           ),
                         ),
                       ),
@@ -203,375 +213,23 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
     );
   }
 
-  Widget _buildTotalHeader(
-    String label,
-    double amount,
-    Color color,
-    NumberFormat currency,
-  ) {
-    String displayString = label == "STATUS"
-        ? "All Settled"
-        : (amount > 0
-              ? "+ ${currency.format(amount)}"
-              : currency.format(amount));
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2.0,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            displayString,
-            style: TextStyle(
-              color: color,
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmptyState(BuildContext context) => Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.credit_card_off,
-          size: 60,
-          color: Colors.white.withOpacity(0.2),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          "No Credit Cards Added",
-          style: TextStyle(color: Colors.white54),
-        ),
-      ],
-    ),
-  );
-
-  Widget _buildCreditCard(
-    BuildContext context,
-    CreditCardModel card,
-    Color accent,
-    NumberFormat currency,
-  ) {
-    double displayBalance = -card.currentBalance;
-    if (displayBalance.abs() < 0.01) displayBalance = 0.0;
-    final bool isSurplus = displayBalance > 0;
-
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => CreditCardDetailScreen(card: card)),
-      ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        height: 160,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF1B263B),
-              const Color(0xff0D1B2A).withOpacity(0.95),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-          border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
-        ),
-        child: Stack(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Positioned(
-              right: -40,
-              top: -40,
-              child: CircleAvatar(
-                radius: 90,
-                backgroundColor: accent.withOpacity(0.05),
-              ),
+            Icon(
+              Icons.credit_card_off,
+              size: 60,
+              color: Colors.white.withOpacity(0.2),
             ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                BankConstants.getBankLogoPath(card.bankName),
-                                fit: BoxFit.contain,
-                                errorBuilder: (c, e, s) => Center(
-                                  child: Text(
-                                    BankConstants.getBankInitials(
-                                      card.bankName,
-                                    ),
-                                    style: TextStyle(
-                                      color: accent,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            card.bankName.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                      InkWell(
-                        onTap: () => _showCardDetails(context, card, currency),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.more_horiz,
-                            color: Colors.white70,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  Text(
-                    card.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            "CREDIT BALANCE",
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            currency.format(displayBalance),
-                            style: TextStyle(
-                              color: isSurplus
-                                  ? const Color(0xFF4CC9F0)
-                                  : Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            const SizedBox(height: 16),
+            const Text(
+              "No Credit Cards Added",
+              style: TextStyle(color: Colors.white54),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showCardDetails(
-    BuildContext context,
-    CreditCardModel card,
-    NumberFormat currency,
-  ) {
-    showDialog(
-      context: context,
-      builder: (ctx) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-        child: Dialog(
-          backgroundColor: const Color(0xff1B263B).withOpacity(0.9),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: Colors.white.withOpacity(0.1)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.credit_card,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          "Card Details",
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                        ),
-                      ],
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white54),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                _buildDetailRow("Card Name", card.name),
-                const Divider(color: Colors.white10, height: 24),
-                _buildDetailRow(
-                  "Credit Limit",
-                  currency.format(card.creditLimit),
-                ),
-                const Divider(color: Colors.white10, height: 24),
-                _buildDetailRow(
-                  "Statement Date",
-                  "${_getOrdinal(card.billDate)} of month",
-                ),
-                const Divider(color: Colors.white10, height: 24),
-                _buildDetailRow(
-                  "Payment Due Date",
-                  "${_getOrdinal(card.dueDate)} of month",
-                ),
-                const SizedBox(height: 32),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _handleDelete(context, card);
-                        },
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.redAccent,
-                          size: 20,
-                        ),
-                        label: const Text(
-                          "Delete",
-                          style: TextStyle(color: Colors.redAccent),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: Colors.redAccent.withOpacity(0.1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (c) =>
-                                AddCreditCardSheet(cardToEdit: card),
-                          );
-                        },
-                        icon: const Icon(
-                          Icons.edit_outlined,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        label: const Text(
-                          "Edit",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: Colors.white.withOpacity(0.1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+      );
 
   void _handleDelete(BuildContext context, CreditCardModel card) {
     showDialog(
@@ -642,37 +300,5 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
         ],
       ),
     );
-  }
-
-  Widget _buildDetailRow(String label, String value) => Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Text(
-        label,
-        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
-      ),
-      Text(
-        value,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 15,
-        ),
-      ),
-    ],
-  );
-
-  String _getOrdinal(int number) {
-    if (number >= 11 && number <= 13) return '${number}th';
-    switch (number % 10) {
-      case 1:
-        return '${number}st';
-      case 2:
-        return '${number}nd';
-      case 3:
-        return '${number}rd';
-      default:
-        return '${number}th';
-    }
   }
 }
