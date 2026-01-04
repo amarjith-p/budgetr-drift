@@ -206,7 +206,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
 
   void _showAccountOptions(BuildContext context, ExpenseAccountModel account) {
     final currency =
-        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
 
     showDialog(
       context: context,
