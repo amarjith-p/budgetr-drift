@@ -29,7 +29,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
   final Set<String> _selectedBuckets = {};
 
   final Color _bgColor = const Color(0xff0D1B2A);
-  final Color _accentColor = const Color(0xFF00B4D8); // Cyan for Liquid Assets
+  final Color _accentColor = const Color(0xFF00B4D8);
 
   bool _isLoading = false;
 
@@ -44,7 +44,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         ExpenseService().getTransactionsForAccount(widget.account.id);
   }
 
-// --- SYNC LOGIC ---
+  // --- SYNC LOGIC (Updated for Transfer Fix) ---
   Future<void> _handleSync(List<ExpenseTransactionModel> transactions) async {
     // 1. Filter only unsynced Credit Card entries
     final creditEntries = transactions
@@ -93,8 +93,23 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         // Expense Type 'Transfer In' (Payment from Bank) -> Credit Type 'Income' (Payment)
 
         String creditType = 'Expense';
+        String finalNotes = txn.notes;
+
         if (txn.type == 'Transfer In' || txn.type == 'Income') {
           creditType = 'Income'; // Represents a payment or refund to card
+
+          // If it's a transfer, append the Source Bank info to notes
+          // so the user knows where the payment came from in the Credit Tracker.
+          if (txn.type == 'Transfer In' &&
+              txn.transferAccountBankName != null) {
+            final sourceInfo =
+                "Transfer from ${txn.transferAccountBankName} - ${txn.transferAccountName}";
+            if (txn.notes.isEmpty) {
+              finalNotes = sourceInfo;
+            } else {
+              finalNotes = "$sourceInfo. ${txn.notes}";
+            }
+          }
         }
 
         final creditTxn = CreditTransactionModel(
@@ -106,14 +121,16 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
           type: creditType,
           category: txn.category,
           subCategory: txn.subCategory,
-          notes: txn.notes,
+          notes: finalNotes,
         );
 
-        // Add to Credit Module
+        // 1. Add to Credit Module
         await CreditService().addTransaction(creditTxn);
 
-        // Remove from Expense Module (Pool)
-        await ExpenseService().deleteTransaction(txn);
+        // 2. Remove from Expense Module (Pool)
+        // CRITICAL: Use deleteTransactionSingle to avoid deleting the source transfer (Bank Debit)
+        await ExpenseService().deleteTransactionSingle(txn);
+
         successCount++;
       }
 
@@ -123,9 +140,10 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
             backgroundColor: Colors.green));
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("Sync Error: $e")));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
