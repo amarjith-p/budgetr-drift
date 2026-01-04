@@ -2,32 +2,56 @@ import 'package:intl/intl.dart';
 import '../models/credit_models.dart';
 
 class BillingCycleUtils {
-  /// Returns true if the transaction is 'Unbilled' (appears after the last generated bill)
+  /// Checks if the transaction date is within [thresholdDays] BEFORE the bill date.
+  static bool isDangerZone(DateTime txnDate, int billDay,
+      {int thresholdDays = 3}) {
+    final billDateThisMonth =
+        _getValidDate(txnDate.year, txnDate.month, billDay);
+    if (txnDate.isAfter(billDateThisMonth)) return false; // Already next cycle
+    final difference = billDateThisMonth.difference(txnDate).inDays;
+    return difference >= 0 && difference <= thresholdDays;
+  }
+
+  /// Calculates the "Statement Date" taking [includeInNextStatement] into account.
+  static DateTime getStatementDateForTxn(DateTime txnDate, int billDay,
+      {bool forceNextCycle = false}) {
+    final billDateThisMonth =
+        _getValidDate(txnDate.year, txnDate.month, billDay);
+
+    DateTime calculatedDate;
+    if (txnDate.isAfter(billDateThisMonth)) {
+      final nextMonth = txnDate.month == 12 ? 1 : txnDate.month + 1;
+      final nextYear = txnDate.month == 12 ? txnDate.year + 1 : txnDate.year;
+      calculatedDate = _getValidDate(nextYear, nextMonth, billDay);
+    } else {
+      calculatedDate = billDateThisMonth;
+    }
+
+    if (forceNextCycle) {
+      // Shift to next billing cycle
+      final nextMonth =
+          calculatedDate.month == 12 ? 1 : calculatedDate.month + 1;
+      final nextYear = calculatedDate.month == 12
+          ? calculatedDate.year + 1
+          : calculatedDate.year;
+      return _getValidDate(nextYear, nextMonth, billDay);
+    }
+
+    return calculatedDate;
+  }
+
   static bool isUnbilled(CreditTransactionModel txn, int billDay) {
     final now = DateTime.now();
     final lastBillDate = getLastBillDate(now, billDay);
 
-    // If transaction is AFTER the last bill date, it is Unbilled
-    return txn.date.toDate().isAfter(lastBillDate);
+    final stmtDate = getStatementDateForTxn(txn.date.toDate(), billDay,
+        forceNextCycle: txn.includeInNextStatement);
+
+    return stmtDate.isAfter(lastBillDate);
   }
 
-  /// Calculates the "Statement Date" a transaction belongs to.
-  static DateTime getStatementDateForTxn(DateTime txnDate, int billDay) {
-    final billDateThisMonth =
-        _getValidDate(txnDate.year, txnDate.month, billDay);
+  // --- STANDARD HELPERS ---
 
-    if (txnDate.isAfter(billDateThisMonth)) {
-      // It falls into next month's statement
-      final nextMonth = txnDate.month == 12 ? 1 : txnDate.month + 1;
-      final nextYear = txnDate.month == 12 ? txnDate.year + 1 : txnDate.year;
-      return _getValidDate(nextYear, nextMonth, billDay);
-    } else {
-      // It belongs to this month's statement
-      return billDateThisMonth;
-    }
-  }
-
-  /// NEW: Calculates the Statement Date immediately preceding the given one
   static DateTime getPreviousStatementDate(
       DateTime currentStmtDate, int billDay) {
     final prevMonth =
@@ -38,10 +62,8 @@ class BillingCycleUtils {
     return _getValidDate(prevYear, prevMonth, billDay);
   }
 
-  /// Finds the most recent Bill Date that has already passed relative to [today]
   static DateTime getLastBillDate(DateTime today, int billDay) {
     final billDateThisMonth = _getValidDate(today.year, today.month, billDay);
-
     if (today.isBefore(billDateThisMonth)) {
       final prevMonth = today.month == 1 ? 12 : today.month - 1;
       final prevYear = today.month == 1 ? today.year - 1 : today.year;
@@ -51,7 +73,6 @@ class BillingCycleUtils {
     }
   }
 
-  /// Calculates the exact Due Date for a given Statement Date.
   static DateTime getDueDateForStatement(DateTime statementDate, int dueDay) {
     DateTime dueDate;
     if (dueDay < statementDate.day) {
@@ -60,29 +81,21 @@ class BillingCycleUtils {
     } else {
       dueDate = _getValidDate(statementDate.year, statementDate.month, dueDay);
     }
-
     if (dueDate.isBefore(statementDate)) {
       dueDate =
           _getValidDate(statementDate.year, statementDate.month + 1, dueDay);
     }
-
     return dueDate;
   }
 
-  /// NEW: Helper to safely check category
   static bool isRepaymentCategory(String category) {
     return category.toLowerCase().contains('repayment');
   }
 
-  /// Checks if a transaction is a Bill Payment for the specific [statementDate].
   static bool isPaymentForStatement(
       CreditTransactionModel txn, DateTime statementDate, int dueDay) {
     if (txn.type != 'Income') return false;
-
-    // Only "Repayment" counts as a Bill Payment.
-    if (!isRepaymentCategory(txn.category)) {
-      return false;
-    }
+    if (!isRepaymentCategory(txn.category)) return false;
 
     final dueDate = getDueDateForStatement(statementDate, dueDay);
     final txnDate = txn.date.toDate();
@@ -99,7 +112,6 @@ class BillingCycleUtils {
     final firstDayNextMonth = DateTime(year, month + 1, 1);
     final lastDayThisMonth =
         firstDayNextMonth.subtract(const Duration(days: 1));
-
     final validDay = day > lastDayThisMonth.day ? lastDayThisMonth.day : day;
     return DateTime(year, month, validDay, 23, 59, 59);
   }

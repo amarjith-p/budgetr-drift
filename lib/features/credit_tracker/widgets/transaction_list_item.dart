@@ -9,7 +9,13 @@ class TransactionListItem extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback onMarkAsRepayment;
   final VoidCallback onIgnore;
+
+  // CHANGED: Updated to Future for loading state support
+  final Future<void> Function()? onDeferToNextBill;
+  final Future<void> Function()? onVerifySettlement;
+
   final bool isIgnored;
+  final bool showDangerWarning;
 
   const TransactionListItem({
     super.key,
@@ -19,7 +25,10 @@ class TransactionListItem extends StatefulWidget {
     required this.onDelete,
     required this.onMarkAsRepayment,
     required this.onIgnore,
+    this.onDeferToNextBill,
+    this.onVerifySettlement,
     required this.isIgnored,
+    this.showDangerWarning = false,
   });
 
   @override
@@ -28,6 +37,10 @@ class TransactionListItem extends StatefulWidget {
 
 class _TransactionListItemState extends State<TransactionListItem> {
   bool _isExpanded = false;
+
+  // NEW: Loading States
+  bool _isDeferring = false;
+  bool _isVerifying = false;
 
   bool get _isUnverifiedTransfer =>
       !widget.isIgnored &&
@@ -54,9 +67,11 @@ class _TransactionListItemState extends State<TransactionListItem> {
           border: Border.all(
               color: _isUnverifiedTransfer
                   ? Colors.orangeAccent.withOpacity(0.5)
-                  : (_isExpanded
-                      ? Colors.white.withOpacity(0.2)
-                      : Colors.white.withOpacity(0.05))),
+                  : (widget.showDangerWarning
+                      ? Colors.orangeAccent.withOpacity(0.3)
+                      : (_isExpanded
+                          ? Colors.white.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.05)))),
           boxShadow: _isExpanded
               ? [
                   BoxShadow(
@@ -77,7 +92,7 @@ class _TransactionListItemState extends State<TransactionListItem> {
                         backgroundColor: iconColor.withOpacity(0.1),
                         child:
                             Icon(widget.iconData, color: iconColor, size: 20)),
-                    if (_isUnverifiedTransfer)
+                    if (_isUnverifiedTransfer || widget.showDangerWarning)
                       Positioned(
                           right: 0,
                           top: 0,
@@ -127,6 +142,77 @@ class _TransactionListItemState extends State<TransactionListItem> {
                 ),
               ],
             ),
+
+            // DANGER ZONE WARNING
+            if (widget.showDangerWarning && _isExpanded)
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                    color: Colors.orangeAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: Colors.orangeAccent.withOpacity(0.3))),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Colors.orangeAccent, size: 16),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                          "Close to Bill Date. Is this included in the bill?",
+                          style: TextStyle(
+                              color: Colors.orangeAccent,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // YES INCLUDED BUTTON (With Loading)
+                    if (widget.onVerifySettlement != null)
+                      SizedBox(
+                        height: 28,
+                        child: TextButton(
+                          onPressed: _isVerifying
+                              ? null
+                              : () async {
+                                  setState(() => _isVerifying = true);
+                                  try {
+                                    await widget.onVerifySettlement!();
+                                  } finally {
+                                    if (mounted)
+                                      setState(() => _isVerifying = false);
+                                  }
+                                },
+                          style: TextButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              backgroundColor:
+                                  Colors.orangeAccent.withOpacity(0.2),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8))),
+                          child: _isVerifying
+                              ? const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.orangeAccent,
+                                  ),
+                                )
+                              : const Text("Yes, Included",
+                                  style: TextStyle(
+                                      color: Colors.orangeAccent,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold)),
+                        ),
+                      )
+                  ],
+                ),
+              ),
+
+            // UNVERIFIED TRANSFER WARNING
             if (_isUnverifiedTransfer)
               Container(
                 margin: const EdgeInsets.only(top: 12),
@@ -196,6 +282,7 @@ class _TransactionListItemState extends State<TransactionListItem> {
                   ],
                 ),
               ),
+
             AnimatedCrossFade(
               firstChild: const SizedBox.shrink(),
               secondChild: Column(
@@ -203,7 +290,54 @@ class _TransactionListItemState extends State<TransactionListItem> {
                 children: [
                   const SizedBox(height: 16),
                   const Divider(color: Colors.white10),
-                  const SizedBox(height: 8),
+
+                  // DEFER BUTTON (With Loading)
+                  if (widget.onDeferToNextBill != null) ...[
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: TextButton.icon(
+                        onPressed: _isDeferring
+                            ? null
+                            : () async {
+                                setState(() => _isDeferring = true);
+                                try {
+                                  await widget.onDeferToNextBill!();
+                                } finally {
+                                  if (mounted)
+                                    setState(() => _isDeferring = false);
+                                }
+                              },
+                        icon: _isDeferring
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Color(0xFF4CC9F0)))
+                            : Icon(
+                                widget.txn.includeInNextStatement
+                                    ? Icons.undo
+                                    : Icons.next_plan_outlined,
+                                color: const Color(0xFF4CC9F0),
+                                size: 18),
+                        label: Text(
+                          _isDeferring
+                              ? "Processing..."
+                              : (widget.txn.includeInNextStatement
+                                  ? "Move back to Previous Bill"
+                                  : "Not in Bill? Move to Next Cycle"),
+                          style: const TextStyle(color: Color(0xFF4CC9F0)),
+                        ),
+                        style: TextButton.styleFrom(
+                            backgroundColor:
+                                const Color(0xFF4CC9F0).withOpacity(0.1),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8))),
+                      ),
+                    ),
+                  ],
+
                   if (widget.txn.notes.isNotEmpty) ...[
                     Text("Notes:",
                         style: TextStyle(

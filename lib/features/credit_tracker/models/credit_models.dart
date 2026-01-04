@@ -4,13 +4,13 @@ class CreditCardModel {
   final String id;
   final String name;
   final String bankName;
-  final String lastFourDigits; // Scale Up Feature
-  final double creditLimit; // Matched your existing field name
+  final String lastFourDigits;
+  final double creditLimit;
   final double currentBalance;
   final int billDate;
   final int dueDate;
-  final int color; // Scale Up Feature
-  final bool isArchived; // Scale Up Feature
+  final int color;
+  final bool isArchived;
   final Timestamp createdAt;
 
   CreditCardModel({
@@ -66,13 +66,15 @@ class CreditTransactionModel {
   final double amount;
   final Timestamp date;
   final String bucket;
-  final String type; // 'Income' or 'Expense'
+  final String type;
   final String category;
   final String subCategory;
   final String notes;
-
-  // New field to link back to the Bank Transaction
   final String? linkedExpenseId;
+
+  // FEATURE: Settlement Management
+  final bool includeInNextStatement; // Moves txn to next month
+  final bool isSettlementVerified; // True if user confirmed/checked it
 
   CreditTransactionModel({
     required this.id,
@@ -85,6 +87,8 @@ class CreditTransactionModel {
     required this.subCategory,
     required this.notes,
     this.linkedExpenseId,
+    this.includeInNextStatement = false,
+    this.isSettlementVerified = false,
   });
 
   factory CreditTransactionModel.fromFirestore(DocumentSnapshot doc) {
@@ -100,6 +104,8 @@ class CreditTransactionModel {
       subCategory: data['subCategory'] ?? 'General',
       notes: data['notes'] ?? '',
       linkedExpenseId: data['linkedExpenseId'],
+      includeInNextStatement: data['includeInNextStatement'] ?? false,
+      isSettlementVerified: data['isSettlementVerified'] ?? false,
     );
   }
 
@@ -114,6 +120,8 @@ class CreditTransactionModel {
       'subCategory': subCategory,
       'notes': notes,
       'linkedExpenseId': linkedExpenseId,
+      'includeInNextStatement': includeInNextStatement,
+      'isSettlementVerified': isSettlementVerified,
     };
   }
 }
