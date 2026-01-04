@@ -27,6 +27,17 @@ class BillingCycleUtils {
     }
   }
 
+  /// NEW: Calculates the Statement Date immediately preceding the given one
+  static DateTime getPreviousStatementDate(
+      DateTime currentStmtDate, int billDay) {
+    final prevMonth =
+        currentStmtDate.month == 1 ? 12 : currentStmtDate.month - 1;
+    final prevYear = currentStmtDate.month == 1
+        ? currentStmtDate.year - 1
+        : currentStmtDate.year;
+    return _getValidDate(prevYear, prevMonth, billDay);
+  }
+
   /// Finds the most recent Bill Date that has already passed relative to [today]
   static DateTime getLastBillDate(DateTime today, int billDay) {
     final billDateThisMonth = _getValidDate(today.year, today.month, billDay);
@@ -43,7 +54,6 @@ class BillingCycleUtils {
   /// Calculates the exact Due Date for a given Statement Date.
   static DateTime getDueDateForStatement(DateTime statementDate, int dueDay) {
     DateTime dueDate;
-    // If Due Day is smaller than Bill Day (e.g. Bill 25th, Due 5th), it's next month.
     if (dueDay < statementDate.day) {
       dueDate =
           _getValidDate(statementDate.year, statementDate.month + 1, dueDay);
@@ -51,7 +61,6 @@ class BillingCycleUtils {
       dueDate = _getValidDate(statementDate.year, statementDate.month, dueDay);
     }
 
-    // Safety: Due date cannot be BEFORE Statement Date
     if (dueDate.isBefore(statementDate)) {
       dueDate =
           _getValidDate(statementDate.year, statementDate.month + 1, dueDay);
@@ -60,21 +69,18 @@ class BillingCycleUtils {
     return dueDate;
   }
 
+  /// NEW: Helper to safely check category
+  static bool isRepaymentCategory(String category) {
+    return category.toLowerCase().contains('repayment');
+  }
+
   /// Checks if a transaction is a Bill Payment for the specific [statementDate].
-  ///
-  /// STRICT LOGIC:
-  /// 1. Must be 'Income'.
-  /// 2. Category MUST contain "Repayment".
-  /// 3. Date must be AFTER Statement Date but BEFORE (or on) Due Date.
   static bool isPaymentForStatement(
       CreditTransactionModel txn, DateTime statementDate, int dueDay) {
     if (txn.type != 'Income') return false;
 
-    // --- STRICT FILTER ---
     // Only "Repayment" counts as a Bill Payment.
-    // Refunds, Cashback, Reversals, etc. will return false here,
-    // so they will stay in the "Unbilled" bucket and reduce current spend.
-    if (!txn.category.toLowerCase().contains('repayment')) {
+    if (!isRepaymentCategory(txn.category)) {
       return false;
     }
 
@@ -89,14 +95,12 @@ class BillingCycleUtils {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  /// Helper to safely get a date (e.g., asking for Feb 30 returns Feb 28/29)
   static DateTime _getValidDate(int year, int month, int day) {
     final firstDayNextMonth = DateTime(year, month + 1, 1);
     final lastDayThisMonth =
         firstDayNextMonth.subtract(const Duration(days: 1));
 
     final validDay = day > lastDayThisMonth.day ? lastDayThisMonth.day : day;
-    // Set to end of day 23:59:59 to capture all transactions of that day
     return DateTime(year, month, validDay, 23, 59, 59);
   }
 }

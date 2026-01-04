@@ -27,12 +27,13 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
   final Set<String> _selectedCategories = {};
   final Set<String> _selectedBuckets = {};
 
-  // Persistent state for ignored transfers
   final Set<String> _ignoredTransactionIds = {};
   static const String _ignoredPrefsKey = 'ignored_transfers_list';
 
   final Color _bgColor = const Color(0xff0D1B2A);
   final Color _accentColor = const Color(0xFF3A86FF);
+
+  bool _isLoading = false;
 
   late Stream<List<TransactionCategoryModel>> _categoryStream;
   late Stream<List<CreditTransactionModel>> _transactionStream;
@@ -143,18 +144,19 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
 
               final allTxns = _applyFilters(snapshot.data!);
 
-              // 1. Cycle Calculations
+              // 1. Determine Key Dates
               final now = DateTime.now();
               final lastStatementDate =
                   BillingCycleUtils.getLastBillDate(now, widget.card.billDate);
 
+              // 2. Buckets
               final currentCycleSpends = <CreditTransactionModel>[];
               final lastStatementPayments = <CreditTransactionModel>[];
               final pastStatementTxns = <CreditTransactionModel>[];
 
               for (var txn in allTxns) {
                 if (BillingCycleUtils.isUnbilled(txn, widget.card.billDate)) {
-                  // Check if it's a Grace Period Payment for the previous bill
+                  // Check if it's a payment for the Last Statement (Grace Period)
                   if (BillingCycleUtils.isPaymentForStatement(
                       txn, lastStatementDate, widget.card.dueDate)) {
                     lastStatementPayments.add(txn);
@@ -168,9 +170,25 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
 
               double currentUnbilledTotal = _calculateTotal(currentCycleSpends);
 
+              // 3. Group History with "Shift Back" logic for Payments
               final groupedHistory = groupBy(pastStatementTxns, (txn) {
-                return BillingCycleUtils.getStatementDateForTxn(
-                    txn.date.toDate(), widget.card.billDate);
+                final naturalStmtDate =
+                    BillingCycleUtils.getStatementDateForTxn(
+                        txn.date.toDate(), widget.card.billDate);
+
+                // If it's a Repayment, check if it belongs to PREVIOUS statement (Late payment or Grace Period history)
+                if (txn.type == 'Income' &&
+                    BillingCycleUtils.isRepaymentCategory(txn.category)) {
+                  final prevStmtDate =
+                      BillingCycleUtils.getPreviousStatementDate(
+                          naturalStmtDate, widget.card.billDate);
+                  if (BillingCycleUtils.isPaymentForStatement(
+                      txn, prevStmtDate, widget.card.dueDate)) {
+                    return prevStmtDate;
+                  }
+                }
+
+                return naturalStmtDate;
               });
 
               if (!groupedHistory.containsKey(lastStatementDate)) {
@@ -212,26 +230,43 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                         if (sortedDates.isNotEmpty)
                           _buildSectionHeader("STATEMENTS"),
                         ...sortedDates.map((date) {
-                          final txns = groupedHistory[date]!;
+                          final rawTxns = groupedHistory[date]!;
+
+                          // Split Expenses (Bill) vs Repayments (Settlement)
+                          final statementExpenses = <CreditTransactionModel>[];
+                          final statementPayments = <CreditTransactionModel>[];
+
+                          for (var t in rawTxns) {
+                            if (t.type == 'Income' &&
+                                BillingCycleUtils.isRepaymentCategory(
+                                    t.category)) {
+                              statementPayments.add(t);
+                            } else {
+                              statementExpenses.add(t);
+                            }
+                          }
+
+                          // If this is the last statement, append the "Unbilled" grace period payments
                           final isLastStatement = BillingCycleUtils.isSameDay(
                               date, lastStatementDate);
+                          if (isLastStatement) {
+                            statementPayments.addAll(lastStatementPayments);
+                          }
 
-                          final relevantPayments = isLastStatement
-                              ? lastStatementPayments
-                              : <CreditTransactionModel>[];
+                          // Calculate Bill Total (Expenses - Refunds)
+                          final billTotal = _calculateTotal(statementExpenses);
 
-                          final stmtTotal = _calculateTotal(txns);
-
-                          if (txns.isEmpty && relevantPayments.isEmpty) {
+                          if (statementExpenses.isEmpty &&
+                              statementPayments.isEmpty) {
                             return const SizedBox.shrink();
                           }
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildStatementHeader(date, stmtTotal,
-                                  isLastStatement, relevantPayments),
-                              ...txns.map((t) => TransactionItem(
+                              _buildStatementHeader(date, billTotal,
+                                  isLastStatement, statementPayments),
+                              ...statementExpenses.map((t) => TransactionItem(
                                     txn: t,
                                     iconData: categoryIconMap[t.category] ??
                                         Icons.category_outlined,
@@ -245,7 +280,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                                     onIgnore: () =>
                                         _handleIgnoreTransaction(t.id),
                                   )),
-                              if (relevantPayments.isNotEmpty) ...[
+                              if (statementPayments.isNotEmpty) ...[
                                 Padding(
                                   padding: const EdgeInsets.only(
                                       left: 16, top: 8, bottom: 8),
@@ -261,7 +296,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                                     ],
                                   ),
                                 ),
-                                ...relevantPayments.map((t) => TransactionItem(
+                                ...statementPayments.map((t) => TransactionItem(
                                       txn: t,
                                       iconData: Icons.payment,
                                       isIgnored:
@@ -292,7 +327,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
   }
 
   Future<void> _handleMarkAsRepayment(CreditTransactionModel txn) async {
-    // Show loading indicator usually handled by local state or overlay
+    setState(() => _isLoading = true);
     try {
       final updatedTxn = CreditTransactionModel(
         id: txn.id,
@@ -308,19 +343,17 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
       );
 
       await CreditService().updateTransaction(updatedTxn);
-
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Marked as Bill Repayment"),
-              backgroundColor: Colors.green),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Marked as Bill Repayment"),
+            backgroundColor: Colors.green));
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("Error: $e")));
-      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -333,13 +366,29 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     final currency =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
 
-    // 1. Calculate Last Bill Data
-    double billAmount = _calculateTotal(lastBillTxns);
-    double totalPaid = payments.fold(0.0, (sum, t) => sum + t.amount);
+    // Calculate Due Date
+    final actualDueDate = BillingCycleUtils.getDueDateForStatement(
+        lastBillDate, widget.card.dueDate);
+    final daysRemaining = actualDueDate.difference(DateTime.now()).inDays;
 
-    // 2. Calculate Position
+    final billExpenses = lastBillTxns
+        .where((t) =>
+            t.type == 'Expense' ||
+            (t.type == 'Income' &&
+                !BillingCycleUtils.isRepaymentCategory(t.category)))
+        .toList();
+
+    final billPayments = lastBillTxns
+        .where((t) =>
+            t.type == 'Income' &&
+            BillingCycleUtils.isRepaymentCategory(t.category))
+        .toList()
+      ..addAll(payments);
+
+    double billAmount = _calculateTotal(billExpenses);
+    double totalPaid = billPayments.fold(0.0, (sum, t) => sum + t.amount);
+
     double netBillPosition = billAmount - totalPaid;
-
     double remainingDue = 0;
     double surplus = 0;
 
@@ -349,12 +398,10 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
       surplus = netBillPosition.abs();
     }
 
-    // 3. Adjust Current Spends
     double adjustedUnbilled = currentUnbilled - surplus;
     bool isNetLiability = adjustedUnbilled > 0;
 
-    // 4. Status Flags
-    bool isPaidOff = billAmount > 0 && remainingDue <= 1;
+    bool isPaidOff = billAmount > 0 && remainingDue <= 0;
     bool isOverPaid = surplus > 0;
 
     return Container(
@@ -375,7 +422,6 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
       ),
       child: Row(
         children: [
-          // LEFT: NEW SPENDS
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,7 +456,6 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
           ),
           Container(width: 1, height: 50, color: Colors.white10),
           const SizedBox(width: 16),
-          // RIGHT: BILL STATUS
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,14 +499,31 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                       fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
+                // UPDATED SUBTITLE LOGIC:
                 Text(
                   isOverPaid
-                      ? "Surplus (Paid: ${currency.format(totalPaid)})" // FIXED: Explicitly shows Surplus and Paid amount
+                      ? "Surplus (Paid: ${currency.format(totalPaid)})"
                       : (isPaidOff
                           ? "Settled fully"
-                          : "Due: ${currency.format(billAmount)}"),
+                          : "Bill: ${currency.format(billAmount)}  •  Paid: ${currency.format(totalPaid)}"),
                   style: TextStyle(color: Colors.white38, fontSize: 11),
                 ),
+
+                // DUE DATE LOGIC:
+                if (!isOverPaid && !isPaidOff)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      "Due: ${DateFormat('dd MMM').format(actualDueDate)}",
+                      style: TextStyle(
+                        color: daysRemaining < 3
+                            ? Colors.redAccent
+                            : Colors.orangeAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -470,18 +532,16 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     );
   }
 
+  // ... (Rest of helpers remain unchanged)
   Widget _buildStatementHeader(DateTime date, double total, bool isLastStmt,
       List<CreditTransactionModel> payments) {
     final currency =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
-
     final totalPaid = payments.fold(0.0, (sum, t) => sum + t.amount);
-
-    // Settlement calculations for header
     double netPosition = total - totalPaid;
     double surplus = netPosition < 0 ? netPosition.abs() : 0;
-    bool isOverPaid = surplus > 1;
-    bool isPaid = isLastStmt && total > 0 && (total - totalPaid) < 1;
+    bool isOverPaid = surplus > 0;
+    bool isPaid = isLastStmt && total > 0 && (total - totalPaid) < 0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, top: 4),
@@ -525,7 +585,6 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     );
   }
 
-  // --- Helper Methods & Transaction Item ---
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -561,53 +620,37 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
 
   void _handleEdit(BuildContext context, CreditTransactionModel txn) {
     showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (c) => AddCreditTransactionSheet(transactionToEdit: txn),
-    );
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (c) => AddCreditTransactionSheet(transactionToEdit: txn));
   }
 
   void _handleDeleteTransaction(
       BuildContext context, CreditTransactionModel txn) {
     showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xff0D1B2A),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.white.withOpacity(0.1))),
-        title: const Text("Delete Transaction?",
-            style: TextStyle(color: Colors.white)),
-        content: Text("This will permanently remove the transaction.",
-            style: TextStyle(color: Colors.white.withOpacity(0.7))),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancel",
-                  style: TextStyle(color: Colors.white54))),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await CreditService().deleteTransaction(txn);
-                if (mounted)
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text("Transaction deleted"),
-                      backgroundColor: Colors.redAccent));
-              } catch (e) {
-                if (mounted)
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text("Error: $e")));
-              }
-            },
-            child: const Text("Delete",
-                style: TextStyle(
-                    color: Colors.redAccent, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
+        context: context,
+        builder: (ctx) => AlertDialog(
+                backgroundColor: const Color(0xff0D1B2A),
+                title: const Text("Delete?",
+                    style: TextStyle(color: Colors.white)),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text("Cancel",
+                          style: TextStyle(color: Colors.white54))),
+                  TextButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        setState(() => _isLoading = true);
+                        await CreditService().deleteTransaction(txn);
+                        if (mounted) setState(() => _isLoading = false);
+                      },
+                      child: const Text("Delete",
+                          style: TextStyle(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.bold)))
+                ]));
   }
 
   List<CreditTransactionModel> _applyFilters(
