@@ -4,20 +4,26 @@ class CreditCardModel {
   final String id;
   final String name;
   final String bankName;
-  final double creditLimit;
-  final int billDate; // Day of month (1-31)
-  final int dueDate; // Day of month (1-31)
-  final double currentBalance; // Amount used
+  final String lastFourDigits; // Scale Up Feature
+  final double creditLimit; // Matched your existing field name
+  final double currentBalance;
+  final int billDate;
+  final int dueDate;
+  final int color; // Scale Up Feature
+  final bool isArchived; // Scale Up Feature
   final Timestamp createdAt;
 
   CreditCardModel({
     required this.id,
     required this.name,
     required this.bankName,
+    this.lastFourDigits = '',
     required this.creditLimit,
+    this.currentBalance = 0.0,
     required this.billDate,
     required this.dueDate,
-    this.currentBalance = 0.0,
+    this.color = 0xFF1E1E1E,
+    this.isArchived = false,
     required this.createdAt,
   });
 
@@ -27,10 +33,13 @@ class CreditCardModel {
       id: doc.id,
       name: data['name'] ?? '',
       bankName: data['bankName'] ?? '',
+      lastFourDigits: data['lastFourDigits'] ?? '',
       creditLimit: (data['creditLimit'] ?? 0.0).toDouble(),
       billDate: data['billDate'] ?? 1,
-      dueDate: data['dueDate'] ?? 1,
+      dueDate: data['dueDate'] ?? 10,
       currentBalance: (data['currentBalance'] ?? 0.0).toDouble(),
+      color: data['color'] ?? 0xFF1E1E1E,
+      isArchived: data['isArchived'] ?? false,
       createdAt: data['createdAt'] ?? Timestamp.now(),
     );
   }
@@ -39,10 +48,13 @@ class CreditCardModel {
     return {
       'name': name,
       'bankName': bankName,
+      'lastFourDigits': lastFourDigits,
       'creditLimit': creditLimit,
       'billDate': billDate,
       'dueDate': dueDate,
       'currentBalance': currentBalance,
+      'color': color,
+      'isArchived': isArchived,
       'createdAt': createdAt,
     };
   }
@@ -53,11 +65,14 @@ class CreditTransactionModel {
   final String cardId;
   final double amount;
   final Timestamp date;
-  final String bucket; // From Settings (e.g., Lifestyle)
-  final String type; // 'Income' (Payment) or 'Expense' (Spend)
+  final String bucket;
+  final String type; // 'Income' or 'Expense'
   final String category;
   final String subCategory;
   final String notes;
+
+  // New field to link back to the Bank Transaction
+  final String? linkedExpenseId;
 
   CreditTransactionModel({
     required this.id,
@@ -69,6 +84,7 @@ class CreditTransactionModel {
     required this.category,
     required this.subCategory,
     required this.notes,
+    this.linkedExpenseId,
   });
 
   factory CreditTransactionModel.fromFirestore(DocumentSnapshot doc) {
@@ -83,6 +99,7 @@ class CreditTransactionModel {
       category: data['category'] ?? 'General',
       subCategory: data['subCategory'] ?? 'General',
       notes: data['notes'] ?? '',
+      linkedExpenseId: data['linkedExpenseId'],
     );
   }
 
@@ -96,6 +113,7 @@ class CreditTransactionModel {
       'category': category,
       'subCategory': subCategory,
       'notes': notes,
+      'linkedExpenseId': linkedExpenseId,
     };
   }
 }
