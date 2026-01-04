@@ -12,9 +12,8 @@ class ExpenseAccountModel {
   final String accountNumber;
   final int color;
 
-  // --- NEW DASHBOARD CONFIG FIELDS ---
-  final bool showOnDashboard; // Toggle visibility
-  final int dashboardOrder; // For Reordering
+  final bool showOnDashboard;
+  final int dashboardOrder;
 
   ExpenseAccountModel({
     required this.id,
@@ -26,8 +25,8 @@ class ExpenseAccountModel {
     this.accountType = 'Savings Account',
     this.accountNumber = '',
     this.color = 0xFF1E1E1E,
-    this.showOnDashboard = true, // Default to visible
-    this.dashboardOrder = 0, // Default order
+    this.showOnDashboard = true,
+    this.dashboardOrder = 0,
   });
 
   factory ExpenseAccountModel.fromFirestore(DocumentSnapshot doc) {
@@ -42,7 +41,6 @@ class ExpenseAccountModel {
       accountType: data['accountType'] ?? 'Savings Account',
       accountNumber: data['accountNumber'] ?? '',
       color: data['color'] ?? 0xFF1E1E1E,
-      // Map new fields
       showOnDashboard: data['showOnDashboard'] ?? true,
       dashboardOrder: data['dashboardOrder'] ?? 0,
     );
@@ -58,23 +56,22 @@ class ExpenseAccountModel {
       'accountType': accountType,
       'accountNumber': accountNumber,
       'color': color,
-      // Save new fields
       'showOnDashboard': showOnDashboard,
       'dashboardOrder': dashboardOrder,
     };
   }
 
-  // Helper for updates
   ExpenseAccountModel copyWith({
     bool? showOnDashboard,
     int? dashboardOrder,
+    double? currentBalance,
   }) {
     return ExpenseAccountModel(
       id: id,
       name: name,
       bankName: bankName,
       type: type,
-      currentBalance: currentBalance,
+      currentBalance: currentBalance ?? this.currentBalance,
       createdAt: createdAt,
       accountType: accountType,
       accountNumber: accountNumber,
@@ -85,7 +82,6 @@ class ExpenseAccountModel {
   }
 }
 
-// ... (ExpenseTransactionModel remains unchanged)
 class ExpenseTransactionModel {
   final String id;
   final String accountId;
@@ -96,9 +92,14 @@ class ExpenseTransactionModel {
   final String category;
   final String subCategory;
   final String notes;
+  
+  // Transfer fields
   final String? transferAccountId;
   final String? transferAccountName;
   final String? transferAccountBankName;
+
+  // --- NEW FIELD FOR SYNC ---
+  final String? linkedCreditCardId; 
 
   ExpenseTransactionModel({
     required this.id,
@@ -113,6 +114,7 @@ class ExpenseTransactionModel {
     this.transferAccountId,
     this.transferAccountName,
     this.transferAccountBankName,
+    this.linkedCreditCardId,
   });
 
   factory ExpenseTransactionModel.fromFirestore(DocumentSnapshot doc) {
@@ -130,6 +132,7 @@ class ExpenseTransactionModel {
       transferAccountId: data['transferAccountId'],
       transferAccountName: data['transferAccountName'],
       transferAccountBankName: data['transferAccountBankName'],
+      linkedCreditCardId: data['linkedCreditCardId'],
     );
   }
 
@@ -146,6 +149,7 @@ class ExpenseTransactionModel {
       'transferAccountId': transferAccountId,
       'transferAccountName': transferAccountName,
       'transferAccountBankName': transferAccountBankName,
+      'linkedCreditCardId': linkedCreditCardId,
     };
   }
 }

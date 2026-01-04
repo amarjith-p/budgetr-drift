@@ -6,6 +6,8 @@ import '../../../core/widgets/modern_loader.dart';
 import '../../../core/models/transaction_category_model.dart';
 import '../../../core/services/category_service.dart';
 import '../../../core/constants/icon_constants.dart';
+import '../../credit_tracker/models/credit_models.dart';
+import '../../credit_tracker/services/credit_service.dart';
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
 import '../widgets/add_expense_txn_sheet.dart';
@@ -42,8 +44,100 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         ExpenseService().getTransactionsForAccount(widget.account.id);
   }
 
+// --- SYNC LOGIC ---
+  Future<void> _handleSync(List<ExpenseTransactionModel> transactions) async {
+    // 1. Filter only unsynced Credit Card entries
+    final creditEntries = transactions
+        .where((t) =>
+            t.linkedCreditCardId != null && t.linkedCreditCardId!.isNotEmpty)
+        .toList();
+
+    if (creditEntries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No transactions to sync.")));
+      return;
+    }
+
+    // Confirm Dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: const Color(0xff1B263B),
+        title: const Text("Sync to Credit Tracker?",
+            style: TextStyle(color: Colors.white)),
+        content: Text(
+            "This will move ${creditEntries.length} transactions to their respective Credit Cards in the Credit Tracker module and remove them from this temporary pool.",
+            style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text("Sync Now",
+                  style: TextStyle(color: Colors.cyanAccent))),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      int successCount = 0;
+
+      for (var txn in creditEntries) {
+        // Map ExpenseTxn -> CreditTxn
+        // Expense Type 'Expense' -> Credit Type 'Expense'
+        // Expense Type 'Transfer In' (Payment from Bank) -> Credit Type 'Income' (Payment)
+
+        String creditType = 'Expense';
+        if (txn.type == 'Transfer In' || txn.type == 'Income') {
+          creditType = 'Income'; // Represents a payment or refund to card
+        }
+
+        final creditTxn = CreditTransactionModel(
+          id: '', // Auto-gen
+          cardId: txn.linkedCreditCardId!,
+          amount: txn.amount,
+          date: txn.date,
+          bucket: txn.bucket, // Pass bucket along
+          type: creditType,
+          category: txn.category,
+          subCategory: txn.subCategory,
+          notes: txn.notes,
+        );
+
+        // Add to Credit Module
+        await CreditService().addTransaction(creditTxn);
+
+        // Remove from Expense Module (Pool)
+        await ExpenseService().deleteTransaction(txn);
+        successCount++;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Successfully synced $successCount transactions!"),
+            backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Sync Error: $e")));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Check if this is the Pool Account
+    final isPoolAccount =
+        widget.account.bankName == 'Credit Card Pool Account' ||
+            widget.account.accountType == 'Credit Card';
+
     return StreamBuilder<List<TransactionCategoryModel>>(
       stream: _categoryStream,
       builder: (context, catSnapshot) {
@@ -82,24 +176,40 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                 stream: _transactionStream,
                 builder: (context, snapshot) {
                   final hasData = snapshot.hasData && snapshot.data!.isNotEmpty;
-                  return Stack(
-                    alignment: Alignment.topRight,
+                  final txns = snapshot.data ?? [];
+                  return Row(
                     children: [
-                      IconButton(
-                        onPressed: hasData
-                            ? () => _openFilterSheet(context, snapshot.data!)
-                            : null,
-                        icon: const Icon(Icons.filter_list_rounded),
-                        tooltip: "Filter Transactions",
-                      ),
-                      if (_hasActiveFilters)
-                        Container(
-                          margin: const EdgeInsets.all(10),
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                              color: Colors.redAccent, shape: BoxShape.circle),
+                      // SYNC BUTTON (Only for Pool Account)
+                      if (isPoolAccount)
+                        IconButton(
+                          onPressed: hasData ? () => _handleSync(txns) : null,
+                          icon: const Icon(Icons.sync_rounded,
+                              color: Colors.cyanAccent),
+                          tooltip: "Sync to Credit Tracker",
                         ),
+
+                      Stack(
+                        alignment: Alignment.topRight,
+                        children: [
+                          IconButton(
+                            onPressed: hasData
+                                ? () =>
+                                    _openFilterSheet(context, snapshot.data!)
+                                : null,
+                            icon: const Icon(Icons.filter_list_rounded),
+                            tooltip: "Filter Transactions",
+                          ),
+                          if (_hasActiveFilters)
+                            Container(
+                              margin: const EdgeInsets.all(10),
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                  color: Colors.redAccent,
+                                  shape: BoxShape.circle),
+                            ),
+                        ],
+                      ),
                     ],
                   );
                 },
@@ -126,7 +236,10 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                                   style: const TextStyle(color: Colors.red)));
                         }
                         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return _buildEmptyState("No transactions found.");
+                          return isPoolAccount
+                              ? _buildEmptyState(
+                                  "All caught up! No unsynced entries.")
+                              : _buildEmptyState("No transactions found.");
                         }
 
                         final filteredList = _applyFilters(snapshot.data!);

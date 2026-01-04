@@ -6,7 +6,6 @@ class ExpenseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // --- ACCOUNTS (Management & Dropdowns) ---
-  // Now sorts by dashboardOrder so Dropdowns match your custom order
   Stream<List<ExpenseAccountModel>> getAccounts() {
     return _db
         .collection(FirebaseConstants.expenseAccounts)
@@ -16,13 +15,12 @@ class ExpenseService {
             s.docs.map((d) => ExpenseAccountModel.fromFirestore(d)).toList());
   }
 
-  // --- DASHBOARD ACCOUNTS (Daily Expense Screen) ---
-  // Returns the Top 6 accounts based on your custom order
+  // --- DASHBOARD ACCOUNTS ---
   Stream<List<ExpenseAccountModel>> getDashboardAccounts() {
     return _db
         .collection(FirebaseConstants.expenseAccounts)
         .orderBy('dashboardOrder', descending: false)
-        .limit(6) // The "First ^" accounts
+        .limit(6)
         .snapshots()
         .map((s) =>
             s.docs.map((d) => ExpenseAccountModel.fromFirestore(d)).toList());
@@ -34,7 +32,6 @@ class ExpenseService {
 
     for (int i = 0; i < accounts.length; i++) {
       final account = accounts[i];
-      // Only update if the order index has changed
       if (account.dashboardOrder != i) {
         final ref =
             _db.collection(FirebaseConstants.expenseAccounts).doc(account.id);
@@ -45,10 +42,9 @@ class ExpenseService {
     await batch.commit();
   }
 
-  // ... (Existing CRUD methods remain unchanged below) ...
+  // ... (Account CRUD methods) ...
 
   Future<void> addAccount(ExpenseAccountModel account) async {
-    // When adding, put it at the end of the list by default
     final snapshot =
         await _db.collection(FirebaseConstants.expenseAccounts).count().get();
     final count = snapshot.count ?? 0;
@@ -85,6 +81,8 @@ class ExpenseService {
     await batch.commit();
   }
 
+  // --- TRANSACTIONS ---
+
   Stream<List<ExpenseTransactionModel>> getTransactionsForAccount(
       String accountId) {
     return _db
@@ -105,6 +103,7 @@ class ExpenseService {
     final txnRef =
         _db.collection(FirebaseConstants.expenseTransactions).doc(docId);
 
+    // FIX: Added linkedCreditCardId here so it gets saved to Firestore
     final txnToSave = ExpenseTransactionModel(
       id: docId,
       accountId: txn.accountId,
@@ -118,6 +117,7 @@ class ExpenseService {
       transferAccountId: txn.transferAccountId,
       transferAccountName: txn.transferAccountName,
       transferAccountBankName: txn.transferAccountBankName,
+      linkedCreditCardId: txn.linkedCreditCardId, // <-- THIS WAS MISSING
     );
 
     batch.set(txnRef, txnToSave.toMap());
@@ -200,6 +200,7 @@ class ExpenseService {
 
       transaction
           .update(accRef, {'currentBalance': FieldValue.increment(netChange)});
+      // updateTransaction uses toMap(), which already includes linkedCreditCardId, so this is fine.
       transaction.update(txnRef, newTxn.toMap());
     });
   }

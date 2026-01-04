@@ -20,47 +20,47 @@ class AddAccountSheet extends StatefulWidget {
 class _AddAccountSheetState extends State<AddAccountSheet> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   late TextEditingController _nameController;
   late TextEditingController _accountNoController;
   late TextEditingController _balanceController;
 
-  // Focus Nodes
   final FocusNode _nameFocus = FocusNode();
   final FocusNode _accNumFocus = FocusNode();
   final FocusNode _balanceFocus = FocusNode();
 
-  // Global Keys for Auto-Scrolling
   final GlobalKey _nameFieldKey = GlobalKey();
   final GlobalKey _accNumFieldKey = GlobalKey();
   final GlobalKey _balanceFieldKey = GlobalKey();
 
-  // Selections
   String? _selectedBank;
   String? _selectedAccountType;
 
-  // EXPANDED: 15 Professional Financial Colors
   final List<Color> _accountColors = [
-    const Color(0xFF1E1E1E), // Matte Black (Default)
-    const Color(0xFF2C3E50), // Midnight Blue
-    const Color(0xFF1A5276), // Deep Ocean
-    const Color(0xFF004D40), // British Racing Green
-    const Color(0xFF880E4F), // Royal Maroon
-    const Color(0xFF4A148C), // Deep Purple
-    const Color(0xFF37474F), // Slate Grey
-    const Color(0xFFBF360C), // Burnt Orange
-    const Color(0xFFB71C1C), // Crimson Red
-    const Color(0xFF0D47A1), // Cobalt Blue
-    const Color(0xFF1B5E20), // Forest Green
-    const Color(0xFFF57F17), // Deep Amber (Gold-ish)
-    const Color(0xFF4E342E), // Espresso Brown
-    const Color(0xFF006064), // Cyan Teal
-    const Color(0xFF311B92), // Indigo Violet
+    const Color(0xFF1E1E1E),
+    const Color(0xFF2C3E50),
+    const Color(0xFF1A5276),
+    const Color(0xFF004D40),
+    const Color(0xFF880E4F),
+    const Color(0xFF4A148C),
+    const Color(0xFF37474F),
+    const Color(0xFFBF360C),
+    const Color(0xFFB71C1C),
+    const Color(0xFF0D47A1),
+    const Color(0xFF1B5E20),
+    const Color(0xFFF57F17),
+    const Color(0xFF4E342E),
+    const Color(0xFF006064),
+    const Color(0xFF311B92),
   ];
 
   late Color _selectedColor;
 
-  final List<String> _accountTypes = ['Savings Account', 'Salary Account'];
+  // Added 'Credit Card' to types
+  final List<String> _accountTypes = [
+    'Savings Account',
+    'Salary Account',
+    'Credit Card'
+  ];
 
   @override
   void initState() {
@@ -83,6 +83,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
       _selectedColor = _accountColors[0];
     }
 
+    // Auto-scroll listeners...
     _nameFocus.addListener(() {
       if (_nameFocus.hasFocus) _scrollToField(_nameFieldKey);
     });
@@ -108,12 +109,27 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
   void _scrollToField(GlobalKey key) {
     Future.delayed(const Duration(milliseconds: 300), () {
       if (key.currentContext != null) {
-        Scrollable.ensureVisible(
-          key.currentContext!,
-          alignment: 0.5,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
+        Scrollable.ensureVisible(key.currentContext!,
+            alignment: 0.5,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut);
+      }
+    });
+  }
+
+  void _onTypeChanged(String? val) {
+    setState(() {
+      _selectedAccountType = val;
+      if (val == 'Credit Card') {
+        // Enforce logic for Credit Card Pool
+        _selectedBank = 'Credit Card Pool Account';
+        _accountNoController.text = '****';
+        _balanceController.text = '0.0';
+      } else {
+        // Reset if switching back to normal, only if it was auto-filled
+        if (_selectedBank == 'Credit Card Pool Account') _selectedBank = null;
+        if (_accountNoController.text == '****') _accountNoController.clear();
+        if (_balanceController.text == '0.0') _balanceController.clear();
       }
     });
   }
@@ -128,9 +144,8 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
         'currentBalance':
             double.tryParse(_balanceController.text.replaceAll(',', '')) ?? 0.0,
         'color': _selectedColor.value,
-        'type': 'Bank',
+        'type': 'Bank', // Internally it's still a Bank structure in Firestore
       };
-
       widget.onAccountAdded(newAccountData);
       Navigator.pop(context);
     }
@@ -141,6 +156,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
     const bgColor = Color(0xff0D1B2A);
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final isEditing = widget.accountToEdit != null;
+    final isCreditCard = _selectedAccountType == 'Credit Card';
 
     return Container(
       decoration: const BoxDecoration(
@@ -160,19 +176,17 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(2)),
                 ),
               ),
               const SizedBox(height: 24),
               Text(
                 isEditing ? "Edit Account" : "New Account",
                 style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
               ),
               const SizedBox(height: 24),
 
@@ -182,93 +196,109 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
                 controller: _nameController,
                 focusNode: _nameFocus,
                 label: "Account Name",
-                hint: "e.g. Personal Savings",
+                hint:
+                    isCreditCard ? "Credit Card Pool" : "e.g. Personal Savings",
                 icon: Icons.edit_outlined,
                 inputAction: TextInputAction.next,
                 onSubmitted: () =>
                     FocusScope.of(context).requestFocus(_accNumFocus),
               ),
-
               const SizedBox(height: 16),
 
-              // 2. Bank & Type
+              // 2. Type & Bank
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _buildSelectField<String>(
-                      label: "Bank",
-                      value: _selectedBank,
-                      items: BankConstants.indianBanks,
-                      labelBuilder: (val) => val,
-                      onSelect: (val) => setState(() => _selectedBank = val),
-                      validator: (v) => v == null ? 'Required' : null,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
                   Expanded(
                     child: _buildSelectField<String>(
                       label: "Type",
                       value: _selectedAccountType,
                       items: _accountTypes,
                       labelBuilder: (val) => val,
-                      onSelect: (val) =>
-                          setState(() => _selectedAccountType = val),
+                      onSelect: _onTypeChanged,
+                      validator: (v) => v == null ? 'Required' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildSelectField<String>(
+                      label: "Bank",
+                      value: _selectedBank,
+                      items: isCreditCard
+                          ? ['Credit Card Pool Account']
+                          : BankConstants.indianBanks,
+                      labelBuilder: (val) => val,
+                      // Disable bank selection if Credit Card is chosen
+                      isEnabled: !isCreditCard,
+                      onSelect: (val) => setState(() => _selectedBank = val),
                       validator: (v) => v == null ? 'Required' : null,
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 16),
-
-              // 3. Account Number
-              _buildTextField(
-                fieldKey: _accNumFieldKey,
-                controller: _accountNoController,
-                focusNode: _accNumFocus,
-                label: "Last 4 Digits of Account No",
-                hint: "e.g. 8842",
-                icon: Icons.numbers,
-                inputType: TextInputType.number,
-                maxLength: 4,
-                isDigitOnly: true,
-                inputAction: TextInputAction.next,
-                onSubmitted: () =>
-                    FocusScope.of(context).requestFocus(_balanceFocus),
-                validator: (val) {
-                  if (val == null || val.isEmpty) return 'Required';
-                  if (val.length != 4) return 'Enter exactly 4 digits';
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // 4. Current Balance
-              _buildTextField(
-                fieldKey: _balanceFieldKey,
-                controller: _balanceController,
-                focusNode: _balanceFocus,
-                label: "Current Balance",
-                hint: "₹ 0.00",
-                icon: Icons.currency_rupee,
-                inputType: const TextInputType.numberWithOptions(decimal: true),
-                inputAction: TextInputAction.done,
-                onSubmitted: () => _submit(),
-              ),
+              // Only show Account Number and Balance if NOT a Credit Card Pool
+              // (Or if we want to show them disabled)
+              if (!isCreditCard) ...[
+                const SizedBox(height: 16),
+                _buildTextField(
+                  fieldKey: _accNumFieldKey,
+                  controller: _accountNoController,
+                  focusNode: _accNumFocus,
+                  label: "Last 4 Digits",
+                  hint: "e.g. 8842",
+                  icon: Icons.numbers,
+                  inputType: TextInputType.number,
+                  maxLength: 4,
+                  isDigitOnly: true,
+                  inputAction: TextInputAction.next,
+                  onSubmitted: () =>
+                      FocusScope.of(context).requestFocus(_balanceFocus),
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  fieldKey: _balanceFieldKey,
+                  controller: _balanceController,
+                  focusNode: _balanceFocus,
+                  label: "Current Balance",
+                  hint: "₹ 0.00",
+                  icon: Icons.currency_rupee,
+                  inputType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputAction: TextInputAction.done,
+                  onSubmitted: () => _submit(),
+                ),
+              ] else ...[
+                // Info text for Credit Card mode
+                Container(
+                  margin: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.white54, size: 20),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "This creates a pool account. Individual card details are hidden and balance starts at 0.",
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              ],
 
               const SizedBox(height: 24),
-
-              // --- COLOR PICKER ---
-              Text(
-                "Card Color",
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.5),
-                ),
-              ),
+              // Color Picker
+              Text("Card Color",
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withOpacity(0.5))),
               const SizedBox(height: 10),
               SizedBox(
                 height: 50,
@@ -302,10 +332,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
                   },
                 ),
               ),
-
               const SizedBox(height: 32),
-
-              // --- SUBMIT BUTTON ---
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -314,19 +341,12 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
                     backgroundColor: const Color(0xFF00B4D8),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: Text(
-                    isEditing ? "Update Account" : "Add Account",
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                  child: Text(isEditing ? "Update Account" : "Add Account",
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -336,30 +356,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
     );
   }
 
-  InputDecoration _inputDeco(String label) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-      filled: true,
-      fillColor: Colors.white.withOpacity(0.05),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF00B4D8), width: 1.5),
-      ),
-      errorStyle: const TextStyle(color: Colors.redAccent),
-      counterText: "",
-    );
-  }
-
+  // Helper Methods (Text Field & Select Field)
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -372,7 +369,6 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
     TextInputType inputType = TextInputType.text,
     int? maxLength,
     bool isDigitOnly = false,
-    String? Function(String?)? validator,
   }) {
     return Container(
       key: fieldKey,
@@ -388,16 +384,21 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
         inputFormatters: isDigitOnly
             ? [
                 FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(maxLength),
+                LengthLimitingTextInputFormatter(maxLength)
               ]
             : null,
-        validator: validator ??
-            (val) => val == null || val.isEmpty ? 'Required' : null,
-        decoration: _inputDeco(label).copyWith(
-          hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+        validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.05),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none),
           prefixIcon:
               Icon(icon, color: Colors.white.withOpacity(0.5), size: 20),
+          counterText: "",
         ),
       ),
     );
@@ -410,64 +411,70 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
     required String Function(T) labelBuilder,
     required Function(T) onSelect,
     String? Function(T?)? validator,
+    bool isEnabled = true,
   }) {
     return FormField<T>(
       validator: validator,
       initialValue: value,
       builder: (FormFieldState<T> state) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            InkWell(
-              onTap: () {
-                _nameFocus.unfocus();
-                _accNumFocus.unfocus();
-                _balanceFocus.unfocus();
-
-                _showSelectionSheet<T>(
-                  context: context,
-                  title: "Select $label",
-                  items: items,
-                  selectedItem: value,
-                  labelBuilder: labelBuilder,
-                  onSelect: (v) {
-                    if (v != null) {
-                      onSelect(v);
-                      state.didChange(v);
-                    }
-                  },
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: InputDecorator(
-                decoration: _inputDeco(label).copyWith(
-                  errorText: state.errorText,
-                  suffixIcon: const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: Colors.white54,
+        return Opacity(
+          opacity: isEnabled ? 1.0 : 0.5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              InkWell(
+                onTap: isEnabled
+                    ? () {
+                        _nameFocus.unfocus();
+                        _accNumFocus.unfocus();
+                        _balanceFocus.unfocus();
+                        _showSelectionSheet<T>(
+                            context: context,
+                            title: "Select $label",
+                            items: items,
+                            selectedItem: value,
+                            labelBuilder: labelBuilder,
+                            onSelect: (v) {
+                              if (v != null) {
+                                onSelect(v);
+                                state.didChange(v);
+                              }
+                            });
+                      }
+                    : null,
+                borderRadius: BorderRadius.circular(12),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: label,
+                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.05),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none),
+                    errorText: state.errorText,
+                    suffixIcon: const Icon(Icons.keyboard_arrow_down,
+                        color: Colors.white54),
                   ),
-                ),
-                isEmpty: value == null,
-                child: Text(
-                  value != null ? labelBuilder(value) : '',
-                  style: const TextStyle(color: Colors.white),
+                  isEmpty: value == null,
+                  child: Text(value != null ? labelBuilder(value) : '',
+                      style: const TextStyle(color: Colors.white)),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
   }
 
-  void _showSelectionSheet<T>({
-    required BuildContext context,
-    required String title,
-    required List<T> items,
-    T? selectedItem,
-    required String Function(T) labelBuilder,
-    required Function(T) onSelect,
-  }) {
+  void _showSelectionSheet<T>(
+      {required BuildContext context,
+      required String title,
+      required List<T> items,
+      T? selectedItem,
+      required String Function(T) labelBuilder,
+      required Function(T) onSelect}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -480,75 +487,56 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
           builder: (_, controller) {
             return Container(
               decoration: const BoxDecoration(
-                color: Color(0xff1B263B),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  Center(
+                  color: Color(0xff1B263B),
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(24))),
+              child: Column(children: [
+                const SizedBox(height: 16),
+                Center(
                     child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  Padding(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(2)))),
+                Padding(
                     padding: const EdgeInsets.all(20),
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const Divider(color: Colors.white10, height: 1),
-                  Expanded(
+                    child: Text(title,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold))),
+                Expanded(
                     child: ListView.separated(
-                      controller: controller,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        final isSelected = item == selectedItem;
-                        return ListTile(
-                          onTap: () {
-                            onSelect(item);
-                            Navigator.pop(context);
-                          },
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          tileColor: isSelected
-                              ? const Color(0xFF00B4D8).withOpacity(0.2)
-                              : Colors.transparent,
-                          title: Text(
-                            labelBuilder(item),
-                            style: TextStyle(
+                  controller: controller,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final isSelected = item == selectedItem;
+                    return ListTile(
+                      onTap: () {
+                        onSelect(item);
+                        Navigator.pop(context);
+                      },
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      tileColor: isSelected
+                          ? const Color(0xFF00B4D8).withOpacity(0.2)
+                          : Colors.transparent,
+                      title: Text(labelBuilder(item),
+                          style: TextStyle(
                               color: isSelected
                                   ? const Color(0xFF00B4D8)
                                   : Colors.white70,
                               fontWeight: isSelected
                                   ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                          trailing: isSelected
-                              ? const Icon(Icons.check,
-                                  color: Color(0xFF00B4D8))
-                              : null,
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+                                  : FontWeight.normal)),
+                    );
+                  },
+                )),
+              ]),
             );
           },
         );
