@@ -44,7 +44,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         ExpenseService().getTransactionsForAccount(widget.account.id);
   }
 
-  // --- SYNC LOGIC (Updated for Transfer Fix) ---
+  // --- SYNC LOGIC (Fixed for Correct Details & Linking) ---
   Future<void> _handleSync(List<ExpenseTransactionModel> transactions) async {
     // 1. Filter only unsynced Credit Card entries
     final creditEntries = transactions
@@ -66,7 +66,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         title: const Text("Sync to Credit Tracker?",
             style: TextStyle(color: Colors.white)),
         content: Text(
-            "This will move ${creditEntries.length} transactions to their respective Credit Cards in the Credit Tracker module and remove them from this temporary pool.",
+            "This will move ${creditEntries.length} transactions to the Credit Tracker.\n\nNote: Transfers will be linked. If you delete them in Credit Tracker, the Bank deduction will also be removed.",
             style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
@@ -88,18 +88,22 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
       int successCount = 0;
 
       for (var txn in creditEntries) {
-        // Map ExpenseTxn -> CreditTxn
-        // Expense Type 'Expense' -> Credit Type 'Expense'
-        // Expense Type 'Transfer In' (Payment from Bank) -> Credit Type 'Income' (Payment)
-
         String creditType = 'Expense';
         String finalNotes = txn.notes;
+        String? linkedExpenseId;
 
+        // Handle Transfer In (Payment from Bank)
         if (txn.type == 'Transfer In' || txn.type == 'Income') {
-          creditType = 'Income'; // Represents a payment or refund to card
+          creditType = 'Income';
 
-          // If it's a transfer, append the Source Bank info to notes
-          // so the user knows where the payment came from in the Credit Tracker.
+          // 1. Find the Source Transaction ID (Bank Debit) for linking
+          final sourceTxn = await ExpenseService().findLinkedTransfer(txn);
+          if (sourceTxn != null) {
+            linkedExpenseId = sourceTxn.id;
+          }
+
+          // 2. Generate Note with Source Details
+          // We use 'txn' because in a "Transfer In", txn.transferAccountBankName IS the Source Bank Name.
           if (txn.type == 'Transfer In' &&
               txn.transferAccountBankName != null) {
             final sourceInfo =
@@ -117,18 +121,18 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
           cardId: txn.linkedCreditCardId!,
           amount: txn.amount,
           date: txn.date,
-          bucket: txn.bucket, // Pass bucket along
+          bucket: txn.bucket,
           type: creditType,
           category: txn.category,
           subCategory: txn.subCategory,
           notes: finalNotes,
+          linkedExpenseId: linkedExpenseId, // Pass the link ID
         );
 
-        // 1. Add to Credit Module
+        // 3. Add to Credit Module
         await CreditService().addTransaction(creditTxn);
 
-        // 2. Remove from Expense Module (Pool)
-        // CRITICAL: Use deleteTransactionSingle to avoid deleting the source transfer (Bank Debit)
+        // 4. Remove from Pool (Keep Bank Debit intact)
         await ExpenseService().deleteTransactionSingle(txn);
 
         successCount++;

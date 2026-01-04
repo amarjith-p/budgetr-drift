@@ -1,14 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/firebase_constants.dart';
+import '../../daily_expense/services/expense_service.dart';
 import '../models/credit_models.dart';
 
 class CreditService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // --- Cards ---
+  // --- CARDS ---
+
   Stream<List<CreditCardModel>> getCreditCards() {
     return _db
         .collection(FirebaseConstants.creditCards)
+        .where('isArchived',
+            isEqualTo: false) // Ensure we only show active cards
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
@@ -20,6 +24,7 @@ class CreditService {
     return _db.collection(FirebaseConstants.creditCards).add(card.toMap());
   }
 
+  // RESTORED: This method was missing in the previous snippet
   Future<void> updateCreditCard(CreditCardModel card) async {
     await _db
         .collection(FirebaseConstants.creditCards)
@@ -45,7 +50,8 @@ class CreditService {
     await batch.commit();
   }
 
-  // --- Transactions ---
+  // --- TRANSACTIONS ---
+
   Stream<List<CreditTransactionModel>> getTransactionsForCard(String cardId) {
     return _db
         .collection(FirebaseConstants.creditTransactions)
@@ -63,12 +69,26 @@ class CreditService {
     final batch = _db.batch();
 
     final txnRef = _db.collection(FirebaseConstants.creditTransactions).doc();
-    batch.set(txnRef, txn.toMap());
+
+    // Create new object with ID to ensure consistency
+    final newTxn = CreditTransactionModel(
+      id: txnRef.id,
+      cardId: txn.cardId,
+      amount: txn.amount,
+      date: txn.date,
+      bucket: txn.bucket,
+      type: txn.type,
+      category: txn.category,
+      subCategory: txn.subCategory,
+      notes: txn.notes,
+      linkedExpenseId: txn.linkedExpenseId, // Save the link!
+    );
+
+    batch.set(txnRef, newTxn.toMap());
 
     // Expense adds to debt (+), Income reduces debt (-)
-    final cardRef = _db
-        .collection(FirebaseConstants.creditCards)
-        .doc(txn.cardId);
+    final cardRef =
+        _db.collection(FirebaseConstants.creditCards).doc(txn.cardId);
     double delta = txn.type == 'Expense' ? txn.amount : -txn.amount;
 
     batch.update(cardRef, {'currentBalance': FieldValue.increment(delta)});
@@ -79,12 +99,10 @@ class CreditService {
   Future<void> deleteTransaction(CreditTransactionModel txn) async {
     final batch = _db.batch();
 
-    final txnRef = _db
-        .collection(FirebaseConstants.creditTransactions)
-        .doc(txn.id);
-    final cardRef = _db
-        .collection(FirebaseConstants.creditCards)
-        .doc(txn.cardId);
+    final txnRef =
+        _db.collection(FirebaseConstants.creditTransactions).doc(txn.id);
+    final cardRef =
+        _db.collection(FirebaseConstants.creditCards).doc(txn.cardId);
 
     batch.delete(txnRef);
 
@@ -98,17 +116,22 @@ class CreditService {
     });
 
     await batch.commit();
+
+    // --- DATA CONSISTENCY CHECK ---
+    // If this Credit Txn is linked to a Bank Txn, delete the Bank Txn too.
+    if (txn.linkedExpenseId != null && txn.linkedExpenseId!.isNotEmpty) {
+      await ExpenseService().deleteTransactionById(txn.linkedExpenseId!);
+    }
   }
 
+  // RESTORED: This method was missing in the previous snippet
   Future<void> updateTransaction(CreditTransactionModel newTxn) async {
     // Run inside a transaction to safely read the OLD value and update balance
     return _db.runTransaction((transaction) async {
-      final txnRef = _db
-          .collection(FirebaseConstants.creditTransactions)
-          .doc(newTxn.id);
-      final cardRef = _db
-          .collection(FirebaseConstants.creditCards)
-          .doc(newTxn.cardId);
+      final txnRef =
+          _db.collection(FirebaseConstants.creditTransactions).doc(newTxn.id);
+      final cardRef =
+          _db.collection(FirebaseConstants.creditCards).doc(newTxn.cardId);
 
       // 1. Get Old Data
       final docSnapshot = await transaction.get(txnRef);
@@ -119,13 +142,11 @@ class CreditService {
 
       // 2. Calculate Balance Adjustments
       // Remove old effect
-      double oldEffect = oldTxn.type == 'Expense'
-          ? oldTxn.amount
-          : -oldTxn.amount;
+      double oldEffect =
+          oldTxn.type == 'Expense' ? oldTxn.amount : -oldTxn.amount;
       // Add new effect
-      double newEffect = newTxn.type == 'Expense'
-          ? newTxn.amount
-          : -newTxn.amount;
+      double newEffect =
+          newTxn.type == 'Expense' ? newTxn.amount : -newTxn.amount;
 
       double netChange = newEffect - oldEffect;
 
