@@ -10,7 +10,6 @@ class TransactionListItem extends StatefulWidget {
   final VoidCallback onMarkAsRepayment;
   final VoidCallback onIgnore;
 
-  // CHANGED: Updated to Future for loading state support
   final Future<void> Function()? onDeferToNextBill;
   final Future<void> Function()? onVerifySettlement;
 
@@ -38,7 +37,7 @@ class TransactionListItem extends StatefulWidget {
 class _TransactionListItemState extends State<TransactionListItem> {
   bool _isExpanded = false;
 
-  // NEW: Loading States
+  // Loading States
   bool _isDeferring = false;
   bool _isVerifying = false;
 
@@ -53,6 +52,10 @@ class _TransactionListItemState extends State<TransactionListItem> {
     final isExpense = widget.txn.type == 'Expense';
     final amountColor = isExpense ? Colors.redAccent : Colors.greenAccent;
     final iconColor = isExpense ? const Color(0xFF3A86FF) : Colors.green;
+
+    // Check if we have summary data to show in collapsed state
+    final bool hasSummary =
+        widget.txn.bucket.isNotEmpty || widget.txn.notes.isNotEmpty;
 
     return GestureDetector(
       onTap: () => setState(() => _isExpanded = !_isExpanded),
@@ -168,8 +171,6 @@ class _TransactionListItemState extends State<TransactionListItem> {
                               fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(width: 12),
-
-                    // YES INCLUDED BUTTON (With Loading)
                     if (widget.onVerifySettlement != null)
                       SizedBox(
                         height: 28,
@@ -283,15 +284,59 @@ class _TransactionListItemState extends State<TransactionListItem> {
                 ),
               ),
 
+            // --- CHANGED: AnimatedCrossFade for Clean Toggle ---
             AnimatedCrossFade(
-              firstChild: const SizedBox.shrink(),
+              duration: const Duration(milliseconds: 300),
+              // First Child: The Collapsed Summary (Bucket + Note Preview)
+              firstChild: hasSummary
+                  ? Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.only(top: 8, left: 56),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (widget.txn.bucket.isNotEmpty)
+                            _buildTag(widget.txn.bucket),
+                          if (widget.txn.notes.isNotEmpty)
+                            Text(
+                              widget.txn.notes,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.4),
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox(
+                      width: double.infinity), // Empty box placeholder
+
+              // Second Child: The Full Expanded Details
               secondChild: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
                   const Divider(color: Colors.white10),
-
-                  // DEFER BUTTON (With Loading)
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        DateFormat('EEEE, hh:mm a')
+                            .format(widget.txn.date.toDate()),
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.5), fontSize: 12),
+                      ),
+                      if (widget.txn.bucket.isNotEmpty)
+                        _buildTag("Bucket: ${widget.txn.bucket}"),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   if (widget.onDeferToNextBill != null) ...[
                     Container(
                       width: double.infinity,
@@ -337,7 +382,6 @@ class _TransactionListItemState extends State<TransactionListItem> {
                       ),
                     ),
                   ],
-
                   if (widget.txn.notes.isNotEmpty) ...[
                     Text("Notes:",
                         style: TextStyle(
@@ -370,13 +414,30 @@ class _TransactionListItemState extends State<TransactionListItem> {
               crossFadeState: _isExpanded
                   ? CrossFadeState.showSecond
                   : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 300),
             ),
+            // --------------------------------------------------------
           ],
         ),
       ),
     );
   }
+
+  Widget _buildTag(String text) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.white10,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
 
   Widget _buildActionButton(
           {required IconData icon,
