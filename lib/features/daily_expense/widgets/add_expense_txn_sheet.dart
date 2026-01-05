@@ -273,6 +273,8 @@ class _AddExpenseTransactionSheetState
         // Handle Add (Standard Logic)
         if (_type == 'Transfer') {
           if (_isCreditEntry) {
+            // Credit Card Payment (Account -> Pool)
+            // We ONLY create the "Transfer Out" side. The Service creates "Transfer In".
             final transferOut = ExpenseTransactionModel(
               id: '',
               accountId: _selectedAccount!.id,
@@ -289,25 +291,11 @@ class _AddExpenseTransactionSheetState
               linkedCreditCardId: _selectedCreditCard!.id,
             );
 
-            final transferIn = ExpenseTransactionModel(
-              id: '',
-              accountId: targetPoolAccount.id,
-              amount: amount,
-              date: Timestamp.fromDate(_date),
-              bucket: 'Unallocated',
-              type: 'Transfer In',
-              category: 'Transfer',
-              subCategory: 'Credit Card Bill',
-              notes: _notesCtrl.text,
-              transferAccountId: _selectedAccount!.id,
-              transferAccountName: _selectedAccount!.name,
-              transferAccountBankName: _selectedAccount!.bankName,
-              linkedCreditCardId: _selectedCreditCard!.id,
-            );
-
+            // [CHANGED] Only add the source transaction. Service handles partner creation.
             await ExpenseService().addTransaction(transferOut);
-            await ExpenseService().addTransaction(transferIn);
           } else {
+            // Standard Transfer (Account -> Account)
+            // We ONLY create the "Transfer Out" side.
             final transferOut = ExpenseTransactionModel(
               id: '',
               accountId: _selectedAccount!.id,
@@ -322,22 +310,9 @@ class _AddExpenseTransactionSheetState
               transferAccountName: _toAccount!.name,
               transferAccountBankName: _toAccount!.bankName,
             );
-            final transferIn = ExpenseTransactionModel(
-              id: '',
-              accountId: _toAccount!.id,
-              amount: amount,
-              date: Timestamp.fromDate(_date),
-              bucket: 'Unallocated',
-              type: 'Transfer In',
-              category: 'Transfer',
-              subCategory: 'General',
-              notes: _notesCtrl.text,
-              transferAccountId: _selectedAccount!.id,
-              transferAccountName: _selectedAccount!.name,
-              transferAccountBankName: _selectedAccount!.bankName,
-            );
+
+            // [CHANGED] Only add the source transaction. Service handles partner creation.
             await ExpenseService().addTransaction(transferOut);
-            await ExpenseService().addTransaction(transferIn);
           }
         } else {
           final bucketValue =
@@ -430,25 +405,25 @@ class _AddExpenseTransactionSheetState
                               horizontal: 12, vertical: 4),
                           decoration: BoxDecoration(
                               color: _isCreditEntry
-                                  ? Colors.purpleAccent.withOpacity(0.2)
+                                  ? Colors.redAccent.withOpacity(0.2)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                   color: _isCreditEntry
-                                      ? Colors.purpleAccent
+                                      ? Colors.redAccent
                                       : Colors.white24)),
                           child: Row(
                             children: [
                               Icon(Icons.credit_card,
                                   size: 16,
                                   color: _isCreditEntry
-                                      ? Colors.purpleAccent
+                                      ? Colors.redAccent
                                       : Colors.white54),
                               const SizedBox(width: 8),
                               Text("Credit Card",
                                   style: TextStyle(
                                       color: _isCreditEntry
-                                          ? Colors.purpleAccent
+                                          ? Colors.redAccent
                                           : Colors.white54,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold)),
@@ -466,7 +441,7 @@ class _AddExpenseTransactionSheetState
                                           }
                                         });
                                       },
-                                activeColor: Colors.purpleAccent,
+                                activeColor: Colors.redAccent,
                                 materialTapTargetSize:
                                     MaterialTapTargetSize.shrinkWrap,
                               )
@@ -516,7 +491,6 @@ class _AddExpenseTransactionSheetState
                     ]),
                   ),
 
-                  // ... [The rest of the file remains exactly the same] ...
                   const SizedBox(height: 24),
 
                   // ACCOUNTS (Locked if linked)
@@ -683,7 +657,7 @@ class _AddExpenseTransactionSheetState
                         backgroundColor: _type == 'Transfer'
                             ? Colors.blueAccent
                             : (_isCreditEntry
-                                ? Colors.purpleAccent
+                                ? Colors.blueAccent
                                 : const Color(0xFF00B4D8)),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
