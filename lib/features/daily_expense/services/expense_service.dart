@@ -126,6 +126,24 @@ class ExpenseService {
     // Handle Transfer Partner Creation
     if ((txn.type == 'Transfer Out' || txn.type == 'Transfer In') &&
         txn.transferAccountId != null) {
+      // [FIXED] Fetch Source Account Details to name the partner transaction correctly
+      String sourceName = "Linked Account";
+      String sourceBank = "";
+
+      try {
+        final sourceDoc = await _db
+            .collection(FirebaseConstants.expenseAccounts)
+            .doc(txn.accountId)
+            .get();
+        if (sourceDoc.exists) {
+          final data = sourceDoc.data();
+          sourceName = data?['name'] ?? "Linked Account";
+          sourceBank = data?['bankName'] ?? "";
+        }
+      } catch (e) {
+        // Fallback to defaults if fetch fails
+      }
+
       final partnerType =
           txn.type == 'Transfer Out' ? 'Transfer In' : 'Transfer Out';
       final partnerDocId =
@@ -145,8 +163,9 @@ class ExpenseService {
         subCategory: txn.subCategory,
         notes: txn.notes,
         transferAccountId: txn.accountId,
-        transferAccountName: "Linked Account",
-        transferAccountBankName: "",
+        transferAccountName: sourceName, // [FIXED] Uses actual source name
+        transferAccountBankName: sourceBank, // [FIXED] Uses actual source bank
+        linkedCreditCardId: txn.linkedCreditCardId,
       );
 
       batch.set(partnerRef, partnerTxn.toMap());
