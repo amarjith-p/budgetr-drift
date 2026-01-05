@@ -8,12 +8,16 @@ class TransactionItem extends StatefulWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
+  // [UPDATED] Optional field to display source account name
+  final String? sourceAccountName;
+
   const TransactionItem({
     super.key,
     required this.txn,
     required this.iconData,
     required this.onEdit,
     required this.onDelete,
+    this.sourceAccountName,
   });
 
   @override
@@ -67,7 +71,8 @@ class _TransactionItemState extends State<TransactionItem> {
     }
 
     final bool hasSummary = (isExpense && widget.txn.bucket.isNotEmpty) ||
-        widget.txn.notes.isNotEmpty;
+        widget.txn.notes.isNotEmpty ||
+        widget.sourceAccountName != null;
 
     return GestureDetector(
       onTap: () => setState(() => _isExpanded = !_isExpanded),
@@ -109,7 +114,26 @@ class _TransactionItemState extends State<TransactionItem> {
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 15)),
-                      if (widget.txn.subCategory.isNotEmpty &&
+                      // [UPDATED] Show Source Account Name directly in title block if provided
+                      if (widget.sourceAccountName != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4)),
+                            child: Text(
+                              widget.sourceAccountName!,
+                              style: const TextStyle(
+                                  color: Colors.blueAccent,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        )
+                      else if (widget.txn.subCategory.isNotEmpty &&
                           widget.txn.subCategory != 'General')
                         Padding(
                             padding: const EdgeInsets.only(top: 2),

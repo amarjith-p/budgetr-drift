@@ -86,6 +86,17 @@ class ExpenseService {
             .toList());
   }
 
+  // [UPDATED] Added global fetch for All Transactions Screen
+  Stream<List<ExpenseTransactionModel>> getAllTransactions() {
+    return _db
+        .collection(FirebaseConstants.expenseTransactions)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((s) => s.docs
+            .map((d) => ExpenseTransactionModel.fromFirestore(d))
+            .toList());
+  }
+
   Future<void> addTransaction(ExpenseTransactionModel txn) async {
     final batch = _db.batch();
     final docId = txn.id.isNotEmpty
@@ -126,7 +137,6 @@ class ExpenseService {
     // Handle Transfer Partner Creation
     if ((txn.type == 'Transfer Out' || txn.type == 'Transfer In') &&
         txn.transferAccountId != null) {
-      // [FIXED] Fetch Source Account Details to name the partner transaction correctly
       String sourceName = "Linked Account";
       String sourceBank = "";
 
@@ -141,7 +151,7 @@ class ExpenseService {
           sourceBank = data?['bankName'] ?? "";
         }
       } catch (e) {
-        // Fallback to defaults if fetch fails
+        // Fallback to defaults
       }
 
       final partnerType =
@@ -163,8 +173,8 @@ class ExpenseService {
         subCategory: txn.subCategory,
         notes: txn.notes,
         transferAccountId: txn.accountId,
-        transferAccountName: sourceName, // [FIXED] Uses actual source name
-        transferAccountBankName: sourceBank, // [FIXED] Uses actual source bank
+        transferAccountName: sourceName,
+        transferAccountBankName: sourceBank,
         linkedCreditCardId: txn.linkedCreditCardId,
       );
 
@@ -189,10 +199,6 @@ class ExpenseService {
 
   // --- ATOMIC UPDATE TRANSACTION ---
   Future<void> updateTransaction(ExpenseTransactionModel newTxn) async {
-    // Uses runTransaction to atomically update balance and transaction document.
-    // This handles Expense <-> Income switching correctly by calculating net impact.
-    // Since Transfer type is disabled in UI during edit, we focus on standard updates.
-
     await _db.runTransaction((transaction) async {
       // 1. Read Old Transaction
       final txnRef =
@@ -206,8 +212,6 @@ class ExpenseService {
       final oldTxn = ExpenseTransactionModel.fromFirestore(docSnapshot);
 
       // 2. Handle Balance Updates
-
-      // Calculate effect of OLD transaction (to revert)
       double oldEffect = 0.0;
       if (oldTxn.type == 'Expense' || oldTxn.type == 'Transfer Out') {
         oldEffect = -oldTxn.amount;
@@ -215,7 +219,6 @@ class ExpenseService {
         oldEffect = oldTxn.amount;
       }
 
-      // Calculate effect of NEW transaction (to apply)
       double newEffect = 0.0;
       if (newTxn.type == 'Expense' || newTxn.type == 'Transfer Out') {
         newEffect = -newTxn.amount;
@@ -223,7 +226,6 @@ class ExpenseService {
         newEffect = newTxn.amount;
       }
 
-      // Check if Account Changed
       if (oldTxn.accountId != newTxn.accountId) {
         // Revert old account
         final oldAccRef = _db
@@ -252,7 +254,6 @@ class ExpenseService {
       transaction.update(txnRef, newTxn.toMap());
     });
 
-    // Sync with Credit Tracker
     await CreditService()
         .updateTransactionFromExpense(newTxn.id, newTxn.amount, newTxn.date);
   }
