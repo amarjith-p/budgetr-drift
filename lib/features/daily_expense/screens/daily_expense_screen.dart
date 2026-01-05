@@ -12,6 +12,8 @@ import 'account_management_screen.dart';
 // --- NEW IMPORTS ---
 import 'all_transactions_screen.dart';
 import 'expense_analytics_screen.dart';
+import '../widgets/cash_flow_card.dart';
+import '../widgets/balance_trend_chart.dart'; // NEW
 
 class DailyExpenseScreen extends StatefulWidget {
   const DailyExpenseScreen({super.key});
@@ -24,13 +26,11 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
   final ExpenseService _service = ExpenseService();
   late Stream<List<ExpenseAccountModel>> _accountsStream;
 
-  // --- NAVIGATION STATE ---
   int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    // Use the dashboard specific stream to respect user order & limits
     _accountsStream = _service.getDashboardAccounts();
   }
 
@@ -47,7 +47,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      extendBody: true, // Allows content to flow behind the floating dock
+      extendBody: true,
       appBar: _buildAppBar(bgColor),
       body: IndexedStack(
         index: _currentIndex,
@@ -67,7 +67,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     if (_currentIndex == 2) title = "Analytics";
 
     return AppBar(
-      backgroundColor: bgColor.withOpacity(0.9), // Slight translucency
+      backgroundColor: bgColor.withOpacity(0.9),
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
@@ -91,7 +91,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  // --- WRAPPER FOR ORIGINAL CONTENT ---
   Widget _buildOriginalHomeContent() {
     return Stack(
       children: [
@@ -109,7 +108,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
           ),
         ),
         SafeArea(
-          bottom: false, // Let scrolling handle bottom padding
+          bottom: false,
           child: Column(
             children: [
               const SizedBox(height: 10),
@@ -123,7 +122,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  // --- ORIGINAL LOGIC PRESERVED ---
   Widget _buildDualRowAccounts() {
     return StreamBuilder<List<ExpenseAccountModel>>(
       stream: _accountsStream,
@@ -151,6 +149,22 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // --- 1. ACCOUNTS HEADER ---
+              if (accounts.isNotEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Text(
+                    "My Accounts",
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ),
+
+              // --- 2. ACCOUNTS ROWS ---
               if (row1Items.isNotEmpty) ...[
                 SizedBox(
                   height: 90,
@@ -172,6 +186,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
+
               SizedBox(
                 height: 90,
                 child: ListView.separated(
@@ -195,7 +210,14 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                   },
                 ),
               ),
-              // Extra padding for the floating dock
+
+              // --- 3. CASH FLOW WIDGET ---
+              const CashFlowCard(),
+
+              // --- 4. BALANCE TREND CHART (Placed Below Cash Flow) ---
+              const BalanceTrendChart(),
+
+              // Bottom Spacer
               const SizedBox(height: 140),
             ],
           ),
@@ -286,16 +308,14 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  // --- THE PRISM DOCK ---
   Widget _buildPrismDock() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
       child: Container(
         height: 72,
         decoration: BoxDecoration(
-          color: const Color(0xFF101825).withOpacity(0.95), // Deep Navy
+          color: const Color(0xFF101825).withOpacity(0.95),
           borderRadius: BorderRadius.circular(24),
-          // Gradient Border simulating a high-end device edge
           border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
           boxShadow: [
             BoxShadow(
@@ -314,10 +334,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
               children: [
                 _buildPrismTab(0, Icons.grid_view_rounded, "Home"),
                 _buildPrismTab(1, Icons.receipt_long_rounded, "History"),
-
-                // Floating Action Button
                 _buildPrismFab(),
-
                 _buildPrismTab(2, Icons.bar_chart_rounded, "Analytics"),
                 _buildPrismTab(3, Icons.settings_rounded, "Settings",
                     isDisabled: true),
@@ -349,7 +366,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Active Gradient Icon
             isSelected
                 ? ShaderMask(
                     shaderCallback: (bounds) => const LinearGradient(
@@ -360,10 +376,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                     child: Icon(icon, color: Colors.white, size: 26),
                   )
                 : Icon(icon, color: inactiveColor, size: 26),
-
             const SizedBox(height: 4),
-
-            // Label
             Text(
               label,
               style: TextStyle(
@@ -398,7 +411,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16), // "Squircle" shape
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF00B4D8).withOpacity(0.4),
