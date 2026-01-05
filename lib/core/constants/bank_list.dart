@@ -20,8 +20,8 @@ class BankConstants {
     'Federal Bank',
     'IDBI Bank',
     'UCO Bank',
-    'AU Bank'
-        'Others',
+    'AU Bank',
+    'Others',
   ];
 
   // Helper to get asset path
