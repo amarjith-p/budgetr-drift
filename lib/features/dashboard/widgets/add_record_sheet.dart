@@ -84,12 +84,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
   }
 
   Future<void> _initializeConfig() async {
-    // LOGIC:
-    // 1. If Editing: LOAD FROM RECORD. Do not touch SettingsService.
-    //    This preserves the exact bucket order and percentages from when
-    //    the record was originally saved.
-    // 2. If Creating: LOAD FROM SETTINGS. This picks up the latest configuration.
-
     if (_isEditing) {
       final record = widget.recordToEdit!;
       _selectedYear = record.year;
@@ -98,24 +92,13 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
       List<CategoryConfig> preservedCategories = [];
 
       if (record.bucketOrder.isNotEmpty) {
-        // STRICT MODE: Use the saved order
         for (var name in record.bucketOrder) {
-          // Retrieve the percentage used at the time of creation
           final double percentage = record.allocationPercentages[name] ?? 0.0;
-
           preservedCategories.add(
-            CategoryConfig(
-              name: name,
-              percentage: percentage,
-              // Note is not stored in FinancialRecord, so we leave it empty.
-              // This is purely for calculation display.
-            ),
+            CategoryConfig(name: name, percentage: percentage),
           );
         }
       } else {
-        // LEGACY FALLBACK:
-        // For old records created before bucketOrder existed,
-        // we map the percentages map directly.
         record.allocationPercentages.forEach((key, value) {
           preservedCategories.add(CategoryConfig(name: key, percentage: value));
         });
@@ -126,7 +109,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
         _calculate();
       });
     } else {
-      // FRESH ENTRY: Fetch latest settings
       final masterConfig = await _settingsService.getPercentageConfig();
       final date = widget.initialDate ?? DateTime.now();
 
@@ -134,7 +116,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
         _selectedYear = date.year;
         _selectedMonth = date.month;
         _config = masterConfig;
-        // _calculate() will be called via listeners when user types
       });
     }
   }
@@ -229,8 +210,10 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text("Validation Error"),
-            content: const Text("Salary is required."),
+            titleTextStyle: BudgetrStyles.h3,
+            title: const Text("Please Enter a valid Salary Amount."),
+            icon: const Icon(Icons.error_outline, color: Colors.red),
+            // content: const Text(""),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
@@ -268,9 +251,10 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
             showDialog(
               context: context,
               builder: (ctx) => AlertDialog(
+                icon: const Icon(Icons.lock_outline, color: Colors.red),
                 title: const Text("Authentication Failed"),
                 content: const Text(
-                  "Authentication is required to update an existing budget record.",
+                  "Authentication is Required to Update an Existing Budget Record.",
                 ),
                 actions: [
                   TextButton(
@@ -307,10 +291,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
     Map<String, double> percentages = {};
     List<String> bucketOrder = [];
 
-    // Because _config is loaded based on the mode (Edit vs New),
-    // iterating through it automatically preserves the correct order.
-    // If Editing: It iterates the PRESERVED order.
-    // If New: It iterates the SETTINGS order.
     for (var cat in _config!.categories) {
       allocations[cat.name] = _effectiveIncome * (cat.percentage / 100.0);
       percentages[cat.name] = cat.percentage;
@@ -327,7 +307,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
       effectiveIncome: _effectiveIncome,
       allocations: allocations,
       allocationPercentages: percentages,
-      bucketOrder: bucketOrder, // Persist the determined order
+      bucketOrder: bucketOrder,
       createdAt: widget.recordToEdit?.createdAt ?? Timestamp.now(),
       updatedAt: Timestamp.now(),
     );
@@ -380,14 +360,14 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                             onTap: _isEditing
                                 ? null
                                 : () => showSelectionSheet<int>(
-                                    context: context,
-                                    title: 'Select Year',
-                                    items: _years,
-                                    labelBuilder: (y) => y.toString(),
-                                    onSelect: (v) =>
-                                        setState(() => _selectedYear = v),
-                                    selectedItem: _selectedYear,
-                                  ),
+                                      context: context,
+                                      title: 'Select Year',
+                                      items: _years,
+                                      labelBuilder: (y) => y.toString(),
+                                      onSelect: (v) =>
+                                          setState(() => _selectedYear = v),
+                                      selectedItem: _selectedYear,
+                                    ),
                             child: Opacity(
                               opacity: _isEditing ? 0.5 : 1.0,
                               child: _datePill(_selectedYear.toString()),
@@ -398,16 +378,16 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                             onTap: _isEditing
                                 ? null
                                 : () => showSelectionSheet<int>(
-                                    context: context,
-                                    title: 'Select Month',
-                                    items: _months,
-                                    labelBuilder: (m) => DateFormat(
-                                      'MMM',
-                                    ).format(DateTime(0, m)),
-                                    onSelect: (v) =>
-                                        setState(() => _selectedMonth = v),
-                                    selectedItem: _selectedMonth,
-                                  ),
+                                      context: context,
+                                      title: 'Select Month',
+                                      items: _months,
+                                      labelBuilder: (m) => DateFormat(
+                                        'MMM',
+                                      ).format(DateTime(0, m)),
+                                      onSelect: (v) =>
+                                          setState(() => _selectedMonth = v),
+                                      selectedItem: _selectedMonth,
+                                    ),
                             child: Opacity(
                               opacity: _isEditing ? 0.5 : 1.0,
                               child: _datePill(
@@ -423,6 +403,8 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                   ),
 
                   const SizedBox(height: 32),
+
+                  // --- MATERIAL DESIGN INPUTS ---
                   _buildInput(
                     "Base Salary",
                     _salaryController,
@@ -462,7 +444,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                           final amount =
                               _effectiveIncome * (cat.percentage / 100);
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
+                            padding: const EdgeInsets.only(bottom: 12.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -477,7 +459,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                                         color: BudgetrColors.accent.withOpacity(
                                           0.1,
                                         ),
-                                        borderRadius: BorderRadius.circular(6),
+                                        borderRadius: BorderRadius.circular(4),
                                         border: Border.all(
                                           color: BudgetrColors.accent
                                               .withOpacity(0.2),
@@ -487,18 +469,25 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                                         "${cat.percentage.toStringAsFixed(0)}%",
                                         style: TextStyle(
                                           color: BudgetrColors.accent,
-                                          fontSize: 10,
+                                          fontSize: 11,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(cat.name, style: BudgetrStyles.body),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      cat.name,
+                                      style: BudgetrStyles.body.copyWith(
+                                        color: Colors.white70,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 Text(
                                   _currencyFormat.format(amount),
-                                  style: BudgetrStyles.h3,
+                                  style: BudgetrStyles.h3.copyWith(
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ],
                             ),
@@ -518,7 +507,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
             decoration: BoxDecoration(
               color: BudgetrColors.background,
               border: Border(
-                top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                top: BorderSide(color: Colors.white.withOpacity(0.08)),
               ),
               boxShadow: [
                 BoxShadow(
@@ -535,15 +524,15 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      "Net Effective Income:",
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      "Net Effective Income",
+                      style: TextStyle(color: Colors.white54, fontSize: 13),
                     ),
                     Text(
                       _currencyFormat.format(_effectiveIncome),
                       style: TextStyle(
                         color: BudgetrColors.accent,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -555,12 +544,12 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           side: BorderSide(
                             color: Colors.white.withOpacity(0.2),
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BudgetrStyles.radiusM,
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         child: const Text(
@@ -569,11 +558,26 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: BudgetrButton(
-                        text: "Save Budget",
+                      child: ElevatedButton(
                         onPressed: _save,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: BudgetrColors.accent,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          "Save Budget",
+                          style: TextStyle(
+                            color: Colors.white, // CHANGED TO WHITE
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -610,76 +614,84 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
 
   Widget _datePill(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Text(
         text,
         style: const TextStyle(
           color: Colors.white,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w600,
           fontSize: 13,
         ),
       ),
     );
   }
 
+  // UPDATED: Material Design Style
   Widget _buildInput(
     String label,
     TextEditingController ctrl,
     FocusNode node,
     Color accent,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: accent,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1,
+    return TextFormField(
+      controller: ctrl,
+      focusNode: node,
+      readOnly: !_useSystemKeyboard,
+      showCursor: true,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        labelText: label, // Floating label
+        labelStyle: TextStyle(
+          color: Colors.white.withOpacity(0.5),
+          fontSize: 14,
+        ),
+        floatingLabelStyle: TextStyle(
+          color: accent,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        prefixText: '₹ ',
+        prefixStyle: const TextStyle(
+          color: Colors.white54,
+          fontSize: 18,
+        ),
+        hintText: '0',
+        hintStyle: TextStyle(color: Colors.white12, fontSize: 18),
+        filled: true,
+        fillColor: const Color(0xff162032),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.1),
           ),
         ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: ctrl,
-          focusNode: node,
-          readOnly: !_useSystemKeyboard, // KEEP THIS for custom keyboard
-          showCursor: true, // KEEP THIS for custom keyboard
-          keyboardType: TextInputType.number,
-          style: BudgetrStyles.inputNumber,
-          decoration: InputDecoration(
-            prefixText: '₹ ',
-            prefixStyle: TextStyle(
-              color: BudgetrColors.textSecondary,
-              fontSize: 20,
-            ),
-            hintText: '0',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.1)),
-            filled: true,
-            fillColor: Colors.white.withOpacity(0.05),
-            isDense: true,
-            border: OutlineInputBorder(
-              borderRadius: BudgetrStyles.radiusS,
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BudgetrStyles.radiusS,
-              borderSide: BorderSide(color: accent),
-            ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.1),
           ),
-          onTap: () => _setActive(ctrl, node),
         ),
-      ],
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: accent, width: 1.5),
+        ),
+      ),
+      onTap: () => _setActive(ctrl, node),
     );
   }
 }
