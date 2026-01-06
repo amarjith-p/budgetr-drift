@@ -125,7 +125,8 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
 
           // --- Chart & Data ---
           StreamBuilder<List<ExpenseTransactionModel>>(
-            stream: _service.getAllTransactions(),
+            // [UPDATED] Uses optimized service method with Server-Side Filtering
+            stream: _service.getTransactions(accountId: _selectedAccountId),
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const Center(child: ModernLoader());
 
@@ -223,10 +224,10 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
   List<CategoryData> _processData(List<ExpenseTransactionModel> txns) {
     final startDate = _getStartDate();
 
+    // [UPDATED] Removed client-side filtering for accountId.
+    // Firestore now returns only the relevant transactions.
     final filtered = txns.where((t) {
       if (t.type != 'Expense') return false;
-      if (_selectedAccountId != null && t.accountId != _selectedAccountId)
-        return false;
       return t.date.toDate().isAfter(startDate);
     });
 

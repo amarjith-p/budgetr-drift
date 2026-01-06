@@ -72,6 +72,22 @@ class ExpenseService {
     await batch.commit();
   }
 
+// [NEW] Optimized method for Scalable Filtering
+  // This replaces the need for fetching everything and filtering on the phone.
+  Stream<List<ExpenseTransactionModel>> getTransactions({String? accountId}) {
+    Query query = _db.collection(FirebaseConstants.expenseTransactions);
+
+    // 1. Apply Account Filter at the Database Level
+    if (accountId != null) {
+      query = query.where('accountId', isEqualTo: accountId);
+    }
+
+    // 2. Order by Date (descending)
+    query = query.orderBy('date', descending: true);
+
+    return query.snapshots().map((s) =>
+        s.docs.map((d) => ExpenseTransactionModel.fromFirestore(d)).toList());
+  }
   // --- TRANSACTIONS ---
 
   Stream<List<ExpenseTransactionModel>> getTransactionsForAccount(

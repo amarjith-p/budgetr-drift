@@ -21,6 +21,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
   final CategoryService _categoryService = CategoryService();
 
   String _selectedRange = 'This Month';
+  String? _selectedAccountId; // Account Filter State
   bool _showIncome = false; // Toggle between Expense (default) and Income
 
   // Helper: Date Filter
@@ -37,6 +38,8 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
           return date.year == last.year && date.month == last.month;
         case 'This Year':
           return date.year == now.year;
+        case 'Last Year': // [NEW] Added Last Year Logic
+          return date.year == now.year - 1;
         case 'All Time':
           return true;
         default:
@@ -58,18 +61,21 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         final Map<String, IconData> iconMap = {};
         if (catSnapshot.hasData) {
           for (var c in catSnapshot.data!) {
-            if (c.iconCode != null)
+            if (c.iconCode != null) {
               iconMap[c.name] = IconConstants.getIconByCode(c.iconCode!);
+            }
           }
         }
 
         return StreamBuilder<List<ExpenseTransactionModel>>(
-          stream: _service.getAllTransactions(),
+          // [UPDATED] Pass selected Account ID for server-side filtering
+          stream: _service.getTransactions(accountId: _selectedAccountId),
           builder: (context, txnSnapshot) {
-            if (!txnSnapshot.hasData)
+            if (!txnSnapshot.hasData) {
               return const Center(child: ModernLoader());
+            }
 
-            // 2. Process Data
+            // 2. Process Data (Date filtering happens here)
             final allTxns = _filterTransactions(txnSnapshot.data!);
 
             // Calculate Totals
@@ -126,10 +132,15 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                   20, 20, 20, 120), // Bottom padding for Nav
               physics: const BouncingScrollPhysics(),
               children: [
-                // --- 1. Filter Dropdown ---
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: _buildTimeFilter(),
+                // --- 1. Filters (Account + Time) ---
+                Row(
+                  children: [
+                    // Account Filter
+                    Expanded(child: _buildAccountFilter()),
+                    const SizedBox(width: 12),
+                    // Date Filter
+                    _buildTimeFilter(),
+                  ],
                 ),
                 const SizedBox(height: 20),
 
@@ -204,6 +215,70 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
 
   // --- Widgets ---
 
+  Widget _buildAccountFilter() {
+    return StreamBuilder<List<ExpenseAccountModel>>(
+      stream: _service.getAccounts(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox();
+
+        final accounts = snapshot.data!;
+
+        // Reset selection if the selected account is deleted
+        if (_selectedAccountId != null &&
+            !accounts.any((a) => a.id == _selectedAccountId)) {
+          _selectedAccountId = null;
+        }
+
+        return Container(
+          height: 36, // Match height with time filter roughly
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String?>(
+              value: _selectedAccountId,
+              dropdownColor: const Color(0xFF1B263B),
+              icon: const Icon(Icons.account_balance_wallet_outlined,
+                  color: Colors.white70, size: 16),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+              isExpanded: true,
+              hint: const Text(
+                "All Accounts",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text("All Accounts"),
+                ),
+                ...accounts.map((acc) => DropdownMenuItem(
+                      value: acc.id,
+                      child: Text(
+                        "${acc.name} - ${acc.bankName}",
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )),
+              ],
+              onChanged: (val) {
+                setState(() => _selectedAccountId = val);
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildTimeFilter() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -221,9 +296,14 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
           style: const TextStyle(
               color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
           isDense: true,
-          items: ['This Month', 'Last Month', 'This Year', 'All Time']
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
+          // [UPDATED] Added 'Last Year' to the list
+          items: [
+            'This Month',
+            'Last Month',
+            'This Year',
+            'Last Year',
+            'All Time'
+          ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
           onChanged: (val) {
             if (val != null) setState(() => _selectedRange = val);
           },

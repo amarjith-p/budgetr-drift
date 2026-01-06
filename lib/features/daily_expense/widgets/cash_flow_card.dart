@@ -14,7 +14,9 @@ class CashFlowCard extends StatefulWidget {
 class _CashFlowCardState extends State<CashFlowCard> {
   final ExpenseService _service = ExpenseService();
   String _selectedPeriod = 'This Month';
+  String? _selectedAccountId; // Account Filter State
 
+  // Helper: Filter Transactions by Date
   List<ExpenseTransactionModel> _filterTransactions(
       List<ExpenseTransactionModel> allTxns) {
     final now = DateTime.now();
@@ -27,6 +29,8 @@ class _CashFlowCardState extends State<CashFlowCard> {
         return date.year == lastMonth.year && date.month == lastMonth.month;
       } else if (_selectedPeriod == 'This Year') {
         return date.year == now.year;
+      } else if (_selectedPeriod == 'Last Year') {
+        return date.year == now.year - 1;
       }
       return true; // All Time
     }).toList();
@@ -35,7 +39,8 @@ class _CashFlowCardState extends State<CashFlowCard> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<ExpenseTransactionModel>>(
-      stream: _service.getAllTransactions(),
+      // Uses optimized server-side filtering
+      stream: _service.getTransactions(accountId: _selectedAccountId),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
 
@@ -53,14 +58,12 @@ class _CashFlowCardState extends State<CashFlowCard> {
         }
 
         final double netFlow = income - expense;
-        // Avoid division by zero
         final double maxValue = (income > expense ? income : expense);
         final double safeMax = maxValue == 0 ? 1 : maxValue;
 
         final double incomeRatio = income / safeMax;
         final double expenseRatio = expense / safeMax;
 
-        // Formatter with 2 decimal places
         final currencyFmt = NumberFormat.currency(
           locale: 'en_IN',
           symbol: '₹',
@@ -69,10 +72,10 @@ class _CashFlowCardState extends State<CashFlowCard> {
 
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: const Color(0xFF151D29),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(color: Colors.white.withOpacity(0.08)),
             boxShadow: [
               BoxShadow(
@@ -86,68 +89,76 @@ class _CashFlowCardState extends State<CashFlowCard> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Header ---
+              // --- HEADER SECTION (Reorganized) ---
+
+              // 1. Title Row
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.analytics_outlined,
-                            color: Colors.white70, size: 14),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "CASH FLOW • ${_selectedPeriod.toUpperCase()}",
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.analytics_outlined,
+                        color: Colors.white70, size: 16),
                   ),
-                  _buildPeriodDropdown(),
+                  const SizedBox(width: 10),
+                  const Text(
+                    "CASH FLOW",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
 
-              // --- Visual Meters ---
+              // 2. Filters Row (Separate line for better visibility)
+              Row(
+                children: [
+                  // Account Filter (Expanded to take available width)
+                  Expanded(child: _buildAccountFilter()),
+                  const SizedBox(width: 8),
+                  // Period Filter
+                  _buildPeriodDropdown(),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // --- VISUAL METERS ---
               _buildMeterRow(
                 label: "INCOME",
                 amount: income,
                 ratio: incomeRatio,
-                color: const Color(0xFF00E676), // Neon Green
+                color: const Color(0xFF00E676),
                 bgGradient: [const Color(0xFF00E676), const Color(0xFF69F0AE)],
                 formatter: currencyFmt,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               _buildMeterRow(
                 label: "EXPENSE",
                 amount: expense,
                 ratio: expenseRatio,
-                color: const Color(0xFFFF4D6D), // Red/Pink
+                color: const Color(0xFFFF4D6D),
                 bgGradient: [const Color(0xFFFF4D6D), const Color(0xFFC9184A)],
                 formatter: currencyFmt,
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               Divider(color: Colors.white.withOpacity(0.05), height: 1),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
-              // --- Net Flow Footer ---
+              // --- NET FLOW FOOTER ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     "Net Position",
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                    style: TextStyle(color: Colors.white54, fontSize: 13),
                   ),
                   Text(
                     "${netFlow >= 0 ? '+' : ''}${currencyFmt.format(netFlow)}",
@@ -155,13 +166,73 @@ class _CashFlowCardState extends State<CashFlowCard> {
                       color: netFlow >= 0
                           ? const Color(0xFF00E676)
                           : const Color(0xFFFF4D6D),
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  // --- Widgets ---
+
+  Widget _buildAccountFilter() {
+    return StreamBuilder<List<ExpenseAccountModel>>(
+      stream: _service.getAccounts(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox();
+
+        final accounts = snapshot.data!;
+        if (_selectedAccountId != null &&
+            !accounts.any((a) => a.id == _selectedAccountId)) {
+          _selectedAccountId = null;
+        }
+
+        return Container(
+          height: 32, // Slightly taller for better touch target
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String?>(
+              value: _selectedAccountId,
+              dropdownColor: const Color(0xFF1B263B),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                  color: Colors.white54, size: 16),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              isDense: true,
+              isExpanded: true, // Ensures it uses the Expanded space
+              hint: const Text(
+                "All Accounts",
+                style: TextStyle(color: Colors.white),
+                overflow: TextOverflow.ellipsis,
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text("All Accounts"),
+                ),
+                ...accounts.map((acc) => DropdownMenuItem(
+                      value: acc.id,
+                      child: Text(
+                        "${acc.name} - ${acc.bankName}",
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    )),
+              ],
+              onChanged: (val) {
+                setState(() => _selectedAccountId = val);
+              },
+            ),
           ),
         );
       },
@@ -185,22 +256,22 @@ class _CashFlowCardState extends State<CashFlowCard> {
             Text(label,
                 style: TextStyle(
                     color: Colors.white.withOpacity(0.5),
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600)),
             Text(
               formatter.format(amount),
               style: TextStyle(
-                  color: color, fontSize: 12, fontWeight: FontWeight.bold),
+                  color: color, fontSize: 13, fontWeight: FontWeight.bold),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Container(
-          height: 6,
+          height: 8,
           width: double.infinity,
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(4),
           ),
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
@@ -210,7 +281,7 @@ class _CashFlowCardState extends State<CashFlowCard> {
               curve: Curves.easeOutCubic,
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: bgGradient),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(4),
                 boxShadow: [
                   BoxShadow(
                     color: bgGradient.first.withOpacity(0.4),
@@ -228,23 +299,29 @@ class _CashFlowCardState extends State<CashFlowCard> {
 
   Widget _buildPeriodDropdown() {
     return Container(
-      height: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedPeriod,
           dropdownColor: const Color(0xFF1B263B),
-          icon: const Icon(Icons.keyboard_arrow_down,
-              color: Colors.white54, size: 14),
-          style: const TextStyle(color: Colors.white, fontSize: 10),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded,
+              color: Colors.white54, size: 16),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
           isDense: true,
-          items: ['This Month', 'Last Month', 'This Year', 'All Time']
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
+          items: [
+            'This Month',
+            'Last Month',
+            'This Year',
+            'Last Year',
+            'All Time'
+          ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
           onChanged: (val) {
             if (val != null) setState(() => _selectedPeriod = val);
           },
