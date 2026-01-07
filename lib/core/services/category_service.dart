@@ -11,9 +11,12 @@ class CategoryService {
     'Food & Drink': {
       'subs': [
         'Groceries',
+        'Meat & Seafood',
+        'Fruits & Vegetables',
         'Dining Out',
         'Online Delivery',
         'Coffee/Tea',
+        'Cooldrinks/Juices',
         'Liquor/Bars',
         'Snacks',
       ],
@@ -34,10 +37,12 @@ class CategoryService {
       'subs': [
         'Fuel',
         'Cab/Taxi',
+        'Train/Bus',
+        'Metro/Tram',
         'Public Transport',
-        'Vehicle Service',
+        'Vehicle Maintenance',
         'Parking/Tolls',
-        'Car Insurance',
+        'Vehicle Insurance',
       ],
       'icon': Icons.directions_car.codePoint,
     },
@@ -45,7 +50,7 @@ class CategoryService {
       'subs': [
         'Electricity',
         'Water',
-        'Internet',
+        'WiFi/Internet',
         'Mobile Recharge',
         'Gas/LPG',
         'DTH/Cable',
@@ -60,6 +65,13 @@ class CategoryService {
         'Accessories',
         'Online Shopping',
         'Home Appliances',
+        'Books/Magazines',
+        'Gifts Purchased',
+        'Sports Equipment',
+        'Stationery',
+        'Jewelry',
+        'Personal Items',
+        'Mobile/Accessories',
       ],
       'icon': Icons.shopping_bag.codePoint,
     },
@@ -73,7 +85,6 @@ class CategoryService {
         'Medicine',
         'Lab Tests',
         'Health Insurance',
-        'Dentist',
       ],
       'icon': Icons.medical_services.codePoint,
     },
@@ -96,22 +107,35 @@ class CategoryService {
         'Concerts',
         'Hobbies',
         'Events',
+        'Entry Fees',
+        'Clubs/Bars',
       ],
       'icon': Icons.movie.codePoint,
     },
     'Travel': {
-      'subs': ['Flights', 'Hotels', 'Train/Bus', 'Vacation', 'Visa Fees'],
+      'subs': ['Flights', 'Hotels', 'Vacation', 'Visa Fees'],
       'icon': Icons.flight.codePoint,
     },
     'Family & Kids': {
       'subs': [
         'Childcare',
-        'Pet Care',
+        'Family Outings',
+        'Family Support',
         'Domestic Help',
         'Baby Supplies',
         'Toys',
       ],
-      'icon': Icons.family_restroom.codePoint,
+      'icon': Icons.people.codePoint,
+    },
+    'Pet Care': {
+      'subs': [
+        'Pet Food',
+        'Grooming',
+        'Pet Accessories',
+        'Vet Visits',
+        'Training',
+      ],
+      'icon': Icons.pets.codePoint,
     },
     'Financial': {
       'subs': [
@@ -121,6 +145,8 @@ class CategoryService {
         'Investments',
         'Bank Charges',
         'Fines',
+        'Failed Transactions',
+        'Capital Losses',
       ],
       'icon': Icons.account_balance.codePoint,
     },
@@ -131,6 +157,10 @@ class CategoryService {
     'Miscellaneous': {
       'subs': ['Charity', 'Donations', 'Gifts Given', 'Unexpected'],
       'icon': Icons.category.codePoint,
+    },
+    'Other': {
+      'subs': ['Missing', 'Uncategorized'],
+      'icon': Icons.add_circle_outline.codePoint,
     },
   };
 
@@ -165,7 +195,12 @@ class CategoryService {
       'icon': Icons.card_giftcard.codePoint,
     },
     'Refunds': {
-      'subs': ['Tax Refund', 'Reimbursements', 'Bill Adjustments'],
+      'subs': [
+        'Tax Refund',
+        'Reimbursements',
+        'Bill Adjustments',
+        'Failed Transaction Reversals'
+      ],
       'icon': Icons.replay.codePoint,
     },
     'Sold Items': {
@@ -188,9 +223,8 @@ class CategoryService {
     }
 
     yield* collection.snapshots().map((s) {
-      final list = s.docs
-          .map((d) => TransactionCategoryModel.fromFirestore(d))
-          .toList();
+      final list =
+          s.docs.map((d) => TransactionCategoryModel.fromFirestore(d)).toList();
       list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       return list;
     });

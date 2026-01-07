@@ -8,6 +8,9 @@ import 'package:local_auth/local_auth.dart';
 import '../../../core/constants/firebase_constants.dart';
 import '../../../core/widgets/calculator_keyboard.dart';
 import '../../../core/widgets/modern_dropdown.dart';
+// IMPORT THE NEW REUSABLE WIDGET
+import '../../../core/widgets/status_bottom_sheet.dart';
+
 import '../../../core/models/financial_record_model.dart';
 import '../../../core/models/percentage_config_model.dart';
 import '../services/dashboard_service.dart';
@@ -205,22 +208,17 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
   Future<void> _save() async {
     _closeKeyboard();
     if (_config == null) return;
+
+    // VALIDATION CHECK
     if (_salaryController.text.isEmpty) {
       if (mounted) {
-        showDialog(
+        // USING NEW REUSABLE WIDGET
+        showStatusSheet(
           context: context,
-          builder: (ctx) => AlertDialog(
-            titleTextStyle: BudgetrStyles.h3,
-            title: const Text("Please Enter a valid Salary Amount."),
-            icon: const Icon(Icons.error_outline, color: Colors.red),
-            // content: const Text(""),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("OK"),
-              ),
-            ],
-          ),
+          title: "Missing Salary",
+          message: "Please enter a valid base salary amount before saving.",
+          icon: Icons.warning_amber_rounded,
+          color: Colors.orangeAccent,
         );
       }
       return;
@@ -248,21 +246,14 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
 
         if (!authenticated) {
           if (mounted) {
-            showDialog(
+            // USING NEW REUSABLE WIDGET
+            showStatusSheet(
               context: context,
-              builder: (ctx) => AlertDialog(
-                icon: const Icon(Icons.lock_outline, color: Colors.red),
-                title: const Text("Authentication Failed"),
-                content: const Text(
-                  "Authentication is Required to Update an Existing Budget Record.",
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text("OK"),
-                  ),
-                ],
-              ),
+              title: "Authentication Required",
+              message:
+                  "Biometric authentication is required to update an existing budget record.",
+              icon: Icons.lock_outline,
+              color: Colors.redAccent,
             );
           }
           return;
@@ -270,18 +261,13 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
       }
     } catch (e) {
       if (mounted) {
-        showDialog(
+        // USING NEW REUSABLE WIDGET
+        showStatusSheet(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text("Error"),
-            content: Text("Error checking record: $e"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("OK"),
-              ),
-            ],
-          ),
+          title: "Error",
+          message: "An error occurred while checking records: $e",
+          icon: Icons.error_outline,
+          color: Colors.redAccent,
         );
       }
       return;
@@ -573,7 +559,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
                         child: const Text(
                           "Save Budget",
                           style: TextStyle(
-                            color: Colors.white, // CHANGED TO WHITE
+                            color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
                           ),

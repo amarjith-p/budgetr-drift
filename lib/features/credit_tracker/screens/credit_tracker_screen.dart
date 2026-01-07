@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
@@ -232,73 +233,124 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
       );
 
   void _handleDelete(BuildContext context, CreditCardModel card) {
-    showDialog(
+    // showDialog(
+    //   context: context,
+    //   builder: (ctx) => AlertDialog(
+    //     backgroundColor: const Color(0xff0D1B2A),
+    //     shape: RoundedRectangleBorder(
+    //       borderRadius: BorderRadius.circular(16),
+    //       side: BorderSide(color: Colors.white.withOpacity(0.1)),
+    //     ),
+    //     title: const Text(
+    //       "Delete Account?",
+    //       style: TextStyle(color: Colors.white),
+    //     ),
+    //     content: Text(
+    //       "Are you sure you want to delete '${card.name}'? This will permanently remove the account and all its associated transactions.",
+    //       style: TextStyle(color: Colors.white.withOpacity(0.7)),
+    //     ),
+    //     actions: [
+    //       TextButton(
+    //         onPressed: () => Navigator.pop(ctx),
+    //         child: const Text(
+    //           "Cancel",
+    //           style: TextStyle(color: Colors.white54),
+    //         ),
+    //       ),
+    //       TextButton(
+    //         onPressed: () async {
+    //           Navigator.pop(ctx); // Pop confirmation dialog
+
+    //           // State-based loading: Safe against navigation popping issues
+    //           setState(() {
+    //             _isLoading = true;
+    //           });
+
+    //           try {
+    //             await _service.deleteCreditCard(card.id);
+    //             if (mounted) {
+    //               ScaffoldMessenger.of(context).showSnackBar(
+    //                 const SnackBar(
+    //                   content: Text("Account deleted successfully"),
+    //                   backgroundColor: Colors.redAccent,
+    //                 ),
+    //               );
+    //             }
+    //           } catch (e) {
+    //             if (mounted) {
+    //               ScaffoldMessenger.of(
+    //                 context,
+    //               ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    //             }
+    //           } finally {
+    //             if (mounted) {
+    //               setState(() {
+    //                 _isLoading = false;
+    //               });
+    //             }
+    //           }
+    //         },
+    //         child: const Text(
+    //           "Delete",
+    //           style: TextStyle(
+    //             color: Colors.redAccent,
+    //             fontWeight: FontWeight.bold,
+    //           ),
+    //         ),
+    //       ),
+    //     ],
+    //   ),
+    // );
+
+    showStatusSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xff0D1B2A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.white.withOpacity(0.1)),
-        ),
-        title: const Text(
-          "Delete Account?",
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Text(
+      title: "Delete Account?",
+      message:
           "Are you sure you want to delete '${card.name}'? This will permanently remove the account and all its associated transactions.",
-          style: TextStyle(color: Colors.white.withOpacity(0.7)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: Colors.white54),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx); // Pop confirmation dialog
+      icon: Icons.delete_forever,
+      color: Colors.redAccent,
 
-              // State-based loading: Safe against navigation popping issues
-              setState(() {
-                _isLoading = true;
-              });
+      // 1. The "Cancel" Button
+      cancelButtonText: "Cancel",
+      onCancel: () {
+        // The sheet closes automatically, so we don't need extra code here
+        // unless you want to log the cancellation.
+      },
 
-              try {
-                await _service.deleteCreditCard(card.id);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Account deleted successfully"),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text("Error: $e")));
-                }
-              } finally {
-                if (mounted) {
-                  setState(() {
-                    _isLoading = false;
-                  });
-                }
-              }
-            },
-            child: const Text(
-              "Delete",
-              style: TextStyle(
-                color: Colors.redAccent,
-                fontWeight: FontWeight.bold,
+      // 2. The "Delete" Action
+      buttonText: "Delete",
+      onDismiss: () async {
+        // Pop confirmation dialog
+
+        // State-based loading: Safe against navigation popping issues
+        setState(() {
+          _isLoading = true;
+        });
+
+        try {
+          await _service.deleteCreditCard(card.id);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Account deleted successfully"),
+                backgroundColor: Colors.redAccent,
               ),
-            ),
-          ),
-        ],
-      ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text("Error: $e")));
+          }
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        }
+      },
     );
   }
 }
