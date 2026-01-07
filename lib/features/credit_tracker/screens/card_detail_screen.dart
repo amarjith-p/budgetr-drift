@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
@@ -678,29 +679,57 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
 
   void _handleDeleteTransaction(
       BuildContext context, CreditTransactionModel txn) {
-    showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-                backgroundColor: const Color(0xff0D1B2A),
-                title: const Text("Delete?",
-                    style: TextStyle(color: Colors.white)),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text("Cancel",
-                          style: TextStyle(color: Colors.white54))),
-                  TextButton(
-                      onPressed: () async {
-                        Navigator.pop(ctx);
-                        setState(() => _isLoading = true);
-                        await CreditService().deleteTransaction(txn);
-                        if (mounted) setState(() => _isLoading = false);
-                      },
-                      child: const Text("Delete",
-                          style: TextStyle(
-                              color: Colors.redAccent,
-                              fontWeight: FontWeight.bold)))
-                ]));
+    showStatusSheet(
+      context: context,
+      title: "Delete Transaction?",
+      message:
+          "Are you sure you want to remove this transaction? This action cannot be undone.",
+      icon: Icons.delete_forever,
+      color: Colors.redAccent,
+
+      // 1. The "Cancel" Button
+      cancelButtonText: "Cancel",
+      onCancel: () {
+        // The sheet closes automatically, so we don't need extra code here
+        // unless you want to log the cancellation.
+      },
+
+      // 2. The "Delete" Action
+      buttonText: "Delete",
+      onDismiss: () async {
+        // The sheet has already closed here (Navigator.pop is built-in),
+        // so we immediately start the loading state on the screen behind it.
+        setState(() => _isLoading = true);
+
+        await CreditService().deleteTransaction(txn);
+
+        if (mounted) setState(() => _isLoading = false);
+      },
+    );
+
+    //   showDialog(
+    //       context: context,
+    //       builder: (ctx) => AlertDialog(
+    //               backgroundColor: const Color(0xff0D1B2A),
+    //               title: const Text("Delete?",
+    //                   style: TextStyle(color: Colors.white)),
+    //               actions: [
+    //                 TextButton(
+    //                     onPressed: () => Navigator.pop(ctx),
+    //                     child: const Text("Cancel",
+    //                         style: TextStyle(color: Colors.white54))),
+    //                 TextButton(
+    //                     onPressed: () async {
+    //                       Navigator.pop(ctx);
+    //                       setState(() => _isLoading = true);
+    //                       await CreditService().deleteTransaction(txn);
+    //                       if (mounted) setState(() => _isLoading = false);
+    //                     },
+    //                     child: const Text("Delete",
+    //                         style: TextStyle(
+    //                             color: Colors.redAccent,
+    //                             fontWeight: FontWeight.bold)))
+    //               ]));
   }
 
   List<CreditTransactionModel> _applyFilters(
