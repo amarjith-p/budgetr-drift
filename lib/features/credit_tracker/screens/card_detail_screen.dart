@@ -684,7 +684,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
       title: "Delete Transaction?",
       message:
           "Are you sure you want to remove this transaction? This action cannot be undone.",
-      icon: Icons.delete_forever,
+      icon: Icons.delete_sweep_sharp,
       color: Colors.redAccent,
 
       // 1. The "Cancel" Button
