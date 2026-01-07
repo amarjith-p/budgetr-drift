@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -216,9 +217,17 @@ class _AddExpenseTransactionSheetState
             a.bankName == 'Credit Card Pool Account' ||
             a.accountType == 'Credit Card');
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-                "Error: No 'Credit Card Pool Account' found. Please create one.")));
+        showStatusSheet(
+          context: context,
+          title: "Credit Pool Account Not Found",
+          message:
+              "Please create a Credit Card Pool Account Through Accounts Page",
+          icon: Icons.warning_amber_rounded,
+          color: Colors.orangeAccent,
+        );
+        // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        //     content: Text(
+        //         "Error: No 'Credit Card Pool Account' found. Please create one.")));
         return;
       }
     }
