@@ -246,6 +246,8 @@ class NotificationService {
           channelId,
           _getChannelName(channelId),
           channelDescription: _getChannelDesc(channelId),
+          // FIX: Add BigTextStyleInformation to allow expandable text
+          styleInformation: BigTextStyleInformation(body),
         ),
         iOS: const DarwinNotificationDetails(),
       ),
@@ -273,6 +275,8 @@ class NotificationService {
           _getChannelName(channelId),
           importance: Importance.max,
           priority: Priority.high,
+          // FIX: Add BigTextStyleInformation to allow expandable text
+          styleInformation: BigTextStyleInformation(body),
         ),
         iOS: const DarwinNotificationDetails(),
       ),
