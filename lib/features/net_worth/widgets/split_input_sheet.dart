@@ -1,3 +1,4 @@
+import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -251,7 +252,7 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
                           "Net Income",
                           _netIncomeCtrl,
                           _netIncomeFocus,
-                          const Color(0xFF00E676),
+                          BudgetrColors.success,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -260,7 +261,7 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
                           "Net Expense",
                           _netExpenseCtrl,
                           _netExpenseFocus,
-                          const Color(0xFFFF5252),
+                          BudgetrColors.error,
                         ),
                       ),
                     ],
@@ -273,7 +274,7 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
                           "Capital Gain",
                           _capGainCtrl,
                           _capGainFocus,
-                          const Color(0xFF00E676),
+                          BudgetrColors.success,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -282,7 +283,7 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
                           "Capital Loss",
                           _capLossCtrl,
                           _capLossFocus,
-                          const Color(0xFFFF5252),
+                          BudgetrColors.error,
                         ),
                       ),
                     ],
@@ -292,19 +293,19 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
                     children: [
                       Expanded(
                         child: _buildSplitInput(
-                          "Other Income",
+                          "Non Calculated Income",
                           _nonCalcIncomeCtrl,
                           _nonCalcIncomeFocus,
-                          const Color(0xFF00E676),
+                          BudgetrColors.inputFill,
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: _buildSplitInput(
-                          "Other Expense",
+                          "Non Calculated Expense",
                           _nonCalcExpenseCtrl,
                           _nonCalcExpenseFocus,
-                          const Color(0xFFFF5252),
+                          BudgetrColors.inputFill,
                         ),
                       ),
                     ],
@@ -404,53 +405,60 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
     FocusNode node,
     Color accent,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: accent.withOpacity(0.9),
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
+    return TextFormField(
+      controller: ctrl,
+      focusNode: node,
+      readOnly: !_useSystemKeyboard,
+      showCursor: true,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        labelText: label, // Floating label
+        labelStyle: TextStyle(
+          color: Colors.white.withOpacity(0.5),
+          fontSize: 14,
+        ),
+        floatingLabelStyle: TextStyle(
+          color: accent,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        prefixText: '₹ ',
+        prefixStyle: const TextStyle(
+          color: Colors.white54,
+          fontSize: 18,
+        ),
+        hintText: '0',
+        hintStyle: TextStyle(color: Colors.white12, fontSize: 18),
+        filled: true,
+        fillColor: const Color(0xff162032),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.1),
           ),
         ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: ctrl,
-          focusNode: node,
-          readOnly: !_useSystemKeyboard,
-          showCursor: true,
-          keyboardType: TextInputType.number,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.1),
           ),
-          decoration: InputDecoration(
-            prefixText: '₹ ',
-            prefixStyle: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 16,
-            ),
-            hintText: '0',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.1)),
-            filled: true,
-            fillColor: Colors.white.withOpacity(0.05),
-            isDense: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-          ),
-          onTap: () => _setActive(ctrl, node),
         ),
-      ],
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: accent, width: 1.5),
+        ),
+      ),
+      onTap: () => _setActive(ctrl, node),
     );
   }
 }

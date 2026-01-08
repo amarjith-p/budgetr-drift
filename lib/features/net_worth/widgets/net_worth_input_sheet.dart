@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/models/net_worth_model.dart';
 import '../../../core/widgets/calculator_keyboard.dart';
 import '../services/net_worth_service.dart';
+import '../../../core/design/budgetr_colors.dart';
 
 class NetWorthInputSheet extends StatefulWidget {
   const NetWorthInputSheet({super.key});
@@ -221,14 +222,14 @@ class _NetWorthInputSheetState extends State<NetWorthInputSheet> {
                     "Total Assets",
                     _assetsController,
                     _assetsFocus,
-                    const Color(0xFF00E676),
+                    BudgetrColors.success,
                   ),
                   const SizedBox(height: 16),
                   _buildInput(
                     "Total Liabilities",
                     _liabilitiesController,
                     _liabilitiesFocus,
-                    const Color(0xFFFF5252),
+                    BudgetrColors.error,
                   ),
                 ],
               ),
@@ -352,53 +353,60 @@ class _NetWorthInputSheetState extends State<NetWorthInputSheet> {
     FocusNode node,
     Color accent,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: accent,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1,
+    return TextFormField(
+      controller: ctrl,
+      focusNode: node,
+      readOnly: !_useSystemKeyboard,
+      showCursor: true,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        labelText: label, // Floating label
+        labelStyle: TextStyle(
+          color: Colors.white.withOpacity(0.5),
+          fontSize: 14,
+        ),
+        floatingLabelStyle: TextStyle(
+          color: accent,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        prefixText: '₹ ',
+        prefixStyle: const TextStyle(
+          color: Colors.white54,
+          fontSize: 18,
+        ),
+        hintText: '0',
+        hintStyle: TextStyle(color: Colors.white12, fontSize: 18),
+        filled: true,
+        fillColor: const Color(0xff162032),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.1),
           ),
         ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: ctrl,
-          focusNode: node,
-          readOnly: !_useSystemKeyboard,
-          showCursor: true,
-          keyboardType: TextInputType.number,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: Colors.white.withOpacity(0.1),
           ),
-          decoration: InputDecoration(
-            prefixText: '₹ ',
-            prefixStyle: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 20,
-            ),
-            hintText: '0',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.1)),
-            filled: true,
-            fillColor: Colors.white.withOpacity(0.05),
-            isDense: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-          ),
-          onTap: () => _setActive(ctrl, node),
         ),
-      ],
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: accent, width: 1.5),
+        ),
+      ),
+      onTap: () => _setActive(ctrl, node),
     );
   }
 }

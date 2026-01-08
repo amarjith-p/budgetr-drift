@@ -216,7 +216,8 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
         showStatusSheet(
           context: context,
           title: "Missing Salary",
-          message: "Please enter a valid base salary amount before saving.",
+          message:
+              "Please enter a valid Monthly Income/Allocation amount before saving.",
           icon: Icons.warning_amber_rounded,
           color: Colors.orangeAccent,
         );
@@ -392,7 +393,7 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
 
                   // --- MATERIAL DESIGN INPUTS ---
                   _buildInput(
-                    "Base Salary",
+                    "Monthly Income/Allocation",
                     _salaryController,
                     _salaryFocus,
                     BudgetrColors.success,

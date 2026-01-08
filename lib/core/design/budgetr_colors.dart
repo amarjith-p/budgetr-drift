@@ -16,6 +16,7 @@ class BudgetrColors {
   // --- Semantic Colors ---
   static const Color success = Color(0xFF00E676);
   static const Color error = Color(0xFFFF5252);
+  static const Color black = Color.fromARGB(255, 0, 0, 0);
   static const Color warning = Color(0xFFFF9F1C);
   static const Color info = Color(0xFF4CC9F0);
 
