@@ -11,6 +11,7 @@ import '../../dashboard/services/dashboard_service.dart';
 import '../../settlement/services/settlement_service.dart';
 import '../../credit_tracker/models/credit_models.dart';
 import '../../credit_tracker/services/credit_service.dart';
+import '../../notifications/services/budget_notification_service.dart';
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
 
@@ -303,6 +304,8 @@ class _AddExpenseTransactionSheetState
 
             // [CHANGED] Only add the source transaction. Service handles partner creation.
             await ExpenseService().addTransaction(transferOut);
+            BudgetNotificationService()
+                .checkAndTriggerNotification(transferOut);
           } else {
             // Standard Transfer (Account -> Account)
             // We ONLY create the "Transfer Out" side.
@@ -323,6 +326,8 @@ class _AddExpenseTransactionSheetState
 
             // [CHANGED] Only add the source transaction. Service handles partner creation.
             await ExpenseService().addTransaction(transferOut);
+            BudgetNotificationService()
+                .checkAndTriggerNotification(transferOut);
           }
         } else {
           final bucketValue =
@@ -344,6 +349,7 @@ class _AddExpenseTransactionSheetState
             linkedCreditCardId: ccId,
           );
           await ExpenseService().addTransaction(txn);
+          BudgetNotificationService().checkAndTriggerNotification(txn);
         }
       }
 
