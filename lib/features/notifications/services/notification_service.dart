@@ -157,7 +157,6 @@ class NotificationService {
 
     tz.initializeTimeZones();
 
-    // 1. Setup Timezone
     try {
       final String timeZoneName = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZoneName));
@@ -166,7 +165,6 @@ class NotificationService {
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
 
-    // 2. Create Channels (Android)
     final androidImplementation =
         _flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
@@ -177,7 +175,6 @@ class NotificationService {
       }
     }
 
-    // 3. Initialization Settings
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -235,6 +232,8 @@ class NotificationService {
     required String body,
     required tz.TZDateTime scheduledDate,
     required String channelId,
+    // CHANGED: Added parameter to control repetition (Daily vs Monthly)
+    DateTimeComponents? matchDateTimeComponents,
   }) async {
     await _flutterLocalNotificationsPlugin.zonedSchedule(
       id,
@@ -246,17 +245,26 @@ class NotificationService {
           channelId,
           _getChannelName(channelId),
           channelDescription: _getChannelDesc(channelId),
-          // FIX: Add BigTextStyleInformation to allow expandable text
-          styleInformation: BigTextStyleInformation(body),
+          // CRITICAL FIXES FOR LOCK SCREEN:
+          visibility:
+              NotificationVisibility.public, // Shows content on lock screen
+          importance: Importance.max, // High priority
+          priority: Priority.high, // Heads-up notification
         ),
-        iOS: const DarwinNotificationDetails(),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentSound: true,
+          presentBanner: true,
+        ),
       ),
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+      androidScheduleMode:
+          AndroidScheduleMode.exactAllowWhileIdle, // Wakes up from Doze
+      matchDateTimeComponents: matchDateTimeComponents,
     );
-    print("⏰ Scheduled ID: $id for $scheduledDate");
+    print(
+        "⏰ Scheduled ID: $id for $scheduledDate (Repeat: $matchDateTimeComponents)");
   }
 
   Future<void> showImmediate({
@@ -275,8 +283,7 @@ class NotificationService {
           _getChannelName(channelId),
           importance: Importance.max,
           priority: Priority.high,
-          // FIX: Add BigTextStyleInformation to allow expandable text
-          styleInformation: BigTextStyleInformation(body),
+          visibility: NotificationVisibility.public,
         ),
         iOS: const DarwinNotificationDetails(),
       ),
@@ -291,7 +298,6 @@ class NotificationService {
     await _flutterLocalNotificationsPlugin.cancelAll();
   }
 
-  // Helpers to get details from the central channel registry
   String _getChannelName(String id) {
     return NotificationChannels.channels
         .firstWhere((c) => c.id == id,

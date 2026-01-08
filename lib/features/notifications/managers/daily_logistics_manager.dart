@@ -1,5 +1,6 @@
-import 'dart:math'; // Import Math for Random()
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // Import this
 import 'package:timezone/timezone.dart' as tz;
 import '../services/notification_service.dart';
 import '../services/notification_channels.dart';
@@ -7,7 +8,6 @@ import '../services/notification_channels.dart';
 class DailyLogisticsManager {
   static const int _notificationId = 1001;
 
-  // 1. Define a list of diverse notification messages
   static final List<Map<String, String>> _messages = [
     {
       'title': 'Daily Ledger Sync',
@@ -65,16 +65,20 @@ class DailyLogisticsManager {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
-    // 2. Pick a random message from the list
+    // Pick a random message from the list
+    // Note: Since we use 'DateTimeComponents.time', this specific title/body
+    // will repeat every day until the user toggles the setting again.
     final random = Random();
     final selectedMessage = _messages[random.nextInt(_messages.length)];
 
     await service.scheduleNotification(
       id: _notificationId,
-      title: selectedMessage['title']!, // Use random title
-      body: selectedMessage['body']!, // Use random body
+      title: selectedMessage['title']!,
+      body: selectedMessage['body']!,
       scheduledDate: scheduledDate,
       channelId: NotificationChannels.dailyLogistics,
+      // FIX: Ensure it repeats daily at the specified time
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 }
