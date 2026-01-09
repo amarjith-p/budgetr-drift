@@ -88,7 +88,7 @@ class _CustomDataPageState extends State<CustomDataPage>
     );
   }
 
-  void _showFilterSheet() {
+  void _showFilterSheet(List<CustomRecord> records) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -96,6 +96,7 @@ class _CustomDataPageState extends State<CustomDataPage>
       builder: (context) => FilterSheet(
         template: widget.template,
         activeFilters: _activeFilters,
+        sourceData: records, // NEW: Pass the data
         onApply: (filters) {
           setState(() {
             _activeFilters = filters;
@@ -429,7 +430,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                           children: [
                             // --- NEW FILTER BUTTON ---
                             IconButton(
-                              onPressed: _showFilterSheet,
+                              onPressed: () => _showFilterSheet(rawRecords),
                               icon: Icon(
                                 _activeFilters.isNotEmpty
                                     ? Icons.filter_alt
