@@ -442,7 +442,7 @@ class _BalanceTrendChartState extends State<BalanceTrendChart> {
             ...accounts.map((acc) => DropdownMenuItem(
                   value: acc.id,
                   child: Text(
-                    "${acc.name} - ${acc.bankName}",
+                    "${acc.name} ( ${acc.bankName} )",
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),

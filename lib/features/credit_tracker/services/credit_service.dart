@@ -1,3 +1,5 @@
+// lib/features/credit_tracker/services/credit_service.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/firebase_constants.dart';
 import '../../daily_expense/services/expense_service.dart';
@@ -47,6 +49,19 @@ class CreditService {
 
   // --- TRANSACTIONS ---
 
+  // [NEW] Added global fetch for Dashboard/Charts
+  Stream<List<CreditTransactionModel>> getAllTransactions() {
+    return _db
+        .collection(FirebaseConstants.creditTransactions)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map(
+          (s) => s.docs
+              .map((d) => CreditTransactionModel.fromFirestore(d))
+              .toList(),
+        );
+  }
+
   Stream<List<CreditTransactionModel>> getTransactionsForCard(String cardId) {
     return _db
         .collection(FirebaseConstants.creditTransactions)
@@ -87,7 +102,6 @@ class CreditService {
     await batch.commit();
   }
 
-  // Standard Delete (UI Triggered)
   Future<void> deleteTransaction(CreditTransactionModel txn) async {
     final batch = _db.batch();
     final txnRef =
@@ -104,13 +118,11 @@ class CreditService {
 
     await batch.commit();
 
-    // BI-DIRECTIONAL SYNC: If linked, delete the Bank Transaction too
     if (txn.linkedExpenseId != null && txn.linkedExpenseId!.isNotEmpty) {
       await ExpenseService().deleteTransactionFromCredit(txn.linkedExpenseId!);
     }
   }
 
-  // Standard Update (UI Triggered)
   Future<void> updateTransaction(CreditTransactionModel newTxn) async {
     await _db.runTransaction((transaction) async {
       final txnRef =
@@ -135,16 +147,14 @@ class CreditService {
       transaction.update(txnRef, newTxn.toMap());
     });
 
-    // BI-DIRECTIONAL SYNC: If linked, update the Bank Transaction too
     if (newTxn.linkedExpenseId != null && newTxn.linkedExpenseId!.isNotEmpty) {
       await ExpenseService().updateTransactionFromCredit(
           newTxn.linkedExpenseId!, newTxn.amount, newTxn.date);
     }
   }
 
-  // --- INTERNAL / SYNC HELPERS (Called by ExpenseService) ---
+  // --- INTERNAL / SYNC HELPERS ---
 
-  // Called when ExpenseService updates a Bank Transaction (no callback loop)
   Future<void> updateTransactionFromExpense(
       String expenseId, double newAmount, Timestamp newDate) async {
     final snapshot = await _db
@@ -155,7 +165,6 @@ class CreditService {
     for (var doc in snapshot.docs) {
       final oldTxn = CreditTransactionModel.fromFirestore(doc);
 
-      // Perform local update only
       await _db.runTransaction((transaction) async {
         final cardRef =
             _db.collection(FirebaseConstants.creditCards).doc(oldTxn.cardId);
@@ -176,7 +185,6 @@ class CreditService {
     }
   }
 
-  // Called when ExpenseService deletes a Bank Transaction (no callback loop)
   Future<void> deleteTransactionFromExpense(String expenseId) async {
     final snapshot = await _db
         .collection(FirebaseConstants.creditTransactions)
