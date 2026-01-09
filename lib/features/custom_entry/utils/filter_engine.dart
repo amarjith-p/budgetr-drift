@@ -1,17 +1,16 @@
+import 'package:intl/intl.dart';
 import '../../../core/models/custom_data_models.dart';
 
-/// Defines the structure of an active filter
 class FilterCondition {
   final String fieldName;
   final CustomFieldType type;
 
-  // Criteria
-  final String? textQuery; // For Text
-  final double? minVal; // For Number/Currency
-  final double? maxVal; // For Number/Currency
-  final DateTime? startDate; // For Date
-  final DateTime? endDate; // For Date
-  final List<String>? selectedOptions; // For Dropdown
+  final String? textQuery;
+  final double? minVal;
+  final double? maxVal;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final List<String>? selectedOptions;
 
   FilterCondition({
     required this.fieldName,
@@ -23,10 +22,63 @@ class FilterCondition {
     this.endDate,
     this.selectedOptions,
   });
+
+  /// Check if the filter actually has any constraints set
+  bool get hasCriteria {
+    return (textQuery != null && textQuery!.isNotEmpty) ||
+        minVal != null ||
+        maxVal != null ||
+        startDate != null ||
+        endDate != null ||
+        (selectedOptions != null && selectedOptions!.isNotEmpty);
+  }
+
+  /// Create a copy with updated fields
+  FilterCondition copyWith({
+    String? textQuery,
+    double? minVal,
+    double? maxVal,
+    DateTime? startDate,
+    DateTime? endDate,
+    List<String>? selectedOptions,
+    bool clearText = false,
+    bool clearMin = false,
+    bool clearMax = false,
+    bool clearStart = false,
+    bool clearEnd = false,
+    bool clearOptions = false,
+  }) {
+    return FilterCondition(
+      fieldName: fieldName,
+      type: type,
+      textQuery: clearText ? null : (textQuery ?? this.textQuery),
+      minVal: clearMin ? null : (minVal ?? this.minVal),
+      maxVal: clearMax ? null : (maxVal ?? this.maxVal),
+      startDate: clearStart ? null : (startDate ?? this.startDate),
+      endDate: clearEnd ? null : (endDate ?? this.endDate),
+      selectedOptions:
+          clearOptions ? null : (selectedOptions ?? this.selectedOptions),
+    );
+  }
+
+  /// Get a human-readable summary of the filter
+  String get summary {
+    List<String> parts = [];
+    if (textQuery != null && textQuery!.isNotEmpty) parts.add('"$textQuery"');
+    if (minVal != null) parts.add('> $minVal');
+    if (maxVal != null) parts.add('< $maxVal');
+    if (startDate != null)
+      parts.add('From ${DateFormat('dd/MM').format(startDate!)}');
+    if (endDate != null)
+      parts.add('To ${DateFormat('dd/MM').format(endDate!)}');
+    if (selectedOptions != null && selectedOptions!.isNotEmpty) {
+      parts.add(selectedOptions!.join(', '));
+    }
+    return parts.join(' • ');
+  }
 }
 
 class FilterEngine {
-  /// Main method to filter the raw list of records
   static List<CustomRecord> applyFilters(
     List<CustomRecord> records,
     List<FilterCondition> filters,
@@ -34,7 +86,6 @@ class FilterEngine {
     if (filters.isEmpty) return records;
 
     return records.where((record) {
-      // A record must pass ALL active filters (AND logic)
       for (var filter in filters) {
         if (!_checkCondition(record, filter)) {
           return false;
@@ -50,7 +101,7 @@ class FilterEngine {
 
     switch (filter.type) {
       case CustomFieldType.string:
-      case CustomFieldType.serial: // Treat serial as string for search
+      case CustomFieldType.serial:
         final String strVal = val.toString().toLowerCase();
         if (filter.textQuery != null && filter.textQuery!.isNotEmpty) {
           if (!strVal.contains(filter.textQuery!.toLowerCase())) return false;
@@ -70,9 +121,7 @@ class FilterEngine {
         break;
 
       case CustomFieldType.date:
-        if (val is! DateTime)
-          return false; // Should not happen if data is clean
-        // Normalize to remove time for accurate day comparison
+        if (val is! DateTime) return false;
         final date = DateTime(val.year, val.month, val.day);
 
         if (filter.startDate != null) {
