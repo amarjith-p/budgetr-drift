@@ -11,6 +11,10 @@ import '../widgets/data_view/custom_data_chart.dart';
 import 'dynamic_entry_sheet.dart';
 import '../services/custom_entry_service.dart';
 
+// --- NEW IMPORTS ---
+import '../utils/filter_engine.dart';
+import 'data_view/filter_sheet.dart';
+
 class CustomDataPage extends StatefulWidget {
   final CustomTemplate template;
   const CustomDataPage({super.key, required this.template});
@@ -26,6 +30,9 @@ class _CustomDataPageState extends State<CustomDataPage>
   final Color _glassColor = const Color(0xFF1B263B).withOpacity(0.5);
   final Color _accentColor = const Color(0xFF3A86FF);
   final Color _bgColor = const Color(0xff0D1B2A);
+
+  // --- FILTER STATE ---
+  List<FilterCondition> _activeFilters = [];
 
   @override
   bool get wantKeepAlive => true;
@@ -51,7 +58,6 @@ class _CustomDataPageState extends State<CustomDataPage>
           }
         }
         try {
-          // Use centralized Utils
           double calculated = FormulaUtils.evaluateRPN(expr);
           double stored = (record.data[field.name] is num)
               ? (record.data[field.name] as num).toDouble()
@@ -78,6 +84,23 @@ class _CustomDataPageState extends State<CustomDataPage>
         template: widget.template,
         existingRecords: existingRecords,
         recordToEdit: recordToEdit,
+      ),
+    );
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FilterSheet(
+        template: widget.template,
+        activeFilters: _activeFilters,
+        onApply: (filters) {
+          setState(() {
+            _activeFilters = filters;
+          });
+        },
       ),
     );
   }
@@ -325,7 +348,10 @@ class _CustomDataPageState extends State<CustomDataPage>
     return StreamBuilder<List<CustomRecord>>(
       stream: _service.getCustomRecords(widget.template.id),
       builder: (context, snapshot) {
-        final records = snapshot.data ?? [];
+        final rawRecords = snapshot.data ?? [];
+
+        // --- APPLY FILTERS ---
+        final records = FilterEngine.applyFilters(rawRecords, _activeFilters);
 
         return Scaffold(
           backgroundColor: Colors.transparent,
@@ -401,6 +427,19 @@ class _CustomDataPageState extends State<CustomDataPage>
                         ),
                         Row(
                           children: [
+                            // --- NEW FILTER BUTTON ---
+                            IconButton(
+                              onPressed: _showFilterSheet,
+                              icon: Icon(
+                                _activeFilters.isNotEmpty
+                                    ? Icons.filter_alt
+                                    : Icons.filter_alt_outlined,
+                                color: _activeFilters.isNotEmpty
+                                    ? _accentColor
+                                    : Colors.white70,
+                              ),
+                              tooltip: 'Filter Table',
+                            ),
                             IconButton(
                               onPressed: _editTemplate,
                               icon: const Icon(
@@ -456,7 +495,6 @@ class _CustomDataPageState extends State<CustomDataPage>
                         border:
                             Border.all(color: Colors.white.withOpacity(0.05)),
                       ),
-                      // New Component Used Here
                       child: CustomDataChart(
                         records: records,
                         xKey: widget.template.xAxisField!,
@@ -675,17 +713,25 @@ class _CustomDataPageState extends State<CustomDataPage>
                         child: Column(
                           children: [
                             Icon(
-                              Icons.table_rows_outlined,
+                              Icons.filter_list_off, // CHANGED ICON
                               size: 48,
                               color: Colors.white.withOpacity(0.1),
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              "No records found",
+                              "No matching records", // CHANGED TEXT
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.3),
                               ),
                             ),
+                            if (_activeFilters.isNotEmpty)
+                              TextButton(
+                                onPressed: () {
+                                  setState(() => _activeFilters.clear());
+                                },
+                                child: Text("Clear Filters",
+                                    style: TextStyle(color: _accentColor)),
+                              )
                           ],
                         ),
                       ),
