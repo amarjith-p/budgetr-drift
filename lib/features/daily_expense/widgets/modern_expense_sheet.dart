@@ -538,10 +538,36 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                 child: Row(children: [
                   const Icon(Icons.link, color: Colors.blueAccent, size: 16),
                   const SizedBox(width: 8),
-                  Text("Linked Record: Editing restricted.",
+                  Text("Synced Transaction: Editing Partially restricted.",
                       style: BudgetrStyles.caption
                           .copyWith(color: Colors.blueAccent))
                 ]),
+              ),
+            // [NEW] SETTLED WARNING
+            if (_isMonthSettled && _type == 'Expense')
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                    color: Colors.orangeAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: Colors.orangeAccent.withOpacity(0.3))),
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_clock,
+                        color: Colors.orangeAccent, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Budget Closed: Expenses forced to 'Out of Bucket'.",
+                        style: BudgetrStyles.caption
+                            .copyWith(color: Colors.orangeAccent, fontSize: 11),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
             // Segment Control
