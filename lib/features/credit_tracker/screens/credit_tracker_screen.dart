@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
+import 'package:budget/features/credit_tracker/widgets/modern_credit_txn_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
@@ -152,7 +153,7 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                           context: context,
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
-                          builder: (ctx) => const AddCreditTransactionSheet(),
+                          builder: (ctx) => const ModernCreditTxnSheet(),
                         ),
                         child: Container(
                           padding: const EdgeInsets.symmetric(

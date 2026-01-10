@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
+import 'package:budget/features/credit_tracker/widgets/modern_credit_txn_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
@@ -674,7 +675,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (c) => AddCreditTransactionSheet(transactionToEdit: txn));
+        builder: (c) => ModernCreditTxnSheet(transactionToEdit: txn));
   }
 
   void _handleDeleteTransaction(
