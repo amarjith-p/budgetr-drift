@@ -4,7 +4,7 @@ import '../../../core/constants/firebase_constants.dart';
 import '../../../core/models/financial_record_model.dart';
 import '../../credit_tracker/models/credit_models.dart';
 import '../../daily_expense/models/expense_models.dart';
-import '../models/dashboard_transaction.dart'; // Ensure you have created this model file
+import '../models/dashboard_transaction.dart';
 
 class DashboardService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -75,7 +75,13 @@ class DashboardService {
     List<DashboardTransaction> credits = [];
     List<DashboardTransaction> expenses = [];
 
+    // Flags to ensure we don't emit partial data on first load
+    bool creditsLoaded = false;
+    bool expensesLoaded = false;
+
     void emit() {
+      if (!creditsLoaded || !expensesLoaded) return;
+
       final merged = [...credits, ...expenses];
       merged.sort((a, b) => b.date.compareTo(a.date)); // Sort Descending
       controller.add(merged);
@@ -88,6 +94,7 @@ class DashboardService {
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
         .snapshots()
         .listen((snapshot) {
+      creditsLoaded = true;
       credits = snapshot.docs
           .map((doc) => CreditTransactionModel.fromFirestore(doc))
           .where((txn) => txn.type == 'Expense') // Only Expenses count
@@ -113,6 +120,7 @@ class DashboardService {
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
         .snapshots()
         .listen((snapshot) {
+      expensesLoaded = true;
       expenses = snapshot.docs
           .map((doc) => ExpenseTransactionModel.fromFirestore(doc))
           .where((txn) => txn.type == 'Expense') // Exclude Transfers/Income
@@ -153,7 +161,13 @@ class DashboardService {
     List<DashboardTransaction> credits = [];
     List<DashboardTransaction> expenses = [];
 
+    // Flags for safety
+    bool creditsLoaded = false;
+    bool expensesLoaded = false;
+
     void emit() {
+      if (!creditsLoaded || !expensesLoaded) return;
+
       final merged = [...credits, ...expenses];
       merged.sort((a, b) => b.date.compareTo(a.date));
       controller.add(merged);
@@ -166,6 +180,7 @@ class DashboardService {
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
         .snapshots()
         .listen((snapshot) {
+      creditsLoaded = true;
       credits = snapshot.docs
           .map((doc) => CreditTransactionModel.fromFirestore(doc))
           .where((txn) => txn.bucket == bucketName && txn.type == 'Expense')
@@ -191,6 +206,7 @@ class DashboardService {
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
         .snapshots()
         .listen((snapshot) {
+      expensesLoaded = true;
       expenses = snapshot.docs
           .map((doc) => ExpenseTransactionModel.fromFirestore(doc))
           .where((txn) => txn.bucket == bucketName && txn.type == 'Expense')
@@ -226,7 +242,14 @@ class DashboardService {
     Map<String, double> creditSpending = {};
     Map<String, double> expenseSpending = {};
 
+    // --- FIX: Add flags to prevent partial emission ---
+    bool creditsLoaded = false;
+    bool expensesLoaded = false;
+
     void emit() {
+      // Only emit once BOTH streams have reported at least one snapshot
+      if (!creditsLoaded || !expensesLoaded) return;
+
       final merged = <String, double>{};
       final allKeys = {...creditSpending.keys, ...expenseSpending.keys};
 
@@ -243,6 +266,7 @@ class DashboardService {
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
         .snapshots()
         .listen((snapshot) {
+      creditsLoaded = true; // Mark Credit as loaded
       creditSpending = {};
       for (var doc in snapshot.docs) {
         final data = doc.data();
@@ -261,6 +285,7 @@ class DashboardService {
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
         .snapshots()
         .listen((snapshot) {
+      expensesLoaded = true; // Mark Expense as loaded
       expenseSpending = {};
       for (var doc in snapshot.docs) {
         final data = doc.data();

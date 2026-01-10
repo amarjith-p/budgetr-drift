@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
-import '../models/dashboard_transaction.dart'; // NEW Import
+import '../models/dashboard_transaction.dart';
 
 class BucketTrendsChart extends StatefulWidget {
-  // Updated Type:
   final List<DashboardTransaction> transactions;
   final int year;
   final int month;
@@ -32,6 +31,11 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
   double _totalSpent = 0;
   double _projectedTotal = 0;
   double _avgDailySpend = 0;
+
+  // --- NEW VARIABLES ---
+  double _remainingBudget = 0;
+  double _recommendedDaily = 0;
+
   int _daysInMonth = 30;
   int? _overspendDate;
 
@@ -69,10 +73,24 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
     _overspendDate = null;
     _avgDailySpend = 0;
     _projectedTotal = 0;
+    _remainingBudget = 0;
+    _recommendedDaily = 0;
 
     final now = DateTime.now();
     final isCurrentMonth = now.year == widget.year && now.month == widget.month;
     final int today = isCurrentMonth ? now.day : _daysInMonth;
+
+    // --- NEW: Calculate Remaining & Recommended ---
+    if (widget.budgetLimit > 0) {
+      _remainingBudget = widget.budgetLimit - _totalSpent;
+
+      // Calculate remaining days in the month
+      final int remainingDays = _daysInMonth - today;
+
+      if (_remainingBudget > 0 && remainingDays > 0) {
+        _recommendedDaily = _remainingBudget / remainingDays;
+      }
+    }
 
     // 1. Build Actual Spending Line (Cumulative)
     double runningTotal = 0;
@@ -138,11 +156,9 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
     );
 
     // --- Color Logic ---
-    // If Total is > Limit, show Red.
     final bool isTotalOverLimit =
         widget.budgetLimit > 0 && _totalSpent > widget.budgetLimit;
 
-    // If Projected is > Limit, show Red.
     final bool isProjectedOverLimit =
         widget.budgetLimit > 0 && _projectedTotal > widget.budgetLimit;
 
@@ -153,15 +169,20 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
         ? Colors.redAccent.withOpacity(0.5)
         : Colors.white.withOpacity(0.3);
 
-    // Header Text Colors
     final Color totalTextColor =
         isTotalOverLimit ? Colors.redAccent : Colors.white;
     final Color projectedTextColor = isProjectedOverLimit
         ? Colors.redAccent
         : BudgetrColors.accent.withOpacity(0.7);
-    final Color avgTextColor = isProjectedOverLimit
+    final Color avgTextColor =
+        isProjectedOverLimit ? Colors.redAccent : BudgetrColors.accent;
+
+    // --- NEW Color Logic ---
+    final Color remainingColor = _remainingBudget < 0
         ? Colors.redAccent
-        : BudgetrColors.accent; // If projection is bad, avg is "bad"
+        : BudgetrColors.success; // Green if positive, Red if negative
+
+    final Color recommendedColor = Colors.white70;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
@@ -174,7 +195,9 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- HEADER GRID (2x2) ---
+          // --- HEADER GRID (Now 3x2) ---
+
+          // Row 1: Totals
           Row(
             children: [
               Expanded(
@@ -195,6 +218,32 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
             ],
           ),
           const SizedBox(height: 16),
+
+          // Row 2: Planning (NEW)
+          if (widget.budgetLimit > 0) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInfoItem(
+                    "REMAINING",
+                    fullCurrency.format(_remainingBudget),
+                    remainingColor,
+                  ),
+                ),
+                Expanded(
+                  child: _buildInfoItem(
+                    "REC. DAILY SPEND",
+                    fullCurrency.format(_recommendedDaily),
+                    recommendedColor,
+                    crossAlign: CrossAxisAlignment.end,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Row 3: Trends
           Row(
             children: [
               Expanded(
