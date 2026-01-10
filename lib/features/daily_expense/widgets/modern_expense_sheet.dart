@@ -46,7 +46,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
   // --- LOGIC STATE ---
   bool _isCreditEntry = false;
   bool _isLinkedTransaction = false;
-  bool _attemptedSave = false; // Triggers validation visuals
+  bool _attemptedSave = false;
 
   // Selections
   ExpenseAccountModel? _selectedAccount;
@@ -71,24 +71,28 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
   bool _isMonthSettled = false;
   bool _showCalculator = true;
 
+  // External Account Constant
+  final ExpenseAccountModel _externalAccount = ExpenseAccountModel(
+    id: 'EXTERNAL_OPT',
+    name: 'External Account',
+    bankName: 'External',
+    type: 'External',
+    accountType: 'External',
+    currentBalance: 0,
+    createdAt: Timestamp.now(),
+    dashboardOrder: 9999,
+  );
+
   @override
   void initState() {
     super.initState();
     _loadData();
 
-    // Toggle UI based on focus
     _notesNode.addListener(() {
-      if (_notesNode.hasFocus) {
-        setState(() => _showCalculator = false);
-      } else {
-        setState(() => _showCalculator = true);
-      }
+      setState(() => _showCalculator = !_notesNode.hasFocus);
     });
-
     _amountNode.addListener(() {
-      if (_amountNode.hasFocus) {
-        setState(() => _showCalculator = true);
-      }
+      if (_amountNode.hasFocus) setState(() => _showCalculator = true);
     });
   }
 
@@ -122,6 +126,9 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
 
       setState(() {
         _accounts = results[0] as List<ExpenseAccountModel>;
+        // NOTE: We do not add _externalAccount here to avoid it showing up everywhere.
+        // It is injected in the helper function `_getDisplayAccounts()`
+
         _creditCards = results[1] as List<CreditCardModel>;
         _allCategories = results[2] as List<TransactionCategoryModel>;
 
@@ -134,7 +141,9 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
           _selectedBucket = t.bucket;
           _category = t.category;
           _subCategory = t.subCategory;
+          _type = t.type;
 
+          // Linked Credit Card
           if (t.linkedCreditCardId != null &&
               t.linkedCreditCardId!.isNotEmpty) {
             _isCreditEntry = true;
@@ -142,43 +151,70 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
             _selectedCreditCard = _creditCards.firstWhere(
                 (c) => c.id == t.linkedCreditCardId,
                 orElse: () => _creditCards.first);
-          } else {
-            _selectedAccount = _accounts.firstWhere((a) => a.id == t.accountId,
-                orElse: () => _accounts.first);
           }
 
           if (t.type == 'Transfer Out' || t.type == 'Transfer In') {
             _type = 'Transfer';
-            if (_isCreditEntry) {
+
+            if (t.type == 'Transfer Out') {
               _selectedAccount = _accounts.firstWhere(
                   (a) => a.id == t.accountId,
                   orElse: () => _accounts.first);
+              if (t.transferAccountId == null) {
+                // Was External
+                _toAccount = _externalAccount;
+              } else {
+                _toAccount = _accounts.firstWhere(
+                    (a) => a.id == t.transferAccountId,
+                    orElse: () => _accounts.first);
+              }
             } else {
-              _selectedAccount = _accounts.firstWhere(
-                  (a) => a.id == t.accountId,
+              _toAccount = _accounts.firstWhere((a) => a.id == t.accountId,
                   orElse: () => _accounts.first);
-              _toAccount = _accounts.firstWhere(
-                  (a) => a.id == t.transferAccountId,
-                  orElse: () => _accounts.first);
+              if (t.transferAccountId == null) {
+                // Was External
+                _selectedAccount = _externalAccount;
+              } else {
+                _selectedAccount = _accounts.firstWhere(
+                    (a) => a.id == t.transferAccountId,
+                    orElse: () => _accounts.first);
+              }
             }
           } else {
-            _type = t.type;
+            _selectedAccount = _accounts.firstWhere((a) => a.id == t.accountId,
+                orElse: () => _accounts.first);
           }
         } else {
-          // [NEW] Handle Pre-selected Account
           if (widget.preSelectedAccount != null) {
-            // Find the account in the loaded list to ensure object reference match
             try {
               _selectedAccount = _accounts
                   .firstWhere((a) => a.id == widget.preSelectedAccount!.id);
-            } catch (_) {
-              // If not found (rare), leave as null
-            }
+            } catch (_) {}
           }
         }
       });
+
       await _updateBucketsForDate(_date);
     }
+  }
+
+  /// Helper to get clean list of accounts for selection
+  /// Filters out:
+  /// 1. "Credit Card Pool Account" (Internal system account)
+  /// 2. "External Account" (unless it's a Normal Transfer)
+  List<ExpenseAccountModel> _getDisplayAccounts() {
+    List<ExpenseAccountModel> filtered = _accounts.where((a) {
+      // Filter out internal Credit Pool accounts
+      return a.bankName != 'Credit Card Pool Account' &&
+          a.accountType != 'Credit Card';
+    }).toList();
+
+    // Include External only for Normal Transfers
+    if (_type == 'Transfer' && !_isCreditEntry) {
+      filtered.add(_externalAccount);
+    }
+
+    return filtered;
   }
 
   Future<void> _updateBucketsForDate(DateTime date) async {
@@ -210,6 +246,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
       }
       if (!newBuckets.contains('Out of Bucket'))
         newBuckets.add('Out of Bucket');
+
       setState(() {
         _isMonthSettled = false;
         _buckets = newBuckets;
@@ -221,125 +258,146 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
     }
   }
 
-  // --- VALIDATION & SAVE ---
+  // ===========================================================================
+  // 2. VALIDATION & SAVE
+  // ===========================================================================
+
   Future<void> _save() async {
     setState(() => _attemptedSave = true);
 
-    // 1. Amount Validation
+    // 1. Amount
     final double amount = double.tryParse(_amountCtrl.text) ?? 0.0;
     if (amount <= 0) {
       _showError("Amount must be greater than 0");
       return;
     }
 
-    // 2. Source Account Validation
-    bool showCredit = _isCreditEntry && _type != 'Transfer';
-    if (showCredit) {
+    // 2. Source Selection Logic
+    bool isCardExpense = _isCreditEntry && _type != 'Transfer';
+
+    if (isCardExpense) {
       if (_selectedCreditCard == null) {
-        _showError("Please select a Credit Card");
+        _showError("Select a Credit Card");
         return;
       }
     } else {
       if (_selectedAccount == null) {
-        _showError("Please select a Source Account");
+        _showError("Select a Source Account");
         return;
       }
     }
 
-    // 3. Category Validation (Not Transfer)
+    // 3. Category
     if (_type != 'Transfer' && _category == null) {
-      _showError("Please select a Category");
+      _showError("Select a Category");
       return;
     }
 
-    // 4. Bucket Validation (Expense Only)
+    // 4. Bucket
     if (_type == 'Expense' && _selectedBucket == null) {
-      _showError("Please select a Bucket");
+      _showError("Select a Bucket");
       return;
     }
 
-    // 5. Transfer Target Validation
+    // 5. Transfer Target
     if (_type == 'Transfer') {
       if (_isCreditEntry) {
-        // Paying Bill
+        // Paying Bill: Target is Card
         if (_selectedCreditCard == null) {
-          _showError("Please select the Credit Card to pay");
+          _showError("Select the Card to pay");
           return;
         }
       } else {
-        // Normal Transfer
+        // Normal Transfer: Target is Account
         if (_toAccount == null) {
-          _showError("Please select a Destination Account");
+          _showError("Select a Destination Account");
           return;
         }
         if (_toAccount!.id == _selectedAccount!.id) {
-          _showError("Source and Destination accounts cannot be the same");
+          _showError("Source and Destination cannot be the same");
+          return;
+        }
+        if (_selectedAccount!.id == _externalAccount.id &&
+            _toAccount!.id == _externalAccount.id) {
+          _showError("Cannot transfer External to External");
           return;
         }
       }
     }
 
-    // --- CREDIT POOL CHECK ---
-    ExpenseAccountModel? targetPoolAccount;
-    if (_isCreditEntry ||
-        (_type == 'Transfer' && _selectedCreditCard != null)) {
+    ExpenseAccountModel? poolAccount;
+    // Find pool account ID backend-only
+    if (_isCreditEntry || (_type == 'Transfer' && _isCreditEntry)) {
       try {
-        targetPoolAccount = _accounts.firstWhere((a) =>
+        poolAccount = _accounts.firstWhere((a) =>
             a.bankName == 'Credit Card Pool Account' ||
             a.accountType == 'Credit Card');
       } catch (e) {
-        _showError("Credit Pool Account missing. Create one in Settings.");
-        return;
+        /* ignore */
       }
     }
 
     setState(() => _isLoading = true);
-    try {
-      bool isEditing = widget.txnToEdit != null;
 
-      if (isEditing) {
-        final newTxn = ExpenseTransactionModel(
-          id: widget.txnToEdit!.id,
-          accountId: _selectedAccount!.id,
-          amount: amount,
-          date: Timestamp.fromDate(_date),
-          bucket: _selectedBucket ?? 'Unallocated',
-          type: _type,
-          category: _category!,
-          subCategory: _subCategory ?? 'General',
-          notes: _notesCtrl.text,
-          linkedCreditCardId: widget.txnToEdit!.linkedCreditCardId,
-          transferAccountId: widget.txnToEdit!.transferAccountId,
-          transferAccountName: widget.txnToEdit!.transferAccountName,
-          transferAccountBankName: widget.txnToEdit!.transferAccountBankName,
-        );
-        await ExpenseService().updateTransaction(newTxn);
-        if (mounted)
-          await BudgetNotificationService().checkAndTriggerNotification(newTxn);
-      } else {
-        if (_type == 'Transfer') {
-          if (_isCreditEntry) {
-            final transferOut = ExpenseTransactionModel(
-              id: '',
+    try {
+      final bool isEditing = widget.txnToEdit != null;
+      final String txnId = isEditing ? widget.txnToEdit!.id : '';
+
+      ExpenseTransactionModel txn;
+
+      if (_type == 'Transfer') {
+        if (_isCreditEntry) {
+          // paying credit card bill (Internal Bank -> Credit Pool)
+          txn = ExpenseTransactionModel(
+            id: txnId,
+            accountId: _selectedAccount!.id, // Paying FROM Bank
+            amount: amount,
+            date: Timestamp.fromDate(_date),
+            bucket: 'Unallocated',
+            type: 'Transfer Out',
+            category: 'Transfer',
+            subCategory: 'Credit Card Bill',
+            notes: _notesCtrl.text,
+            transferAccountId: poolAccount?.id,
+            transferAccountName: _selectedCreditCard!.name, // Name of the Card
+            transferAccountBankName: _selectedCreditCard!.bankName,
+            linkedCreditCardId: _selectedCreditCard!.id,
+          );
+        } else {
+          // Account Transfer
+          if (_toAccount!.id == _externalAccount.id) {
+            txn = ExpenseTransactionModel(
+              id: txnId,
               accountId: _selectedAccount!.id,
               amount: amount,
               date: Timestamp.fromDate(_date),
               bucket: 'Unallocated',
               type: 'Transfer Out',
               category: 'Transfer',
-              subCategory: 'Credit Card Bill',
+              subCategory: 'To External',
               notes: _notesCtrl.text,
-              transferAccountId: targetPoolAccount!.id,
-              transferAccountName: _selectedCreditCard!.name,
-              transferAccountBankName: _selectedCreditCard!.bankName,
-              linkedCreditCardId: _selectedCreditCard!.id,
+              transferAccountId: null,
+              transferAccountName: 'External Account',
+              transferAccountBankName: 'External',
             );
-            await ExpenseService().addTransaction(transferOut);
-            BudgetNotificationService()
-                .checkAndTriggerNotification(transferOut);
+          } else if (_selectedAccount!.id == _externalAccount.id) {
+            txn = ExpenseTransactionModel(
+              id: txnId,
+              accountId: _toAccount!.id,
+              amount: amount,
+              date: Timestamp.fromDate(_date),
+              bucket: 'Unallocated',
+              type: 'Transfer In',
+              category: 'Transfer',
+              subCategory: 'From External',
+              notes: _notesCtrl.text,
+              transferAccountId: null,
+              transferAccountName: 'External Account',
+              transferAccountBankName: 'External',
+            );
           } else {
-            final transferOut = ExpenseTransactionModel(
-              id: '',
+            txn = ExpenseTransactionModel(
+              id: txnId,
               accountId: _selectedAccount!.id,
               amount: amount,
               date: Timestamp.fromDate(_date),
@@ -352,51 +410,61 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
               transferAccountName: _toAccount!.name,
               transferAccountBankName: _toAccount!.bankName,
             );
-            await ExpenseService().addTransaction(transferOut);
-            BudgetNotificationService()
-                .checkAndTriggerNotification(transferOut);
           }
-        } else {
-          final bucketValue =
-              _type == 'Expense' ? (_selectedBucket!) : 'Income';
-          final finalAccountId =
-              _isCreditEntry ? targetPoolAccount!.id : _selectedAccount!.id;
-          final ccId = _isCreditEntry ? _selectedCreditCard!.id : null;
-
-          final txn = ExpenseTransactionModel(
-            id: '',
-            accountId: finalAccountId,
-            amount: amount,
-            date: Timestamp.fromDate(_date),
-            bucket: bucketValue,
-            type: _type,
-            category: _category!,
-            subCategory: _subCategory ?? 'General',
-            notes: _notesCtrl.text,
-            linkedCreditCardId: ccId,
-          );
-          await ExpenseService().addTransaction(txn);
-          BudgetNotificationService().checkAndTriggerNotification(txn);
         }
+      } else {
+        // Expense / Income
+        final String finalAccountId =
+            isCardExpense ? (poolAccount?.id ?? '') : _selectedAccount!.id;
+
+        // Safety: ensure no external selection leaked into non-transfer
+        if (_selectedAccount?.id == _externalAccount.id) {
+          throw Exception(
+              "External Account is only allowed for Transfers. Please change the Account.");
+        }
+
+        txn = ExpenseTransactionModel(
+          id: txnId,
+          accountId: finalAccountId,
+          amount: amount,
+          date: Timestamp.fromDate(_date),
+          bucket: _type == 'Expense'
+              ? (_selectedBucket ?? 'Unallocated')
+              : 'Income',
+          type: _type,
+          category: _category!,
+          subCategory: _subCategory ?? 'General',
+          notes: _notesCtrl.text,
+          linkedCreditCardId: _isCreditEntry ? _selectedCreditCard!.id : null,
+        );
       }
-      if (mounted) Navigator.pop(context);
+
+      if (isEditing) {
+        await ExpenseService().updateTransaction(txn);
+      } else {
+        await ExpenseService().addTransaction(txn);
+      }
+
+      if (mounted) {
+        await BudgetNotificationService().checkAndTriggerNotification(txn);
+        Navigator.pop(context);
+      }
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted) _showError("Error saving: $e");
+      if (mounted) _showError(e.toString());
     }
   }
 
   void _showError(String msg) {
     showStatusSheet(
       context: context,
-      title: "Validation Error",
+      title: "Error",
       message: msg,
       icon: Icons.warning_amber_rounded,
       color: BudgetrColors.error,
     );
   }
 
-  // --- ACTIONS ---
   Future<void> _pickDate() async {
     _amountNode.unfocus();
     _notesNode.unfocus();
@@ -423,20 +491,15 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
   }
 
   // ===========================================================================
-  // 2. DESIGN & LAYOUT
+  // 3. UI BUILD
   // ===========================================================================
 
   @override
   Widget build(BuildContext context) {
-    Color typeColor;
-    if (_type == 'Income')
-      typeColor = BudgetrColors.success;
-    else if (_type == 'Transfer')
-      typeColor = BudgetrColors.accent;
-    else
-      typeColor = BudgetrColors.error;
+    Color typeColor = _type == 'Income'
+        ? BudgetrColors.success
+        : (_type == 'Transfer' ? BudgetrColors.accent : BudgetrColors.error);
 
-    // Handle Keyboard Height so sheet isn't covered
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final bool isEditing = widget.txnToEdit != null;
 
@@ -444,101 +507,64 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
       padding: EdgeInsets.only(bottom: keyboardHeight),
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.95,
-        ),
+            maxHeight: MediaQuery.of(context).size.height * 0.95),
         decoration: const BoxDecoration(
           color: BudgetrColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min, // Hug content
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // 1. Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-              child: Column(
-                children: [
-                  Container(
-                      width: 32,
-                      height: 4,
-                      decoration: BoxDecoration(
-                          color: Colors.white24,
-                          borderRadius: BorderRadius.circular(2))),
-                  const SizedBox(height: 16),
-
-                  // LINKED TRANSACTION WARNING
-                  if (_isLinkedTransaction)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: Colors.blueAccent.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: Colors.blueAccent.withOpacity(0.3))),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.link,
-                              color: Colors.blueAccent, size: 16),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              "Linked Record: Accounts locked to maintain sync.",
-                              style: BudgetrStyles.caption.copyWith(
-                                  color: Colors.blueAccent, fontSize: 11),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-// [NEW] SETTLED WARNING
-                  if (_isMonthSettled && _type == 'Expense')
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: Colors.orangeAccent.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: Colors.orangeAccent.withOpacity(0.3))),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.lock_clock,
-                              color: Colors.orangeAccent, size: 16),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              "Budget Closed: Expenses forced to 'Out of Bucket'.",
-                              style: BudgetrStyles.caption.copyWith(
-                                  color: Colors.orangeAccent, fontSize: 11),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  Container(
-                    height: 36,
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10)),
-                    child: Row(
-                      children: [
-                        _buildSegment("Expense", Colors.redAccent, isEditing),
-                        _buildSegment("Income", Colors.greenAccent, isEditing),
-                        _buildSegment("Transfer", Colors.blueAccent, isEditing),
-                      ],
-                    ),
-                  ),
-                ],
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 32,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2)),
               ),
             ),
 
-            // 2. Control Bar (Date & Credit)
+            if (_isLinkedTransaction)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: Colors.blueAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border:
+                        Border.all(color: Colors.blueAccent.withOpacity(0.3))),
+                child: Row(children: [
+                  const Icon(Icons.link, color: Colors.blueAccent, size: 16),
+                  const SizedBox(width: 8),
+                  Text("Linked Record: Editing restricted.",
+                      style: BudgetrStyles.caption
+                          .copyWith(color: Colors.blueAccent))
+                ]),
+              ),
+
+            // Segment Control
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                height: 36,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(10)),
+                child: Row(
+                  children: [
+                    _buildSegment("Expense", Colors.redAccent, isEditing),
+                    _buildSegment("Income", Colors.greenAccent, isEditing),
+                    _buildSegment("Transfer", Colors.blueAccent, isEditing),
+                  ],
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -550,29 +576,34 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                       decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(20)),
-                      child: Row(
-                        children: [
-                          Icon(Icons.calendar_today,
-                              size: 14, color: Colors.white70),
-                          const SizedBox(width: 6),
-                          Text(DateFormat('MMM dd, hh:mm a').format(_date),
-                              style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
+                      child: Row(children: [
+                        const Icon(Icons.calendar_today,
+                            size: 14, color: Colors.white70),
+                        const SizedBox(width: 6),
+                        Text(DateFormat('MMM dd, hh:mm a').format(_date),
+                            style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600)),
+                      ]),
                     ),
                   ),
-
-                  // Credit Toggle (Always Visible unless Linked)
                   if (!_isLinkedTransaction && widget.txnToEdit == null)
                     GestureDetector(
                       onTap: () {
                         setState(() {
                           _isCreditEntry = !_isCreditEntry;
-                          if (_type == 'Transfer' && _isCreditEntry)
-                            _toAccount = null;
+                          // When switching modes, validate external usage
+                          if (_isCreditEntry) {
+                            if (_type == 'Transfer') {
+                              _toAccount = null; // Clear Target
+                            }
+                            // Clear Source/Target if they were External (Ext not allowed in Credit Mode)
+                            if (_selectedAccount?.id == _externalAccount.id)
+                              _selectedAccount = null;
+                            if (_toAccount?.id == _externalAccount.id)
+                              _toAccount = null;
+                          }
                         });
                       },
                       child: Container(
@@ -588,36 +619,32 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                                   ? Colors.redAccent
                                   : Colors.white12),
                         ),
-                        child: Row(
-                          children: [
-                            Text("Credit Card",
-                                style: TextStyle(
-                                    color: _isCreditEntry
-                                        ? Colors.redAccent
-                                        : Colors.white38,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 6),
-                            Icon(
-                                _isCreditEntry
-                                    ? Icons.toggle_on
-                                    : Icons.toggle_off,
-                                color: _isCreditEntry
-                                    ? Colors.redAccent
-                                    : Colors.white38,
-                                size: 20),
-                          ],
-                        ),
+                        child: Row(children: [
+                          Text("Credit Card",
+                              style: TextStyle(
+                                  color: _isCreditEntry
+                                      ? Colors.redAccent
+                                      : Colors.white38,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 6),
+                          Icon(
+                              _isCreditEntry
+                                  ? Icons.toggle_on
+                                  : Icons.toggle_off,
+                              color: _isCreditEntry
+                                  ? Colors.redAccent
+                                  : Colors.white38,
+                              size: 20),
+                        ]),
                       ),
-                    )
+                    ),
                 ],
               ),
             ),
 
-            // 3. Hero Amount (With Validation Highlight)
             _buildHeroAmount(typeColor),
 
-            // 4. MAIN FORM GRID
             Flexible(
               fit: FlexFit.loose,
               child: Form(
@@ -625,13 +652,9 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min, // Hug content
                     children: [
-                      _buildMainGrid(), // 2x2 Fixed Grid
-
+                      _buildMainGrid(),
                       const SizedBox(height: 12),
-
-                      // Notes (Full Width)
                       TextFormField(
                         controller: _notesCtrl,
                         focusNode: _notesNode,
@@ -659,7 +682,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
               ),
             ),
 
-            // 5. Calculator & Save (5 Rows x 4 Cols)
             if (_showCalculator) ...[
               Container(color: Colors.white.withOpacity(0.05), height: 1),
               _EmbeddedCalculator(
@@ -680,14 +702,13 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                     ),
                     child: _isLoading
                         ? const ModernLoader(size: 20)
-                        : const Text("SAVE TRANSACTION",
+                        : const Text("SAVE",
                             style: TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                 ),
               ),
-            ] else ...[
-              // Done Bar for system keyboard
+            ] else
               Container(
                 width: double.infinity,
                 color: BudgetrColors.cardSurface,
@@ -698,74 +719,55 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                     onPressed: () => FocusScope.of(context).unfocus(),
                     child: const Text("Done")),
               )
-            ]
           ],
         ),
       ),
     );
   }
 
-  // --- GRID LOGIC ---
-
-  Widget _buildHeroAmount(Color typeColor) {
-    final bool hasError =
-        _attemptedSave && (double.tryParse(_amountCtrl.text) ?? 0) <= 0;
-    final Color displayColor = hasError ? Colors.redAccent : typeColor;
-    final Color hintColor =
-        hasError ? Colors.redAccent.withOpacity(0.5) : Colors.white12;
-    final Color prefixColor = hasError ? Colors.redAccent : Colors.white24;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: IntrinsicWidth(
-        child: TextFormField(
-          controller: _amountCtrl,
-          focusNode: _amountNode,
-          readOnly: true,
-          showCursor: true,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-              fontSize: 44,
-              fontWeight: FontWeight.bold,
-              color: displayColor,
-              height: 1.1),
-          decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: "0",
-              hintStyle: TextStyle(color: hintColor),
-              prefixText: "₹",
-              prefixStyle: TextStyle(
-                  fontSize: 44,
-                  color: prefixColor,
-                  fontWeight: FontWeight.w300),
-              contentPadding: EdgeInsets.zero),
-          onTap: () => FocusScope.of(context).requestFocus(_amountNode),
-        ),
-      ),
-    );
-  }
+  // --- GRID ITEMS ---
 
   Widget _buildMainGrid() {
-    List<Widget> gridItems = [];
+    List<Widget> items = [];
 
-    // Slot 1: Source
-    bool showCredit = _isCreditEntry && _type != 'Transfer';
+    // --- GRID ITEM 1: SOURCE ---
+    bool isBillPayment = _type == 'Transfer' && _isCreditEntry;
+    bool isCardExpense = _type != 'Transfer' && _isCreditEntry;
+
+    // LABEL LOGIC
+    String sourceLabel = "ACCOUNT";
+    if (_type == 'Transfer') sourceLabel = "FROM";
+    if (isBillPayment) sourceLabel = "PAY FROM";
+    if (isCardExpense) sourceLabel = "PAY WITH";
+
+    // VALUE LOGIC
+    String sourceVal = "Select Account";
+    if (isCardExpense) {
+      sourceVal = _selectedCreditCard?.name ?? "Select Card";
+    } else {
+      sourceVal = _selectedAccount?.name ?? "Select Account";
+    }
+
+    // ICON LOGIC
+    IconData sourceIcon =
+        isCardExpense ? Icons.credit_card : Icons.account_balance;
+
+    // ERROR LOGIC
     bool sourceError = _attemptedSave &&
-        (showCredit ? _selectedCreditCard == null : _selectedAccount == null);
+        (isCardExpense
+            ? _selectedCreditCard == null
+            : _selectedAccount == null);
 
-    gridItems.add(_buildGridItem(
-        label: showCredit
-            ? "PAY WITH"
-            : (_type == 'Transfer' ? "FROM" : "ACCOUNT"),
-        value: showCredit
-            ? (_selectedCreditCard?.name ?? "Select Card")
-            : (_selectedAccount?.name ?? "Select Account"),
-        icon: showCredit ? Icons.credit_card : Icons.account_balance,
-        isActive: !_isLinkedTransaction, // Disabled if linked
+    items.add(_buildGridItem(
+        label: sourceLabel,
+        value: sourceVal,
+        icon: sourceIcon,
+        isActive: !_isLinkedTransaction,
         hasError: sourceError,
         onTap: () {
           if (_isLinkedTransaction) return;
-          if (showCredit) {
+          if (isCardExpense) {
+            // Credit Expense -> Select Card
             _showSelectionSheet<CreditCardModel>(
                 "Select Card",
                 _creditCards,
@@ -773,39 +775,46 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                 (c) => "${c.bankName} - ${c.name}",
                 (v) => setState(() => _selectedCreditCard = v));
           } else {
+            // Bank Account Selection
+            // Use helper to filter out Pool account + optionally add External
+            List<ExpenseAccountModel> options = _getDisplayAccounts();
+
             _showSelectionSheet<ExpenseAccountModel>(
                 "Select Account",
-                _accounts,
+                options,
                 _selectedAccount,
                 (a) => "${a.bankName} - ${a.name}",
                 (v) => setState(() => _selectedAccount = v));
           }
         }));
 
-    // Slot 2: Target / Category
+    // --- GRID ITEM 2: TARGET / CATEGORY ---
     if (_type == 'Transfer') {
+      String targetLabel = "TO";
+      String targetVal = "Select Account";
       bool targetError = false;
-      String targetLabel = _isCreditEntry ? "PAY BILL" : "TO";
-      String targetValue = "Select";
 
-      if (_isCreditEntry) {
-        targetValue = _selectedCreditCard?.name ?? "Select Card";
+      if (isBillPayment) {
+        // Paying Bill -> Target is Card
+        targetLabel = "TO CARD";
+        targetVal = _selectedCreditCard?.name ?? "Select Card";
         targetError = _attemptedSave && _selectedCreditCard == null;
       } else {
-        targetValue = _toAccount?.name ?? "Select Account";
-        targetError = _attemptedSave &&
-            (_toAccount == null || _toAccount!.id == _selectedAccount?.id);
+        // Normal Transfer -> Target is Account
+        targetVal = _toAccount?.name ?? "Select Account";
+        targetError = _attemptedSave && _toAccount == null;
       }
 
-      gridItems.add(_buildGridItem(
+      items.add(_buildGridItem(
           label: targetLabel,
-          value: targetValue,
+          value: targetVal,
           icon: Icons.login,
           isActive: !_isLinkedTransaction,
           hasError: targetError,
           onTap: () {
             if (_isLinkedTransaction) return;
-            if (_isCreditEntry) {
+            if (isBillPayment) {
+              // Target = Card
               _showSelectionSheet<CreditCardModel>(
                   "Select Card",
                   _creditCards,
@@ -813,28 +822,36 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                   (c) => "${c.bankName} - ${c.name}",
                   (v) => setState(() => _selectedCreditCard = v));
             } else {
+              // Target = Account
+              final targets = _getDisplayAccounts()
+                  .where((a) => a.id != _selectedAccount?.id)
+                  .toList();
+
+              // Remove External if Source is already External (No External -> External)
+              if (_selectedAccount?.id == _externalAccount.id) {
+                targets.removeWhere((e) => e.id == _externalAccount.id);
+              }
+
               _showSelectionSheet<ExpenseAccountModel>(
                   "To Account",
-                  _accounts.where((a) => a.id != _selectedAccount?.id).toList(),
+                  targets,
                   _toAccount,
                   (a) => "${a.bankName} - ${a.name}",
                   (v) => setState(() => _toAccount = v));
             }
           }));
     } else {
-      bool catError = _attemptedSave && _category == null;
-      gridItems.add(_buildGridItem(
+      items.add(_buildGridItem(
           label: "CATEGORY",
           value: _category ?? "Select",
           icon: Icons.category_outlined,
           isActive: true,
-          hasError: catError,
+          hasError: _attemptedSave && _category == null,
           onTap: () {
-            final relevantCats =
-                _allCategories.where((c) => c.type == _type).toList();
+            final cats = _allCategories.where((c) => c.type == _type).toList();
             _showSelectionSheet<TransactionCategoryModel>(
                 "Category",
-                relevantCats,
+                cats,
                 null,
                 (c) => c.name,
                 (v) => setState(() {
@@ -844,19 +861,14 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
           }));
     }
 
-    // Slot 3: Bucket
+    // 3. Bucket
     bool bucketActive = _type == 'Expense';
-    bool bucketError =
-        _attemptedSave && bucketActive && _selectedBucket == null;
-    String bucketVal = _selectedBucket ?? "Select";
-    if (!bucketActive) bucketVal = "---";
-
-    gridItems.add(_buildGridItem(
+    items.add(_buildGridItem(
         label: "BUCKET",
-        value: bucketVal,
+        value: bucketActive ? (_selectedBucket ?? "Select") : "---",
         icon: Icons.pie_chart_outline,
         isActive: bucketActive,
-        hasError: bucketError,
+        hasError: _attemptedSave && bucketActive && _selectedBucket == null,
         onTap: () => _showSelectionSheet<String>(
             "Bucket",
             _buckets,
@@ -864,90 +876,42 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
             (s) => s,
             (v) => setState(() => _selectedBucket = v))));
 
-    // Slot 4: SubCategory
-    bool subCatActive = (_category != null && _type != 'Transfer');
+    // 4. SubCategory
     String subVal = "---";
-    TransactionCategoryModel? catModel;
-
-    if (_category != null) {
+    bool subActive = (_category != null && _type != 'Transfer');
+    if (subActive) {
       try {
-        catModel = _allCategories.firstWhere((c) => c.name == _category);
-      } catch (_) {}
-      if (catModel != null && catModel.subCategories.isNotEmpty) {
-        subVal = _subCategory ?? "Select";
-      } else {
-        subCatActive = false;
-        subVal = "---";
+        final cat = _allCategories.firstWhere((c) => c.name == _category);
+        if (cat.subCategories.isNotEmpty)
+          subVal = _subCategory ?? "Select";
+        else
+          subActive = false;
+      } catch (_) {
+        subActive = false;
       }
     }
 
-    gridItems.add(_buildGridItem(
+    items.add(_buildGridItem(
         label: "SUB-CATEGORY",
         value: subVal,
         icon: Icons.subdirectory_arrow_right,
-        isActive: subCatActive,
+        isActive: subActive,
         hasError: false,
         onTap: () {
-          if (catModel != null) {
-            _showSelectionSheet<String>(
-                "Sub Category",
-                catModel.subCategories,
-                _subCategory,
-                (s) => s,
-                (v) => setState(() => _subCategory = v));
-          }
+          final cat = _allCategories.firstWhere((c) => c.name == _category);
+          _showSelectionSheet<String>("Sub Category", cat.subCategories,
+              _subCategory, (s) => s, (v) => setState(() => _subCategory = v));
         }));
 
-    return LayoutBuilder(builder: (context, constraints) {
+    return LayoutBuilder(builder: (ctx, constr) {
       return Wrap(
         spacing: 12,
         runSpacing: 12,
-        children: gridItems
-            .map((item) =>
-                SizedBox(width: (constraints.maxWidth - 12) / 2, child: item))
+        children: items
+            .map((i) => SizedBox(width: (constr.maxWidth - 12) / 2, child: i))
             .toList(),
       );
     });
-  }
-
-  Widget _buildSegment(String label, Color color, bool isEditing) {
-    final isSelected = _type == label;
-    // Disabled if Linked OR (Editing AND label is Transfer)
-    final isDisabled =
-        _isLinkedTransaction || (isEditing && label == 'Transfer');
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: isDisabled
-            ? null
-            : () {
-                setState(() {
-                  _type = label;
-                  _category = null;
-                  _subCategory = null;
-                  if ((_type == 'Income' && !_isCreditEntry) ||
-                      _type == 'Transfer') _selectedBucket = null;
-                });
-              },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border:
-                isSelected ? Border.all(color: color.withOpacity(0.5)) : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(label,
-              style: TextStyle(
-                  color: isDisabled
-                      ? Colors.white24
-                      : (isSelected ? color : Colors.white38),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12)),
-        ),
-      ),
-    );
   }
 
   Widget _buildGridItem(
@@ -967,11 +931,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
               : Colors.white.withOpacity(0.02),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: hasError
-                  ? Colors.redAccent
-                  : (isActive
-                      ? Colors.white.withOpacity(0.08)
-                      : Colors.transparent)),
+              color: hasError ? Colors.redAccent : Colors.transparent),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -997,6 +957,88 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
     );
   }
 
+  Widget _buildSegment(String label, Color color, bool isEditing) {
+    bool isSelected = _type == label;
+
+    bool wasOriginalTransfer = false;
+    if (isEditing && widget.txnToEdit != null) {
+      wasOriginalTransfer = widget.txnToEdit!.type.contains('Transfer');
+    }
+
+    bool isDisabled = _isLinkedTransaction ||
+        (isEditing && label == 'Transfer' && !wasOriginalTransfer);
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: isDisabled
+            ? null
+            : () => setState(() {
+                  _type = label;
+                  _category = null;
+                  _subCategory = null;
+                  // IMPORTANT: Reset external logic when switching types
+                  if (_type != 'Transfer') {
+                    if (_selectedAccount?.id == _externalAccount.id)
+                      _selectedAccount = null;
+                    _toAccount = null;
+                  }
+                  if (_type != 'Expense') _selectedBucket = null;
+                }),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border:
+                isSelected ? Border.all(color: color.withOpacity(0.5)) : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(label,
+              style: TextStyle(
+                  color: isDisabled
+                      ? Colors.white24
+                      : (isSelected ? color : Colors.white38),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroAmount(Color typeColor) {
+    bool hasError =
+        _attemptedSave && (double.tryParse(_amountCtrl.text) ?? 0) <= 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: IntrinsicWidth(
+        child: TextFormField(
+          controller: _amountCtrl,
+          focusNode: _amountNode,
+          readOnly: true,
+          showCursor: true,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              fontSize: 44,
+              fontWeight: FontWeight.bold,
+              color: hasError ? Colors.redAccent : typeColor,
+              height: 1.1),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            hintText: "0",
+            hintStyle: const TextStyle(color: Colors.white12),
+            prefixText: "₹",
+            prefixStyle: TextStyle(
+                fontSize: 44,
+                color: hasError ? Colors.redAccent : Colors.white24,
+                fontWeight: FontWeight.w300),
+            contentPadding: EdgeInsets.zero,
+          ),
+          onTap: () => FocusScope.of(context).requestFocus(_amountNode),
+        ),
+      ),
+    );
+  }
+
   void _showSelectionSheet<T>(String title, List<T> items, T? selected,
       String Function(T) labelGen, Function(T) onSel) {
     _amountNode.unfocus();
@@ -1008,9 +1050,9 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
         builder: (ctx) => Container(
               height: MediaQuery.of(context).size.height * 0.65,
               decoration: const BoxDecoration(
-                color: BudgetrColors.cardSurface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
+                  color: BudgetrColors.cardSurface,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(24))),
               child: Column(
                 children: [
                   const SizedBox(height: 16),
@@ -1030,10 +1072,10 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: items.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final item = items[index];
+                      itemBuilder: (ctx, i) {
+                        final item = items[i];
                         bool isSelected = false;
-                        if (selected != null && item != null) {
+                        if (selected != null) {
                           if (item is ExpenseAccountModel &&
                               selected is ExpenseAccountModel)
                             isSelected = item.id == selected.id;
@@ -1046,7 +1088,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                         return ListTile(
                           onTap: () {
                             onSel(item);
-                            Navigator.pop(context);
+                            Navigator.pop(ctx);
                           },
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16)),
@@ -1076,14 +1118,9 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
   }
 }
 
-// ===========================================================================
-// 3. 5 COLUMNS x 4 ROWS CALCULATOR
-// ===========================================================================
-
 class _EmbeddedCalculator extends StatelessWidget {
   final TextEditingController controller;
   final Color typeColor;
-
   const _EmbeddedCalculator(
       {required this.controller, required this.typeColor});
 
@@ -1109,10 +1146,6 @@ class _EmbeddedCalculator extends StatelessWidget {
     }
   }
 
-  void _onClear() {
-    controller.clear();
-  }
-
   void _onEquals() {
     String expression =
         controller.text.replaceAll('×', '*').replaceAll('÷', '/');
@@ -1125,7 +1158,9 @@ class _EmbeddedCalculator extends StatelessWidget {
           result.toStringAsFixed(2).replaceAll(RegExp(r"([.]*0)(?!.*\d)"), "");
       controller.selection = TextSelection.fromPosition(
           TextPosition(offset: controller.text.length));
-    } catch (e) {/* ignore */}
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   @override
@@ -1136,9 +1171,8 @@ class _EmbeddedCalculator extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Row 1: C, (, ), /, 7
           Row(children: [
-            _key('C', color: Colors.redAccent, onTap: _onClear),
+            _key('C', color: Colors.redAccent, onTap: controller.clear),
             _key('(', color: Colors.white54),
             _key(')', color: Colors.white54),
             _key('÷', color: Colors.blueAccent)
@@ -1174,62 +1208,55 @@ class _EmbeddedCalculator extends StatelessWidget {
 
   Widget _key(String label, {Color? color, VoidCallback? onTap}) {
     return Expanded(
-      child: InkWell(
-        onTap: onTap ?? () => _onKey(label),
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          height: 42,
-          alignment: Alignment.center,
-          margin: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(8)),
-          child: Text(label,
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
-                  color: color ?? Colors.white)),
-        ),
-      ),
-    );
+        child: InkWell(
+            onTap: onTap ?? () => _onKey(label),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+                height: 42,
+                alignment: Alignment.center,
+                margin: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8)),
+                child: Text(label,
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: color ?? Colors.white)))));
   }
 
   Widget _backspaceKey() {
     return Expanded(
-      child: InkWell(
-        onTap: _onBackspace,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          height: 42,
-          margin: const EdgeInsets.all(2),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(8)),
-          child: const Icon(Icons.backspace_outlined,
-              size: 18, color: Colors.white54),
-        ),
-      ),
-    );
+        child: InkWell(
+            onTap: _onBackspace,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+                height: 42,
+                margin: const EdgeInsets.all(2),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.backspace_outlined,
+                    size: 18, color: Colors.white54))));
   }
 
   Widget _equalsKey(Color color) {
     return Expanded(
-      child: InkWell(
-        onTap: _onEquals,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          height: 42,
-          margin: const EdgeInsets.all(2),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8)),
-          child: Text('=',
-              style: TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.bold, color: color)),
-        ),
-      ),
-    );
+        child: InkWell(
+            onTap: _onEquals,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+                height: 42,
+                margin: const EdgeInsets.all(2),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8)),
+                child: Text('=',
+                    style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: color)))));
   }
 }
