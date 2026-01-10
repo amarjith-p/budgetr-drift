@@ -13,7 +13,7 @@ import 'account_management_screen.dart';
 // --- IMPORTS ---
 import 'all_transactions_screen.dart';
 import 'expense_analytics_screen.dart';
-import 'category_breakdown_screen.dart'; // NEW SCREEN
+import 'category_breakdown_screen.dart';
 import '../widgets/cash_flow_card.dart';
 import '../widgets/balance_trend_chart.dart';
 
@@ -49,6 +49,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
+      // 1. Extend Body allows the list to scroll behind the floating navbar
       extendBody: true,
       appBar: _buildAppBar(bgColor),
       body: IndexedStack(
@@ -57,10 +58,11 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
           _buildOriginalHomeContent(), // 0: Overview
           const AllTransactionsScreen(), // 1: Transactions
           const ExpenseAnalyticsScreen(), // 2: Analytics
-          const CategoryBreakdownScreen(), // 3: Breakdown (Replaces Settings)
+          const CategoryBreakdownScreen(), // 3: Breakdown
         ],
       ),
-      bottomNavigationBar: _buildPrismDock(),
+      // 2. New Modern Floating Navigation
+      bottomNavigationBar: _buildModernBottomBar(),
     );
   }
 
@@ -68,10 +70,10 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     String title = "Daily Tracker";
     if (_currentIndex == 1) title = "Transactions";
     if (_currentIndex == 2) title = "Analytics";
-    if (_currentIndex == 3) title = "Breakdown"; // Updated Title
+    if (_currentIndex == 3) title = "Breakdown";
 
     return AppBar(
-      backgroundColor: bgColor.withOpacity(0.9),
+      backgroundColor: bgColor.withOpacity(0.85),
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
@@ -150,6 +152,8 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
         row2Items.add("ALL_ACCOUNTS_CARD");
 
         return SingleChildScrollView(
+          // Padding at bottom to account for the floating nav bar
+          padding: const EdgeInsets.only(bottom: 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -212,7 +216,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
               ),
               const CashFlowCard(),
               const BalanceTrendChart(),
-              const SizedBox(height: 140),
             ],
           ),
         );
@@ -302,14 +305,16 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  Widget _buildPrismDock() {
+  // --- NEW: Modern Floating Bottom Bar ---
+  Widget _buildModernBottomBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
       child: Container(
-        height: 72,
+        height: 70, // Slightly compact height
         decoration: BoxDecoration(
-          color: const Color(0xFF101825).withOpacity(0.95),
-          borderRadius: BorderRadius.circular(24),
+          // Dark frosted glass background
+          color: const Color(0xFF101825).withOpacity(0.90),
+          borderRadius: BorderRadius.circular(35),
           border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
           boxShadow: [
             BoxShadow(
@@ -320,18 +325,20 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(35),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildPrismTab(0, Icons.grid_view_rounded, "Home"),
-                _buildPrismTab(1, Icons.receipt_long_rounded, "History"),
-                _buildPrismFab(),
-                _buildPrismTab(2, Icons.bar_chart_rounded, "Analytics"),
-                // Updated Tab 3: Breakdown
-                _buildPrismTab(3, Icons.category_rounded, "Breakdown"),
+                _buildNavBarItem(0, Icons.grid_view_rounded, "Home"),
+                _buildNavBarItem(1, Icons.receipt_long_rounded, "Transactions"),
+
+                // Integrated Floating Action Button
+                _buildCenterFab(),
+
+                _buildNavBarItem(2, Icons.bar_chart_rounded, "Analytics"),
+                _buildNavBarItem(3, Icons.category_rounded, "Breakdown"),
               ],
             ),
           ),
@@ -340,52 +347,53 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  Widget _buildPrismTab(int index, IconData icon, String label,
-      {bool isDisabled = false}) {
-    if (isDisabled) {
-      return const SizedBox(
-          width: 60,
-          child: Center(
-              child: Icon(Icons.settings, color: Colors.white24, size: 24)));
-    }
-
+  // Animated Pill Tab
+  Widget _buildNavBarItem(int index, IconData icon, String label) {
     final bool isSelected = _currentIndex == index;
-    final Color inactiveColor = Colors.white54;
 
     return GestureDetector(
       onTap: () => _onTabTapped(index),
       behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 60,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutQuint,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 16 : 8,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF00B4D8).withOpacity(0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            isSelected
-                ? ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [Color(0xFF00B4D8), Color(0xFF0077B6)],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ).createShader(bounds),
-                    child: Icon(icon, color: Colors.white, size: 26),
-                  )
-                : Icon(icon, color: inactiveColor, size: 26),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? const Color(0xFF00B4D8) : inactiveColor,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
+            Icon(
+              icon,
+              color: isSelected ? const Color(0xFF00B4D8) : Colors.white54,
+              size: 24,
             ),
+            if (isSelected) ...[
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF00B4D8),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPrismFab() {
+  // Central Add Button
+  Widget _buildCenterFab() {
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
@@ -405,17 +413,17 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16),
+          shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF00B4D8).withOpacity(0.4),
-              blurRadius: 12,
+              blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
+          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
         ),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
       ),
     );
   }
