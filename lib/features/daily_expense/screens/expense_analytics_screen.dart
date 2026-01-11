@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
-import '../widgets/balance_trend_chart.dart';
-import '../widgets/category_spending_chart.dart'; // NEW Import
+import 'package:budget/features/daily_expense/widgets/budget_simulator_widget.dart';
+import 'package:budget/features/daily_expense/widgets/unified_spending_chart.dart';
+import 'package:flutter/material.dart'; // NEW Import
 
 class ExpenseAnalyticsScreen extends StatelessWidget {
   const ExpenseAnalyticsScreen({super.key});
@@ -11,13 +11,8 @@ class ExpenseAnalyticsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(top: 20, bottom: 120),
       physics: const BouncingScrollPhysics(),
       children: [
-        // --- 1. Net Worth / Balance Trend ---
-        const BalanceTrendChart(),
-
-        // --- 2. Category Spending Donut Chart ---
-        const CategorySpendingChart(),
-
-        // Add more widgets here later (e.g. Monthly comparison bar chart)
+        const UnifiedSpendingChart(),
+        const BudgetSimulatorWidget(),
       ],
     );
   }
