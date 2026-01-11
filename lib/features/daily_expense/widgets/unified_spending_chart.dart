@@ -2,7 +2,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For HapticFeedback
 import 'package:intl/intl.dart';
-import 'package:collection/collection.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
@@ -90,7 +89,7 @@ class _UnifiedSpendingChartState extends State<UnifiedSpendingChart> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "ANALYSIS",
+                    "SPENDINGS BY",
                     style: TextStyle(
                       color: Colors.white54,
                       fontSize: 10,
@@ -101,8 +100,8 @@ class _UnifiedSpendingChartState extends State<UnifiedSpendingChart> {
                   const SizedBox(height: 4),
                   Text(
                     _currentView == BreakdownView.bucket
-                        ? "Allocation"
-                        : "Spending",
+                        ? "Buckets"
+                        : "Categories",
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,

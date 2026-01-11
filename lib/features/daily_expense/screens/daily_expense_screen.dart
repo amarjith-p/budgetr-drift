@@ -68,15 +68,15 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
 
   PreferredSizeWidget _buildAppBar(Color bgColor) {
     String title = "Daily Tracker";
-    if (_currentIndex == 1) title = "Transactions";
+    if (_currentIndex == 1) title = "All Transactions";
     if (_currentIndex == 2) title = "Analytics";
-    if (_currentIndex == 3) title = "Breakdown";
+    if (_currentIndex == 3) title = "Insights";
 
     return AppBar(
       backgroundColor: bgColor.withOpacity(0.85),
       elevation: 0,
       scrolledUnderElevation: 0,
-      centerTitle: false,
+      centerTitle: true,
       title: Padding(
         padding: const EdgeInsets.only(left: 8.0),
         child: Text(
@@ -345,7 +345,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                 _buildCenterFab(),
 
                 _buildAnimatedNavItem(2, Icons.bar_chart_rounded, "Analytics"),
-                _buildAnimatedNavItem(3, Icons.category_rounded, "Breakdown"),
+                _buildAnimatedNavItem(3, Icons.category_rounded, "Insights"),
               ],
             ),
           ),

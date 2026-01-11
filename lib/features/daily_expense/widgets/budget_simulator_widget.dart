@@ -27,8 +27,7 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
   final Set<String> _selectedBuckets = {};
   bool _isLoading = true;
 
-  List<dynamic> _combinedTransactions =
-      []; // This field is used in _getSimulatedTransactions
+  List<dynamic> _combinedTransactions = [];
   FinancialRecord? _currentBudgetRecord;
   String _selectedPeriod = 'This Month';
 
@@ -101,7 +100,6 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
 
     // --- CALCULATIONS ---
-    // This calls the method that uses _combinedTransactions
     final filteredTxns = _getSimulatedTransactions();
     final double simulatedSpend =
         filteredTxns.fold(0.0, (sum, t) => sum + _getAmount(t));
@@ -125,8 +123,6 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
     if (daysRemaining < 0) daysRemaining = 0;
 
     final double dailyAvg = simulatedSpend / daysPassed;
-
-    // Theoretical Daily Limit (Budget / 30)
     final double dailyLimit =
         simulatedAllocation > 0 ? simulatedAllocation / totalDaysInMonth : 0;
 
@@ -135,17 +131,44 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
       projectedSpend = (simulatedSpend / daysPassed) * totalDaysInMonth;
     }
 
-    // Status Flags
+    // --- STATUS FLAGS ---
     final bool isTotalOver =
         simulatedAllocation > 0 && simulatedSpend > simulatedAllocation;
     final bool isProjectedOver =
         simulatedAllocation > 0 && projectedSpend > simulatedAllocation;
     final bool isDailyOver = dailyLimit > 0 && dailyAvg > dailyLimit;
 
-    // Recommended Daily
+    // --- REC. DAILY CALCULATION ---
     double recDaily = 0.0;
     if (daysRemaining > 0 && !isTotalOver && simulatedAllocation > 0) {
       recDaily = (simulatedAllocation - simulatedSpend) / daysRemaining;
+    }
+
+    // --- PREDICTIVE DATE CALCULATION (UPDATED) ---
+    String crossDateText = "";
+    bool isDangerDate = false;
+
+    if (simulatedAllocation > 0 && _selectedPeriod == 'This Month') {
+      if (isTotalOver) {
+        crossDateText = "Budget exceeded on ${DateFormat('d MMM').format(now)}";
+        isDangerDate = true;
+      } else if (dailyAvg > 0) {
+        final double remainingBudget = simulatedAllocation - simulatedSpend;
+        // [FIX]: Changed to ceil() to be inclusive of the partial day, matching Dashboard
+        final int daysToBurn = (remainingBudget / dailyAvg).ceil();
+
+        final DateTime estimatedDate = now.add(Duration(days: daysToBurn));
+        final DateTime monthEnd = range.end;
+
+        if (estimatedDate.isBefore(monthEnd)) {
+          crossDateText =
+              "Projected to cross budget on ${DateFormat('d MMM').format(estimatedDate)}";
+          isDangerDate = true;
+        } else {
+          crossDateText = "Spending is sustainable until month end";
+          isDangerDate = false;
+        }
+      }
     }
 
     // Colors
@@ -190,7 +213,7 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("SIMULATOR",
+                      Text("BUDGET SIMULATOR",
                           style: TextStyle(
                               color: Color(0xFF00B4D8),
                               fontSize: 10,
@@ -321,7 +344,7 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text("Combined Utilization",
+                            Text("Utilization",
                                 style: TextStyle(
                                     color: Colors.white.withOpacity(0.5),
                                     fontSize: 11)),
@@ -383,16 +406,18 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
                                         fontSize: 11)))
                           ]),
                         ),
+
+                      // Metrics Grid
                       Row(
                         children: [
                           Expanded(
-                              child: _buildMetricCard("Daily Avg",
+                              child: _buildMetricCard("Daily Avg.",
                                   currencyFmt.format(dailyAvg), Icons.today,
                                   color: isDailyOver ? badColor : goodColor)),
                           const SizedBox(width: 12),
                           Expanded(
                               child: _buildMetricCard(
-                                  "Rec. Daily",
+                                  "Rec. Daily Avg.",
                                   daysRemaining > 0
                                       ? currencyFmt.format(recDaily)
                                       : "-",
@@ -403,12 +428,44 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
                         ],
                       ),
                       const SizedBox(height: 12),
+
+                      // Projected Month End Card
                       _buildProjectedCard(
                           projectedSpend,
                           simulatedAllocation,
                           currencyFmt,
                           _selectedPeriod == 'Last Month',
                           isProjectedOver),
+
+                      // Date Projection Footer
+                      if (crossDateText.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                  isDangerDate
+                                      ? Icons.warning_amber_rounded
+                                      : Icons.check_circle_outline,
+                                  color: isDangerDate
+                                      ? badColor
+                                      : goodColor.withOpacity(0.7),
+                                  size: 14),
+                              const SizedBox(width: 6),
+                              Text(
+                                crossDateText,
+                                style: TextStyle(
+                                  color: isDangerDate
+                                      ? badColor
+                                      : goodColor.withOpacity(0.7),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   )
                 : SizedBox(
@@ -470,7 +527,6 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
 
   Widget _buildProjectedCard(double projected, double limit, NumberFormat fmt,
       bool isPast, bool isOver) {
-    // Colors
     final Color goodColor = const Color(0xFF00E676);
     final Color badColor = const Color(0xFFFF5252);
 
@@ -492,7 +548,7 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(isPast ? "Total Month Spend" : "Projected Month End",
+              Text(isPast ? "Total Month Spend" : "Projected Spend",
                   style: const TextStyle(color: Colors.white70, fontSize: 11)),
               const SizedBox(height: 4),
               Text(fmt.format(projected),
@@ -533,7 +589,7 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
     );
   }
 
-  // --- HELPERS (These are now correctly included) ---
+  // --- HELPERS ---
 
   Widget _buildPeriodDropdown() {
     return Container(
@@ -595,13 +651,11 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
         date.isBefore(end.add(const Duration(seconds: 1)));
   }
 
-  // This method uses the _combinedTransactions field
   List<dynamic> _getSimulatedTransactions() {
     final range = _getDateRange();
     return _combinedTransactions.where((t) {
       if (_getType(t) != 'Expense') return false;
       if (!_selectedBuckets.contains(_getBucket(t))) return false;
-      // Double check date to ensure strict adherence to selected range
       if (!_matchesPeriod(_getDate(t), range.start, range.end)) return false;
       return true;
     }).toList();

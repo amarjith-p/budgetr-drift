@@ -55,7 +55,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       backgroundColor: const Color(0xff0D1B2A), // Dark Background
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text("My Wallet", style: TextStyle(color: Colors.white)),
+        title: const Text("Accounts", style: TextStyle(color: Colors.white)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
