@@ -20,6 +20,9 @@ class _CashFlowCardState extends State<CashFlowCard> {
   String _selectedPeriod = 'This Month';
   String? _selectedAccountId;
 
+  // New State for Budget Mode
+  bool _isBudgetMode = false;
+
   // Constants for group filters
   static const String kGroupBanks = 'group_banks';
   static const String kGroupCredits = 'group_credits';
@@ -33,24 +36,20 @@ class _CashFlowCardState extends State<CashFlowCard> {
 
     // --- 1. Filter by Account / Group ---
     if (_selectedAccountId == null) {
-      // All Accounts
       combined.addAll(expenseTxns);
       combined.addAll(creditTxns);
     } else if (_selectedAccountId == kGroupBanks) {
-      // All Bank Accounts Only
       combined.addAll(expenseTxns);
     } else if (_selectedAccountId == kGroupCredits) {
-      // All Credit Cards Only
       combined.addAll(creditTxns);
     } else {
-      // Specific Account ID
       combined
           .addAll(expenseTxns.where((t) => t.accountId == _selectedAccountId));
       combined.addAll(creditTxns.where((t) => t.cardId == _selectedAccountId));
     }
 
     // --- 2. Filter by Date ---
-    return combined.where((txn) {
+    combined = combined.where((txn) {
       final date = (txn is ExpenseTransactionModel)
           ? txn.date.toDate()
           : (txn as CreditTransactionModel).date.toDate();
@@ -67,16 +66,35 @@ class _CashFlowCardState extends State<CashFlowCard> {
       }
       return true;
     }).toList();
+
+    // --- 3. Filter by Budget Mode (NEW) ---
+    if (_isBudgetMode) {
+      combined = combined.where((txn) {
+        String category = '';
+        String bucket = '';
+
+        if (txn is ExpenseTransactionModel) {
+          category = txn.category;
+          bucket = txn.bucket;
+        } else if (txn is CreditTransactionModel) {
+          category = txn.category;
+          bucket = txn.bucket;
+        }
+
+        // Exclusion Logic
+        if (bucket == 'Out of Bucket') return false;
+        if (category == 'Non-Calculated Expense') return false;
+        if (category == 'Non-Calculated Income') return false;
+
+        return true;
+      }).toList();
+    }
+
+    return combined;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Determine if we need to fetch specific streams or all
-    // If a specific ID is selected (not a group), we might optimize,
-    // but simpler to fetch all if group selected or null.
-    // For simplicity with the existing Service API (which accepts null or ID),
-    // we pass null if it's a group filter, so we get all data and filter in memory.
-
     final String? fetchId = (_selectedAccountId == kGroupBanks ||
             _selectedAccountId == kGroupCredits)
         ? null
@@ -113,7 +131,6 @@ class _CashFlowCardState extends State<CashFlowCard> {
                 if (txn.type == 'Expense') {
                   expense += txn.amount;
                 }
-                // Credit Repayments (Income) ignored for Cash Flow
               }
             }
 
@@ -135,7 +152,7 @@ class _CashFlowCardState extends State<CashFlowCard> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: const Color(0xFF151D29),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white.withOpacity(0.08)),
                 boxShadow: [
                   BoxShadow(
@@ -149,27 +166,35 @@ class _CashFlowCardState extends State<CashFlowCard> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // --- HEADER WITH MODERN TOGGLE ---
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.analytics_outlined,
-                            color: Colors.white70, size: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.analytics_outlined,
+                                color: Colors.white70, size: 16),
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            "CASH FLOW",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        "CASH FLOW",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
+                      // Custom Budget Mode Toggle
+                      _buildModernToggle(),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -181,6 +206,8 @@ class _CashFlowCardState extends State<CashFlowCard> {
                     ],
                   ),
                   const SizedBox(height: 24),
+
+                  // Income Meter
                   _buildMeterRow(
                     label: "INCOME",
                     amount: income,
@@ -193,6 +220,8 @@ class _CashFlowCardState extends State<CashFlowCard> {
                     formatter: currencyFmt,
                   ),
                   const SizedBox(height: 16),
+
+                  // Expense Meter
                   _buildMeterRow(
                     label: "EXPENSE",
                     amount: expense,
@@ -207,6 +236,8 @@ class _CashFlowCardState extends State<CashFlowCard> {
                   const SizedBox(height: 20),
                   Divider(color: Colors.white.withOpacity(0.05), height: 1),
                   const SizedBox(height: 16),
+
+                  // Net Position
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -226,12 +257,115 @@ class _CashFlowCardState extends State<CashFlowCard> {
                       ),
                     ],
                   ),
+
+                  // --- DISCLAIMER SECTION ---
+                  if (_isBudgetMode) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00B4D8).withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: const Color(0xFF00B4D8).withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.info_outline_rounded,
+                              color: Color(0xFF00B4D8), size: 14),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "Budget Mode active. Excludes 'Non-Calculated' expenses/income and 'Out of Bucket' transactions.",
+                              style: TextStyle(
+                                color: const Color(0xFF00B4D8).withOpacity(0.9),
+                                fontSize: 10,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );
           },
         );
       },
+    );
+  }
+
+  // --- NEW: Custom Modern Toggle Widget ---
+  Widget _buildModernToggle() {
+    return GestureDetector(
+      onTap: () {
+        setState(() => _isBudgetMode = !_isBudgetMode);
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            "Budget Mode",
+            style: TextStyle(
+              color: _isBudgetMode ? const Color(0xFF00B4D8) : Colors.white38,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 8),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            width: 40,
+            height: 22,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: _isBudgetMode
+                  ? const Color(0xFF00B4D8).withOpacity(0.2)
+                  : Colors.white.withOpacity(0.1),
+              border: Border.all(
+                color: _isBudgetMode
+                    ? const Color(0xFF00B4D8)
+                    : Colors.white.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Stack(
+              children: [
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutBack,
+                  left: _isBudgetMode ? 20 : 2,
+                  top: 2,
+                  bottom: 2,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isBudgetMode
+                          ? const Color(0xFF00B4D8)
+                          : Colors.white38,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -245,7 +379,6 @@ class _CashFlowCardState extends State<CashFlowCard> {
               final accounts = expenseSnapshot.data ?? [];
               final cards = creditSnapshot.data ?? [];
 
-              // Validation logic: Ensure selected ID matches an account, group, or null
               if (_selectedAccountId != null &&
                   _selectedAccountId != kGroupBanks &&
                   _selectedAccountId != kGroupCredits) {
@@ -281,7 +414,6 @@ class _CashFlowCardState extends State<CashFlowCard> {
                         value: null,
                         child: Text("All Accounts"),
                       ),
-                      // --- Bank Section ---
                       if (accounts.isNotEmpty)
                         const DropdownMenuItem<String?>(
                           enabled: false,
@@ -306,7 +438,6 @@ class _CashFlowCardState extends State<CashFlowCard> {
                               maxLines: 1,
                             ),
                           )),
-                      // --- Credit Section ---
                       if (cards.isNotEmpty)
                         const DropdownMenuItem<String?>(
                           enabled: false,

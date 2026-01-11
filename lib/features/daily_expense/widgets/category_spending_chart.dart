@@ -25,6 +25,7 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
   String _selectedPeriod = 'This Month';
   String? _selectedAccountId;
   int _touchedIndex = -1;
+  bool _isBudgetMode = false; // New State for Budget Mode
 
   // Constants for group filters
   static const String kGroupBanks = 'group_banks';
@@ -56,7 +57,7 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFF151D29),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
@@ -69,27 +70,34 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // --- HEADER WITH TOGGLE ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "SPENDING BREAKDOWN",
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                ),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "SPENDING BREAKDOWN",
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    "By Category",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 4),
-              Text(
-                "By Category",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              _buildModernToggle(),
             ],
           ),
           const SizedBox(height: 16),
@@ -195,10 +203,115 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
                             .map((e) =>
                                 _buildLegendItem(e, totalSpent, currencyFmt))
                             .toList(),
+
+                        // --- DISCLAIMER SECTION ---
+                        if (_isBudgetMode) ...[
+                          const SizedBox(height: 24),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00B4D8).withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color:
+                                      const Color(0xFF00B4D8).withOpacity(0.2)),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.info_outline_rounded,
+                                    color: Color(0xFF00B4D8), size: 14),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    "Budget Mode active. Excludes 'Non-Calculated' expenses and 'Out of Bucket' transactions.",
+                                    style: TextStyle(
+                                      color: const Color(0xFF00B4D8)
+                                          .withOpacity(0.9),
+                                      fontSize: 10,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     );
                   });
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- MODERN TOGGLE WIDGET ---
+  Widget _buildModernToggle() {
+    return GestureDetector(
+      onTap: () {
+        setState(() => _isBudgetMode = !_isBudgetMode);
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            "Budget Mode",
+            style: TextStyle(
+              color: _isBudgetMode ? const Color(0xFF00B4D8) : Colors.white38,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 8),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            width: 40,
+            height: 22,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: _isBudgetMode
+                  ? const Color(0xFF00B4D8).withOpacity(0.2)
+                  : Colors.white.withOpacity(0.1),
+              border: Border.all(
+                color: _isBudgetMode
+                    ? const Color(0xFF00B4D8)
+                    : Colors.white.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Stack(
+              children: [
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutBack,
+                  left: _isBudgetMode ? 20 : 2,
+                  top: 2,
+                  bottom: 2,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isBudgetMode
+                          ? const Color(0xFF00B4D8)
+                          : Colors.white38,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -228,11 +341,6 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
       List<CreditTransactionModel> credits) {
     List<dynamic> combined = [];
 
-    // Filter by Group (If Group selected)
-    // If specific ID selected, the StreamBuilder already filtered it.
-    // If Null selected (All Accounts), we have all.
-    // If Group selected, we have all, so we must filter the OTHER list out.
-
     // 1. Bank Expenses
     if (_selectedAccountId != kGroupCredits) {
       // Include banks unless "All Credit Cards" is selected
@@ -240,8 +348,18 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
         if (_selectedAccountId != null &&
             _selectedAccountId != kGroupBanks &&
             t.accountId != _selectedAccountId) return false;
+
+        // Base logic
         if (t.type != 'Expense') return false;
-        return _matchesPeriod(t.date.toDate());
+        if (!_matchesPeriod(t.date.toDate())) return false;
+
+        // Budget Mode Filtering
+        if (_isBudgetMode) {
+          if (t.bucket == 'Out of Bucket') return false;
+          if (t.category == 'Non-Calculated Expense') return false;
+        }
+
+        return true;
       }));
     }
 
@@ -252,8 +370,18 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
         if (_selectedAccountId != null &&
             _selectedAccountId != kGroupCredits &&
             t.cardId != _selectedAccountId) return false;
+
+        // Base Logic
         if (t.type != 'Expense') return false;
-        return _matchesPeriod(t.date.toDate());
+        if (!_matchesPeriod(t.date.toDate())) return false;
+
+        // Budget Mode Filtering
+        if (_isBudgetMode) {
+          if (t.bucket == 'Out of Bucket') return false;
+          if (t.category == 'Non-Calculated Expense') return false;
+        }
+
+        return true;
       }));
     }
 
