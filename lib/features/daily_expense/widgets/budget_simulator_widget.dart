@@ -1,4 +1,5 @@
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -206,8 +207,8 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
                       color: const Color(0xFF00B4D8).withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.hub_outlined,
-                        color: Color(0xFF00B4D8), size: 18),
+                    child: const Icon(CupertinoIcons.speedometer,
+                        color: Color.fromARGB(255, 255, 255, 255), size: 18),
                   ),
                   const SizedBox(width: 12),
                   const Column(
@@ -215,7 +216,7 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
                     children: [
                       Text("BUDGET SIMULATOR",
                           style: TextStyle(
-                              color: Color(0xFF00B4D8),
+                              color: Colors.white70,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.2)),

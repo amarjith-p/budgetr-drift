@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:budget/features/daily_expense/widgets/modern_expense_sheet.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/widgets/modern_loader.dart';
@@ -337,15 +338,16 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _buildAnimatedNavItem(0, Icons.grid_view_rounded, "Home"),
+                _buildAnimatedNavItem(0, CupertinoIcons.house_fill, "Home"),
                 _buildAnimatedNavItem(
-                    1, Icons.receipt_long_rounded, "Transactions"),
+                    1, CupertinoIcons.list_bullet, "Transactions"),
 
                 // Integrated Action Button
                 _buildCenterFab(),
 
-                _buildAnimatedNavItem(2, Icons.bar_chart_rounded, "Analytics"),
-                _buildAnimatedNavItem(3, Icons.category_rounded, "Insights"),
+                _buildAnimatedNavItem(
+                    2, Icons.donut_large_outlined, "Analytics"),
+                _buildAnimatedNavItem(3, CupertinoIcons.layers_alt, "Insights"),
               ],
             ),
           ),

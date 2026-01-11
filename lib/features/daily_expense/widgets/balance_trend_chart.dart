@@ -1,4 +1,5 @@
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
@@ -123,6 +124,15 @@ class _BalanceTrendChartState extends State<BalanceTrendChart> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(CupertinoIcons.waveform_path_ecg,
+                            color: Colors.white70, size: 12),
+                      ),
                       const Text(
                         "BALANCE TREND",
                         style: TextStyle(
