@@ -933,7 +933,6 @@ class _EmbeddedCalculator extends StatelessWidget {
             _key('+', color: Colors.blueAccent)
           ]),
           Row(children: [
-            _key('0'),
             _key('.', color: Colors.white70),
             _key('0'),
             _backspaceKey(),
