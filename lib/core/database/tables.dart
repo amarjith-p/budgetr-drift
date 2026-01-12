@@ -3,7 +3,7 @@ import 'package:drift/drift.dart';
 // --- 1. BUDGET & SETTLEMENTS ---
 
 class FinancialRecords extends Table {
-  TextColumn get id => text()(); // Format: "202401"
+  TextColumn get id => text()();
   RealColumn get salary => real().withDefault(const Constant(0.0))();
   RealColumn get extraIncome => real().withDefault(const Constant(0.0))();
   RealColumn get emi => real().withDefault(const Constant(0.0))();
@@ -13,7 +13,6 @@ class FinancialRecords extends Table {
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
-  // JSON Blobs for complex maps/lists
   TextColumn get allocations => text()();
   TextColumn get allocationPercentages => text()();
   TextColumn get bucketOrder => text()();
@@ -22,19 +21,21 @@ class FinancialRecords extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// UPDATED: Matches Settlement Model exactly
 class Settlements extends Table {
-  TextColumn get id => text()(); // Format: "202401"
+  TextColumn get id => text()();
   IntColumn get year => integer()();
   IntColumn get month => integer()();
-  RealColumn get actualIncome => real().withDefault(const Constant(0.0))();
-  RealColumn get totalExpenses => real().withDefault(const Constant(0.0))();
-  RealColumn get savings => real().withDefault(const Constant(0.0))();
-  TextColumn get notes => text().withDefault(const Constant(''))();
-  DateTimeColumn get settledAt => dateTime()();
-  BoolColumn get isLocked => boolean().withDefault(const Constant(true))();
 
-  // JSON Blob for category breakdown snapshot
-  TextColumn get categoryBreakdown => text()();
+  // New fields matching Model
+  RealColumn get totalIncome => real().withDefault(const Constant(0.0))();
+  RealColumn get totalExpense => real().withDefault(const Constant(0.0))();
+  DateTimeColumn get settledAt => dateTime()();
+
+  // JSON Storage for complex types
+  TextColumn get allocations => text()(); // Map<String, double>
+  TextColumn get expenses => text()(); // Map<String, double>
+  TextColumn get bucketOrder => text()(); // List<String>
 
   @override
   Set<Column> get primaryKey => {id};
@@ -71,7 +72,6 @@ class ExpenseTransactions extends Table {
   TextColumn get category => text()();
   TextColumn get subCategory => text()();
   TextColumn get notes => text().withDefault(const Constant(''))();
-
   TextColumn get transferAccountId => text().nullable()();
   TextColumn get transferAccountName => text().nullable()();
   TextColumn get transferAccountBankName => text().nullable()();
@@ -126,7 +126,7 @@ class InvestmentRecords extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get symbol => text()();
-  TextColumn get type => text()(); // Enum as String: STOCK, MF, OTHER
+  TextColumn get type => text()();
   TextColumn get bucket => text().withDefault(const Constant('Long Term'))();
   RealColumn get quantity => real()();
   RealColumn get averagePrice => real()();
@@ -146,8 +146,6 @@ class NetWorthRecords extends Table {
   TextColumn get id => text()();
   DateTimeColumn get date => dateTime()();
   RealColumn get totalAmount => real()();
-
-  // JSON: Breakdown of Assets/Liabilities
   TextColumn get breakdown => text()();
 
   @override
@@ -165,14 +163,12 @@ class NetWorthSplits extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-// --- 6. CUSTOM ENTRY (Dynamic Data) ---
+// --- 6. CUSTOM ENTRY ---
 
 class CustomTemplates extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   DateTimeColumn get createdAt => dateTime()();
-
-  // JSON: List of field configurations
   TextColumn get fields => text()();
   TextColumn get xAxisField => text().nullable()();
   TextColumn get yAxisField => text().nullable()();
@@ -185,8 +181,6 @@ class CustomRecords extends Table {
   TextColumn get id => text()();
   TextColumn get templateId => text().references(CustomTemplates, #id)();
   DateTimeColumn get createdAt => dateTime()();
-
-  // JSON: Dynamic Key-Value pairs
   TextColumn get data => text()();
 
   @override

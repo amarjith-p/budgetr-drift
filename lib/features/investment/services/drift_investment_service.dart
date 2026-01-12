@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
+// Note: We don't need cloud_firestore here if the model uses DateTime
 import '../../../../core/database/app_database.dart';
 import '../models/investment_model.dart' as domain;
 import 'investment_service.dart';
@@ -13,17 +14,21 @@ class DriftInvestmentService extends InvestmentService {
       id: row.id,
       name: row.name,
       symbol: row.symbol,
+      // Safe enum parsing
       type: domain.InvestmentType.values.firstWhere(
           (e) => e.toString() == row.type,
           orElse: () => domain.InvestmentType.stock),
+      // Removed 'bucket' if it causes errors, otherwise keep it.
+      // Assuming 'bucket' exists in Model based on your previous code.
       bucket: row.bucket,
       quantity: row.quantity,
       averagePrice: row.averagePrice,
       currentPrice: row.currentPrice,
       previousClose: row.previousClose,
-      lastPurchasedDate: row.lastPurchasedDate, // Direct DateTime
-      lastUpdated: row.lastUpdated, // Direct DateTime
-      isManual: row.isManual,
+      // Fix: Pass DateTime directly (No Timestamp conversion)
+      lastPurchasedDate: row.lastPurchasedDate,
+      lastUpdated: row.lastUpdated,
+      // Removed 'isManual' because the Model doesn't support it
     );
   }
 
@@ -50,9 +55,11 @@ class DriftInvestmentService extends InvestmentService {
           averagePrice: r.averagePrice,
           currentPrice: r.currentPrice,
           previousClose: drift.Value(r.previousClose),
-          lastPurchasedDate: r.lastPurchasedDate, // Direct DateTime
+          // Fix: Pass DateTime directly
+          lastPurchasedDate: r.lastPurchasedDate,
           lastUpdated: DateTime.now(),
-          isManual: drift.Value(r.isManual),
+          // Default isManual to false since Model doesn't provide it
+          isManual: const drift.Value(false),
         ));
   }
 }

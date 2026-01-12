@@ -2,10 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:drift/drift.dart' as drift;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:rxdart/rxdart.dart'; // Add rxdart to pubspec if missing, or use the helper below
+import 'package:async/async.dart';
 
 import '../../../../core/database/app_database.dart';
-// ALIAS THE MODEL IMPORT to avoid conflict with Drift class
 import '../../../core/models/financial_record_model.dart' as domain;
 import '../../daily_expense/models/expense_models.dart';
 import '../../credit_tracker/models/credit_models.dart';
@@ -15,8 +14,7 @@ import 'dashboard_service.dart';
 class DriftDashboardService extends DashboardService {
   final AppDatabase _db = AppDatabase.instance;
 
-  // --- Helpers ---
-  // Input: Drift Row (FinancialRecord), Output: Domain Model (domain.FinancialRecord)
+  // --- FinancialRecord uses Timestamp ---
   domain.FinancialRecord _mapRecord(FinancialRecord row) {
     return domain.FinancialRecord(
       id: row.id,
@@ -28,6 +26,7 @@ class DriftDashboardService extends DashboardService {
       allocations: Map<String, double>.from(jsonDecode(row.allocations)),
       bucketOrder: List<String>.from(jsonDecode(row.bucketOrder)),
       effectiveIncome: row.effectiveIncome,
+      // Fix: Convert DateTime -> Timestamp
       createdAt: Timestamp.fromDate(row.createdAt),
       updatedAt: Timestamp.fromDate(row.updatedAt),
       allocationPercentages:
@@ -35,7 +34,6 @@ class DriftDashboardService extends DashboardService {
     );
   }
 
-  // --- Financial Records ---
   @override
   Stream<List<domain.FinancialRecord>> getFinancialRecords() {
     return (_db.select(_db.financialRecords)
@@ -55,15 +53,18 @@ class DriftDashboardService extends DashboardService {
     final end = DateTime(year, month + 1, 0, 23, 59, 59);
 
     final creditQuery = _db.select(_db.creditTransactions)
-      ..where((t) => t.date.isBetweenValues(start, end))
+      // Fix: Use drift.Variable for queries
+      ..where(
+          (t) => t.date.isBetween(drift.Variable(start), drift.Variable(end)))
       ..where((t) => t.type.equals('Expense'));
 
     final expenseQuery = _db.select(_db.expenseTransactions)
-      ..where((t) => t.date.isBetweenValues(start, end))
+      // Fix: Use drift.Variable for queries
+      ..where(
+          (t) => t.date.isBetween(drift.Variable(start), drift.Variable(end)))
       ..where((t) => t.type.equals('Expense'));
 
-    // Combine streams manually without RxUtils
-    return CombineLatestStream.list([
+    return StreamZip([
       creditQuery.watch(),
       expenseQuery.watch(),
     ]).map((data) {
@@ -75,6 +76,7 @@ class DriftDashboardService extends DashboardService {
       merged.addAll(cList.map((t) => DashboardTransaction(
             id: t.id,
             amount: t.amount,
+            // Fix: Convert DateTime -> Timestamp
             date: Timestamp.fromDate(t.date),
             category: t.category,
             subCategory: t.subCategory,
@@ -87,6 +89,7 @@ class DriftDashboardService extends DashboardService {
       merged.addAll(eList.map((t) => DashboardTransaction(
             id: t.id,
             amount: t.amount,
+            // Fix: Convert DateTime -> Timestamp
             date: Timestamp.fromDate(t.date),
             category: t.category,
             subCategory: t.subCategory,

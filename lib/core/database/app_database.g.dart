@@ -631,71 +631,57 @@ class $SettlementsTable extends Settlements
   late final GeneratedColumn<int> month = GeneratedColumn<int>(
       'month', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _actualIncomeMeta =
-      const VerificationMeta('actualIncome');
+  static const VerificationMeta _totalIncomeMeta =
+      const VerificationMeta('totalIncome');
   @override
-  late final GeneratedColumn<double> actualIncome = GeneratedColumn<double>(
-      'actual_income', aliasedName, false,
+  late final GeneratedColumn<double> totalIncome = GeneratedColumn<double>(
+      'total_income', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
-  static const VerificationMeta _totalExpensesMeta =
-      const VerificationMeta('totalExpenses');
+  static const VerificationMeta _totalExpenseMeta =
+      const VerificationMeta('totalExpense');
   @override
-  late final GeneratedColumn<double> totalExpenses = GeneratedColumn<double>(
-      'total_expenses', aliasedName, false,
+  late final GeneratedColumn<double> totalExpense = GeneratedColumn<double>(
+      'total_expense', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
-  static const VerificationMeta _savingsMeta =
-      const VerificationMeta('savings');
-  @override
-  late final GeneratedColumn<double> savings = GeneratedColumn<double>(
-      'savings', aliasedName, false,
-      type: DriftSqlType.double,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0.0));
-  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
-  @override
-  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
-      'notes', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(''));
   static const VerificationMeta _settledAtMeta =
       const VerificationMeta('settledAt');
   @override
   late final GeneratedColumn<DateTime> settledAt = GeneratedColumn<DateTime>(
       'settled_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _isLockedMeta =
-      const VerificationMeta('isLocked');
+  static const VerificationMeta _allocationsMeta =
+      const VerificationMeta('allocations');
   @override
-  late final GeneratedColumn<bool> isLocked = GeneratedColumn<bool>(
-      'is_locked', aliasedName, false,
-      type: DriftSqlType.bool,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("is_locked" IN (0, 1))'),
-      defaultValue: const Constant(true));
-  static const VerificationMeta _categoryBreakdownMeta =
-      const VerificationMeta('categoryBreakdown');
+  late final GeneratedColumn<String> allocations = GeneratedColumn<String>(
+      'allocations', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _expensesMeta =
+      const VerificationMeta('expenses');
   @override
-  late final GeneratedColumn<String> categoryBreakdown =
-      GeneratedColumn<String>('category_breakdown', aliasedName, false,
-          type: DriftSqlType.string, requiredDuringInsert: true);
+  late final GeneratedColumn<String> expenses = GeneratedColumn<String>(
+      'expenses', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _bucketOrderMeta =
+      const VerificationMeta('bucketOrder');
+  @override
+  late final GeneratedColumn<String> bucketOrder = GeneratedColumn<String>(
+      'bucket_order', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns => [
         id,
         year,
         month,
-        actualIncome,
-        totalExpenses,
-        savings,
-        notes,
+        totalIncome,
+        totalExpense,
         settledAt,
-        isLocked,
-        categoryBreakdown
+        allocations,
+        expenses,
+        bucketOrder
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -724,25 +710,17 @@ class $SettlementsTable extends Settlements
     } else if (isInserting) {
       context.missing(_monthMeta);
     }
-    if (data.containsKey('actual_income')) {
+    if (data.containsKey('total_income')) {
       context.handle(
-          _actualIncomeMeta,
-          actualIncome.isAcceptableOrUnknown(
-              data['actual_income']!, _actualIncomeMeta));
+          _totalIncomeMeta,
+          totalIncome.isAcceptableOrUnknown(
+              data['total_income']!, _totalIncomeMeta));
     }
-    if (data.containsKey('total_expenses')) {
+    if (data.containsKey('total_expense')) {
       context.handle(
-          _totalExpensesMeta,
-          totalExpenses.isAcceptableOrUnknown(
-              data['total_expenses']!, _totalExpensesMeta));
-    }
-    if (data.containsKey('savings')) {
-      context.handle(_savingsMeta,
-          savings.isAcceptableOrUnknown(data['savings']!, _savingsMeta));
-    }
-    if (data.containsKey('notes')) {
-      context.handle(
-          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+          _totalExpenseMeta,
+          totalExpense.isAcceptableOrUnknown(
+              data['total_expense']!, _totalExpenseMeta));
     }
     if (data.containsKey('settled_at')) {
       context.handle(_settledAtMeta,
@@ -750,17 +728,27 @@ class $SettlementsTable extends Settlements
     } else if (isInserting) {
       context.missing(_settledAtMeta);
     }
-    if (data.containsKey('is_locked')) {
-      context.handle(_isLockedMeta,
-          isLocked.isAcceptableOrUnknown(data['is_locked']!, _isLockedMeta));
-    }
-    if (data.containsKey('category_breakdown')) {
+    if (data.containsKey('allocations')) {
       context.handle(
-          _categoryBreakdownMeta,
-          categoryBreakdown.isAcceptableOrUnknown(
-              data['category_breakdown']!, _categoryBreakdownMeta));
+          _allocationsMeta,
+          allocations.isAcceptableOrUnknown(
+              data['allocations']!, _allocationsMeta));
     } else if (isInserting) {
-      context.missing(_categoryBreakdownMeta);
+      context.missing(_allocationsMeta);
+    }
+    if (data.containsKey('expenses')) {
+      context.handle(_expensesMeta,
+          expenses.isAcceptableOrUnknown(data['expenses']!, _expensesMeta));
+    } else if (isInserting) {
+      context.missing(_expensesMeta);
+    }
+    if (data.containsKey('bucket_order')) {
+      context.handle(
+          _bucketOrderMeta,
+          bucketOrder.isAcceptableOrUnknown(
+              data['bucket_order']!, _bucketOrderMeta));
+    } else if (isInserting) {
+      context.missing(_bucketOrderMeta);
     }
     return context;
   }
@@ -777,20 +765,18 @@ class $SettlementsTable extends Settlements
           .read(DriftSqlType.int, data['${effectivePrefix}year'])!,
       month: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}month'])!,
-      actualIncome: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}actual_income'])!,
-      totalExpenses: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}total_expenses'])!,
-      savings: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}savings'])!,
-      notes: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}notes'])!,
+      totalIncome: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}total_income'])!,
+      totalExpense: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}total_expense'])!,
       settledAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}settled_at'])!,
-      isLocked: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}is_locked'])!,
-      categoryBreakdown: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}category_breakdown'])!,
+      allocations: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}allocations'])!,
+      expenses: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}expenses'])!,
+      bucketOrder: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}bucket_order'])!,
     );
   }
 
@@ -804,37 +790,34 @@ class Settlement extends DataClass implements Insertable<Settlement> {
   final String id;
   final int year;
   final int month;
-  final double actualIncome;
-  final double totalExpenses;
-  final double savings;
-  final String notes;
+  final double totalIncome;
+  final double totalExpense;
   final DateTime settledAt;
-  final bool isLocked;
-  final String categoryBreakdown;
+  final String allocations;
+  final String expenses;
+  final String bucketOrder;
   const Settlement(
       {required this.id,
       required this.year,
       required this.month,
-      required this.actualIncome,
-      required this.totalExpenses,
-      required this.savings,
-      required this.notes,
+      required this.totalIncome,
+      required this.totalExpense,
       required this.settledAt,
-      required this.isLocked,
-      required this.categoryBreakdown});
+      required this.allocations,
+      required this.expenses,
+      required this.bucketOrder});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['year'] = Variable<int>(year);
     map['month'] = Variable<int>(month);
-    map['actual_income'] = Variable<double>(actualIncome);
-    map['total_expenses'] = Variable<double>(totalExpenses);
-    map['savings'] = Variable<double>(savings);
-    map['notes'] = Variable<String>(notes);
+    map['total_income'] = Variable<double>(totalIncome);
+    map['total_expense'] = Variable<double>(totalExpense);
     map['settled_at'] = Variable<DateTime>(settledAt);
-    map['is_locked'] = Variable<bool>(isLocked);
-    map['category_breakdown'] = Variable<String>(categoryBreakdown);
+    map['allocations'] = Variable<String>(allocations);
+    map['expenses'] = Variable<String>(expenses);
+    map['bucket_order'] = Variable<String>(bucketOrder);
     return map;
   }
 
@@ -843,13 +826,12 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       id: Value(id),
       year: Value(year),
       month: Value(month),
-      actualIncome: Value(actualIncome),
-      totalExpenses: Value(totalExpenses),
-      savings: Value(savings),
-      notes: Value(notes),
+      totalIncome: Value(totalIncome),
+      totalExpense: Value(totalExpense),
       settledAt: Value(settledAt),
-      isLocked: Value(isLocked),
-      categoryBreakdown: Value(categoryBreakdown),
+      allocations: Value(allocations),
+      expenses: Value(expenses),
+      bucketOrder: Value(bucketOrder),
     );
   }
 
@@ -860,13 +842,12 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       id: serializer.fromJson<String>(json['id']),
       year: serializer.fromJson<int>(json['year']),
       month: serializer.fromJson<int>(json['month']),
-      actualIncome: serializer.fromJson<double>(json['actualIncome']),
-      totalExpenses: serializer.fromJson<double>(json['totalExpenses']),
-      savings: serializer.fromJson<double>(json['savings']),
-      notes: serializer.fromJson<String>(json['notes']),
+      totalIncome: serializer.fromJson<double>(json['totalIncome']),
+      totalExpense: serializer.fromJson<double>(json['totalExpense']),
       settledAt: serializer.fromJson<DateTime>(json['settledAt']),
-      isLocked: serializer.fromJson<bool>(json['isLocked']),
-      categoryBreakdown: serializer.fromJson<String>(json['categoryBreakdown']),
+      allocations: serializer.fromJson<String>(json['allocations']),
+      expenses: serializer.fromJson<String>(json['expenses']),
+      bucketOrder: serializer.fromJson<String>(json['bucketOrder']),
     );
   }
   @override
@@ -876,13 +857,12 @@ class Settlement extends DataClass implements Insertable<Settlement> {
       'id': serializer.toJson<String>(id),
       'year': serializer.toJson<int>(year),
       'month': serializer.toJson<int>(month),
-      'actualIncome': serializer.toJson<double>(actualIncome),
-      'totalExpenses': serializer.toJson<double>(totalExpenses),
-      'savings': serializer.toJson<double>(savings),
-      'notes': serializer.toJson<String>(notes),
+      'totalIncome': serializer.toJson<double>(totalIncome),
+      'totalExpense': serializer.toJson<double>(totalExpense),
       'settledAt': serializer.toJson<DateTime>(settledAt),
-      'isLocked': serializer.toJson<bool>(isLocked),
-      'categoryBreakdown': serializer.toJson<String>(categoryBreakdown),
+      'allocations': serializer.toJson<String>(allocations),
+      'expenses': serializer.toJson<String>(expenses),
+      'bucketOrder': serializer.toJson<String>(bucketOrder),
     };
   }
 
@@ -890,43 +870,39 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           {String? id,
           int? year,
           int? month,
-          double? actualIncome,
-          double? totalExpenses,
-          double? savings,
-          String? notes,
+          double? totalIncome,
+          double? totalExpense,
           DateTime? settledAt,
-          bool? isLocked,
-          String? categoryBreakdown}) =>
+          String? allocations,
+          String? expenses,
+          String? bucketOrder}) =>
       Settlement(
         id: id ?? this.id,
         year: year ?? this.year,
         month: month ?? this.month,
-        actualIncome: actualIncome ?? this.actualIncome,
-        totalExpenses: totalExpenses ?? this.totalExpenses,
-        savings: savings ?? this.savings,
-        notes: notes ?? this.notes,
+        totalIncome: totalIncome ?? this.totalIncome,
+        totalExpense: totalExpense ?? this.totalExpense,
         settledAt: settledAt ?? this.settledAt,
-        isLocked: isLocked ?? this.isLocked,
-        categoryBreakdown: categoryBreakdown ?? this.categoryBreakdown,
+        allocations: allocations ?? this.allocations,
+        expenses: expenses ?? this.expenses,
+        bucketOrder: bucketOrder ?? this.bucketOrder,
       );
   Settlement copyWithCompanion(SettlementsCompanion data) {
     return Settlement(
       id: data.id.present ? data.id.value : this.id,
       year: data.year.present ? data.year.value : this.year,
       month: data.month.present ? data.month.value : this.month,
-      actualIncome: data.actualIncome.present
-          ? data.actualIncome.value
-          : this.actualIncome,
-      totalExpenses: data.totalExpenses.present
-          ? data.totalExpenses.value
-          : this.totalExpenses,
-      savings: data.savings.present ? data.savings.value : this.savings,
-      notes: data.notes.present ? data.notes.value : this.notes,
+      totalIncome:
+          data.totalIncome.present ? data.totalIncome.value : this.totalIncome,
+      totalExpense: data.totalExpense.present
+          ? data.totalExpense.value
+          : this.totalExpense,
       settledAt: data.settledAt.present ? data.settledAt.value : this.settledAt,
-      isLocked: data.isLocked.present ? data.isLocked.value : this.isLocked,
-      categoryBreakdown: data.categoryBreakdown.present
-          ? data.categoryBreakdown.value
-          : this.categoryBreakdown,
+      allocations:
+          data.allocations.present ? data.allocations.value : this.allocations,
+      expenses: data.expenses.present ? data.expenses.value : this.expenses,
+      bucketOrder:
+          data.bucketOrder.present ? data.bucketOrder.value : this.bucketOrder,
     );
   }
 
@@ -936,20 +912,19 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           ..write('id: $id, ')
           ..write('year: $year, ')
           ..write('month: $month, ')
-          ..write('actualIncome: $actualIncome, ')
-          ..write('totalExpenses: $totalExpenses, ')
-          ..write('savings: $savings, ')
-          ..write('notes: $notes, ')
+          ..write('totalIncome: $totalIncome, ')
+          ..write('totalExpense: $totalExpense, ')
           ..write('settledAt: $settledAt, ')
-          ..write('isLocked: $isLocked, ')
-          ..write('categoryBreakdown: $categoryBreakdown')
+          ..write('allocations: $allocations, ')
+          ..write('expenses: $expenses, ')
+          ..write('bucketOrder: $bucketOrder')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, year, month, actualIncome, totalExpenses,
-      savings, notes, settledAt, isLocked, categoryBreakdown);
+  int get hashCode => Object.hash(id, year, month, totalIncome, totalExpense,
+      settledAt, allocations, expenses, bucketOrder);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -957,81 +932,77 @@ class Settlement extends DataClass implements Insertable<Settlement> {
           other.id == this.id &&
           other.year == this.year &&
           other.month == this.month &&
-          other.actualIncome == this.actualIncome &&
-          other.totalExpenses == this.totalExpenses &&
-          other.savings == this.savings &&
-          other.notes == this.notes &&
+          other.totalIncome == this.totalIncome &&
+          other.totalExpense == this.totalExpense &&
           other.settledAt == this.settledAt &&
-          other.isLocked == this.isLocked &&
-          other.categoryBreakdown == this.categoryBreakdown);
+          other.allocations == this.allocations &&
+          other.expenses == this.expenses &&
+          other.bucketOrder == this.bucketOrder);
 }
 
 class SettlementsCompanion extends UpdateCompanion<Settlement> {
   final Value<String> id;
   final Value<int> year;
   final Value<int> month;
-  final Value<double> actualIncome;
-  final Value<double> totalExpenses;
-  final Value<double> savings;
-  final Value<String> notes;
+  final Value<double> totalIncome;
+  final Value<double> totalExpense;
   final Value<DateTime> settledAt;
-  final Value<bool> isLocked;
-  final Value<String> categoryBreakdown;
+  final Value<String> allocations;
+  final Value<String> expenses;
+  final Value<String> bucketOrder;
   final Value<int> rowid;
   const SettlementsCompanion({
     this.id = const Value.absent(),
     this.year = const Value.absent(),
     this.month = const Value.absent(),
-    this.actualIncome = const Value.absent(),
-    this.totalExpenses = const Value.absent(),
-    this.savings = const Value.absent(),
-    this.notes = const Value.absent(),
+    this.totalIncome = const Value.absent(),
+    this.totalExpense = const Value.absent(),
     this.settledAt = const Value.absent(),
-    this.isLocked = const Value.absent(),
-    this.categoryBreakdown = const Value.absent(),
+    this.allocations = const Value.absent(),
+    this.expenses = const Value.absent(),
+    this.bucketOrder = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SettlementsCompanion.insert({
     required String id,
     required int year,
     required int month,
-    this.actualIncome = const Value.absent(),
-    this.totalExpenses = const Value.absent(),
-    this.savings = const Value.absent(),
-    this.notes = const Value.absent(),
+    this.totalIncome = const Value.absent(),
+    this.totalExpense = const Value.absent(),
     required DateTime settledAt,
-    this.isLocked = const Value.absent(),
-    required String categoryBreakdown,
+    required String allocations,
+    required String expenses,
+    required String bucketOrder,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         year = Value(year),
         month = Value(month),
         settledAt = Value(settledAt),
-        categoryBreakdown = Value(categoryBreakdown);
+        allocations = Value(allocations),
+        expenses = Value(expenses),
+        bucketOrder = Value(bucketOrder);
   static Insertable<Settlement> custom({
     Expression<String>? id,
     Expression<int>? year,
     Expression<int>? month,
-    Expression<double>? actualIncome,
-    Expression<double>? totalExpenses,
-    Expression<double>? savings,
-    Expression<String>? notes,
+    Expression<double>? totalIncome,
+    Expression<double>? totalExpense,
     Expression<DateTime>? settledAt,
-    Expression<bool>? isLocked,
-    Expression<String>? categoryBreakdown,
+    Expression<String>? allocations,
+    Expression<String>? expenses,
+    Expression<String>? bucketOrder,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (year != null) 'year': year,
       if (month != null) 'month': month,
-      if (actualIncome != null) 'actual_income': actualIncome,
-      if (totalExpenses != null) 'total_expenses': totalExpenses,
-      if (savings != null) 'savings': savings,
-      if (notes != null) 'notes': notes,
+      if (totalIncome != null) 'total_income': totalIncome,
+      if (totalExpense != null) 'total_expense': totalExpense,
       if (settledAt != null) 'settled_at': settledAt,
-      if (isLocked != null) 'is_locked': isLocked,
-      if (categoryBreakdown != null) 'category_breakdown': categoryBreakdown,
+      if (allocations != null) 'allocations': allocations,
+      if (expenses != null) 'expenses': expenses,
+      if (bucketOrder != null) 'bucket_order': bucketOrder,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1040,25 +1011,23 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
       {Value<String>? id,
       Value<int>? year,
       Value<int>? month,
-      Value<double>? actualIncome,
-      Value<double>? totalExpenses,
-      Value<double>? savings,
-      Value<String>? notes,
+      Value<double>? totalIncome,
+      Value<double>? totalExpense,
       Value<DateTime>? settledAt,
-      Value<bool>? isLocked,
-      Value<String>? categoryBreakdown,
+      Value<String>? allocations,
+      Value<String>? expenses,
+      Value<String>? bucketOrder,
       Value<int>? rowid}) {
     return SettlementsCompanion(
       id: id ?? this.id,
       year: year ?? this.year,
       month: month ?? this.month,
-      actualIncome: actualIncome ?? this.actualIncome,
-      totalExpenses: totalExpenses ?? this.totalExpenses,
-      savings: savings ?? this.savings,
-      notes: notes ?? this.notes,
+      totalIncome: totalIncome ?? this.totalIncome,
+      totalExpense: totalExpense ?? this.totalExpense,
       settledAt: settledAt ?? this.settledAt,
-      isLocked: isLocked ?? this.isLocked,
-      categoryBreakdown: categoryBreakdown ?? this.categoryBreakdown,
+      allocations: allocations ?? this.allocations,
+      expenses: expenses ?? this.expenses,
+      bucketOrder: bucketOrder ?? this.bucketOrder,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1075,26 +1044,23 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
     if (month.present) {
       map['month'] = Variable<int>(month.value);
     }
-    if (actualIncome.present) {
-      map['actual_income'] = Variable<double>(actualIncome.value);
+    if (totalIncome.present) {
+      map['total_income'] = Variable<double>(totalIncome.value);
     }
-    if (totalExpenses.present) {
-      map['total_expenses'] = Variable<double>(totalExpenses.value);
-    }
-    if (savings.present) {
-      map['savings'] = Variable<double>(savings.value);
-    }
-    if (notes.present) {
-      map['notes'] = Variable<String>(notes.value);
+    if (totalExpense.present) {
+      map['total_expense'] = Variable<double>(totalExpense.value);
     }
     if (settledAt.present) {
       map['settled_at'] = Variable<DateTime>(settledAt.value);
     }
-    if (isLocked.present) {
-      map['is_locked'] = Variable<bool>(isLocked.value);
+    if (allocations.present) {
+      map['allocations'] = Variable<String>(allocations.value);
     }
-    if (categoryBreakdown.present) {
-      map['category_breakdown'] = Variable<String>(categoryBreakdown.value);
+    if (expenses.present) {
+      map['expenses'] = Variable<String>(expenses.value);
+    }
+    if (bucketOrder.present) {
+      map['bucket_order'] = Variable<String>(bucketOrder.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1108,13 +1074,12 @@ class SettlementsCompanion extends UpdateCompanion<Settlement> {
           ..write('id: $id, ')
           ..write('year: $year, ')
           ..write('month: $month, ')
-          ..write('actualIncome: $actualIncome, ')
-          ..write('totalExpenses: $totalExpenses, ')
-          ..write('savings: $savings, ')
-          ..write('notes: $notes, ')
+          ..write('totalIncome: $totalIncome, ')
+          ..write('totalExpense: $totalExpense, ')
           ..write('settledAt: $settledAt, ')
-          ..write('isLocked: $isLocked, ')
-          ..write('categoryBreakdown: $categoryBreakdown, ')
+          ..write('allocations: $allocations, ')
+          ..write('expenses: $expenses, ')
+          ..write('bucketOrder: $bucketOrder, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5684,13 +5649,12 @@ typedef $$SettlementsTableCreateCompanionBuilder = SettlementsCompanion
   required String id,
   required int year,
   required int month,
-  Value<double> actualIncome,
-  Value<double> totalExpenses,
-  Value<double> savings,
-  Value<String> notes,
+  Value<double> totalIncome,
+  Value<double> totalExpense,
   required DateTime settledAt,
-  Value<bool> isLocked,
-  required String categoryBreakdown,
+  required String allocations,
+  required String expenses,
+  required String bucketOrder,
   Value<int> rowid,
 });
 typedef $$SettlementsTableUpdateCompanionBuilder = SettlementsCompanion
@@ -5698,13 +5662,12 @@ typedef $$SettlementsTableUpdateCompanionBuilder = SettlementsCompanion
   Value<String> id,
   Value<int> year,
   Value<int> month,
-  Value<double> actualIncome,
-  Value<double> totalExpenses,
-  Value<double> savings,
-  Value<String> notes,
+  Value<double> totalIncome,
+  Value<double> totalExpense,
   Value<DateTime> settledAt,
-  Value<bool> isLocked,
-  Value<String> categoryBreakdown,
+  Value<String> allocations,
+  Value<String> expenses,
+  Value<String> bucketOrder,
   Value<int> rowid,
 });
 
@@ -5726,27 +5689,23 @@ class $$SettlementsTableFilterComposer
   ColumnFilters<int> get month => $composableBuilder(
       column: $table.month, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get actualIncome => $composableBuilder(
-      column: $table.actualIncome, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get totalIncome => $composableBuilder(
+      column: $table.totalIncome, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get totalExpenses => $composableBuilder(
-      column: $table.totalExpenses, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<double> get savings => $composableBuilder(
-      column: $table.savings, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get notes => $composableBuilder(
-      column: $table.notes, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get totalExpense => $composableBuilder(
+      column: $table.totalExpense, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get settledAt => $composableBuilder(
       column: $table.settledAt, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<bool> get isLocked => $composableBuilder(
-      column: $table.isLocked, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get allocations => $composableBuilder(
+      column: $table.allocations, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get categoryBreakdown => $composableBuilder(
-      column: $table.categoryBreakdown,
-      builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get expenses => $composableBuilder(
+      column: $table.expenses, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get bucketOrder => $composableBuilder(
+      column: $table.bucketOrder, builder: (column) => ColumnFilters(column));
 }
 
 class $$SettlementsTableOrderingComposer
@@ -5767,29 +5726,24 @@ class $$SettlementsTableOrderingComposer
   ColumnOrderings<int> get month => $composableBuilder(
       column: $table.month, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get actualIncome => $composableBuilder(
-      column: $table.actualIncome,
+  ColumnOrderings<double> get totalIncome => $composableBuilder(
+      column: $table.totalIncome, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get totalExpense => $composableBuilder(
+      column: $table.totalExpense,
       builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<double> get totalExpenses => $composableBuilder(
-      column: $table.totalExpenses,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<double> get savings => $composableBuilder(
-      column: $table.savings, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get notes => $composableBuilder(
-      column: $table.notes, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get settledAt => $composableBuilder(
       column: $table.settledAt, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<bool> get isLocked => $composableBuilder(
-      column: $table.isLocked, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get allocations => $composableBuilder(
+      column: $table.allocations, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get categoryBreakdown => $composableBuilder(
-      column: $table.categoryBreakdown,
-      builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get expenses => $composableBuilder(
+      column: $table.expenses, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get bucketOrder => $composableBuilder(
+      column: $table.bucketOrder, builder: (column) => ColumnOrderings(column));
 }
 
 class $$SettlementsTableAnnotationComposer
@@ -5810,26 +5764,23 @@ class $$SettlementsTableAnnotationComposer
   GeneratedColumn<int> get month =>
       $composableBuilder(column: $table.month, builder: (column) => column);
 
-  GeneratedColumn<double> get actualIncome => $composableBuilder(
-      column: $table.actualIncome, builder: (column) => column);
+  GeneratedColumn<double> get totalIncome => $composableBuilder(
+      column: $table.totalIncome, builder: (column) => column);
 
-  GeneratedColumn<double> get totalExpenses => $composableBuilder(
-      column: $table.totalExpenses, builder: (column) => column);
-
-  GeneratedColumn<double> get savings =>
-      $composableBuilder(column: $table.savings, builder: (column) => column);
-
-  GeneratedColumn<String> get notes =>
-      $composableBuilder(column: $table.notes, builder: (column) => column);
+  GeneratedColumn<double> get totalExpense => $composableBuilder(
+      column: $table.totalExpense, builder: (column) => column);
 
   GeneratedColumn<DateTime> get settledAt =>
       $composableBuilder(column: $table.settledAt, builder: (column) => column);
 
-  GeneratedColumn<bool> get isLocked =>
-      $composableBuilder(column: $table.isLocked, builder: (column) => column);
+  GeneratedColumn<String> get allocations => $composableBuilder(
+      column: $table.allocations, builder: (column) => column);
 
-  GeneratedColumn<String> get categoryBreakdown => $composableBuilder(
-      column: $table.categoryBreakdown, builder: (column) => column);
+  GeneratedColumn<String> get expenses =>
+      $composableBuilder(column: $table.expenses, builder: (column) => column);
+
+  GeneratedColumn<String> get bucketOrder => $composableBuilder(
+      column: $table.bucketOrder, builder: (column) => column);
 }
 
 class $$SettlementsTableTableManager extends RootTableManager<
@@ -5858,52 +5809,48 @@ class $$SettlementsTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<int> year = const Value.absent(),
             Value<int> month = const Value.absent(),
-            Value<double> actualIncome = const Value.absent(),
-            Value<double> totalExpenses = const Value.absent(),
-            Value<double> savings = const Value.absent(),
-            Value<String> notes = const Value.absent(),
+            Value<double> totalIncome = const Value.absent(),
+            Value<double> totalExpense = const Value.absent(),
             Value<DateTime> settledAt = const Value.absent(),
-            Value<bool> isLocked = const Value.absent(),
-            Value<String> categoryBreakdown = const Value.absent(),
+            Value<String> allocations = const Value.absent(),
+            Value<String> expenses = const Value.absent(),
+            Value<String> bucketOrder = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               SettlementsCompanion(
             id: id,
             year: year,
             month: month,
-            actualIncome: actualIncome,
-            totalExpenses: totalExpenses,
-            savings: savings,
-            notes: notes,
+            totalIncome: totalIncome,
+            totalExpense: totalExpense,
             settledAt: settledAt,
-            isLocked: isLocked,
-            categoryBreakdown: categoryBreakdown,
+            allocations: allocations,
+            expenses: expenses,
+            bucketOrder: bucketOrder,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
             required int year,
             required int month,
-            Value<double> actualIncome = const Value.absent(),
-            Value<double> totalExpenses = const Value.absent(),
-            Value<double> savings = const Value.absent(),
-            Value<String> notes = const Value.absent(),
+            Value<double> totalIncome = const Value.absent(),
+            Value<double> totalExpense = const Value.absent(),
             required DateTime settledAt,
-            Value<bool> isLocked = const Value.absent(),
-            required String categoryBreakdown,
+            required String allocations,
+            required String expenses,
+            required String bucketOrder,
             Value<int> rowid = const Value.absent(),
           }) =>
               SettlementsCompanion.insert(
             id: id,
             year: year,
             month: month,
-            actualIncome: actualIncome,
-            totalExpenses: totalExpenses,
-            savings: savings,
-            notes: notes,
+            totalIncome: totalIncome,
+            totalExpense: totalExpense,
             settledAt: settledAt,
-            isLocked: isLocked,
-            categoryBreakdown: categoryBreakdown,
+            allocations: allocations,
+            expenses: expenses,
+            bucketOrder: bucketOrder,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../../../core/database/app_database.dart';
 import '../../../core/models/settlement_model.dart' as domain;
@@ -9,6 +10,7 @@ class DriftSettlementService extends SettlementService {
 
   @override
   Future<List<Map<String, int>>> getAvailableMonthsForSettlement() async {
+    // Select distinct year/month combinations from financial records
     final query = _db.selectOnly(_db.financialRecords, distinct: true)
       ..addColumns([_db.financialRecords.year, _db.financialRecords.month]);
 
@@ -35,14 +37,15 @@ class DriftSettlementService extends SettlementService {
       id: row.id,
       year: row.year,
       month: row.month,
-      actualIncome: row.actualIncome,
-      totalExpenses: row.totalExpenses,
-      savings: row.savings,
-      notes: row.notes,
-      settledAt: row.settledAt, // Direct DateTime
-      isLocked: row.isLocked,
-      categoryBreakdown:
-          Map<String, double>.from(jsonDecode(row.categoryBreakdown)),
+      // Map JSON Text -> Maps/Lists
+      allocations: Map<String, double>.from(jsonDecode(row.allocations)),
+      expenses: Map<String, double>.from(jsonDecode(row.expenses)),
+      bucketOrder: List<String>.from(jsonDecode(row.bucketOrder)),
+      // Map correct column names
+      totalIncome: row.totalIncome,
+      totalExpense: row.totalExpense,
+      // Map DateTime -> Timestamp
+      settledAt: Timestamp.fromDate(row.settledAt),
     );
   }
 
@@ -54,13 +57,14 @@ class DriftSettlementService extends SettlementService {
           id: s.id,
           year: s.year,
           month: s.month,
-          actualIncome: drift.Value(s.actualIncome),
-          totalExpenses: drift.Value(s.totalExpenses),
-          savings: drift.Value(s.savings),
-          notes: drift.Value(s.notes),
-          settledAt: s.settledAt, // Direct DateTime
-          isLocked: drift.Value(s.isLocked),
-          categoryBreakdown: jsonEncode(s.categoryBreakdown),
+          // Map fields to Columns
+          totalIncome: drift.Value(s.totalIncome),
+          totalExpense: drift.Value(s.totalExpense),
+          settledAt: s.settledAt.toDate(), // Timestamp -> DateTime
+          // Encode complex types to JSON
+          allocations: jsonEncode(s.allocations),
+          expenses: jsonEncode(s.expenses),
+          bucketOrder: jsonEncode(s.bucketOrder),
         ));
   }
 }
