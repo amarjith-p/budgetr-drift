@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../../../core/database/app_database.dart';
-// ALIAS MODEL
 import '../../../core/models/settlement_model.dart' as domain;
 import 'settlement_service.dart';
 
@@ -41,7 +39,7 @@ class DriftSettlementService extends SettlementService {
       totalExpenses: row.totalExpenses,
       savings: row.savings,
       notes: row.notes,
-      settledAt: Timestamp.fromDate(row.settledAt),
+      settledAt: row.settledAt, // Direct DateTime
       isLocked: row.isLocked,
       categoryBreakdown:
           Map<String, double>.from(jsonDecode(row.categoryBreakdown)),
@@ -60,7 +58,7 @@ class DriftSettlementService extends SettlementService {
           totalExpenses: drift.Value(s.totalExpenses),
           savings: drift.Value(s.savings),
           notes: drift.Value(s.notes),
-          settledAt: s.settledAt.toDate(),
+          settledAt: s.settledAt, // Direct DateTime
           isLocked: drift.Value(s.isLocked),
           categoryBreakdown: jsonEncode(s.categoryBreakdown),
         ));
