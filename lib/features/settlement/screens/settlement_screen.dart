@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/models/percentage_config_model.dart';
@@ -25,8 +26,8 @@ class SettlementScreen extends StatefulWidget {
 }
 
 class _SettlementScreenState extends State<SettlementScreen> {
-  final _settlementService = SettlementService();
-  final _settingsService = SettingsService();
+  final _settlementService = GetIt.I<SettlementService>();
+  final _settingsService = GetIt.I<SettingsService>();
   final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
   List<Map<String, int>> _yearMonthData = [];
@@ -308,9 +309,7 @@ class _SettlementScreenState extends State<SettlementScreen> {
             settlement: _settlementData!,
             percentageConfig: _percentageConfig,
           ),
-
           const SizedBox(height: 32),
-
           Text(
             'Settlement Details',
             textAlign: TextAlign.center,

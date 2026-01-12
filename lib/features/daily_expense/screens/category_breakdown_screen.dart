@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import '../../../core/constants/icon_constants.dart';
@@ -22,9 +23,9 @@ class CategoryBreakdownScreen extends StatefulWidget {
 }
 
 class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
-  final ExpenseService _service = ExpenseService();
-  final CreditService _creditService = CreditService();
-  final CategoryService _categoryService = CategoryService();
+  final ExpenseService _service = GetIt.I<ExpenseService>();
+  final CreditService _creditService = GetIt.I<CreditService>();
+  final CategoryService _categoryService = GetIt.I<CategoryService>();
 
   String _selectedRange = 'This Month';
   String? _selectedAccountId;

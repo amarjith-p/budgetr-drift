@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../../../core/models/financial_record_model.dart';
@@ -19,9 +20,9 @@ class BudgetSimulatorWidget extends StatefulWidget {
 }
 
 class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
-  final ExpenseService _expenseService = ExpenseService();
-  final CreditService _creditService = CreditService();
-  final DashboardService _dashboardService = DashboardService();
+  final ExpenseService _expenseService = GetIt.I<ExpenseService>();
+  final CreditService _creditService = GetIt.I<CreditService>();
+  final DashboardService _dashboardService = GetIt.I<DashboardService>();
 
   // --- STATE ---
   List<String> _allBuckets = [];

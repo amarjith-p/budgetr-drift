@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get_it/get_it.dart';
 import '../../../core/constants/bank_list.dart';
 import '../../../core/widgets/modern_dropdown.dart';
 import '../../../core/widgets/modern_loader.dart';
@@ -118,9 +119,9 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
       );
 
       if (isEditing) {
-        await CreditService().updateCreditCard(card);
+        await GetIt.I<CreditService>().updateCreditCard(card);
       } else {
-        await CreditService().addCreditCard(card);
+        await GetIt.I<CreditService>().addCreditCard(card);
       }
 
       if (mounted) Navigator.pop(context);

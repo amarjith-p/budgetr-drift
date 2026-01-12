@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:math_expressions/math_expressions.dart';
 
@@ -96,9 +97,9 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
   // ===========================================================================
 
   Future<void> _loadData() async {
-    final cardsFuture = CreditService().getCreditCards().first;
-    final catsFuture = CategoryService().getCategories().first;
-    final configFuture = SettingsService().getPercentageConfig();
+    final cardsFuture = GetIt.I<CreditService>().getCreditCards().first;
+    final catsFuture = GetIt.I<CategoryService>().getCategories().first;
+    final configFuture = GetIt.I<SettingsService>().getPercentageConfig();
 
     final results = await Future.wait([
       cardsFuture,
@@ -154,8 +155,8 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
   Future<void> _updateBucketsForDate(DateTime date) async {
     try {
       // 1. Check if Month is Settled (Closed)
-      final isSettled =
-          await SettlementService().isMonthSettled(date.year, date.month);
+      final isSettled = await GetIt.I<SettlementService>()
+          .isMonthSettled(date.year, date.month);
 
       if (isSettled) {
         setState(() {
@@ -167,8 +168,8 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
       }
 
       // 2. Fetch Historical Bucket Order for that Month
-      final record =
-          await DashboardService().getRecordForMonth(date.year, date.month);
+      final record = await GetIt.I<DashboardService>()
+          .getRecordForMonth(date.year, date.month);
 
       List<String> newBuckets = [];
       if (record != null && record.bucketOrder.isNotEmpty) {
@@ -254,14 +255,14 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
 
       if (widget.transactionToEdit == null) {
         // Add
-        await CreditService().addTransaction(txn);
+        await GetIt.I<CreditService>().addTransaction(txn);
         if (mounted) {
           await BudgetNotificationService()
               .checkAndTriggerCreditNotification(txn);
         }
       } else {
         // Update
-        await CreditService().updateTransaction(txn);
+        await GetIt.I<CreditService>().updateTransaction(txn);
         if (mounted) {
           await BudgetNotificationService()
               .checkAndTriggerCreditNotification(txn);

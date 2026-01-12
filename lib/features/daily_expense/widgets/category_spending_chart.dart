@@ -2,6 +2,7 @@
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import '../../../core/widgets/modern_loader.dart';
@@ -18,8 +19,8 @@ class CategorySpendingChart extends StatefulWidget {
 }
 
 class _CategorySpendingChartState extends State<CategorySpendingChart> {
-  final ExpenseService _expenseService = ExpenseService();
-  final CreditService _creditService = CreditService();
+  final ExpenseService _expenseService = GetIt.I<ExpenseService>();
+  final CreditService _creditService = GetIt.I<CreditService>();
 
   // State
   String _selectedPeriod = 'This Month';

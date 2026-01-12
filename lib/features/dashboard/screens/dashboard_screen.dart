@@ -3,6 +3,7 @@ import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/settlement/screens/settlement_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'monthly_spending_screen.dart';
@@ -26,9 +27,9 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final DashboardService _dashboardService = DashboardService();
+  final DashboardService _dashboardService = GetIt.I<DashboardService>();
   final SettlementService _settlementService =
-      SettlementService(); // Initialize Service
+      GetIt.I<SettlementService>(); // Initialize Service
 
   // Infinite Scroll Logic
   final int _initialIndex = 12 * 50;

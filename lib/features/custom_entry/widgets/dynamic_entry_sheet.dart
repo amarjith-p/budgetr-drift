@@ -1,6 +1,7 @@
 import 'package:budget/core/widgets/calculator_keyboard.dart';
 import 'package:budget/core/widgets/modern_dropdown.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/custom_data_models.dart';
@@ -474,9 +475,9 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
     );
 
     if (_isEditing) {
-      await CustomEntryService().updateCustomRecord(record);
+      await GetIt.I<CustomEntryService>().updateCustomRecord(record);
     } else {
-      await CustomEntryService().addCustomRecord(record);
+      await GetIt.I<CustomEntryService>().addCustomRecord(record);
     }
     if (mounted) Navigator.pop(context);
   }

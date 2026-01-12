@@ -1,6 +1,7 @@
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
@@ -27,7 +28,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
   @override
   void initState() {
     super.initState();
-    ExpenseService().getAccounts().listen((data) {
+    GetIt.I<ExpenseService>().getAccounts().listen((data) {
       if (mounted) {
         setState(() {
           _accounts = data;
@@ -46,7 +47,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       _accounts.insert(newIndex, item);
     });
 
-    ExpenseService().updateAccountOrder(_accounts);
+    GetIt.I<ExpenseService>().updateAccountOrder(_accounts);
   }
 
   @override
@@ -262,7 +263,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
 
           try {
             if (accountToEdit != null) {
-              await ExpenseService().updateAccount(newAccount);
+              await GetIt.I<ExpenseService>().updateAccount(newAccount);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text("Account Updated"),
@@ -270,7 +271,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                 ));
               }
             } else {
-              await ExpenseService().addAccount(newAccount);
+              await GetIt.I<ExpenseService>().addAccount(newAccount);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text("Account Added"),
@@ -304,7 +305,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
         });
 
         try {
-          await ExpenseService().deleteAccount(account.id);
+          await GetIt.I<ExpenseService>().deleteAccount(account.id);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text("Account deleted successfully"),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/constants/icon_constants.dart';
@@ -30,10 +31,10 @@ class MonthlySpendingScreen extends StatefulWidget {
 }
 
 class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
-  final DashboardService _dashboardService = DashboardService();
-  final CreditService _creditService = CreditService();
-  final ExpenseService _expenseService = ExpenseService();
-  final CategoryService _categoryService = CategoryService();
+  final DashboardService _dashboardService = GetIt.I<DashboardService>();
+  final CreditService _creditService = GetIt.I<CreditService>();
+  final ExpenseService _expenseService = GetIt.I<ExpenseService>();
+  final CategoryService _categoryService = GetIt.I<CategoryService>();
 
   Map<String, String> _accountNames = {};
   Map<String, String> _bankNames = {};

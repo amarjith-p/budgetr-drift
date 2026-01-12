@@ -1,6 +1,7 @@
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../models/investment_model.dart';
@@ -27,8 +28,8 @@ class InvestmentScreen extends StatefulWidget {
 }
 
 class _InvestmentScreenState extends State<InvestmentScreen> {
-  final _service = InvestmentService();
-  final _customEntryService = CustomEntryService();
+  final _service = GetIt.I<InvestmentService>();
+  final _customEntryService = GetIt.I<CustomEntryService>();
 
   final _currencyFormat = NumberFormat.currency(
     locale: 'en_IN',

@@ -1,5 +1,6 @@
 import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import '../../../core/models/custom_data_models.dart';
 import '../services/custom_entry_service.dart';
 import '../widgets/editor/field_config_card.dart';
@@ -92,14 +93,14 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
 
       try {
         if (_isEditing) {
-          await CustomEntryService().updateCustomTemplate(template);
+          await GetIt.I<CustomEntryService>().updateCustomTemplate(template);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Updating & Backfilling data...")),
             );
           }
         } else {
-          await CustomEntryService().addCustomTemplate(template);
+          await GetIt.I<CustomEntryService>().addCustomTemplate(template);
         }
         if (mounted) Navigator.pop(context);
       } catch (e) {

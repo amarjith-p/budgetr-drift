@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:math_expressions/math_expressions.dart';
 
@@ -110,10 +111,10 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
   // ===========================================================================
 
   Future<void> _loadData() async {
-    final accsFuture = ExpenseService().getAccounts().first;
-    final creditFuture = CreditService().getCreditCards().first;
-    final catsFuture = CategoryService().getCategories().first;
-    final configFuture = SettingsService().getPercentageConfig();
+    final accsFuture = GetIt.I<ExpenseService>().getAccounts().first;
+    final creditFuture = GetIt.I<CreditService>().getCreditCards().first;
+    final catsFuture = GetIt.I<CategoryService>().getCategories().first;
+    final configFuture = GetIt.I<SettingsService>().getPercentageConfig();
 
     final results =
         await Future.wait([accsFuture, creditFuture, catsFuture, configFuture]);
@@ -219,8 +220,8 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
 
   Future<void> _updateBucketsForDate(DateTime date) async {
     try {
-      final isSettled =
-          await SettlementService().isMonthSettled(date.year, date.month);
+      final isSettled = await GetIt.I<SettlementService>()
+          .isMonthSettled(date.year, date.month);
       if (isSettled) {
         setState(() {
           _isMonthSettled = true;
@@ -229,8 +230,8 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
         });
         return;
       }
-      final record =
-          await DashboardService().getRecordForMonth(date.year, date.month);
+      final record = await GetIt.I<DashboardService>()
+          .getRecordForMonth(date.year, date.month);
       List<String> newBuckets = [];
       if (record != null && record.bucketOrder.isNotEmpty) {
         newBuckets = List.from(record.bucketOrder);
@@ -440,9 +441,9 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
       }
 
       if (isEditing) {
-        await ExpenseService().updateTransaction(txn);
+        await GetIt.I<ExpenseService>().updateTransaction(txn);
       } else {
-        await ExpenseService().addTransaction(txn);
+        await GetIt.I<ExpenseService>().addTransaction(txn);
       }
 
       if (mounted) {

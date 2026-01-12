@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
@@ -172,7 +173,7 @@ class _StatementVerificationSheetState
 
   Future<void> _confirmSettlements() async {
     setState(() => _isLoading = true);
-    final service = CreditService();
+    final service = GetIt.I<CreditService>();
 
     try {
       for (var txn in widget.dangerousTxns) {

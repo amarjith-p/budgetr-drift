@@ -2,6 +2,7 @@ import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_dropdown.dart';
 import '../../../core/models/custom_data_models.dart';
@@ -25,7 +26,7 @@ class CustomDataPage extends StatefulWidget {
 
 class _CustomDataPageState extends State<CustomDataPage>
     with AutomaticKeepAliveClientMixin {
-  final CustomEntryService _service = CustomEntryService();
+  final CustomEntryService _service = GetIt.I<CustomEntryService>();
 
   final Color _glassColor = const Color(0xFF1B263B).withOpacity(0.5);
   final Color _accentColor = const Color(0xFF3A86FF);

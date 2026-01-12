@@ -1,6 +1,7 @@
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/models/net_worth_model.dart';
@@ -22,7 +23,7 @@ class NetWorthDashboardTab extends StatefulWidget {
 }
 
 class _NetWorthDashboardTabState extends State<NetWorthDashboardTab> {
-  final _netWorthService = NetWorthService();
+  final _netWorthService = GetIt.I<NetWorthService>();
   final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
   final _shortCurrency = NumberFormat.compactCurrency(
     symbol: '₹',

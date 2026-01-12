@@ -1,5 +1,6 @@
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import '../../../core/widgets/modern_loader.dart';
@@ -19,8 +20,8 @@ class AllTransactionsScreen extends StatefulWidget {
 }
 
 class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
-  final ExpenseService _service = ExpenseService();
-  final CategoryService _categoryService = CategoryService();
+  final ExpenseService _service = GetIt.I<ExpenseService>();
+  final CategoryService _categoryService = GetIt.I<CategoryService>();
 
   @override
   Widget build(BuildContext context) {
