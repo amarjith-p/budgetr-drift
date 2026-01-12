@@ -1,8 +1,6 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/database/app_database.dart';
-// ALIAS MODEL
 import '../models/investment_model.dart' as domain;
 import 'investment_service.dart';
 
@@ -15,18 +13,16 @@ class DriftInvestmentService extends InvestmentService {
       id: row.id,
       name: row.name,
       symbol: row.symbol,
-      // Safe enum parsing
       type: domain.InvestmentType.values.firstWhere(
           (e) => e.toString() == row.type,
-          orElse: () => domain.InvestmentType.stock // Default fallback
-          ),
+          orElse: () => domain.InvestmentType.stock),
       bucket: row.bucket,
       quantity: row.quantity,
       averagePrice: row.averagePrice,
       currentPrice: row.currentPrice,
       previousClose: row.previousClose,
-      lastPurchasedDate: Timestamp.fromDate(row.lastPurchasedDate),
-      lastUpdated: Timestamp.fromDate(row.lastUpdated),
+      lastPurchasedDate: row.lastPurchasedDate, // Direct DateTime
+      lastUpdated: row.lastUpdated, // Direct DateTime
       isManual: row.isManual,
     );
   }
@@ -54,7 +50,7 @@ class DriftInvestmentService extends InvestmentService {
           averagePrice: r.averagePrice,
           currentPrice: r.currentPrice,
           previousClose: drift.Value(r.previousClose),
-          lastPurchasedDate: r.lastPurchasedDate.toDate(),
+          lastPurchasedDate: r.lastPurchasedDate, // Direct DateTime
           lastUpdated: DateTime.now(),
           isManual: drift.Value(r.isManual),
         ));
