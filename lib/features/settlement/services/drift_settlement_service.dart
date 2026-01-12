@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../../../core/database/app_database.dart';
-import '../../../core/models/settlement_model.dart';
+// ALIAS MODEL
+import '../../../core/models/settlement_model.dart' as domain;
 import 'settlement_service.dart';
 
 class DriftSettlementService extends SettlementService {
@@ -9,7 +11,6 @@ class DriftSettlementService extends SettlementService {
 
   @override
   Future<List<Map<String, int>>> getAvailableMonthsForSettlement() async {
-    // Efficient SQL Query
     final query = _db.selectOnly(_db.financialRecords, distinct: true)
       ..addColumns([_db.financialRecords.year, _db.financialRecords.month]);
 
@@ -26,14 +27,13 @@ class DriftSettlementService extends SettlementService {
   }
 
   @override
-  Future<Settlement?> getSettlementById(String id) async {
+  Future<domain.Settlement?> getSettlementById(String id) async {
     final row = await (_db.select(_db.settlements)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (row == null) return null;
 
-    // Map Row to Model
-    return Settlement(
+    return domain.Settlement(
       id: row.id,
       year: row.year,
       month: row.month,
@@ -42,13 +42,14 @@ class DriftSettlementService extends SettlementService {
       savings: row.savings,
       notes: row.notes,
       settledAt: Timestamp.fromDate(row.settledAt),
+      isLocked: row.isLocked,
       categoryBreakdown:
           Map<String, double>.from(jsonDecode(row.categoryBreakdown)),
     );
   }
 
   @override
-  Future<void> saveSettlement(Settlement s) async {
+  Future<void> saveSettlement(domain.Settlement s) async {
     await _db
         .into(_db.settlements)
         .insertOnConflictUpdate(SettlementsCompanion.insert(

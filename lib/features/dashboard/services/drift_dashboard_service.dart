@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:drift/drift.dart' as drift;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart'; // Add rxdart to pubspec if missing, or use the helper below
 
 import '../../../../core/database/app_database.dart';
-import '../../../core/models/financial_record_model.dart';
+// ALIAS THE MODEL IMPORT to avoid conflict with Drift class
+import '../../../core/models/financial_record_model.dart' as domain;
 import '../../daily_expense/models/expense_models.dart';
 import '../../credit_tracker/models/credit_models.dart';
 import '../models/dashboard_transaction.dart';
@@ -14,10 +16,9 @@ class DriftDashboardService extends DashboardService {
   final AppDatabase _db = AppDatabase.instance;
 
   // --- Helpers ---
-  FinancialRecord _mapRecord(FinancialRecord row) {
-    // Implement mapping from Table Row to Model using jsonDecode for Maps
-    // Simulating for brevity:
-    return FinancialRecord(
+  // Input: Drift Row (FinancialRecord), Output: Domain Model (domain.FinancialRecord)
+  domain.FinancialRecord _mapRecord(FinancialRecord row) {
+    return domain.FinancialRecord(
       id: row.id,
       month: row.month,
       year: row.year,
@@ -26,13 +27,17 @@ class DriftDashboardService extends DashboardService {
       emi: row.emi,
       allocations: Map<String, double>.from(jsonDecode(row.allocations)),
       bucketOrder: List<String>.from(jsonDecode(row.bucketOrder)),
-      // ... other fields
+      effectiveIncome: row.effectiveIncome,
+      createdAt: Timestamp.fromDate(row.createdAt),
+      updatedAt: Timestamp.fromDate(row.updatedAt),
+      allocationPercentages:
+          Map<String, double>.from(jsonDecode(row.allocationPercentages)),
     );
   }
 
   // --- Financial Records ---
   @override
-  Stream<List<FinancialRecord>> getFinancialRecords() {
+  Stream<List<domain.FinancialRecord>> getFinancialRecords() {
     return (_db.select(_db.financialRecords)
           ..orderBy([
             (t) => drift.OrderingTerm(
@@ -42,7 +47,7 @@ class DriftDashboardService extends DashboardService {
         .map((rows) => rows.map(_mapRecord).toList());
   }
 
-  // --- Unified Transactions (The Hard Part) ---
+  // --- Unified Transactions ---
   @override
   Stream<List<DashboardTransaction>> getMonthlyTransactions(
       int year, int month) {
@@ -57,10 +62,14 @@ class DriftDashboardService extends DashboardService {
       ..where((t) => t.date.isBetweenValues(start, end))
       ..where((t) => t.type.equals('Expense'));
 
-    // Combine Streams using Rx or simple StreamController
-    // Here using a simple merge approach
-    return drift.RxUtils.combine2(creditQuery.watch(), expenseQuery.watch(),
-        (List<CreditTransaction> cList, List<ExpenseTransaction> eList) {
+    // Combine streams manually without RxUtils
+    return CombineLatestStream.list([
+      creditQuery.watch(),
+      expenseQuery.watch(),
+    ]).map((data) {
+      final cList = data[0] as List<CreditTransaction>;
+      final eList = data[1] as List<ExpenseTransaction>;
+
       final merged = <DashboardTransaction>[];
 
       merged.addAll(cList.map((t) => DashboardTransaction(
