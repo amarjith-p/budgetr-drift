@@ -4,11 +4,18 @@ import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/notifications/services/notification_service.dart';
+// NEW IMPORTS
+import 'core/services/service_locator.dart';
+import 'core/widgets/database_guard.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await NotificationService().init();
+
+  // Initialize Locator
+  await ServiceLocator.init();
+
   runApp(const MyApp());
 }
 
@@ -21,7 +28,10 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Financial Tracker',
       theme: AppTheme.darkTheme,
-      home: const HomeScreen(),
+      // Wrap the HomeScreen with DatabaseGuard
+      home: const DatabaseGuard(
+        child: HomeScreen(),
+      ),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:budget/features/daily_expense/widgets/modern_expense_sheet.dart'
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
@@ -26,7 +27,7 @@ class DailyExpenseScreen extends StatefulWidget {
 }
 
 class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
-  final ExpenseService _service = ExpenseService();
+  final ExpenseService _service = GetIt.I<ExpenseService>();
   late Stream<List<ExpenseAccountModel>> _accountsStream;
 
   int _currentIndex = 0;
