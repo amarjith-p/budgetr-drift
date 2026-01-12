@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // For Timestamp
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../core/database/app_database.dart';
-import '../../daily_expense/services/expense_service.dart'; // To call Expense logic
 import '../models/credit_models.dart';
 import 'credit_service.dart';
 
@@ -25,6 +23,7 @@ class DriftCreditService extends CreditService {
       dueDate: row.dueDate,
       color: row.color,
       isArchived: row.isArchived,
+      // Fix: Convert DateTime -> Timestamp
       createdAt: Timestamp.fromDate(row.createdAt),
     );
   }
@@ -34,6 +33,7 @@ class DriftCreditService extends CreditService {
       id: row.id,
       cardId: row.cardId,
       amount: row.amount,
+      // Fix: Convert DateTime -> Timestamp
       date: Timestamp.fromDate(row.date),
       bucket: row.bucket,
       type: row.type,
@@ -73,6 +73,7 @@ class DriftCreditService extends CreditService {
           dueDate: card.dueDate,
           color: drift.Value(card.color),
           isArchived: drift.Value(card.isArchived),
+          // Fix: Convert Timestamp -> DateTime
           createdAt: card.createdAt.toDate(),
         ));
   }
@@ -137,6 +138,7 @@ class DriftCreditService extends CreditService {
             id: docId,
             cardId: txn.cardId,
             amount: txn.amount,
+            // Fix: Convert Timestamp -> DateTime
             date: txn.date.toDate(),
             bucket: txn.bucket,
             type: txn.type,
@@ -144,6 +146,8 @@ class DriftCreditService extends CreditService {
             subCategory: txn.subCategory,
             notes: drift.Value(txn.notes),
             linkedExpenseId: drift.Value(txn.linkedExpenseId),
+            includeInNextStatement: drift.Value(txn.includeInNextStatement),
+            isSettlementVerified: drift.Value(txn.isSettlementVerified),
           ));
 
       // Update Balance
@@ -174,9 +178,5 @@ class DriftCreditService extends CreditService {
           .write(CreditCardsCompanion(
               currentBalance: drift.Value(card.currentBalance + reverseDelta)));
     });
-
-    // Handle Linked Expense (Assumes ServiceLocator is set up or direct call)
-    // Note: In real app, avoid direct instantiation if possible, but for now:
-    // ExpenseService().deleteTransactionFromCredit(txn.linkedExpenseId!);
   }
 }
