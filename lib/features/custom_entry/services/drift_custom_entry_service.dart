@@ -3,7 +3,8 @@ import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../core/models/custom_data_models.dart';
+// ALIAS MODEL
+import '../../../core/models/custom_data_models.dart' as domain;
 import 'custom_entry_service.dart';
 
 class DriftCustomEntryService extends CustomEntryService {
@@ -11,17 +12,17 @@ class DriftCustomEntryService extends CustomEntryService {
   final _uuid = const Uuid();
 
   @override
-  Stream<List<CustomTemplate>> getCustomTemplates() {
+  Stream<List<domain.CustomTemplate>> getCustomTemplates() {
     return (_db.select(_db.customTemplates)
           ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt)]))
         .watch()
         .map((rows) => rows
-            .map((r) => CustomTemplate(
+            .map((r) => domain.CustomTemplate(
                   id: r.id,
                   name: r.name,
                   createdAt: r.createdAt,
                   fields: (jsonDecode(r.fields) as List)
-                      .map((e) => CustomFieldConfig.fromMap(e))
+                      .map((e) => domain.CustomFieldConfig.fromMap(e))
                       .toList(),
                   xAxisField: r.xAxisField,
                   yAxisField: r.yAxisField,
@@ -30,7 +31,7 @@ class DriftCustomEntryService extends CustomEntryService {
   }
 
   @override
-  Future<void> addCustomTemplate(CustomTemplate t) async {
+  Future<void> addCustomTemplate(domain.CustomTemplate t) async {
     await _db.into(_db.customTemplates).insert(CustomTemplatesCompanion.insert(
           id: t.id.isEmpty ? _uuid.v4() : t.id,
           name: t.name,
@@ -42,13 +43,13 @@ class DriftCustomEntryService extends CustomEntryService {
   }
 
   @override
-  Stream<List<CustomRecord>> getCustomRecords(String templateId) {
+  Stream<List<domain.CustomRecord>> getCustomRecords(String templateId) {
     return (_db.select(_db.customRecords)
           ..where((t) => t.templateId.equals(templateId))
           ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt)]))
         .watch()
         .map((rows) => rows
-            .map((r) => CustomRecord(
+            .map((r) => domain.CustomRecord(
                   id: r.id,
                   templateId: r.templateId,
                   createdAt: Timestamp.fromDate(r.createdAt),
@@ -58,7 +59,7 @@ class DriftCustomEntryService extends CustomEntryService {
   }
 
   @override
-  Future<void> addCustomRecord(CustomRecord r) async {
+  Future<void> addCustomRecord(domain.CustomRecord r) async {
     await _db.into(_db.customRecords).insert(CustomRecordsCompanion.insert(
           id: r.id.isEmpty ? _uuid.v4() : r.id,
           templateId: r.templateId,

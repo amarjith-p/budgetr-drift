@@ -3,8 +3,9 @@ import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../core/models/net_worth_model.dart';
-import '../../../core/models/net_worth_split_model.dart';
+// ALIAS MODELS
+import '../../../core/models/net_worth_model.dart' as domain;
+import '../../../core/models/net_worth_split_model.dart'; // Unused in this file but safe
 import 'net_worth_service.dart';
 
 class DriftNetWorthService extends NetWorthService {
@@ -12,8 +13,8 @@ class DriftNetWorthService extends NetWorthService {
   final _uuid = const Uuid();
 
   // --- Mappers ---
-  NetWorthRecord _mapRecord(NetWorthRecord row) {
-    return NetWorthRecord(
+  domain.NetWorthRecord _mapRecord(NetWorthRecord row) {
+    return domain.NetWorthRecord(
       id: row.id,
       date: Timestamp.fromDate(row.date),
       totalAmount: row.totalAmount,
@@ -23,7 +24,7 @@ class DriftNetWorthService extends NetWorthService {
 
   // --- Implementation ---
   @override
-  Stream<List<NetWorthRecord>> getNetWorthRecords() {
+  Stream<List<domain.NetWorthRecord>> getNetWorthRecords() {
     return (_db.select(_db.netWorthRecords)
           ..orderBy([
             (t) => drift.OrderingTerm(
@@ -34,7 +35,7 @@ class DriftNetWorthService extends NetWorthService {
   }
 
   @override
-  Future<void> addNetWorthRecord(NetWorthRecord record) async {
+  Future<void> addNetWorthRecord(domain.NetWorthRecord record) async {
     final id = _uuid.v4();
     await _db.into(_db.netWorthRecords).insert(NetWorthRecordsCompanion.insert(
           id: id,
