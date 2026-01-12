@@ -1,6 +1,7 @@
 // lib/features/daily_expense/widgets/cash_flow_card.dart
 
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
@@ -15,8 +16,8 @@ class CashFlowCard extends StatefulWidget {
 }
 
 class _CashFlowCardState extends State<CashFlowCard> {
-  final ExpenseService _expenseService = ExpenseService();
-  final CreditService _creditService = CreditService();
+  final ExpenseService _expenseService = GetIt.I<ExpenseService>();
+  final CreditService _creditService = GetIt.I<CreditService>();
   String _selectedPeriod = 'This Month';
   String? _selectedAccountId;
 

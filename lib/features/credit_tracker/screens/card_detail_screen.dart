@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/credit_tracker/widgets/modern_credit_txn_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -48,8 +49,9 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _categoryStream = CategoryService().getCategories();
-    _transactionStream = CreditService().getTransactionsForCard(widget.card.id);
+    _categoryStream = GetIt.I<CategoryService>().getCategories();
+    _transactionStream =
+        GetIt.I<CreditService>().getTransactionsForCard(widget.card.id);
     _loadIgnoredTransactions();
   }
 
@@ -506,7 +508,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         includeInNextStatement: txn.includeInNextStatement,
         isSettlementVerified: true,
       );
-      await CreditService().updateTransaction(updatedTxn);
+      await GetIt.I<CreditService>().updateTransaction(updatedTxn);
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(context)
@@ -533,7 +535,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         isSettlementVerified: false,
       );
 
-      await CreditService().updateTransaction(updatedTxn);
+      await GetIt.I<CreditService>().updateTransaction(updatedTxn);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(shouldDefer
@@ -570,7 +572,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         isSettlementVerified: txn.isSettlementVerified,
       );
 
-      await CreditService().updateTransaction(updatedTxn);
+      await GetIt.I<CreditService>().updateTransaction(updatedTxn);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text("Marked as Bill Repayment"),
@@ -702,7 +704,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         // so we immediately start the loading state on the screen behind it.
         setState(() => _isLoading = true);
 
-        await CreditService().deleteTransaction(txn);
+        await GetIt.I<CreditService>().deleteTransaction(txn);
 
         if (mounted) setState(() => _isLoading = false);
       },

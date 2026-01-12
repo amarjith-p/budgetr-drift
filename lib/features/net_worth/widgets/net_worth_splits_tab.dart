@@ -2,6 +2,7 @@ import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/models/net_worth_split_model.dart';
@@ -18,7 +19,7 @@ class NetWorthSplitsTab extends StatefulWidget {
 }
 
 class _NetWorthSplitsTabState extends State<NetWorthSplitsTab> {
-  final NetWorthService _netWorthService = NetWorthService();
+  final NetWorthService _netWorthService = GetIt.I<NetWorthService>();
   final NumberFormat _currencyFormat = NumberFormat.currency(
     locale: 'en_IN',
     symbol: '₹',

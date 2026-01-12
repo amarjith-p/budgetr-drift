@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/calculator_keyboard.dart';
 import '../models/investment_model.dart';
@@ -16,7 +17,7 @@ class AddInvestmentSheet extends StatefulWidget {
 
 class _AddInvestmentSheetState extends State<AddInvestmentSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _service = InvestmentService();
+  final _service = GetIt.I<InvestmentService>();
   Timer? _debounce;
 
   // Data State

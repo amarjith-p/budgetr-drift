@@ -1,5 +1,6 @@
 import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/models/net_worth_split_model.dart';
@@ -14,7 +15,7 @@ class SplitInputSheet extends StatefulWidget {
 }
 
 class _SplitInputSheetState extends State<SplitInputSheet> {
-  final _netWorthService = NetWorthService();
+  final _netWorthService = GetIt.I<NetWorthService>();
   final ScrollController _scrollController = ScrollController();
 
   // Controllers

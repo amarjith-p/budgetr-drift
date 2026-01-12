@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For HapticFeedback
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../models/expense_models.dart';
@@ -18,8 +19,8 @@ class UnifiedSpendingChart extends StatefulWidget {
 }
 
 class _UnifiedSpendingChartState extends State<UnifiedSpendingChart> {
-  final ExpenseService _expenseService = ExpenseService();
-  final CreditService _creditService = CreditService();
+  final ExpenseService _expenseService = GetIt.I<ExpenseService>();
+  final CreditService _creditService = GetIt.I<CreditService>();
 
   // --- STATE ---
   BreakdownView _currentView = BreakdownView.bucket; // Default to Bucket

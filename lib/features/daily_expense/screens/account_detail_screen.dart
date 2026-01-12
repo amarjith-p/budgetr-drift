@@ -3,6 +3,7 @@
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/daily_expense/widgets/modern_expense_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import '../../../core/widgets/modern_loader.dart';
@@ -44,9 +45,9 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _categoryStream = CategoryService().getCategories();
+    _categoryStream = GetIt.I<CategoryService>().getCategories();
     _transactionStream =
-        ExpenseService().getTransactionsForAccount(widget.account.id);
+        GetIt.I<ExpenseService>().getTransactionsForAccount(widget.account.id);
   }
 
   // --- SYNC LOGIC ---
@@ -86,7 +87,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
               if (txn.type == 'Transfer In' || txn.type == 'Income') {
                 creditType = 'Income';
                 final sourceTxn =
-                    await ExpenseService().findLinkedTransfer(txn);
+                    await GetIt.I<ExpenseService>().findLinkedTransfer(txn);
                 if (sourceTxn != null) {
                   linkedExpenseId = sourceTxn.id;
                 }
@@ -116,8 +117,8 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                 linkedExpenseId: linkedExpenseId,
               );
 
-              await CreditService().addTransaction(creditTxn);
-              await ExpenseService().deleteTransactionSingle(txn);
+              await GetIt.I<CreditService>().addTransaction(creditTxn);
+              await GetIt.I<ExpenseService>().deleteTransactionSingle(txn);
               successCount++;
             }
 
@@ -350,7 +351,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
       onDismiss: () async {
         setState(() => _isLoading = true);
         try {
-          await ExpenseService().deleteTransaction(txn);
+          await GetIt.I<ExpenseService>().deleteTransaction(txn);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text("Transaction deleted"),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/models/net_worth_model.dart';
@@ -14,7 +15,7 @@ class NetWorthInputSheet extends StatefulWidget {
 }
 
 class _NetWorthInputSheetState extends State<NetWorthInputSheet> {
-  final _netWorthService = NetWorthService();
+  final _netWorthService = GetIt.I<NetWorthService>();
   final ScrollController _scrollController = ScrollController();
 
   final TextEditingController _assetsController = TextEditingController();

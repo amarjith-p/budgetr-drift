@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import '../../../core/widgets/modern_loader.dart';
@@ -15,7 +16,7 @@ class BalanceTrendChart extends StatefulWidget {
 }
 
 class _BalanceTrendChartState extends State<BalanceTrendChart> {
-  final ExpenseService _service = ExpenseService();
+  final ExpenseService _service = GetIt.I<ExpenseService>();
 
   late Stream<List<ExpenseAccountModel>> _accountsStream;
   late Stream<List<ExpenseTransactionModel>> _transactionsStream;

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/credit_tracker/widgets/modern_credit_txn_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../models/credit_models.dart';
@@ -20,7 +21,7 @@ class CreditTrackerScreen extends StatefulWidget {
 }
 
 class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
-  final CreditService _service = CreditService();
+  final CreditService _service = GetIt.I<CreditService>();
   final NumberFormat _currency = NumberFormat.currency(
     locale: 'en_IN',
     symbol: '₹',
