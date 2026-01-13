@@ -73,14 +73,11 @@ class ExpenseService {
           id: account.id.isEmpty ? _uuid.v4() : account.id,
           name: account.name,
           bankName: account.bankName,
-
-          // FIXED: Wrapped in Value() because they have default values in Table
           type: Value(account.type),
-          accountType: Value(account.accountType),
-          accountNumber: Value(account.accountNumber),
-
           currentBalance: Value(account.currentBalance),
           createdAt: account.createdAt,
+          accountType: Value(account.accountType),
+          accountNumber: Value(account.accountNumber),
           color: Value(account.color),
           showOnDashboard: Value(account.showOnDashboard),
           dashboardOrder: Value(account.dashboardOrder),
@@ -137,7 +134,6 @@ class ExpenseService {
     return query.watch().map((rows) => rows.map(_mapTransaction).toList());
   }
 
-  // Helper Aliases
   Stream<List<ExpenseTransactionModel>> getTransactionsForAccount(
           String accountId) =>
       getTransactions(accountId: accountId);
@@ -169,7 +165,6 @@ class ExpenseService {
             accountId: txn.accountId,
             amount: txn.amount,
             date: txn.date,
-            // FIXED: Wrapped optional/default fields in Value()
             bucket: Value(txn.bucket),
             type: Value(txn.type),
             category: Value(txn.category),
@@ -191,7 +186,6 @@ class ExpenseService {
         final partnerType =
             txn.type == 'Transfer Out' ? 'Transfer In' : 'Transfer Out';
 
-        // Fetch source info
         final sourceAcc = await (_db.select(_db.expenseAccounts)
               ..where((t) => t.id.equals(txn.accountId)))
             .getSingleOrNull();
@@ -226,57 +220,108 @@ class ExpenseService {
 
   Future<void> updateTransaction(ExpenseTransactionModel newTxn) async {
     await _db.transaction(() async {
-      // 1. Fetch old transaction
+      // 1. Fetch OLD transaction state
       final oldRow = await (_db.select(_db.expenseTransactions)
             ..where((t) => t.id.equals(newTxn.id)))
           .getSingle();
       final oldTxn = _mapTransaction(oldRow);
 
-      // 2. Revert Old Balance
+      // --- CRITICAL: PRESERVE TYPE & METADATA ---
+      final isTransfer =
+          (oldTxn.type == 'Transfer Out' || oldTxn.type == 'Transfer In');
+      final effectiveType = isTransfer ? oldTxn.type : newTxn.type;
+
+      final effectiveTransferId =
+          newTxn.transferAccountId ?? oldTxn.transferAccountId;
+      final effectiveTransferName =
+          newTxn.transferAccountName ?? oldTxn.transferAccountName;
+      final effectiveTransferBank =
+          newTxn.transferAccountBankName ?? oldTxn.transferAccountBankName;
+
+      // --- FIND LINKED TXN BEFORE UPDATING ---
+      ExpenseTransactionModel? linkedTxn;
+      if (isTransfer && oldTxn.transferAccountId != null) {
+        linkedTxn = await findLinkedTransfer(oldTxn);
+      }
+
+      // 2. Revert Old Balance on MAIN Account
       await _updateAccountBalance(oldTxn.accountId, oldTxn.amount, oldTxn.type,
           isAdding: false);
 
-      // 3. Apply New Balance
-      await _updateAccountBalance(newTxn.accountId, newTxn.amount, newTxn.type,
+      // 3. Apply New Balance on MAIN Account
+      // SAFEGUARD: Use oldTxn.accountId to ensure we update the correct account even if UI sent bad ID
+      await _updateAccountBalance(
+          oldTxn.accountId, newTxn.amount, effectiveType,
           isAdding: true);
 
-      // 4. Update Record
+      // 4. Update MAIN Transaction Record
       await (_db.update(_db.expenseTransactions)
             ..where((t) => t.id.equals(newTxn.id)))
           .write(db.ExpenseTransactionsCompanion(
         amount: Value(newTxn.amount),
         date: Value(newTxn.date),
         bucket: Value(newTxn.bucket),
-        type: Value(newTxn.type),
+        type: Value(effectiveType),
         category: Value(newTxn.category),
         subCategory: Value(newTxn.subCategory),
         notes: Value(newTxn.notes),
+        transferAccountId: Value(effectiveTransferId),
+        transferAccountName: Value(effectiveTransferName),
+        transferAccountBankName: Value(effectiveTransferBank),
       ));
+
+      // --- 5. HANDLE LINKED TRANSFER UPDATE ---
+      if (linkedTxn != null) {
+        // A. Revert Balance on LINKED Account
+        await _updateAccountBalance(
+            linkedTxn.accountId, linkedTxn.amount, linkedTxn.type,
+            isAdding: false);
+
+        // B. Determine Linked Type
+        final newLinkedType =
+            effectiveType == 'Transfer Out' ? 'Transfer In' : 'Transfer Out';
+
+        // C. Update LINKED Transaction Record
+        await (_db.update(_db.expenseTransactions)
+              ..where((t) => t.id.equals(linkedTxn!.id)))
+            .write(db.ExpenseTransactionsCompanion(
+          amount: Value(newTxn.amount),
+          date: Value(newTxn.date),
+          type: Value(newLinkedType),
+          category: Value(newTxn.category),
+          subCategory: Value(newTxn.subCategory),
+          notes: Value(newTxn.notes),
+        ));
+
+        // D. Apply New Balance on LINKED Account
+        await _updateAccountBalance(
+            linkedTxn.accountId, newTxn.amount, newLinkedType,
+            isAdding: true);
+      }
     });
   }
 
   Future<void> deleteTransaction(ExpenseTransactionModel txn) async {
     await _db.transaction(() async {
-      // 1. Delete Main
+      ExpenseTransactionModel? linkedTxn;
+      if ((txn.type == 'Transfer Out' || txn.type == 'Transfer In') &&
+          txn.transferAccountId != null) {
+        linkedTxn = await findLinkedTransfer(txn);
+      }
+
       await (_db.delete(_db.expenseTransactions)
             ..where((t) => t.id.equals(txn.id)))
           .go();
-
-      // 2. Revert Balance
       await _updateAccountBalance(txn.accountId, txn.amount, txn.type,
           isAdding: false);
 
-      // 3. Handle Linked Transfer deletion
-      if (txn.transferAccountId != null) {
-        final linked = await findLinkedTransfer(txn);
-        if (linked != null) {
-          await (_db.delete(_db.expenseTransactions)
-                ..where((t) => t.id.equals(linked.id)))
-              .go();
-          await _updateAccountBalance(
-              linked.accountId, linked.amount, linked.type,
-              isAdding: false);
-        }
+      if (linkedTxn != null) {
+        await (_db.delete(_db.expenseTransactions)
+              ..where((t) => t.id.equals(linkedTxn!.id)))
+            .go();
+        await _updateAccountBalance(
+            linkedTxn.accountId, linkedTxn.amount, linkedTxn.type,
+            isAdding: false);
       }
     });
   }
@@ -297,11 +342,18 @@ class ExpenseService {
     final linkedType =
         txn.type == 'Transfer Out' ? 'Transfer In' : 'Transfer Out';
 
+    // Fuzzy match
+    final minDate = txn.date.subtract(const Duration(seconds: 2));
+    final maxDate = txn.date.add(const Duration(seconds: 2));
+    final minAmount = txn.amount - 0.01;
+    final maxAmount = txn.amount + 0.01;
+
     final row = await (_db.select(_db.expenseTransactions)
           ..where((t) => t.accountId.equals(txn.transferAccountId!))
           ..where((t) => t.transferAccountId.equals(txn.accountId))
-          ..where((t) => t.amount.equals(txn.amount))
           ..where((t) => t.type.equals(linkedType))
+          ..where((t) => t.date.isBetweenValues(minDate, maxDate))
+          ..where((t) => t.amount.isBetweenValues(minAmount, maxAmount))
           ..limit(1))
         .getSingleOrNull();
 
@@ -323,10 +375,12 @@ class ExpenseService {
 
     final acc = await (_db.select(_db.expenseAccounts)
           ..where((t) => t.id.equals(accountId)))
-        .getSingle();
-    await (_db.update(_db.expenseAccounts)
-          ..where((t) => t.id.equals(accountId)))
-        .write(db.ExpenseAccountsCompanion(
-            currentBalance: Value(acc.currentBalance + change)));
+        .getSingleOrNull();
+    if (acc != null) {
+      await (_db.update(_db.expenseAccounts)
+            ..where((t) => t.id.equals(accountId)))
+          .write(db.ExpenseAccountsCompanion(
+              currentBalance: Value(acc.currentBalance + change)));
+    }
   }
 }
