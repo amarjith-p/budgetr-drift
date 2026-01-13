@@ -25,6 +25,9 @@ part 'app_database.g.dart';
   // Custom Entry
   CustomTemplates,
   CustomRecords,
+  TransactionCategories, // <--- Ensure this is here
+  Settlements, // <--- New
+  Settings,
 ])
 class AppDatabase extends _$AppDatabase {
   static final AppDatabase _instance = AppDatabase._internal();

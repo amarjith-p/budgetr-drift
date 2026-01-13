@@ -352,7 +352,7 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
 
         // Base logic
         if (t.type != 'Expense') return false;
-        if (!_matchesPeriod(t.date.toDate())) return false;
+        if (!_matchesPeriod(t.date)) return false;
 
         // Budget Mode Filtering
         if (_isBudgetMode) {
@@ -374,7 +374,7 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
 
         // Base Logic
         if (t.type != 'Expense') return false;
-        if (!_matchesPeriod(t.date.toDate())) return false;
+        if (!_matchesPeriod(t.date)) return false;
 
         // Budget Mode Filtering
         if (_isBudgetMode) {

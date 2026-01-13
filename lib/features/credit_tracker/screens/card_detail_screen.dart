@@ -182,7 +182,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
               final groupedHistory = groupBy(pastStatementTxns, (txn) {
                 final naturalStmtDate =
                     BillingCycleUtils.getStatementDateForTxn(
-                        txn.date.toDate(), widget.card.billDate,
+                        txn.date, widget.card.billDate,
                         forceNextCycle: txn.includeInNextStatement);
 
                 if (txn.type == 'Income' &&
@@ -280,7 +280,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                               ...statementExpenses.map((t) {
                                 final bool isDanger =
                                     BillingCycleUtils.isDangerZone(
-                                        t.date.toDate(), widget.card.billDate);
+                                        t.date, widget.card.billDate);
 
                                 final bool showWarning = isDanger &&
                                     !t.includeInNextStatement &&
@@ -742,7 +742,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
       list = list.where((t) => t.type == _selectedType).toList();
     if (_dateRange != null) {
       list = list.where((t) {
-        final date = t.date.toDate();
+        final date = t.date;
         final end = _dateRange!.end
             .add(const Duration(days: 1))
             .subtract(const Duration(seconds: 1));

@@ -394,8 +394,7 @@ class _MonthlyTransactionCardState extends State<MonthlyTransactionCard> {
                                   shape: BoxShape.circle)),
                           const SizedBox(width: 6),
                           Text(
-                            DateFormat('dd MMM')
-                                .format(widget.txn.date.toDate()),
+                            DateFormat('dd MMM').format(widget.txn.date),
                             style: const TextStyle(
                                 color: Colors.white54, fontSize: 12),
                           ),

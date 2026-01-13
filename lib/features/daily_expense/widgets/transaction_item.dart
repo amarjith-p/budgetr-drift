@@ -153,7 +153,7 @@ class _TransactionItemState extends State<TransactionItem> {
                             fontWeight: FontWeight.bold,
                             fontSize: 15)),
                     const SizedBox(height: 4),
-                    Text(DateFormat('dd MMM').format(widget.txn.date.toDate()),
+                    Text(DateFormat('dd MMM').format(widget.txn.date),
                         style: const TextStyle(
                             color: Colors.white38, fontSize: 11)),
                   ],
@@ -204,8 +204,7 @@ class _TransactionItemState extends State<TransactionItem> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        DateFormat('EEEE, hh:mm a')
-                            .format(widget.txn.date.toDate()),
+                        DateFormat('EEEE, hh:mm a').format(widget.txn.date),
                         style: TextStyle(
                             color: Colors.white.withOpacity(0.5), fontSize: 12),
                       ),

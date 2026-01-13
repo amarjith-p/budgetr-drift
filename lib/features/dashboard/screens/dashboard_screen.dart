@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'monthly_spending_screen.dart';
 import '../../../core/models/financial_record_model.dart';
 import '../services/dashboard_service.dart';
@@ -488,8 +487,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     allocations: {},
                     allocationPercentages: {},
                     bucketOrder: [],
-                    createdAt: Timestamp.now(),
-                    updatedAt: Timestamp.now(),
+                    createdAt: DateTime.timestamp(),
+                    updatedAt: DateTime.timestamp(),
                   ),
                 );
 

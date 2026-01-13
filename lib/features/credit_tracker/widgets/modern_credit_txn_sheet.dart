@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:math_expressions/math_expressions.dart';
@@ -14,7 +13,6 @@ import '../../../core/design/budgetr_styles.dart';
 
 // --- FEATURE IMPORTS ---
 import '../../settings/services/settings_service.dart';
-import '../../notifications/services/budget_notification_service.dart';
 import '../../dashboard/services/dashboard_service.dart'; // Added
 import '../../settlement/services/settlement_service.dart'; // Added
 import '../models/credit_models.dart';
@@ -124,7 +122,7 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
           _amountCtrl.text =
               t.amount.toString().replaceAll(RegExp(r"([.]*0)(?!.*\d)"), "");
           _notesCtrl.text = t.notes;
-          _date = t.date.toDate();
+          _date = t.date;
           _type = t.type;
           _selectedBucket = t.bucket;
           _category = t.category;

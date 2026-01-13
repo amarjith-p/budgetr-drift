@@ -1,42 +1,37 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../core/constants/firebase_constants.dart';
+import 'dart:convert';
+import 'package:drift/drift.dart';
+import '../../../core/database/app_database.dart';
 import '../../../core/models/percentage_config_model.dart';
 
 class SettingsService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final AppDatabase _db = AppDatabase.instance;
 
   Future<PercentageConfig> getPercentageConfig() async {
-    final doc = await _db
-        .collection(FirebaseConstants.settings)
-        .doc('percentages')
-        .get();
-    if (doc.exists) {
-      return PercentageConfig.fromFirestore(doc);
-    } else {
-      return PercentageConfig.defaultConfig();
+    final row = await (_db.select(_db.settings)
+          ..where((t) => t.key.equals('percentages')))
+        .getSingleOrNull();
+    if (row != null) {
+      final Map<String, dynamic> json = jsonDecode(row.value);
+      return PercentageConfig.fromMap(json);
     }
+    return PercentageConfig.defaultConfig();
   }
 
-  Future<void> setPercentageConfig(PercentageConfig config) {
-    return _db
-        .collection(FirebaseConstants.settings)
-        .doc('percentages')
-        .set(config.toMap());
+  Future<void> setPercentageConfig(PercentageConfig config) async {
+    await _db
+        .into(_db.settings)
+        .insertOnConflictUpdate(SettingsCompanion.insert(
+          key: 'percentages',
+          value: jsonEncode(config.toMap()),
+        ));
   }
 
-  /// Checks if a Financial Record exists for the current month.
-  /// Uses 'financial_records' collection and queries by year/month fields.
   Future<bool> hasCurrentMonthBudget() async {
     final now = DateTime.now();
-
-    // We query for the year and month fields instead of guessing the Doc ID
-    final snapshot = await _db
-        .collection(FirebaseConstants.financialRecords)
-        .where('year', isEqualTo: now.year)
-        .where('month', isEqualTo: now.month)
-        .limit(1)
+    final count = await (_db.select(_db.financialRecords)
+          ..where((t) => t.year.equals(now.year))
+          ..where((t) => t.month.equals(now.month)))
         .get();
-
-    return snapshot.docs.isNotEmpty;
+    return count.isNotEmpty;
   }
 }

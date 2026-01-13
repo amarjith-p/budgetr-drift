@@ -3,7 +3,6 @@ import 'package:budget/core/widgets/modern_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/custom_data_models.dart';
 import '../services/custom_entry_service.dart';
 
@@ -67,8 +66,8 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
       }
 
       if (field.type == CustomFieldType.date) {
-        if (initialVal is Timestamp)
-          _formData[field.name] = initialVal.toDate();
+        if (initialVal is DateTime)
+          _formData[field.name] = initialVal;
         else if (initialVal is DateTime)
           _formData[field.name] = initialVal;
         else

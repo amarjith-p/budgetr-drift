@@ -1,13 +1,9 @@
-// lib/features/dashboard/models/dashboard_transaction.dart
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 enum TransactionSourceType { creditCard, bankAccount }
 
 class DashboardTransaction {
   final String id;
   final double amount;
-  final Timestamp date;
+  final DateTime date;
   final String category;
   final String subCategory; // NEW FIELD
   final String notes;

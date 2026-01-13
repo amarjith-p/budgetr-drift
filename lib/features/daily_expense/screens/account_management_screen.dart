@@ -1,5 +1,4 @@
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import '../../../core/widgets/modern_loader.dart';
@@ -256,7 +255,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
             accountType: data['accountType'],
             accountNumber: data['accountNumber'],
             color: data['color'],
-            createdAt: accountToEdit?.createdAt ?? Timestamp.now(),
+            createdAt: accountToEdit?.createdAt ?? DateTime.timestamp(),
             showOnDashboard: accountToEdit?.showOnDashboard ?? true,
             dashboardOrder: accountToEdit?.dashboardOrder ?? _accounts.length,
           );

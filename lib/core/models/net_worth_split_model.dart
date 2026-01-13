@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class NetWorthSplit {
   final String id;
   final DateTime date;
@@ -29,7 +27,7 @@ class NetWorthSplit {
 
   Map<String, dynamic> toMap() {
     return {
-      'date': Timestamp.fromDate(date),
+      'date': DateTime.timestamp(),
       'netIncome': netIncome,
       'netExpense': netExpense,
       'capitalGain': capitalGain,
@@ -39,17 +37,17 @@ class NetWorthSplit {
     };
   }
 
-  factory NetWorthSplit.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
-    return NetWorthSplit(
-      id: doc.id,
-      date: (data['date'] as Timestamp).toDate(),
-      netIncome: (data['netIncome'] ?? 0.0).toDouble(),
-      netExpense: (data['netExpense'] ?? 0.0).toDouble(),
-      capitalGain: (data['capitalGain'] ?? 0.0).toDouble(),
-      capitalLoss: (data['capitalLoss'] ?? 0.0).toDouble(),
-      nonCalcIncome: (data['nonCalcIncome'] ?? 0.0).toDouble(),
-      nonCalcExpense: (data['nonCalcExpense'] ?? 0.0).toDouble(),
-    );
-  }
+  // factory NetWorthSplit.fromFirestore(DocumentSnapshot doc) {
+  //   Map data = doc.data() as Map<String, dynamic>;
+  //   return NetWorthSplit(
+  //     id: doc.id,
+  //     date: (data['date'] as Timestamp).toDate(),
+  //     netIncome: (data['netIncome'] ?? 0.0).toDouble(),
+  //     netExpense: (data['netExpense'] ?? 0.0).toDouble(),
+  //     capitalGain: (data['capitalGain'] ?? 0.0).toDouble(),
+  //     capitalLoss: (data['capitalLoss'] ?? 0.0).toDouble(),
+  //     nonCalcIncome: (data['nonCalcIncome'] ?? 0.0).toDouble(),
+  //     nonCalcExpense: (data['nonCalcExpense'] ?? 0.0).toDouble(),
+  //   );
+  // }
 }

@@ -1,10 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
-import '../constants/firebase_constants.dart';
+import 'package:uuid/uuid.dart';
+import '../database/app_database.dart';
 import '../models/transaction_category_model.dart';
 
 class CategoryService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final AppDatabase _db = AppDatabase.instance;
+  final _uuid = const Uuid();
 
   // --- EXPANDED DEFAULT EXPENSES ---
   final Map<String, dynamic> _defaultExpense = {
@@ -223,116 +226,95 @@ class CategoryService {
 
   /// Fetches categories
   Stream<List<TransactionCategoryModel>> getCategories() async* {
-    final collection = _db.collection(FirebaseConstants.categories);
-    final snapshot = await collection.get();
-
-    if (snapshot.docs.isEmpty) {
+    final count = await _db.transactionCategories.count().getSingle();
+    if (count == 0) {
       await _seedDefaults();
     }
 
-    yield* collection.snapshots().map((s) {
-      final list =
-          s.docs.map((d) => TransactionCategoryModel.fromFirestore(d)).toList();
+    yield* _db.select(_db.transactionCategories).watch().map((rows) {
+      final list = rows.map((row) {
+        return TransactionCategoryModel(
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          subCategories: List<String>.from(jsonDecode(row.subCategories)),
+          iconCode: row.iconCode,
+        );
+      }).toList();
       list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       return list;
     });
   }
 
-  Future<bool> checkDuplicate(
-    String name,
-    String type, {
-    String? excludeId,
-  }) async {
+  Future<bool> checkDuplicate(String name, String type,
+      {String? excludeId}) async {
     final normalizedName = name.trim().toLowerCase();
-    final query = await _db
-        .collection(FirebaseConstants.categories)
-        .where('type', isEqualTo: type)
-        .get();
+    final all = await _db.select(_db.transactionCategories).get();
 
-    return query.docs.any((doc) {
-      if (excludeId != null && doc.id == excludeId) return false;
-      final docName = (doc.data()['name'] as String?)?.toLowerCase() ?? '';
-      return docName == normalizedName;
+    return all.any((row) {
+      if (excludeId != null && row.id == excludeId) return false;
+      return row.type == type && row.name.toLowerCase() == normalizedName;
     });
   }
 
   Future<void> _seedDefaults() async {
-    final batch = _db.batch();
-    final collection = _db.collection(FirebaseConstants.categories);
+    await _db.batch((batch) {
+      _defaultExpense.forEach((key, value) {
+        batch.insert(
+            _db.transactionCategories,
+            TransactionCategoriesCompanion.insert(
+              id: _uuid.v4(),
+              name: key,
+              type: 'Expense',
+              subCategories: jsonEncode(value['subs']),
+              iconCode: value['icon'],
+            ));
+      });
 
-    _defaultExpense.forEach((key, value) {
-      final doc = collection.doc();
-      batch.set(doc, {
-        'name': key,
-        'type': 'Expense',
-        'subCategories': value['subs'],
-        'iconCode': value['icon'],
+      _defaultIncome.forEach((key, value) {
+        batch.insert(
+            _db.transactionCategories,
+            TransactionCategoriesCompanion.insert(
+              id: _uuid.v4(),
+              name: key,
+              type: 'Income',
+              subCategories: jsonEncode(value['subs']),
+              iconCode: value['icon'],
+            ));
       });
     });
-
-    _defaultIncome.forEach((key, value) {
-      final doc = collection.doc();
-      batch.set(doc, {
-        'name': key,
-        'type': 'Income',
-        'subCategories': value['subs'],
-        'iconCode': value['icon'],
-      });
-    });
-
-    await batch.commit();
   }
 
   /// FACTORY RESET: Deletes ALL categories and re-seeds defaults
   Future<void> resetToDefaults() async {
-    final collection = _db.collection(FirebaseConstants.categories);
-    final snapshot = await collection.get();
-
-    // Batch limits are 500 ops, generally safe here, but robust logic:
-    WriteBatch batch = _db.batch();
-    int count = 0;
-
-    for (var doc in snapshot.docs) {
-      batch.delete(doc.reference);
-      count++;
-      // Safety commit if lots of categories
-      if (count >= 400) {
-        await batch.commit();
-        batch = _db.batch();
-        count = 0;
-      }
-    }
-
-    if (count > 0) {
-      await batch.commit();
-    }
-
-    // Re-create from scratch
+    await _db.delete(_db.transactionCategories).go();
     await _seedDefaults();
   }
 
   Future<void> addCategory(
-    String name,
-    String type,
-    List<String> subs,
-    int iconCode,
-  ) async {
-    await _db.collection(FirebaseConstants.categories).add({
-      'name': name,
-      'type': type,
-      'subCategories': subs,
-      'iconCode': iconCode,
-    });
+      String name, String type, List<String> subs, int iconCode) async {
+    await _db
+        .into(_db.transactionCategories)
+        .insert(TransactionCategoriesCompanion.insert(
+          id: _uuid.v4(),
+          name: name,
+          type: type,
+          subCategories: jsonEncode(subs),
+          iconCode: iconCode,
+        ));
   }
 
   Future<void> updateCategory(TransactionCategoryModel category) async {
-    await _db
-        .collection(FirebaseConstants.categories)
-        .doc(category.id)
-        .update(category.toMap());
+    await (_db.update(_db.transactionCategories)
+          ..where((t) => t.id.equals(category.id)))
+        .write(TransactionCategoriesCompanion(
+            name: Value(category.name),
+            subCategories: Value(jsonEncode(category.subCategories)),
+            iconCode: Value(category.iconCode)));
   }
 
   Future<void> deleteCategory(String id) async {
-    await _db.collection(FirebaseConstants.categories).doc(id).delete();
+    await (_db.delete(_db.transactionCategories)..where((t) => t.id.equals(id)))
+        .go();
   }
 }

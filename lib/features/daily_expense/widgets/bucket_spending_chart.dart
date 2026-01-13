@@ -248,7 +248,7 @@ class _BucketSpendingChartState extends State<BucketSpendingChart> {
             t.accountId != _selectedAccountId) return false;
 
         if (t.type != 'Expense') return false;
-        if (!_matchesPeriod(t.date.toDate())) return false;
+        if (!_matchesPeriod(t.date)) return false;
 
         if (_isBudgetMode) {
           if (t.bucket == 'Out of Bucket') return false;
@@ -267,7 +267,7 @@ class _BucketSpendingChartState extends State<BucketSpendingChart> {
             t.cardId != _selectedAccountId) return false;
 
         if (t.type != 'Expense') return false;
-        if (!_matchesPeriod(t.date.toDate())) return false;
+        if (!_matchesPeriod(t.date)) return false;
 
         if (_isBudgetMode) {
           if (t.bucket == 'Out of Bucket') return false;

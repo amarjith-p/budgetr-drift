@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get_it/get_it.dart';
 import '../../../core/constants/bank_list.dart';
 import '../../../core/widgets/modern_dropdown.dart';
@@ -114,7 +113,8 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
         creditLimit: double.parse(_limitCtrl.text),
         billDate: _billDate,
         dueDate: _dueDate,
-        createdAt: isEditing ? widget.cardToEdit!.createdAt : Timestamp.now(),
+        createdAt:
+            isEditing ? widget.cardToEdit!.createdAt : DateTime.timestamp(),
         currentBalance: isEditing ? widget.cardToEdit!.currentBalance : 0.0,
       );
 

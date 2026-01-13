@@ -131,7 +131,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                     _selectedAccountId != kGroupBanks &&
                                     t.accountId != _selectedAccountId)
                                   return false;
-                                return _matchesDateFilter(t.date.toDate());
+                                return _matchesDateFilter(t.date);
                               }));
                             }
 
@@ -142,7 +142,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                     _selectedAccountId != kGroupCredits &&
                                     t.cardId != _selectedAccountId)
                                   return false;
-                                return _matchesDateFilter(t.date.toDate());
+                                return _matchesDateFilter(t.date);
                               }));
                             }
 
@@ -850,7 +850,7 @@ class _ReadOnlyExpenseTransactionItemState
                             fontWeight: FontWeight.bold,
                             fontSize: 15)),
                     const SizedBox(height: 4),
-                    Text(DateFormat('dd MMM').format(widget.txn.date.toDate()),
+                    Text(DateFormat('dd MMM').format(widget.txn.date),
                         style: const TextStyle(
                             color: Colors.white38, fontSize: 11)),
                   ],
@@ -895,8 +895,7 @@ class _ReadOnlyExpenseTransactionItemState
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        DateFormat('EEEE, hh:mm a')
-                            .format(widget.txn.date.toDate()),
+                        DateFormat('EEEE, hh:mm a').format(widget.txn.date),
                         style: TextStyle(
                             color: Colors.white.withOpacity(0.5), fontSize: 12),
                       ),
@@ -1060,7 +1059,7 @@ class _ReadOnlyCreditTransactionItemState
                             fontWeight: FontWeight.bold,
                             fontSize: 15)),
                     const SizedBox(height: 4),
-                    Text(DateFormat('dd MMM').format(widget.txn.date.toDate()),
+                    Text(DateFormat('dd MMM').format(widget.txn.date),
                         style: const TextStyle(
                             color: Colors.white38, fontSize: 11)),
                   ],
@@ -1107,8 +1106,7 @@ class _ReadOnlyCreditTransactionItemState
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        DateFormat('EEEE, hh:mm a')
-                            .format(widget.txn.date.toDate()),
+                        DateFormat('EEEE, hh:mm a').format(widget.txn.date),
                         style: TextStyle(
                             color: Colors.white.withOpacity(0.5), fontSize: 12),
                       ),

@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class CategoryConfig {
   String name;
   double percentage;
@@ -12,10 +10,10 @@ class CategoryConfig {
   });
 
   Map<String, dynamic> toMap() => {
-    'name': name,
-    'percentage': percentage,
-    'note': note,
-  };
+        'name': name,
+        'percentage': percentage,
+        'note': note,
+      };
 
   factory CategoryConfig.fromMap(Map<String, dynamic> map) {
     return CategoryConfig(
@@ -63,43 +61,43 @@ class PercentageConfig {
     );
   }
 
-  factory PercentageConfig.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+  // factory PercentageConfig.fromFirestore(DocumentSnapshot doc) {
+  //   Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
-    if (data.containsKey('categories')) {
-      var list = data['categories'] as List;
-      List<CategoryConfig> categories = list
-          .map((i) => CategoryConfig.fromMap(i))
-          .toList();
-      return PercentageConfig(categories: categories);
-    } else {
-      // Legacy support for old format
-      return PercentageConfig(
-        categories: [
-          CategoryConfig(
-            name: 'Necessities',
-            percentage: (data['necessities'] ?? 45.0).toDouble(),
-          ),
-          CategoryConfig(
-            name: 'Lifestyle',
-            percentage: (data['lifestyle'] ?? 15.0).toDouble(),
-          ),
-          CategoryConfig(
-            name: 'Investment',
-            percentage: (data['investment'] ?? 20.0).toDouble(),
-          ),
-          CategoryConfig(
-            name: 'Emergency',
-            percentage: (data['emergency'] ?? 5.0).toDouble(),
-          ),
-          CategoryConfig(
-            name: 'Buffer',
-            percentage: (data['buffer'] ?? 15.0).toDouble(),
-          ),
-        ],
-      );
-    }
-  }
+  //   if (data.containsKey('categories')) {
+  //     var list = data['categories'] as List;
+  //     List<CategoryConfig> categories = list
+  //         .map((i) => CategoryConfig.fromMap(i))
+  //         .toList();
+  //     return PercentageConfig(categories: categories);
+  //   } else {
+  //     // Legacy support for old format
+  //     return PercentageConfig(
+  //       categories: [
+  //         CategoryConfig(
+  //           name: 'Necessities',
+  //           percentage: (data['necessities'] ?? 45.0).toDouble(),
+  //         ),
+  //         CategoryConfig(
+  //           name: 'Lifestyle',
+  //           percentage: (data['lifestyle'] ?? 15.0).toDouble(),
+  //         ),
+  //         CategoryConfig(
+  //           name: 'Investment',
+  //           percentage: (data['investment'] ?? 20.0).toDouble(),
+  //         ),
+  //         CategoryConfig(
+  //           name: 'Emergency',
+  //           percentage: (data['emergency'] ?? 5.0).toDouble(),
+  //         ),
+  //         CategoryConfig(
+  //           name: 'Buffer',
+  //           percentage: (data['buffer'] ?? 15.0).toDouble(),
+  //         ),
+  //       ],
+  //     );
+  //   }
+  // }
 
   Map<String, dynamic> toMap() {
     return {'categories': categories.map((e) => e.toMap()).toList()};
