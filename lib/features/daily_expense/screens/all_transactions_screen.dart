@@ -78,7 +78,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                 // Group transactions by Month (Just like Account Details)
                 final grouped =
                     groupBy(transactions, (ExpenseTransactionModel t) {
-                  return DateFormat('MMMM yyyy').format(t.date.toDate());
+                  return DateFormat('MMMM yyyy').format(t.date);
                 });
 
                 return ListView.builder(

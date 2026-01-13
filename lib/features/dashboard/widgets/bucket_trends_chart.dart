@@ -61,7 +61,7 @@ class _BucketTrendsChartState extends State<BucketTrendsChart> {
     _totalSpent = 0;
 
     for (var txn in widget.transactions) {
-      final day = txn.date.toDate().day;
+      final day = txn.date.day;
       final amount = txn.amount;
       dailyTotals[day] = (dailyTotals[day] ?? 0) + amount;
       _totalSpent += amount;

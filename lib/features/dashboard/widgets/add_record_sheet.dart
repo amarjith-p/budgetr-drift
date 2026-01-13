@@ -2,10 +2,8 @@ import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:local_auth/local_auth.dart';
 
-import '../../../core/constants/firebase_constants.dart';
 import '../../../core/widgets/calculator_keyboard.dart';
 import '../../../core/widgets/modern_dropdown.dart';
 // IMPORT THE NEW REUSABLE WIDGET
@@ -295,8 +293,8 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
       allocations: allocations,
       allocationPercentages: percentages,
       bucketOrder: bucketOrder,
-      createdAt: widget.recordToEdit?.createdAt ?? Timestamp.now(),
-      updatedAt: Timestamp.now(),
+      createdAt: widget.recordToEdit?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     await _dashboardService.setFinancialRecord(record);

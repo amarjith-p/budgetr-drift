@@ -44,7 +44,7 @@ class BillingCycleUtils {
     final now = DateTime.now();
     final lastBillDate = getLastBillDate(now, billDay);
 
-    final stmtDate = getStatementDateForTxn(txn.date.toDate(), billDay,
+    final stmtDate = getStatementDateForTxn(txn.date, billDay,
         forceNextCycle: txn.includeInNextStatement);
 
     return stmtDate.isAfter(lastBillDate);
@@ -98,7 +98,7 @@ class BillingCycleUtils {
     if (!isRepaymentCategory(txn.category)) return false;
 
     final dueDate = getDueDateForStatement(statementDate, dueDay);
-    final txnDate = txn.date.toDate();
+    final txnDate = txn.date;
 
     return txnDate.isAfter(statementDate) &&
         (txnDate.isBefore(dueDate) || isSameDay(txnDate, dueDate));

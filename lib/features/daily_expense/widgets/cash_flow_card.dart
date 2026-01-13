@@ -52,8 +52,8 @@ class _CashFlowCardState extends State<CashFlowCard> {
     // --- 2. Filter by Date ---
     combined = combined.where((txn) {
       final date = (txn is ExpenseTransactionModel)
-          ? txn.date.toDate()
-          : (txn as CreditTransactionModel).date.toDate();
+          ? txn.date
+          : (txn as CreditTransactionModel).date;
 
       if (_selectedPeriod == 'This Month') {
         return date.year == now.year && date.month == now.month;

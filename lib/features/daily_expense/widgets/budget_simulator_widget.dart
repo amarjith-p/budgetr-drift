@@ -625,8 +625,8 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
       ? t.amount
       : (t is CreditTransactionModel ? t.amount : 0.0);
   DateTime _getDate(dynamic t) => (t is ExpenseTransactionModel)
-      ? t.date.toDate()
-      : (t is CreditTransactionModel ? t.date.toDate() : DateTime.now());
+      ? t.date
+      : (t is CreditTransactionModel ? t.date : DateTime.now());
   String _getType(dynamic t) => (t is ExpenseTransactionModel)
       ? t.type
       : (t is CreditTransactionModel ? t.type : 'Expense');

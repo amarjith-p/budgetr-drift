@@ -1,12 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class ExpenseAccountModel {
   final String id;
   final String name;
   final String bankName;
   final String type;
   final double currentBalance;
-  final Timestamp createdAt;
+  final DateTime createdAt;
 
   final String accountType;
   final String accountNumber;
@@ -29,22 +27,22 @@ class ExpenseAccountModel {
     this.dashboardOrder = 0,
   });
 
-  factory ExpenseAccountModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return ExpenseAccountModel(
-      id: doc.id,
-      name: data['name'] ?? '',
-      bankName: data['bankName'] ?? '',
-      type: data['type'] ?? 'Bank',
-      currentBalance: (data['currentBalance'] ?? 0.0).toDouble(),
-      createdAt: data['createdAt'] ?? Timestamp.now(),
-      accountType: data['accountType'] ?? 'Savings Account',
-      accountNumber: data['accountNumber'] ?? '',
-      color: data['color'] ?? 0xFF1E1E1E,
-      showOnDashboard: data['showOnDashboard'] ?? true,
-      dashboardOrder: data['dashboardOrder'] ?? 0,
-    );
-  }
+  // factory ExpenseAccountModel.fromFirestore(DocumentSnapshot doc) {
+  //   final data = doc.data() as Map<String, dynamic>;
+  //   return ExpenseAccountModel(
+  //     id: doc.id,
+  //     name: data['name'] ?? '',
+  //     bankName: data['bankName'] ?? '',
+  //     type: data['type'] ?? 'Bank',
+  //     currentBalance: (data['currentBalance'] ?? 0.0).toDouble(),
+  //     createdAt: data['createdAt'] ?? DateTime.now(),
+  //     accountType: data['accountType'] ?? 'Savings Account',
+  //     accountNumber: data['accountNumber'] ?? '',
+  //     color: data['color'] ?? 0xFF1E1E1E,
+  //     showOnDashboard: data['showOnDashboard'] ?? true,
+  //     dashboardOrder: data['dashboardOrder'] ?? 0,
+  //   );
+  // }
 
   Map<String, dynamic> toMap() {
     return {
@@ -86,20 +84,20 @@ class ExpenseTransactionModel {
   final String id;
   final String accountId;
   final double amount;
-  final Timestamp date;
+  final DateTime date;
   final String bucket;
   final String type;
   final String category;
   final String subCategory;
   final String notes;
-  
+
   // Transfer fields
   final String? transferAccountId;
   final String? transferAccountName;
   final String? transferAccountBankName;
 
   // --- NEW FIELD FOR SYNC ---
-  final String? linkedCreditCardId; 
+  final String? linkedCreditCardId;
 
   ExpenseTransactionModel({
     required this.id,
@@ -117,24 +115,24 @@ class ExpenseTransactionModel {
     this.linkedCreditCardId,
   });
 
-  factory ExpenseTransactionModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return ExpenseTransactionModel(
-      id: doc.id,
-      accountId: data['accountId'] ?? '',
-      amount: (data['amount'] ?? 0.0).toDouble(),
-      date: data['date'] ?? Timestamp.now(),
-      bucket: data['bucket'] ?? 'Unallocated',
-      type: data['type'] ?? 'Expense',
-      category: data['category'] ?? 'General',
-      subCategory: data['subCategory'] ?? 'General',
-      notes: data['notes'] ?? '',
-      transferAccountId: data['transferAccountId'],
-      transferAccountName: data['transferAccountName'],
-      transferAccountBankName: data['transferAccountBankName'],
-      linkedCreditCardId: data['linkedCreditCardId'],
-    );
-  }
+  // factory ExpenseTransactionModel.fromFirestore(DocumentSnapshot doc) {
+  //   final data = doc.data() as Map<String, dynamic>;
+  //   return ExpenseTransactionModel(
+  //     id: doc.id,
+  //     accountId: data['accountId'] ?? '',
+  //     amount: (data['amount'] ?? 0.0).toDouble(),
+  //     date: data['date'] ?? DateTime.now(),
+  //     bucket: data['bucket'] ?? 'Unallocated',
+  //     type: data['type'] ?? 'Expense',
+  //     category: data['category'] ?? 'General',
+  //     subCategory: data['subCategory'] ?? 'General',
+  //     notes: data['notes'] ?? '',
+  //     transferAccountId: data['transferAccountId'],
+  //     transferAccountName: data['transferAccountName'],
+  //     transferAccountBankName: data['transferAccountBankName'],
+  //     linkedCreditCardId: data['linkedCreditCardId'],
+  //   );
+  // }
 
   Map<String, dynamic> toMap() {
     return {

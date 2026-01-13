@@ -269,8 +269,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
 
                         final grouped =
                             groupBy(filteredList, (ExpenseTransactionModel t) {
-                          return DateFormat('MMMM yyyy')
-                              .format(t.date.toDate());
+                          return DateFormat('MMMM yyyy').format(t.date);
                         });
 
                         return ListView.builder(
@@ -383,7 +382,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
     }
     if (_dateRange != null) {
       list = list.where((t) {
-        final date = t.date.toDate();
+        final date = t.date;
         final end = _dateRange!.end
             .add(const Duration(days: 1))
             .subtract(const Duration(seconds: 1));

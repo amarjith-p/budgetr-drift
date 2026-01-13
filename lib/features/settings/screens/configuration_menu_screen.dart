@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../settings/screens/settings_screen.dart';
 import 'category_manager_screen.dart';
-import '../../notifications/screens/notification_settings_screen.dart';
 
 class ConfigurationMenuScreen extends StatelessWidget {
   const ConfigurationMenuScreen({super.key});
@@ -53,20 +52,20 @@ class ConfigurationMenuScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // NEW Notification Card
-            _buildMenuCard(
-              context,
-              title: "Notification Uplink",
-              subtitle: "Manage System Alerts & Reminders",
-              icon: Icons.notifications_active_outlined,
-              color: const Color(0xFF4CC9F0),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const NotificationSettingsScreen(),
-                ),
-              ),
-            ),
+            // // NEW Notification Card
+            // _buildMenuCard(
+            //   context,
+            //   title: "Notification Uplink",
+            //   subtitle: "Manage System Alerts & Reminders",
+            //   icon: Icons.notifications_active_outlined,
+            //   color: const Color(0xFF4CC9F0),
+            //   onTap: () => Navigator.push(
+            //     context,
+            //     MaterialPageRoute(
+            //       builder: (_) => const NotificationSettingsScreen(),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),

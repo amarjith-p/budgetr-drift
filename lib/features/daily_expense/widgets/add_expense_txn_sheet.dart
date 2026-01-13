@@ -2,7 +2,6 @@
 
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../../../core/widgets/calculator_keyboard.dart';
@@ -13,7 +12,6 @@ import '../../dashboard/services/dashboard_service.dart';
 import '../../settlement/services/settlement_service.dart';
 import '../../credit_tracker/models/credit_models.dart';
 import '../../credit_tracker/services/credit_service.dart';
-import '../../notifications/services/budget_notification_service.dart';
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
 
@@ -137,7 +135,7 @@ class _AddExpenseTransactionSheetState
           _amountCtrl.text =
               t.amount.toString().replaceAll(RegExp(r"([.]*0)(?!.*\d)"), "");
           _notesCtrl.text = t.notes;
-          _date = t.date.toDate();
+          _date = t.date;
           _selectedBucket = t.bucket;
           _category = t.category;
           _subCategory = t.subCategory;
@@ -321,8 +319,8 @@ class _AddExpenseTransactionSheetState
               linkedCreditCardId: _selectedCreditCard!.id,
             );
             await ExpenseService().addTransaction(transferOut);
-            BudgetNotificationService()
-                .checkAndTriggerNotification(transferOut);
+            // BudgetNotificationService()
+            //     .checkAndTriggerNotification(transferOut);
           } else {
             // Standard Transfer (Account -> Account)
             final transferOut = ExpenseTransactionModel(
@@ -363,7 +361,7 @@ class _AddExpenseTransactionSheetState
             linkedCreditCardId: ccId,
           );
           await ExpenseService().addTransaction(txn);
-          BudgetNotificationService().checkAndTriggerNotification(txn);
+          // BudgetNotificationService().checkAndTriggerNotification(txn);
         }
       }
 

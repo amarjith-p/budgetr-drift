@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 enum InvestmentType { stock, mutualFund, other }
 
 class InvestmentRecord {
@@ -42,30 +40,30 @@ class InvestmentRecord {
       ? 0
       : ((currentPrice - previousClose) / previousClose) * 100;
 
-  factory InvestmentRecord.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
+  // factory InvestmentRecord.fromFirestore(DocumentSnapshot doc) {
+  //   Map data = doc.data() as Map<String, dynamic>;
 
-    String typeStr = data['type'] ?? 'InvestmentType.stock';
-    InvestmentType t = InvestmentType.stock;
-    if (typeStr.contains('mutualFund')) t = InvestmentType.mutualFund;
-    if (typeStr.contains('other')) t = InvestmentType.other;
+  //   String typeStr = data['type'] ?? 'InvestmentType.stock';
+  //   InvestmentType t = InvestmentType.stock;
+  //   if (typeStr.contains('mutualFund')) t = InvestmentType.mutualFund;
+  //   if (typeStr.contains('other')) t = InvestmentType.other;
 
-    return InvestmentRecord(
-      id: doc.id,
-      symbol: data['symbol'] ?? '',
-      name: data['name'] ?? '',
-      type: t,
-      quantity: (data['quantity'] ?? 0.0).toDouble(),
-      averagePrice: (data['averagePrice'] ?? 0.0).toDouble(),
-      currentPrice: (data['currentPrice'] ?? 0.0).toDouble(),
-      previousClose: (data['previousClose'] ?? 0.0).toDouble(), // Load
-      bucket: data['bucket'] ?? 'General',
-      lastPurchasedDate:
-          (data['lastPurchasedDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      lastUpdated:
-          (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now(),
-    );
-  }
+  //   return InvestmentRecord(
+  //     id: doc.id,
+  //     symbol: data['symbol'] ?? '',
+  //     name: data['name'] ?? '',
+  //     type: t,
+  //     quantity: (data['quantity'] ?? 0.0).toDouble(),
+  //     averagePrice: (data['averagePrice'] ?? 0.0).toDouble(),
+  //     currentPrice: (data['currentPrice'] ?? 0.0).toDouble(),
+  //     previousClose: (data['previousClose'] ?? 0.0).toDouble(), // Load
+  //     bucket: data['bucket'] ?? 'General',
+  //     lastPurchasedDate:
+  //         (data['lastPurchasedDate'] as Timestamp?)? ?? DateTime.now(),
+  //     lastUpdated:
+  //         (data['lastUpdated'] as Timestamp?)? ?? DateTime.now(),
+  //   );
+  // }
 
   Map<String, dynamic> toMap() {
     return {
@@ -77,8 +75,8 @@ class InvestmentRecord {
       'currentPrice': currentPrice,
       'previousClose': previousClose, // Save
       'bucket': bucket,
-      'lastPurchasedDate': Timestamp.fromDate(lastPurchasedDate),
-      'lastUpdated': Timestamp.fromDate(lastUpdated),
+      'lastPurchasedDate': DateTime.fromDate(lastPurchasedDate),
+      'lastUpdated': DateTime.fromDate(lastUpdated),
     };
   }
 }

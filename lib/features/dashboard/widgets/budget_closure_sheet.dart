@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -56,7 +55,7 @@ class _BudgetClosureSheetState extends State<BudgetClosureSheet> {
         expenses: _budgetedExpenses,
         totalIncome: widget.record.effectiveIncome,
         totalExpense: _totalBudgetedExpense,
-        settledAt: Timestamp.now(),
+        settledAt: DateTime.now(),
         // Pass the Dashboard's bucket order to the settlement
         bucketOrder: widget.record.bucketOrder,
       );

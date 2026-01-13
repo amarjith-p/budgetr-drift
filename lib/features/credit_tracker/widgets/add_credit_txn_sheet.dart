@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../../../core/widgets/calculator_keyboard.dart';
@@ -10,7 +9,6 @@ import '../../dashboard/services/dashboard_service.dart';
 import '../../settlement/services/settlement_service.dart';
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
-import '../../notifications/services/budget_notification_service.dart';
 
 class AddCreditTransactionSheet extends StatefulWidget {
   final CreditTransactionModel? transactionToEdit;
@@ -122,7 +120,7 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
           _amountCtrl.text =
               t.amount.toString().replaceAll(RegExp(r"([.]*0)(?!.*\d)"), "");
           _notesCtrl.text = t.notes;
-          _date = t.date.toDate();
+          _date = t.date;
           _type = t.type;
           _selectedBucket = t.bucket;
           _category = t.category;
@@ -155,7 +153,7 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
         id: widget.transactionToEdit?.id ?? '',
         cardId: _selectedCard!.id,
         amount: amount,
-        date: Timestamp.fromDate(_date),
+        date: DateTime.timestamp(),
         bucket: _type == 'Expense'
             ? (_selectedBucket ?? 'Unallocated')
             : 'Unallocated',
@@ -171,17 +169,17 @@ class _AddCreditTransactionSheetState extends State<AddCreditTransactionSheet> {
         await CreditService().addTransaction(txn);
 
         if (mounted) {
-          await BudgetNotificationService()
-              .checkAndTriggerCreditNotification(txn);
+          // await BudgetNotificationService()
+          //     .checkAndTriggerCreditNotification(txn);
         }
       } else {
         // Update Transaction
-        await CreditService().updateTransaction(txn);
+        // await CreditService().updateTransaction(txn);
 
         // --- NEW: Trigger Check on Update ---
         if (mounted) {
-          await BudgetNotificationService()
-              .checkAndTriggerCreditNotification(txn);
+          // await BudgetNotificationService()
+          //     .checkAndTriggerCreditNotification(txn);
         }
       }
 

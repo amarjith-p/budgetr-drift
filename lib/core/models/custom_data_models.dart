@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 enum CustomFieldType {
   string,
   number,
@@ -36,15 +34,15 @@ class CustomFieldConfig {
   });
 
   Map<String, dynamic> toMap() => {
-    'name': name,
-    'type': type.index,
-    'isSumRequired': isSumRequired,
-    'currencySymbol': currencySymbol,
-    'dropdownOptions': dropdownOptions,
-    'serialPrefix': serialPrefix,
-    'serialSuffix': serialSuffix,
-    'formulaExpression': formulaExpression,
-  };
+        'name': name,
+        'type': type.index,
+        'isSumRequired': isSumRequired,
+        'currencySymbol': currencySymbol,
+        'dropdownOptions': dropdownOptions,
+        'serialPrefix': serialPrefix,
+        'serialSuffix': serialSuffix,
+        'formulaExpression': formulaExpression,
+      };
 
   factory CustomFieldConfig.fromMap(Map<String, dynamic> map) =>
       CustomFieldConfig(
@@ -79,30 +77,30 @@ class CustomTemplate {
   });
 
   Map<String, dynamic> toMap() => {
-    'name': name,
-    'fields': fields.map((e) => e.toMap()).toList(),
-    'xAxisField': xAxisField,
-    'yAxisField': yAxisField,
-    // FIX: Preserve the existing creation time instead of resetting it
-    'createdAt': Timestamp.fromDate(createdAt),
-  };
+        'name': name,
+        'fields': fields.map((e) => e.toMap()).toList(),
+        'xAxisField': xAxisField,
+        'yAxisField': yAxisField,
+        // FIX: Preserve the existing creation time instead of resetting it
+        'createdAt': DateTime.timestamp(),
+      };
 
-  factory CustomTemplate.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return CustomTemplate(
-      id: doc.id,
-      name: data['name'],
-      fields: (data['fields'] as List)
-          .map((e) => CustomFieldConfig.fromMap(e))
-          .toList(),
-      xAxisField: data['xAxisField'],
-      yAxisField: data['yAxisField'],
-      // FIX: Use a stable fallback (Epoch 0) for missing timestamps to prevent random shuffling
-      createdAt: data['createdAt'] != null
-          ? (data['createdAt'] as Timestamp).toDate()
-          : DateTime.fromMillisecondsSinceEpoch(0),
-    );
-  }
+  // factory CustomTemplate.fromFirestore(DocumentSnapshot doc) {
+  //   final data = doc.data() as Map<String, dynamic>;
+  //   return CustomTemplate(
+  //     id: doc.id,
+  //     name: data['name'],
+  //     fields: (data['fields'] as List)
+  //         .map((e) => CustomFieldConfig.fromMap(e))
+  //         .toList(),
+  //     xAxisField: data['xAxisField'],
+  //     yAxisField: data['yAxisField'],
+  //     // FIX: Use a stable fallback (Epoch 0) for missing timestamps to prevent random shuffling
+  //     createdAt: data['createdAt'] != null
+  //         ? (data['createdAt'] as Timestamp).toDate()
+  //         : DateTime.fromMillisecondsSinceEpoch(0),
+  //   );
+  // }
 }
 
 class CustomRecord {
@@ -122,7 +120,7 @@ class CustomRecord {
     final storageData = <String, dynamic>{};
     data.forEach((key, value) {
       if (value is DateTime) {
-        storageData[key] = Timestamp.fromDate(value);
+        storageData[key] = DateTime.timestamp();
       } else {
         storageData[key] = value;
       }
@@ -131,28 +129,28 @@ class CustomRecord {
     return {
       'templateId': templateId,
       'data': storageData,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': DateTime.timestamp(),
     };
   }
 
-  factory CustomRecord.fromFirestore(DocumentSnapshot doc) {
-    final raw = doc.data() as Map<String, dynamic>;
-    final rawData = raw['data'] as Map<String, dynamic>;
-    final processedData = <String, dynamic>{};
+  // factory CustomRecord.fromFirestore(DocumentSnapshot doc) {
+  //   final raw = doc.data() as Map<String, dynamic>;
+  //   final rawData = raw['data'] as Map<String, dynamic>;
+  //   final processedData = <String, dynamic>{};
 
-    rawData.forEach((key, value) {
-      if (value is Timestamp) {
-        processedData[key] = value.toDate();
-      } else {
-        processedData[key] = value;
-      }
-    });
+  //   rawData.forEach((key, value) {
+  //     if (value is Timestamp) {
+  //       processedData[key] = value.toDate();
+  //     } else {
+  //       processedData[key] = value;
+  //     }
+  //   });
 
-    return CustomRecord(
-      id: doc.id,
-      templateId: raw['templateId'],
-      data: processedData,
-      createdAt: (raw['createdAt'] as Timestamp).toDate(),
-    );
-  }
+  //   return CustomRecord(
+  //     id: doc.id,
+  //     templateId: raw['templateId'],
+  //     data: processedData,
+  //     createdAt: (raw['createdAt'] as Timestamp).toDate(),
+  //   );
+  // }
 }

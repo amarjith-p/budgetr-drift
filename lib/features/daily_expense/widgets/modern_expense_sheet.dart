@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:math_expressions/math_expressions.dart';
@@ -18,7 +17,6 @@ import '../../dashboard/services/dashboard_service.dart';
 import '../../settlement/services/settlement_service.dart';
 import '../../credit_tracker/models/credit_models.dart';
 import '../../credit_tracker/services/credit_service.dart';
-import '../../notifications/services/budget_notification_service.dart';
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
 
@@ -80,7 +78,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
     type: 'External',
     accountType: 'External',
     currentBalance: 0,
-    createdAt: Timestamp.now(),
+    createdAt: DateTime.timestamp(),
     dashboardOrder: 9999,
   );
 
@@ -138,7 +136,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
           _amountCtrl.text =
               t.amount.toString().replaceAll(RegExp(r"([.]*0)(?!.*\d)"), "");
           _notesCtrl.text = t.notes;
-          _date = t.date.toDate();
+          _date = t.date;
           _selectedBucket = t.bucket;
           _category = t.category;
           _subCategory = t.subCategory;
@@ -447,7 +445,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
       }
 
       if (mounted) {
-        await BudgetNotificationService().checkAndTriggerNotification(txn);
+        // await BudgetNotificationService().checkAndTriggerNotification(txn);
         Navigator.pop(context);
       }
     } catch (e) {

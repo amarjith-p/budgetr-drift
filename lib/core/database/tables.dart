@@ -186,3 +186,23 @@ class CustomRecords extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+class TransactionCategories extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get type => text()(); // 'Income' or 'Expense'
+  TextColumn get subCategories => text()(); // JSON List<String>
+  IntColumn get iconCode => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// --- 11. SETTINGS (Key-Value Store) ---
+class Settings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()(); // JSON
+
+  @override
+  Set<Column> get primaryKey => {key};
+}

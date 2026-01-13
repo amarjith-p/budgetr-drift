@@ -343,7 +343,7 @@ class _BalanceTrendChartState extends State<BalanceTrendChart> {
     final cutoff = startDate.subtract(const Duration(days: 1));
 
     for (var txn in sortedTxns) {
-      final txnDate = txn.date.toDate();
+      final txnDate = txn.date;
       if (txnDate.isBefore(cutoff)) break;
 
       if (txn.type == 'Income') {

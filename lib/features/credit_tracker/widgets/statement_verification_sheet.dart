@@ -99,7 +99,7 @@ class _StatementVerificationSheetState
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold)),
                             Text(
-                              DateFormat('dd MMM').format(txn.date.toDate()),
+                              DateFormat('dd MMM').format(txn.date),
                               style: TextStyle(
                                   color: Colors.white.withOpacity(0.5),
                                   fontSize: 11),
