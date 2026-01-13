@@ -75,8 +75,8 @@ class InvestmentRecord {
       'currentPrice': currentPrice,
       'previousClose': previousClose, // Save
       'bucket': bucket,
-      'lastPurchasedDate': DateTime.fromDate(lastPurchasedDate),
-      'lastUpdated': DateTime.fromDate(lastUpdated),
+      'lastPurchasedDate': lastPurchasedDate,
+      'lastUpdated': lastUpdated,
     };
   }
 }

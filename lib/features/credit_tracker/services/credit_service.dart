@@ -1,226 +1,15 @@
-// // lib/features/credit_tracker/services/credit_service.dart
-
-// import 'package:cloud_firestore/cloud_firestore.dart';
-// import '../../../core/constants/firebase_constants.dart';
-// import '../../daily_expense/services/expense_service.dart';
-// import '../models/credit_models.dart';
-
-// class CreditService {
-//   final FirebaseFirestore _db = FirebaseFirestore.instance;
-
-//   // --- CARDS ---
-//   Stream<List<CreditCardModel>> getCreditCards() {
-//     return _db
-//         .collection(FirebaseConstants.creditCards)
-//         .where('isArchived', isEqualTo: false)
-//         .orderBy('createdAt', descending: true)
-//         .snapshots()
-//         .map(
-//           (s) => s.docs.map((d) => CreditCardModel.fromFirestore(d)).toList(),
-//         );
-//   }
-
-//   Future<void> addCreditCard(CreditCardModel card) {
-//     return _db.collection(FirebaseConstants.creditCards).add(card.toMap());
-//   }
-
-//   Future<void> updateCreditCard(CreditCardModel card) async {
-//     await _db
-//         .collection(FirebaseConstants.creditCards)
-//         .doc(card.id)
-//         .update(card.toMap());
-//   }
-
-//   Future<void> deleteCreditCard(String cardId) async {
-//     final batch = _db.batch();
-//     final cardRef = _db.collection(FirebaseConstants.creditCards).doc(cardId);
-//     batch.delete(cardRef);
-
-//     final txnsSnapshot = await _db
-//         .collection(FirebaseConstants.creditTransactions)
-//         .where('cardId', isEqualTo: cardId)
-//         .get();
-
-//     for (final doc in txnsSnapshot.docs) {
-//       batch.delete(doc.reference);
-//     }
-//     await batch.commit();
-//   }
-
-//   // --- TRANSACTIONS ---
-
-//   // [NEW] Added global fetch for Dashboard/Charts
-//   Stream<List<CreditTransactionModel>> getAllTransactions() {
-//     return _db
-//         .collection(FirebaseConstants.creditTransactions)
-//         .orderBy('date', descending: true)
-//         .snapshots()
-//         .map(
-//           (s) => s.docs
-//               .map((d) => CreditTransactionModel.fromFirestore(d))
-//               .toList(),
-//         );
-//   }
-
-//   Stream<List<CreditTransactionModel>> getTransactionsForCard(String cardId) {
-//     return _db
-//         .collection(FirebaseConstants.creditTransactions)
-//         .where('cardId', isEqualTo: cardId)
-//         .orderBy('date', descending: true)
-//         .snapshots()
-//         .map(
-//           (s) => s.docs
-//               .map((d) => CreditTransactionModel.fromFirestore(d))
-//               .toList(),
-//         );
-//   }
-
-//   Future<void> addTransaction(CreditTransactionModel txn) async {
-//     final batch = _db.batch();
-//     final txnRef = _db.collection(FirebaseConstants.creditTransactions).doc();
-
-//     final newTxn = CreditTransactionModel(
-//       id: txnRef.id,
-//       cardId: txn.cardId,
-//       amount: txn.amount,
-//       date: txn.date,
-//       bucket: txn.bucket,
-//       type: txn.type,
-//       category: txn.category,
-//       subCategory: txn.subCategory,
-//       notes: txn.notes,
-//       linkedExpenseId: txn.linkedExpenseId,
-//     );
-
-//     batch.set(txnRef, newTxn.toMap());
-
-//     final cardRef =
-//         _db.collection(FirebaseConstants.creditCards).doc(txn.cardId);
-//     double delta = txn.type == 'Expense' ? txn.amount : -txn.amount;
-
-//     batch.update(cardRef, {'currentBalance': FieldValue.increment(delta)});
-//     await batch.commit();
-//   }
-
-//   Future<void> deleteTransaction(CreditTransactionModel txn) async {
-//     final batch = _db.batch();
-//     final txnRef =
-//         _db.collection(FirebaseConstants.creditTransactions).doc(txn.id);
-//     final cardRef =
-//         _db.collection(FirebaseConstants.creditCards).doc(txn.cardId);
-
-//     batch.delete(txnRef);
-
-//     double reverseDelta = txn.type == 'Expense' ? -txn.amount : txn.amount;
-//     batch.update(cardRef, {
-//       'currentBalance': FieldValue.increment(reverseDelta),
-//     });
-
-//     await batch.commit();
-
-//     if (txn.linkedExpenseId != null && txn.linkedExpenseId!.isNotEmpty) {
-//       await ExpenseService().deleteTransactionFromCredit(txn.linkedExpenseId!);
-//     }
-//   }
-
-//   Future<void> updateTransaction(CreditTransactionModel newTxn) async {
-//     await _db.runTransaction((transaction) async {
-//       final txnRef =
-//           _db.collection(FirebaseConstants.creditTransactions).doc(newTxn.id);
-//       final cardRef =
-//           _db.collection(FirebaseConstants.creditCards).doc(newTxn.cardId);
-
-//       final docSnapshot = await transaction.get(txnRef);
-//       if (!docSnapshot.exists) throw Exception("Transaction does not exist!");
-//       final oldTxn = CreditTransactionModel.fromFirestore(docSnapshot);
-
-//       double oldEffect =
-//           oldTxn.type == 'Expense' ? oldTxn.amount : -oldTxn.amount;
-//       double newEffect =
-//           newTxn.type == 'Expense' ? newTxn.amount : -newTxn.amount;
-//       double netChange = newEffect - oldEffect;
-
-//       transaction.update(cardRef, {
-//         'currentBalance': FieldValue.increment(netChange),
-//       });
-
-//       transaction.update(txnRef, newTxn.toMap());
-//     });
-
-//     if (newTxn.linkedExpenseId != null && newTxn.linkedExpenseId!.isNotEmpty) {
-//       await ExpenseService().updateTransactionFromCredit(
-//           newTxn.linkedExpenseId!, newTxn.amount, newTxn.date);
-//     }
-//   }
-
-//   // --- INTERNAL / SYNC HELPERS ---
-
-//   Future<void> updateTransactionFromExpense(
-//       String expenseId, double newAmount, Timestamp newDate) async {
-//     final snapshot = await _db
-//         .collection(FirebaseConstants.creditTransactions)
-//         .where('linkedExpenseId', isEqualTo: expenseId)
-//         .get();
-
-//     for (var doc in snapshot.docs) {
-//       final oldTxn = CreditTransactionModel.fromFirestore(doc);
-
-//       await _db.runTransaction((transaction) async {
-//         final cardRef =
-//             _db.collection(FirebaseConstants.creditCards).doc(oldTxn.cardId);
-
-//         double oldEffect =
-//             oldTxn.type == 'Expense' ? oldTxn.amount : -oldTxn.amount;
-//         double newEffect = oldTxn.type == 'Expense' ? newAmount : -newAmount;
-//         double netChange = newEffect - oldEffect;
-
-//         transaction.update(cardRef, {
-//           'currentBalance': FieldValue.increment(netChange),
-//         });
-//         transaction.update(doc.reference, {
-//           'amount': newAmount,
-//           'date': newDate,
-//         });
-//       });
-//     }
-//   }
-
-//   Future<void> deleteTransactionFromExpense(String expenseId) async {
-//     final snapshot = await _db
-//         .collection(FirebaseConstants.creditTransactions)
-//         .where('linkedExpenseId', isEqualTo: expenseId)
-//         .get();
-
-//     for (var doc in snapshot.docs) {
-//       final txn = CreditTransactionModel.fromFirestore(doc);
-//       final batch = _db.batch();
-//       batch.delete(doc.reference);
-
-//       final cardRef =
-//           _db.collection(FirebaseConstants.creditCards).doc(txn.cardId);
-//       double reverseDelta = txn.type == 'Expense' ? -txn.amount : txn.amount;
-//       batch.update(cardRef, {
-//         'currentBalance': FieldValue.increment(reverseDelta),
-//       });
-
-//       await batch.commit();
-//     }
-//   }
-// }
-
-import 'package:drift/drift.dart' as drift;
+import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
-
-import '../../../../core/database/app_database.dart';
+import '../../../core/database/app_database.dart' as db;
 import '../models/credit_models.dart';
-import 'credit_service.dart';
 
 class CreditService {
-  final AppDatabase _db = AppDatabase.instance;
+  final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
 
-  // --- Mappers ---
-  CreditCardModel _mapCard(CreditCard row) {
+  // --- MAPPERS ---
+
+  CreditCardModel _mapCard(db.CreditCard row) {
     return CreditCardModel(
       id: row.id,
       name: row.name,
@@ -232,18 +21,16 @@ class CreditService {
       dueDate: row.dueDate,
       color: row.color,
       isArchived: row.isArchived,
-      // Fix: Convert DateTime -> Timestamp
-      createdAt: DateTime.timestamp(),
+      createdAt: row.createdAt,
     );
   }
 
-  CreditTransactionModel _mapTxn(CreditTransaction row) {
+  CreditTransactionModel _mapTxn(db.CreditTransaction row) {
     return CreditTransactionModel(
       id: row.id,
       cardId: row.cardId,
       amount: row.amount,
-      // Fix: Convert DateTime -> Timestamp
-      date: DateTime.timestamp(),
+      date: row.date,
       bucket: row.bucket,
       type: row.type,
       category: row.category,
@@ -255,54 +42,51 @@ class CreditService {
     );
   }
 
-  // --- Cards ---
-  @override
+  // --- CARDS ---
+
   Stream<List<CreditCardModel>> getCreditCards() {
     return (_db.select(_db.creditCards)
           ..where((t) => t.isArchived.equals(false))
           ..orderBy([
-            (t) => drift.OrderingTerm(
-                expression: t.createdAt, mode: drift.OrderingMode.desc)
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)
           ]))
         .watch()
         .map((rows) => rows.map(_mapCard).toList());
   }
 
-  @override
   Future<void> addCreditCard(CreditCardModel card) async {
-    final id = card.id.isEmpty ? _uuid.v4() : card.id;
-    await _db.into(_db.creditCards).insert(CreditCardsCompanion.insert(
-          id: id,
+    await _db.into(_db.creditCards).insert(db.CreditCardsCompanion.insert(
+          id: card.id.isEmpty ? _uuid.v4() : card.id,
           name: card.name,
           bankName: card.bankName,
-          lastFourDigits: drift.Value(card.lastFourDigits),
+          lastFourDigits: Value(
+              card.lastFourDigits), // Has Default -> Value() wrapper allowed
           creditLimit: card.creditLimit,
-          currentBalance: drift.Value(card.currentBalance),
+          currentBalance: const Value(0.0),
           billDate: card.billDate,
           dueDate: card.dueDate,
-          color: drift.Value(card.color),
-          isArchived: drift.Value(card.isArchived),
-          // Fix: Convert Timestamp -> DateTime
-          createdAt: DateTime.timestamp(),
+          color: Value(card.color), // Has Default
+          isArchived: const Value(false),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         ));
   }
 
-  @override
   Future<void> updateCreditCard(CreditCardModel card) async {
     await (_db.update(_db.creditCards)..where((t) => t.id.equals(card.id)))
-        .write(CreditCardsCompanion(
-      name: drift.Value(card.name),
-      bankName: drift.Value(card.bankName),
-      creditLimit: drift.Value(card.creditLimit),
-      currentBalance: drift.Value(card.currentBalance),
-      billDate: drift.Value(card.billDate),
-      dueDate: drift.Value(card.dueDate),
-      color: drift.Value(card.color),
-      isArchived: drift.Value(card.isArchived),
+        .write(db.CreditCardsCompanion(
+      name: Value(card.name),
+      bankName: Value(card.bankName),
+      lastFourDigits: Value(card.lastFourDigits),
+      creditLimit: Value(card.creditLimit),
+      billDate: Value(card.billDate),
+      dueDate: Value(card.dueDate),
+      color: Value(card.color),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 
-  @override
   Future<void> deleteCreditCard(String cardId) async {
     await _db.transaction(() async {
       await (_db.delete(_db.creditTransactions)
@@ -313,79 +97,170 @@ class CreditService {
     });
   }
 
-  // --- Transactions ---
-  @override
-  Stream<List<CreditTransactionModel>> getAllTransactions() {
-    return (_db.select(_db.creditTransactions)
-          ..orderBy([
-            (t) => drift.OrderingTerm(
-                expression: t.date, mode: drift.OrderingMode.desc)
-          ]))
-        .watch()
-        .map((rows) => rows.map(_mapTxn).toList());
-  }
+  // --- TRANSACTIONS ---
 
-  @override
   Stream<List<CreditTransactionModel>> getTransactionsForCard(String cardId) {
     return (_db.select(_db.creditTransactions)
           ..where((t) => t.cardId.equals(cardId))
           ..orderBy([
-            (t) => drift.OrderingTerm(
-                expression: t.date, mode: drift.OrderingMode.desc)
+            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)
           ]))
         .watch()
         .map((rows) => rows.map(_mapTxn).toList());
   }
 
-  @override
   Future<void> addTransaction(CreditTransactionModel txn) async {
-    final docId = txn.id.isNotEmpty ? txn.id : _uuid.v4();
     await _db.transaction(() async {
+      final newId = txn.id.isNotEmpty ? txn.id : _uuid.v4();
+
+      // 1. Insert Transaction
       await _db
           .into(_db.creditTransactions)
-          .insert(CreditTransactionsCompanion.insert(
-            id: docId,
+          .insert(db.CreditTransactionsCompanion.insert(
+            id: newId,
             cardId: txn.cardId,
             amount: txn.amount,
-            // Fix: Convert Timestamp -> DateTime
-            date: DateTime.timestamp(),
-            bucket: txn.bucket,
-            type: txn.type,
-            category: txn.category,
-            subCategory: txn.subCategory,
-            notes: drift.Value(txn.notes),
-            linkedExpenseId: drift.Value(txn.linkedExpenseId),
-            includeInNextStatement: drift.Value(txn.includeInNextStatement),
-            isSettlementVerified: drift.Value(txn.isSettlementVerified),
+            date: txn.date,
+            bucket: Value(txn.bucket), // Has Default -> Value() is correct
+            type: txn.type, // Required -> String
+            category: txn.category, // Required -> String
+            subCategory: txn.subCategory, // Required -> String
+
+            // --- FIX IS HERE: 'notes' is required in Table, so pass String directly ---
+            notes: txn.notes,
+
+            linkedExpenseId: Value(txn.linkedExpenseId),
+            includeInNextStatement: Value(txn.includeInNextStatement),
+            isSettlementVerified: Value(txn.isSettlementVerified),
+
+            // Description is required, using category as default description if logic requires
+            description: txn.category,
           ));
 
-      // Update Balance
-      final card = await (_db.select(_db.creditCards)
-            ..where((t) => t.id.equals(txn.cardId)))
-          .getSingle();
-      double delta = txn.type == 'Expense' ? txn.amount : -txn.amount;
-
-      await (_db.update(_db.creditCards)..where((t) => t.id.equals(txn.cardId)))
-          .write(CreditCardsCompanion(
-              currentBalance: drift.Value(card.currentBalance + delta)));
+      // 2. Update Card Balance
+      final double balanceChange =
+          txn.type == 'Expense' ? txn.amount : -txn.amount;
+      await _updateCardBalance(txn.cardId, balanceChange);
     });
   }
 
-  @override
-  Future<void> deleteTransaction(CreditTransactionModel txn) async {
+  Future<void> updateTransaction(CreditTransactionModel txn) async {
     await _db.transaction(() async {
-      await (_db.delete(_db.creditTransactions)
+      // 1. Fetch old transaction to revert balance
+      final oldRow = await (_db.select(_db.creditTransactions)
             ..where((t) => t.id.equals(txn.id)))
-          .go();
-
-      final card = await (_db.select(_db.creditCards)
-            ..where((t) => t.id.equals(txn.cardId)))
           .getSingle();
-      double reverseDelta = txn.type == 'Expense' ? -txn.amount : txn.amount;
 
-      await (_db.update(_db.creditCards)..where((t) => t.id.equals(txn.cardId)))
-          .write(CreditCardsCompanion(
-              currentBalance: drift.Value(card.currentBalance + reverseDelta)));
+      double oldEffect =
+          oldRow.type == 'Expense' ? oldRow.amount : -oldRow.amount;
+      double newEffect = txn.type == 'Expense' ? txn.amount : -txn.amount;
+      double netChange = newEffect - oldEffect;
+
+      // 2. Update Card Balance
+      await _updateCardBalance(txn.cardId, netChange);
+
+      // 3. Update Transaction Record
+      // For UPDATEs using the Constructor, Value() wrappers ARE required for everything.
+      await (_db.update(_db.creditTransactions)
+            ..where((t) => t.id.equals(txn.id)))
+          .write(db.CreditTransactionsCompanion(
+        amount: Value(txn.amount),
+        date: Value(txn.date),
+        bucket: Value(txn.bucket),
+        type: Value(txn.type),
+        category: Value(txn.category),
+        subCategory: Value(txn.subCategory),
+        notes: Value(txn.notes),
+        includeInNextStatement: Value(txn.includeInNextStatement),
+        isSettlementVerified: Value(txn.isSettlementVerified),
+      ));
     });
+  }
+
+  Future<void> deleteTransaction(String id) async {
+    await _db.transaction(() async {
+      final oldRow = await (_db.select(_db.creditTransactions)
+            ..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+      if (oldRow == null) return;
+
+      // Revert balance (Inverse of adding)
+      double reverseEffect =
+          oldRow.type == 'Expense' ? -oldRow.amount : oldRow.amount;
+      await _updateCardBalance(oldRow.cardId, reverseEffect);
+
+      await (_db.delete(_db.creditTransactions)..where((t) => t.id.equals(id)))
+          .go();
+    });
+  }
+
+  Future<void> payCreditCardBill(
+      String cardId, double amount, DateTime date, String notes) async {
+    final txn = CreditTransactionModel(
+      id: _uuid.v4(),
+      cardId: cardId,
+      amount: amount,
+      date: date,
+      bucket: 'General',
+      type: 'Payment',
+      category: 'Bill Payment',
+      subCategory: 'Credit Card',
+      notes: notes,
+      includeInNextStatement: false,
+      isSettlementVerified: false,
+    );
+    await addTransaction(txn);
+  }
+
+  // --- SYNC WITH EXPENSES ---
+
+  Future<void> updateTransactionFromExpense(
+      String expenseId, double newAmount, DateTime newDate) async {
+    await _db.transaction(() async {
+      final relatedTxns = await (_db.select(_db.creditTransactions)
+            ..where((t) => t.linkedExpenseId.equals(expenseId)))
+          .get();
+
+      for (var txn in relatedTxns) {
+        double oldEffect = txn.type == 'Expense' ? txn.amount : -txn.amount;
+        double newEffect = txn.type == 'Expense' ? newAmount : -newAmount;
+        double netChange = newEffect - oldEffect;
+
+        await _updateCardBalance(txn.cardId, netChange);
+
+        await (_db.update(_db.creditTransactions)
+              ..where((t) => t.id.equals(txn.id)))
+            .write(db.CreditTransactionsCompanion(
+          amount: Value(newAmount),
+          date: Value(newDate),
+        ));
+      }
+    });
+  }
+
+  Future<void> deleteTransactionFromExpense(String expenseId) async {
+    await _db.transaction(() async {
+      final relatedTxns = await (_db.select(_db.creditTransactions)
+            ..where((t) => t.linkedExpenseId.equals(expenseId)))
+          .get();
+
+      for (var txn in relatedTxns) {
+        double reverseEffect = txn.type == 'Expense' ? -txn.amount : txn.amount;
+        await _updateCardBalance(txn.cardId, reverseEffect);
+        await (_db.delete(_db.creditTransactions)
+              ..where((t) => t.id.equals(txn.id)))
+            .go();
+      }
+    });
+  }
+
+  Future<void> _updateCardBalance(String cardId, double change) async {
+    final card = await (_db.select(_db.creditCards)
+          ..where((t) => t.id.equals(cardId)))
+        .getSingle();
+    await (_db.update(_db.creditCards)..where((t) => t.id.equals(cardId)))
+        .write(db.CreditCardsCompanion(
+      currentBalance: Value(card.currentBalance + change),
+    ));
   }
 }
