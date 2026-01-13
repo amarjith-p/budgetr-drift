@@ -310,7 +310,7 @@ class CategoryService {
         .write(TransactionCategoriesCompanion(
             name: Value(category.name),
             subCategories: Value(jsonEncode(category.subCategories)),
-            iconCode: Value(category.iconCode)));
+            iconCode: Value(category.iconCode ?? 57538)));
   }
 
   Future<void> deleteCategory(String id) async {

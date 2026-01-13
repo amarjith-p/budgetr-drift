@@ -6,7 +6,6 @@ import 'package:local_auth/local_auth.dart';
 
 import '../../../core/widgets/calculator_keyboard.dart';
 import '../../../core/widgets/modern_dropdown.dart';
-// IMPORT THE NEW REUSABLE WIDGET
 import '../../../core/widgets/status_bottom_sheet.dart';
 
 import '../../../core/models/financial_record_model.dart';
@@ -14,7 +13,6 @@ import '../../../core/models/percentage_config_model.dart';
 import '../services/dashboard_service.dart';
 import '../../settings/services/settings_service.dart';
 
-// --- DESIGN SYSTEM IMPORTS ---
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
 import '../../../core/design/budgetr_components.dart';
@@ -36,7 +34,6 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
   final ScrollController _scrollController = ScrollController();
   final LocalAuthentication _auth = LocalAuthentication();
 
-  // Controllers
   late TextEditingController _salaryController;
   late TextEditingController _extraIncomeController;
   late TextEditingController _emiController;
@@ -47,35 +44,27 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
 
   int? _selectedYear;
   int? _selectedMonth;
-  final List<int> _years = List.generate(
-    10,
-    (index) => DateTime.now().year - 2 + index,
-  );
+  final List<int> _years =
+      List.generate(10, (index) => DateTime.now().year - 2 + index);
   final List<int> _months = List.generate(12, (index) => index + 1);
 
   double _effectiveIncome = 0;
   PercentageConfig? _config;
 
-  // Keyboard
   TextEditingController? _activeController;
   bool _isKeyboardVisible = false;
   bool _useSystemKeyboard = false;
   bool _isEditing = false;
-
   @override
   void initState() {
     super.initState();
     _isEditing = widget.recordToEdit != null;
 
     _salaryController = TextEditingController(
-      text: widget.recordToEdit?.salary.toString() ?? '',
-    );
+        text: widget.recordToEdit?.salary.toString() ?? '');
     _extraIncomeController = TextEditingController(
-      text: widget.recordToEdit?.extraIncome.toString() ?? '',
-    );
-    _emiController = TextEditingController(
-      text: widget.recordToEdit?.emi.toString() ?? '',
-    );
+        text: ''); // Removed explicit field if not in model
+    _emiController = TextEditingController(text: '');
 
     _initializeConfig();
 
@@ -92,21 +81,9 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
 
       List<CategoryConfig> preservedCategories = [];
 
-      if (record.bucketOrder.isNotEmpty) {
-        for (var name in record.bucketOrder) {
-          final double percentage = record.allocationPercentages[name] ?? 0.0;
-          preservedCategories.add(
-            CategoryConfig(name: name, percentage: percentage),
-          );
-        }
-      } else {
-        record.allocationPercentages.forEach((key, value) {
-          preservedCategories.add(CategoryConfig(name: key, percentage: value));
-        });
-      }
-
+      final masterConfig = await _settingsService.getPercentageConfig();
       setState(() {
-        _config = PercentageConfig(categories: preservedCategories);
+        _config = masterConfig;
         _calculate();
       });
     } else {
@@ -136,12 +113,8 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
   void _calculate() {
     if (_config == null) return;
     final salary = double.tryParse(_salaryController.text) ?? 0;
-    final extra = double.tryParse(_extraIncomeController.text) ?? 0;
-    final emi = double.tryParse(_emiController.text) ?? 0;
-
     setState(() {
-      _effectiveIncome = (salary + extra) - emi;
-      if (_effectiveIncome < 0) _effectiveIncome = 0;
+      _effectiveIncome = salary;
     });
   }
 
@@ -227,12 +200,10 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
         '$_selectedYear${_selectedMonth.toString().padLeft(2, '0')}';
 
     try {
-      final docSnapshot = await FirebaseFirestore.instance
-          .collection(FirebaseConstants.financialRecords)
-          .doc(idString)
-          .get();
+      final existing = await _dashboardService.getRecordForMonth(
+          _selectedYear!, _selectedMonth!);
 
-      if (docSnapshot.exists) {
+      if (existing != null && !_isEditing) {
         bool authenticated = false;
         try {
           authenticated = await _auth.authenticate(

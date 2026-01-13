@@ -63,11 +63,11 @@
 // }
 import 'dart:convert';
 import 'package:drift/drift.dart';
-import '../../../core/database/app_database.dart';
+import '../../../core/database/app_database.dart' as db;
 import '../../../core/models/settlement_model.dart';
 
 class SettlementService {
-  final AppDatabase _db = AppDatabase.instance;
+  final db.AppDatabase _db = db.AppDatabase.instance;
 
   Future<List<Map<String, int>>> getAvailableMonthsForSettlement() async {
     final records = await _db.select(_db.financialRecords).get();
@@ -114,12 +114,12 @@ class SettlementService {
   Future<void> saveSettlement(Settlement settlement) async {
     await _db
         .into(_db.settlements)
-        .insertOnConflictUpdate(SettlementsCompanion.insert(
+        .insertOnConflictUpdate(db.SettlementsCompanion.insert(
           id: settlement.id,
           year: settlement.year,
           month: settlement.month,
           settledAt: settlement.settledAt,
-          data: jsonEncode(settlement.data),
+          data: jsonEncode(settlement.data), // Ensure .data exists on model
         ));
   }
 }
