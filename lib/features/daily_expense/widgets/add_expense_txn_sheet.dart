@@ -282,7 +282,7 @@ class _AddExpenseTransactionSheetState
           id: widget.txnToEdit!.id,
           accountId: _selectedAccount!.id,
           amount: amount,
-          date: Timestamp.fromDate(_date),
+          date: _date,
           bucket: _selectedBucket ?? 'Unallocated',
           type: _type,
           category: _category!,
@@ -296,7 +296,7 @@ class _AddExpenseTransactionSheetState
         await ExpenseService().updateTransaction(newTxn);
 
         if (mounted) {
-          await BudgetNotificationService().checkAndTriggerNotification(newTxn);
+          // await BudgetNotificationService().checkAndTriggerNotification(newTxn);
         }
       } else {
         // Handle Add (Standard Logic)
@@ -307,7 +307,7 @@ class _AddExpenseTransactionSheetState
               id: '',
               accountId: _selectedAccount!.id,
               amount: amount,
-              date: Timestamp.fromDate(_date),
+              date: _date,
               bucket: 'Unallocated',
               type: 'Transfer Out',
               category: 'Transfer',
@@ -327,7 +327,7 @@ class _AddExpenseTransactionSheetState
               id: '',
               accountId: _selectedAccount!.id,
               amount: amount,
-              date: Timestamp.fromDate(_date),
+              date: _date,
               bucket: 'Unallocated',
               type: 'Transfer Out',
               category: 'Transfer',
@@ -338,8 +338,8 @@ class _AddExpenseTransactionSheetState
               transferAccountBankName: _toAccount!.bankName,
             );
             await ExpenseService().addTransaction(transferOut);
-            BudgetNotificationService()
-                .checkAndTriggerNotification(transferOut);
+            // BudgetNotificationService()
+            //     .checkAndTriggerNotification(transferOut);
           }
         } else {
           final bucketValue =
@@ -352,7 +352,7 @@ class _AddExpenseTransactionSheetState
             id: '',
             accountId: finalAccountId,
             amount: amount,
-            date: Timestamp.fromDate(_date),
+            date: _date,
             bucket: bucketValue,
             type: _type,
             category: _category!,

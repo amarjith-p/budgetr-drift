@@ -704,7 +704,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         // so we immediately start the loading state on the screen behind it.
         setState(() => _isLoading = true);
 
-        await GetIt.I<CreditService>().deleteTransaction(txn);
+        await GetIt.I<CreditService>().deleteTransaction(txn.id);
 
         if (mounted) setState(() => _isLoading = false);
       },
