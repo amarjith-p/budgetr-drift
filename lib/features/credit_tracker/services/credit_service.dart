@@ -60,13 +60,12 @@ class CreditService {
           id: card.id.isEmpty ? _uuid.v4() : card.id,
           name: card.name,
           bankName: card.bankName,
-          lastFourDigits: Value(
-              card.lastFourDigits), // Has Default -> Value() wrapper allowed
+          lastFourDigits: Value(card.lastFourDigits),
           creditLimit: card.creditLimit,
-          currentBalance: const Value(0.0),
+          currentBalance: const Value(0.0), // Start with 0
           billDate: card.billDate,
           dueDate: card.dueDate,
-          color: Value(card.color), // Has Default
+          color: Value(card.color),
           isArchived: const Value(false),
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -109,11 +108,20 @@ class CreditService {
         .map((rows) => rows.map(_mapTxn).toList());
   }
 
+  // MISSING METHOD ADDED HERE
+  Stream<List<CreditTransactionModel>> getAllTransactions() {
+    return (_db.select(_db.creditTransactions)
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)
+          ]))
+        .watch()
+        .map((rows) => rows.map(_mapTxn).toList());
+  }
+
   Future<void> addTransaction(CreditTransactionModel txn) async {
     await _db.transaction(() async {
       final newId = txn.id.isNotEmpty ? txn.id : _uuid.v4();
 
-      // 1. Insert Transaction
       await _db
           .into(_db.creditTransactions)
           .insert(db.CreditTransactionsCompanion.insert(
@@ -121,23 +129,17 @@ class CreditService {
             cardId: txn.cardId,
             amount: txn.amount,
             date: txn.date,
-            bucket: Value(txn.bucket), // Has Default -> Value() is correct
-            type: txn.type, // Required -> String
-            category: txn.category, // Required -> String
-            subCategory: txn.subCategory, // Required -> String
-
-            // --- FIX IS HERE: 'notes' is required in Table, so pass String directly ---
+            bucket: Value(txn.bucket),
+            type: txn.type,
+            category: txn.category,
+            subCategory: txn.subCategory,
             notes: txn.notes,
-
             linkedExpenseId: Value(txn.linkedExpenseId),
             includeInNextStatement: Value(txn.includeInNextStatement),
             isSettlementVerified: Value(txn.isSettlementVerified),
-
-            // Description is required, using category as default description if logic requires
             description: txn.category,
           ));
 
-      // 2. Update Card Balance
       final double balanceChange =
           txn.type == 'Expense' ? txn.amount : -txn.amount;
       await _updateCardBalance(txn.cardId, balanceChange);
@@ -146,7 +148,6 @@ class CreditService {
 
   Future<void> updateTransaction(CreditTransactionModel txn) async {
     await _db.transaction(() async {
-      // 1. Fetch old transaction to revert balance
       final oldRow = await (_db.select(_db.creditTransactions)
             ..where((t) => t.id.equals(txn.id)))
           .getSingle();
@@ -156,11 +157,8 @@ class CreditService {
       double newEffect = txn.type == 'Expense' ? txn.amount : -txn.amount;
       double netChange = newEffect - oldEffect;
 
-      // 2. Update Card Balance
       await _updateCardBalance(txn.cardId, netChange);
 
-      // 3. Update Transaction Record
-      // For UPDATEs using the Constructor, Value() wrappers ARE required for everything.
       await (_db.update(_db.creditTransactions)
             ..where((t) => t.id.equals(txn.id)))
           .write(db.CreditTransactionsCompanion(
@@ -184,7 +182,6 @@ class CreditService {
           .getSingleOrNull();
       if (oldRow == null) return;
 
-      // Revert balance (Inverse of adding)
       double reverseEffect =
           oldRow.type == 'Expense' ? -oldRow.amount : oldRow.amount;
       await _updateCardBalance(oldRow.cardId, reverseEffect);
@@ -211,8 +208,6 @@ class CreditService {
     );
     await addTransaction(txn);
   }
-
-  // --- SYNC WITH EXPENSES ---
 
   Future<void> updateTransactionFromExpense(
       String expenseId, double newAmount, DateTime newDate) async {
