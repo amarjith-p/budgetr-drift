@@ -1,66 +1,3 @@
-// import 'package:cloud_firestore/cloud_firestore.dart';
-// import '../../../core/constants/firebase_constants.dart';
-// import '../../../core/models/financial_record_model.dart';
-// import '../../../core/models/settlement_model.dart';
-
-// class SettlementService {
-//   final FirebaseFirestore _db = FirebaseFirestore.instance;
-
-//   Future<List<Map<String, int>>> getAvailableMonthsForSettlement() async {
-//     // Queries financial records to see which months exist
-//     final snapshot = await _db
-//         .collection(FirebaseConstants.financialRecords)
-//         .get();
-//     final uniqueMonths = <String, Map<String, int>>{};
-
-//     for (var doc in snapshot.docs) {
-//       final record = FinancialRecord.fromFirestore(doc);
-//       uniqueMonths[record.id] = {'year': record.year, 'month': record.month};
-//     }
-
-//     var sortedList = uniqueMonths.values.toList();
-//     sortedList.sort((a, b) {
-//       final yearA = a['year']!;
-//       final monthA = a['month']!;
-//       final yearB = b['year']!;
-//       final monthB = b['month']!;
-//       if (yearB.compareTo(yearA) != 0) {
-//         return yearB.compareTo(yearA);
-//       }
-//       return monthB.compareTo(monthA);
-//     });
-
-//     return sortedList;
-//   }
-
-//   Future<Settlement?> getSettlementById(String id) async {
-//     final doc = await _db
-//         .collection(FirebaseConstants.settlements)
-//         .doc(id)
-//         .get();
-//     if (doc.exists) {
-//       return Settlement.fromFirestore(doc);
-//     }
-//     return null;
-//   }
-
-//   /// NEW: Checks if a specific month is already settled
-//   Future<bool> isMonthSettled(int year, int month) async {
-//     final id = '$year${month.toString().padLeft(2, '0')}';
-//     final doc = await _db
-//         .collection(FirebaseConstants.settlements)
-//         .doc(id)
-//         .get();
-//     return doc.exists;
-//   }
-
-//   Future<void> saveSettlement(Settlement settlement) {
-//     return _db
-//         .collection(FirebaseConstants.settlements)
-//         .doc(settlement.id)
-//         .set(settlement.toMap());
-//   }
-// }
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../../../core/database/app_database.dart' as db;
@@ -69,17 +6,29 @@ import '../../../core/models/settlement_model.dart';
 class SettlementService {
   final db.AppDatabase _db = db.AppDatabase.instance;
 
+  // --- Helper to safely decode Map<String, double> ---
+  Map<String, double> _decodeMap(String jsonStr) {
+    try {
+      final Map<String, dynamic> decoded = jsonDecode(jsonStr);
+      return decoded.map((k, v) => MapEntry(k, (v as num).toDouble()));
+    } catch (e) {
+      return {};
+    }
+  }
+
   Future<List<Map<String, int>>> getAvailableMonthsForSettlement() async {
+    // Queries financial records (Budgets) to see which months exist
     final records = await _db.select(_db.financialRecords).get();
     final uniqueMonths = <String, Map<String, int>>{};
 
     for (var row in records) {
-      final key = '${row.year}-${row.month}';
-      uniqueMonths[key] = {'year': row.year, 'month': row.month};
+      // Use ID as key to ensure uniqueness per month
+      uniqueMonths[row.id] = {'year': row.year, 'month': row.month};
     }
 
     var sortedList = uniqueMonths.values.toList();
     sortedList.sort((a, b) {
+      // Sort Descending (Newest first)
       if (b['year']! != a['year']!) return b['year']!.compareTo(a['year']!);
       return b['month']!.compareTo(a['month']!);
     });
@@ -90,19 +39,24 @@ class SettlementService {
     final row = await (_db.select(_db.settlements)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
+
     if (row != null) {
       return Settlement(
         id: row.id,
         year: row.year,
         month: row.month,
+        allocations: _decodeMap(row.allocations),
+        expenses: _decodeMap(row.expenses),
+        totalIncome: row.totalIncome,
+        totalExpense: row.totalExpense,
         settledAt: row.settledAt,
-        data: jsonDecode(row.data),
+        bucketOrder: List<String>.from(jsonDecode(row.bucketOrder)),
       );
     }
     return null;
   }
 
-  // Missing Method Fix
+  /// Checks if a specific month is already settled
   Future<bool> isMonthSettled(int year, int month) async {
     final id = '$year${month.toString().padLeft(2, '0')}';
     final row = await (_db.select(_db.settlements)
@@ -118,8 +72,12 @@ class SettlementService {
           id: settlement.id,
           year: settlement.year,
           month: settlement.month,
+          allocations: jsonEncode(settlement.allocations),
+          expenses: jsonEncode(settlement.expenses),
+          bucketOrder: jsonEncode(settlement.bucketOrder),
+          totalIncome: Value(settlement.totalIncome),
+          totalExpense: Value(settlement.totalExpense),
           settledAt: settlement.settledAt,
-          data: jsonEncode(settlement.data), // Ensure .data exists on model
         ));
   }
 }

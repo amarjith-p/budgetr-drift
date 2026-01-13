@@ -240,7 +240,7 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
         id: widget.transactionToEdit?.id ?? '',
         cardId: _selectedCard!.id,
         amount: amount,
-        date: Timestamp.fromDate(_date),
+        date: _date,
         bucket: _type == 'Expense'
             ? (_selectedBucket ?? 'Unallocated')
             : 'Unallocated',
@@ -255,15 +255,15 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
         // Add
         await GetIt.I<CreditService>().addTransaction(txn);
         if (mounted) {
-          await BudgetNotificationService()
-              .checkAndTriggerCreditNotification(txn);
+          //   await BudgetNotificationService()
+          //       .checkAndTriggerCreditNotification(txn);
         }
       } else {
         // Update
         await GetIt.I<CreditService>().updateTransaction(txn);
         if (mounted) {
-          await BudgetNotificationService()
-              .checkAndTriggerCreditNotification(txn);
+          // await BudgetNotificationService()
+          //     .checkAndTriggerCreditNotification(txn);
         }
       }
 

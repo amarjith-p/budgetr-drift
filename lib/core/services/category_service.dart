@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import '../database/app_database.dart';
+import '../database/app_database.dart' as db;
 import '../models/transaction_category_model.dart';
 
 class CategoryService {
-  final AppDatabase _db = AppDatabase.instance;
+  final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
 
   // --- EXPANDED DEFAULT EXPENSES ---
@@ -23,7 +23,7 @@ class CategoryService {
         'Liquor/Bars',
         'Snacks',
       ],
-      'icon': Icons.restaurant.codePoint,
+      'icon': 57538,
     },
     'Housing': {
       'subs': [
@@ -32,9 +32,9 @@ class CategoryService {
         'Repairs',
         'Furniture',
         'Decor',
-        'Property Tax',
+        'Property Tax'
       ],
-      'icon': Icons.home.codePoint,
+      'icon': 57933,
     },
     'Transportation': {
       'subs': [
@@ -47,7 +47,7 @@ class CategoryService {
         'Parking/Tolls',
         'Vehicle Insurance',
       ],
-      'icon': Icons.directions_car.codePoint,
+      'icon': 57681,
     },
     'Utilities': {
       'subs': [
@@ -56,9 +56,9 @@ class CategoryService {
         'WiFi/Internet',
         'Mobile Recharge',
         'Gas/LPG',
-        'DTH/Cable',
+        'DTH/Cable'
       ],
-      'icon': Icons.lightbulb.codePoint,
+      'icon': 58256,
     },
     'Shopping': {
       'subs': [
@@ -76,20 +76,15 @@ class CategoryService {
         'Personal Items',
         'Mobile/Accessories',
       ],
-      'icon': Icons.shopping_bag.codePoint,
+      'icon': 58694,
     },
     'Personal Care': {
       'subs': ['Salon/Spa', 'Gym/Fitness', 'Cosmetics', 'Grooming', 'Massage'],
-      'icon': Icons.self_improvement.codePoint,
+      'icon': 58654,
     },
     'Health': {
-      'subs': [
-        'Doctor Fees',
-        'Medicine',
-        'Lab Tests',
-        'Health Insurance',
-      ],
-      'icon': Icons.medical_services.codePoint,
+      'subs': ['Doctor Fees', 'Medicine', 'Lab Tests', 'Health Insurance'],
+      'icon': 58361,
     },
     'Education': {
       'subs': [
@@ -98,9 +93,9 @@ class CategoryService {
         'Books',
         'Online Courses',
         'Stationery',
-        'Tuition',
+        'Tuition'
       ],
-      'icon': Icons.school.codePoint,
+      'icon': 58620,
     },
     'Entertainment': {
       'subs': [
@@ -111,13 +106,13 @@ class CategoryService {
         'Hobbies',
         'Events',
         'Entry Fees',
-        'Clubs/Bars',
+        'Clubs/Bars'
       ],
-      'icon': Icons.movie.codePoint,
+      'icon': 58372,
     },
     'Travel': {
       'subs': ['Flights', 'Hotels', 'Vacation', 'Visa Fees'],
-      'icon': Icons.flight.codePoint,
+      'icon': 57744,
     },
     'Family & Kids': {
       'subs': [
@@ -126,9 +121,9 @@ class CategoryService {
         'Family Support',
         'Domestic Help',
         'Baby Supplies',
-        'Toys',
+        'Toys'
       ],
-      'icon': Icons.family_restroom.codePoint,
+      'icon': 58002,
     },
     'Pet Care': {
       'subs': [
@@ -136,9 +131,9 @@ class CategoryService {
         'Grooming',
         'Pet Accessories',
         'Vet Visits',
-        'Training',
+        'Training'
       ],
-      'icon': Icons.pets.codePoint,
+      'icon': 58493,
     },
     'Financial': {
       'subs': [
@@ -149,25 +144,25 @@ class CategoryService {
         'Bank Charges',
         'Fines',
         'Failed Transactions',
-        'Capital Losses',
+        'Capital Losses'
       ],
-      'icon': Icons.account_balance.codePoint,
+      'icon': 57356,
     },
     'Work': {
       'subs': ['Office Commute', 'Business Expense', 'Tools/Software'],
-      'icon': Icons.work.codePoint,
+      'icon': 58857,
     },
     'Miscellaneous': {
       'subs': ['Charity', 'Donations', 'Gifts Given', 'Unexpected'],
-      'icon': Icons.category.codePoint,
+      'icon': 57540,
     },
     'Other': {
       'subs': ['Missing', 'Uncategorized'],
-      'icon': Icons.add_circle_outline.codePoint,
+      'icon': 57415,
     },
     'Non-Calculated Expense': {
       'subs': [],
-      'icon': Icons.cancel_sharp.codePoint,
+      'icon': 57550,
     },
   };
 
@@ -175,7 +170,7 @@ class CategoryService {
   final Map<String, dynamic> _defaultIncome = {
     'Salary': {
       'subs': ['Monthly Salary', 'Bonus', 'Incentives', 'Overtime', 'Stipend'],
-      'icon': Icons.account_balance_wallet.codePoint,
+      'icon': 57359,
     },
     'Business': {
       'subs': [
@@ -183,9 +178,9 @@ class CategoryService {
         'Sales',
         'Freelance',
         'Consulting',
-        'Royalty',
+        'Royalty'
       ],
-      'icon': Icons.store.codePoint,
+      'icon': 58715,
     },
     'Investments': {
       'subs': [
@@ -193,13 +188,13 @@ class CategoryService {
         'Interest',
         'Trading Profit',
         'Rental Income',
-        'Capital Gains',
+        'Capital Gains'
       ],
-      'icon': Icons.trending_up.codePoint,
+      'icon': 58808,
     },
     'Gifts & Rewards': {
       'subs': ['Cash Gift', 'Cashback', 'Rewards', 'Lottery', 'Scholarship'],
-      'icon': Icons.card_giftcard.codePoint,
+      'icon': 58696,
     },
     'Refunds': {
       'subs': [
@@ -208,25 +203,34 @@ class CategoryService {
         'Bill Adjustments',
         'Failed Transaction Reversals'
       ],
-      'icon': Icons.replay.codePoint,
+      'icon': 57429,
     },
     'Sold Items': {
       'subs': ['Second-hand Sales', 'Property Sale', 'Scrap'],
-      'icon': Icons.sell.codePoint,
+      'icon': 58652,
     },
     'Other': {
       'subs': ['Miscellaneous', 'Uncategorized'],
-      'icon': Icons.add_circle_outline.codePoint,
+      'icon': 57415,
     },
     'Non-Calculated Income': {
       'subs': [],
-      'icon': Icons.cancel_sharp.codePoint,
+      'icon': 57550,
     },
   };
 
   /// Fetches categories
   Stream<List<TransactionCategoryModel>> getCategories() async* {
-    final count = await _db.transactionCategories.count().getSingle();
+    // Check if table is empty
+    final countExp = _db.transactionCategories.id.count();
+
+    // FIX: Using cascade operator (..) so we can chain .map on the query object, not on 'void'
+    final count = await (_db.selectOnly(_db.transactionCategories)
+              ..addColumns([countExp]))
+            .map((row) => row.read(countExp))
+            .getSingle() ??
+        0;
+
     if (count == 0) {
       await _seedDefaults();
     }
@@ -249,11 +253,14 @@ class CategoryService {
   Future<bool> checkDuplicate(String name, String type,
       {String? excludeId}) async {
     final normalizedName = name.trim().toLowerCase();
-    final all = await _db.select(_db.transactionCategories).get();
 
-    return all.any((row) {
+    final rows = await (_db.select(_db.transactionCategories)
+          ..where((t) => t.type.equals(type)))
+        .get();
+
+    return rows.any((row) {
       if (excludeId != null && row.id == excludeId) return false;
-      return row.type == type && row.name.toLowerCase() == normalizedName;
+      return row.name.toLowerCase() == normalizedName;
     });
   }
 
@@ -262,24 +269,24 @@ class CategoryService {
       _defaultExpense.forEach((key, value) {
         batch.insert(
             _db.transactionCategories,
-            TransactionCategoriesCompanion.insert(
+            db.TransactionCategoriesCompanion.insert(
               id: _uuid.v4(),
               name: key,
               type: 'Expense',
               subCategories: jsonEncode(value['subs']),
-              iconCode: value['icon'],
+              iconCode: Value(value['icon']),
             ));
       });
 
       _defaultIncome.forEach((key, value) {
         batch.insert(
             _db.transactionCategories,
-            TransactionCategoriesCompanion.insert(
+            db.TransactionCategoriesCompanion.insert(
               id: _uuid.v4(),
               name: key,
               type: 'Income',
               subCategories: jsonEncode(value['subs']),
-              iconCode: value['icon'],
+              iconCode: Value(value['icon']),
             ));
       });
     });
@@ -287,30 +294,34 @@ class CategoryService {
 
   /// FACTORY RESET: Deletes ALL categories and re-seeds defaults
   Future<void> resetToDefaults() async {
-    await _db.delete(_db.transactionCategories).go();
-    await _seedDefaults();
+    await _db.transaction(() async {
+      await _db.delete(_db.transactionCategories).go();
+      await _seedDefaults();
+    });
   }
 
   Future<void> addCategory(
       String name, String type, List<String> subs, int iconCode) async {
     await _db
         .into(_db.transactionCategories)
-        .insert(TransactionCategoriesCompanion.insert(
+        .insert(db.TransactionCategoriesCompanion.insert(
           id: _uuid.v4(),
           name: name,
           type: type,
           subCategories: jsonEncode(subs),
-          iconCode: iconCode,
+          iconCode: Value(iconCode),
         ));
   }
 
   Future<void> updateCategory(TransactionCategoryModel category) async {
     await (_db.update(_db.transactionCategories)
           ..where((t) => t.id.equals(category.id)))
-        .write(TransactionCategoriesCompanion(
-            name: Value(category.name),
-            subCategories: Value(jsonEncode(category.subCategories)),
-            iconCode: Value(category.iconCode ?? 57538)));
+        .write(db.TransactionCategoriesCompanion(
+      name: Value(category.name),
+      type: Value(category.type),
+      subCategories: Value(jsonEncode(category.subCategories)),
+      iconCode: Value(category.iconCode),
+    ));
   }
 
   Future<void> deleteCategory(String id) async {
