@@ -182,25 +182,24 @@
 //   }
 // }
 import 'dart:convert';
-import 'package:drift/drift.dart' as drift;
+import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../core/database/app_database.dart' as db;
 import '../../../core/models/custom_data_models.dart' as domain;
 
 class CustomEntryService {
-  final AppDatabase _db = AppDatabase.instance;
+  final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
 
-  @override
+  // --- Templates ---
   Stream<List<domain.CustomTemplate>> getCustomTemplates() {
     return (_db.select(_db.customTemplates)
-          ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt)]))
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
         .watch()
         .map((rows) => rows
             .map((r) => domain.CustomTemplate(
                   id: r.id,
                   name: r.name,
-                  // DateTime (Drift) -> DateTime (Model) :: No conversion needed
                   createdAt: r.createdAt,
                   fields: (jsonDecode(r.fields) as List)
                       .map((e) => domain.CustomFieldConfig.fromMap(e))
@@ -211,44 +210,120 @@ class CustomEntryService {
             .toList());
   }
 
-  @override
-  Future<void> addCustomTemplate(domain.CustomTemplate t) async {
-    await _db.into(_db.customTemplates).insert(CustomTemplatesCompanion.insert(
-          id: t.id.isEmpty ? _uuid.v4() : t.id,
-          name: t.name,
-          // DateTime (Model) -> DateTime (Drift) :: No conversion needed
-          createdAt: t.createdAt ?? DateTime.now(),
-          fields: jsonEncode(t.fields.map((e) => e.toMap()).toList()),
-          xAxisField: drift.Value(t.xAxisField),
-          yAxisField: drift.Value(t.yAxisField),
+  Future<String> ensureInvestmentTemplateExists(String templateName) async {
+    final existing = await (_db.select(_db.customTemplates)
+          ..where((t) => t.name.equals(templateName)))
+        .getSingleOrNull();
+    if (existing != null) return existing.id;
+
+    final newId = _uuid.v4();
+    final fields = [
+      domain.CustomFieldConfig(name: 'Date', type: domain.CustomFieldType.date),
+      domain.CustomFieldConfig(
+          name: 'Invested',
+          type: domain.CustomFieldType.currency,
+          currencySymbol: '₹',
+          isSumRequired: true),
+      domain.CustomFieldConfig(
+          name: 'Current Value',
+          type: domain.CustomFieldType.currency,
+          currencySymbol: '₹',
+          isSumRequired: true),
+    ];
+
+    await _db
+        .into(_db.customTemplates)
+        .insert(db.CustomTemplatesCompanion.insert(
+          id: newId,
+          name: templateName,
+          createdAt: DateTime.now(),
+          fields: jsonEncode(fields.map((e) => e.toMap()).toList()),
+          xAxisField: Value('Date'),
+          yAxisField: Value('Current Value'),
+        ));
+    return newId;
+  }
+
+  Future<void> addCustomTemplate(domain.CustomTemplate template) async {
+    await _db
+        .into(_db.customTemplates)
+        .insert(db.CustomTemplatesCompanion.insert(
+          id: template.id,
+          name: template.name,
+          createdAt: template.createdAt,
+          fields: jsonEncode(template.fields.map((e) => e.toMap()).toList()),
+          xAxisField: Value(template.xAxisField),
+          yAxisField: Value(template.yAxisField),
         ));
   }
 
-  @override
+  Future<void> updateCustomTemplate(domain.CustomTemplate template) async {
+    await (_db.update(_db.customTemplates)
+          ..where((t) => t.id.equals(template.id)))
+        .write(db.CustomTemplatesCompanion(
+      name: Value(template.name),
+      fields: Value(jsonEncode(template.fields.map((e) => e.toMap()).toList())),
+      xAxisField: Value(template.xAxisField),
+      yAxisField: Value(template.yAxisField),
+    ));
+  }
+
+  Future<void> deleteCustomTemplate(String id) async {
+    await _db.transaction(() async {
+      await (_db.delete(_db.customRecords)
+            ..where((t) => t.templateId.equals(id)))
+          .go();
+      await (_db.delete(_db.customTemplates)..where((t) => t.id.equals(id)))
+          .go();
+    });
+  }
+
+  // --- Records ---
   Stream<List<domain.CustomRecord>> getCustomRecords(String templateId) {
     return (_db.select(_db.customRecords)
           ..where((t) => t.templateId.equals(templateId))
-          ..orderBy([(t) => drift.OrderingTerm(expression: t.createdAt)]))
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
         .watch()
         .map((rows) => rows
             .map((r) => domain.CustomRecord(
                   id: r.id,
                   templateId: r.templateId,
-                  // DateTime (Drift) -> DateTime (Model) :: No conversion needed
                   createdAt: r.createdAt,
-                  data: Map<String, dynamic>.from(jsonDecode(r.data)),
+                  data: jsonDecode(r.data),
                 ))
             .toList());
   }
 
-  @override
-  Future<void> addCustomRecord(domain.CustomRecord r) async {
-    await _db.into(_db.customRecords).insert(CustomRecordsCompanion.insert(
-          id: r.id.isEmpty ? _uuid.v4() : r.id,
-          templateId: r.templateId,
-          // DateTime (Model) -> DateTime (Drift) :: No conversion needed
-          createdAt: r.createdAt,
-          data: jsonEncode(r.data),
+  Future<List<domain.CustomRecord>> fetchCustomRecords(
+      String templateId) async {
+    final rows = await (_db.select(_db.customRecords)
+          ..where((t) => t.templateId.equals(templateId)))
+        .get();
+    return rows
+        .map((r) => domain.CustomRecord(
+              id: r.id,
+              templateId: r.templateId,
+              createdAt: r.createdAt,
+              data: jsonDecode(r.data),
+            ))
+        .toList();
+  }
+
+  Future<void> addCustomRecord(domain.CustomRecord record) async {
+    await _db.into(_db.customRecords).insert(db.CustomRecordsCompanion.insert(
+          id: record.id.isEmpty ? _uuid.v4() : record.id,
+          templateId: record.templateId,
+          createdAt: record.createdAt,
+          data: jsonEncode(record.data),
         ));
+  }
+
+  Future<void> updateCustomRecord(domain.CustomRecord record) async {
+    await (_db.update(_db.customRecords)..where((t) => t.id.equals(record.id)))
+        .write(db.CustomRecordsCompanion(data: Value(jsonEncode(record.data))));
+  }
+
+  Future<void> deleteCustomRecord(String id) async {
+    await (_db.delete(_db.customRecords)..where((t) => t.id.equals(id))).go();
   }
 }

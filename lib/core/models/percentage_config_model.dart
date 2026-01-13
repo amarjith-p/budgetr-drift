@@ -1,7 +1,7 @@
 class CategoryConfig {
   String name;
   double percentage;
-  String note; // New field for notes
+  String note;
 
   CategoryConfig({
     required this.name,
@@ -29,77 +29,34 @@ class PercentageConfig {
 
   PercentageConfig({required this.categories});
 
+  Map<String, dynamic> toMap() => {
+        'categories': categories.map((x) => x.toMap()).toList(),
+      };
+
+  factory PercentageConfig.fromMap(Map<String, dynamic> map) {
+    return PercentageConfig(
+      categories: List<CategoryConfig>.from(
+        (map['categories'] as List? ?? [])
+            .map((x) => CategoryConfig.fromMap(x)),
+      ),
+    );
+  }
+
   factory PercentageConfig.defaultConfig() {
     return PercentageConfig(
       categories: [
         CategoryConfig(
-          name: 'Necessities',
-          percentage: 45.0,
-          note: 'Rent, Grocery, Bills',
-        ),
+            name: 'Necessities',
+            percentage: 45.0,
+            note: 'Rent, Grocery, Bills'),
         CategoryConfig(
-          name: 'Lifestyle',
-          percentage: 15.0,
-          note: 'Shopping, Dining out',
-        ),
+            name: 'Lifestyle', percentage: 15.0, note: 'Shopping, Dining out'),
         CategoryConfig(
-          name: 'Investment',
-          percentage: 20.0,
-          note: 'SIP, Stocks, Gold',
-        ),
+            name: 'Investment', percentage: 20.0, note: 'SIP, Stocks, Gold'),
+        CategoryConfig(name: 'Debt', percentage: 10.0, note: 'Loans, EMI'),
         CategoryConfig(
-          name: 'Emergency',
-          percentage: 5.0,
-          note: 'Medical, Unplanned',
-        ),
-        CategoryConfig(
-          name: 'Buffer',
-          percentage: 15.0,
-          note: 'Short term savings',
-        ),
+            name: 'Savings', percentage: 10.0, note: 'Emergency Fund'),
       ],
     );
-  }
-
-  // factory PercentageConfig.fromFirestore(DocumentSnapshot doc) {
-  //   Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-  //   if (data.containsKey('categories')) {
-  //     var list = data['categories'] as List;
-  //     List<CategoryConfig> categories = list
-  //         .map((i) => CategoryConfig.fromMap(i))
-  //         .toList();
-  //     return PercentageConfig(categories: categories);
-  //   } else {
-  //     // Legacy support for old format
-  //     return PercentageConfig(
-  //       categories: [
-  //         CategoryConfig(
-  //           name: 'Necessities',
-  //           percentage: (data['necessities'] ?? 45.0).toDouble(),
-  //         ),
-  //         CategoryConfig(
-  //           name: 'Lifestyle',
-  //           percentage: (data['lifestyle'] ?? 15.0).toDouble(),
-  //         ),
-  //         CategoryConfig(
-  //           name: 'Investment',
-  //           percentage: (data['investment'] ?? 20.0).toDouble(),
-  //         ),
-  //         CategoryConfig(
-  //           name: 'Emergency',
-  //           percentage: (data['emergency'] ?? 5.0).toDouble(),
-  //         ),
-  //         CategoryConfig(
-  //           name: 'Buffer',
-  //           percentage: (data['buffer'] ?? 15.0).toDouble(),
-  //         ),
-  //       ],
-  //     );
-  //   }
-  // }
-
-  Map<String, dynamic> toMap() {
-    return {'categories': categories.map((e) => e.toMap()).toList()};
   }
 }

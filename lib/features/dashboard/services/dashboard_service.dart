@@ -309,12 +309,12 @@
 
 import 'package:drift/drift.dart';
 import 'package:rxdart/rxdart.dart';
-import '../../../core/database/app_database.dart';
+import '../../../core/database/app_database.dart' as db;
 import '../../../core/models/financial_record_model.dart';
 import '../models/dashboard_transaction.dart';
 
 class DashboardService {
-  final AppDatabase _db = AppDatabase.instance;
+  final db.AppDatabase _db = db.AppDatabase.instance;
 
   // --- Financial Records ---
   Stream<List<FinancialRecord>> getFinancialRecords() {
@@ -331,8 +331,10 @@ class DashboardService {
                   budget: r.budget,
                   createdAt: r.createdAt,
                   updatedAt: r.updatedAt,
+                  allocations: {}, // Default empty
+                  bucketOrder: [], // Default empty
                 ))
-            .toList());
+            .toList()); // <--- Added .toList() here inside the map callback
   }
 
   Future<FinancialRecord?> getRecordForMonth(int year, int month) async {
@@ -344,13 +346,16 @@ class DashboardService {
 
     if (row != null) {
       return FinancialRecord(
-          id: row.id,
-          year: row.year,
-          month: row.month,
-          income: row.income,
-          budget: row.budget,
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt);
+        id: row.id,
+        year: row.year,
+        month: row.month,
+        income: row.income,
+        budget: row.budget,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        allocations: {},
+        bucketOrder: [],
+      );
     }
     return null;
   }
@@ -358,7 +363,7 @@ class DashboardService {
   Future<void> setFinancialRecord(FinancialRecord record) async {
     await _db
         .into(_db.financialRecords)
-        .insertOnConflictUpdate(FinancialRecordsCompanion.insert(
+        .insertOnConflictUpdate(db.FinancialRecordsCompanion.insert(
           id: record.id,
           year: record.year,
           month: record.month,
@@ -394,7 +399,7 @@ class DashboardService {
         .watch();
 
     return Rx.combineLatest2(expenses, credits,
-        (List<ExpenseTransaction> exps, List<CreditTransaction> crds) {
+        (List<db.ExpenseTransaction> exps, List<db.CreditTransaction> crds) {
       final list = <DashboardTransaction>[];
 
       list.addAll(exps.map((e) => DashboardTransaction(

@@ -29,7 +29,7 @@ class DashboardSummaryCard extends StatelessWidget {
 
     final String formattedDate = DateFormat(
       'dd MMM yyyy : HH:mm',
-    ).format(record.updatedAt.toDate());
+    ).format(record.updatedAt);
 
     return Stack(
       children: [
