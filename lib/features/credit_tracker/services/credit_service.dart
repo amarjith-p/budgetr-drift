@@ -1,4 +1,6 @@
+import 'package:budget/features/daily_expense/services/expense_service.dart';
 import 'package:drift/drift.dart';
+import 'package:get_it/get_it.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart' as db;
 import '../models/credit_models.dart';
@@ -148,6 +150,7 @@ class CreditService {
 
   Future<void> updateTransaction(CreditTransactionModel txn) async {
     await _db.transaction(() async {
+      // 1. Fetch Old Data to calculate balance difference
       final oldRow = await (_db.select(_db.creditTransactions)
             ..where((t) => t.id.equals(txn.id)))
           .getSingle();
@@ -157,8 +160,10 @@ class CreditService {
       double newEffect = txn.type == 'Expense' ? txn.amount : -txn.amount;
       double netChange = newEffect - oldEffect;
 
+      // 2. Update Credit Card Balance
       await _updateCardBalance(txn.cardId, netChange);
 
+      // 3. Update Credit Transaction Record
       await (_db.update(_db.creditTransactions)
             ..where((t) => t.id.equals(txn.id)))
           .write(db.CreditTransactionsCompanion(
@@ -172,6 +177,16 @@ class CreditService {
         includeInNextStatement: Value(txn.includeInNextStatement),
         isSettlementVerified: Value(txn.isSettlementVerified),
       ));
+
+      // 4. SYNC BACK TO EXPENSE MODULE [NEW]
+      if (txn.linkedExpenseId != null) {
+        // Use GetIt directly to prevent circular dependency
+        await GetIt.I<ExpenseService>().updateTransactionFromCredit(
+          txn.linkedExpenseId!,
+          txn.amount,
+          txn.date,
+        );
+      }
     });
   }
 
@@ -182,12 +197,20 @@ class CreditService {
           .getSingleOrNull();
       if (oldRow == null) return;
 
+      // 1. Revert Credit Card Balance
       double reverseEffect =
           oldRow.type == 'Expense' ? -oldRow.amount : oldRow.amount;
       await _updateCardBalance(oldRow.cardId, reverseEffect);
 
+      // 2. Delete Credit Transaction
       await (_db.delete(_db.creditTransactions)..where((t) => t.id.equals(id)))
           .go();
+
+      // 3. SYNC BACK TO EXPENSE MODULE [NEW]
+      if (oldRow.linkedExpenseId != null) {
+        await GetIt.I<ExpenseService>()
+            .deleteTransactionFromCredit(oldRow.linkedExpenseId!);
+      }
     });
   }
 
