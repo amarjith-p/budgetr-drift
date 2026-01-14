@@ -81,7 +81,9 @@ class ExpenseAccounts extends Table {
 // --- 3. EXPENSE TRANSACTIONS ---
 class ExpenseTransactions extends Table {
   TextColumn get id => text()();
-  TextColumn get accountId => text().references(ExpenseAccounts, #id)();
+  // CHANGED: Made nullable to support Credit Card Only transactions (No Bank Account)
+  TextColumn get accountId =>
+      text().nullable().references(ExpenseAccounts, #id)();
 
   RealColumn get amount => real()();
   DateTimeColumn get date => dateTime()();
@@ -154,7 +156,7 @@ class CreditTransactions extends Table {
   BoolColumn get isSettlementVerified =>
       boolean().withDefault(const Constant(false))();
 
-  // EMI Logic (Keep if used, even if not explicitly in the Snippet provided, usually goes with Credit)
+  // EMI Logic
   BoolColumn get isEmi => boolean().withDefault(const Constant(false))();
   IntColumn get emiMonths => integer().withDefault(const Constant(0))();
   IntColumn get emiRemaining => integer().withDefault(const Constant(0))();
@@ -197,7 +199,6 @@ class NetWorthRecords extends Table {
 }
 
 // --- 13. NET WORTH SPLITS ---
-// UPDATED: Matches net_worth_split_model.dart exactly
 class NetWorthSplits extends Table {
   TextColumn get id => text()();
   DateTimeColumn get date => dateTime()();
@@ -212,6 +213,7 @@ class NetWorthSplits extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
 // --- 6. CUSTOM ENTRY ---
 
 class CustomTemplates extends Table {

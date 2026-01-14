@@ -1702,9 +1702,9 @@ class $ExpenseTransactionsTable extends ExpenseTransactions
       const VerificationMeta('accountId');
   @override
   late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
-      'account_id', aliasedName, false,
+      'account_id', aliasedName, true,
       type: DriftSqlType.string,
-      requiredDuringInsert: true,
+      requiredDuringInsert: false,
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'REFERENCES expense_accounts (id)'));
   static const VerificationMeta _amountMeta = const VerificationMeta('amount');
@@ -1812,8 +1812,6 @@ class $ExpenseTransactionsTable extends ExpenseTransactions
     if (data.containsKey('account_id')) {
       context.handle(_accountIdMeta,
           accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta));
-    } else if (isInserting) {
-      context.missing(_accountIdMeta);
     }
     if (data.containsKey('amount')) {
       context.handle(_amountMeta,
@@ -1886,7 +1884,7 @@ class $ExpenseTransactionsTable extends ExpenseTransactions
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       accountId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}account_id'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}account_id']),
       amount: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
       date: attachedDatabase.typeMapping
@@ -1922,7 +1920,7 @@ class $ExpenseTransactionsTable extends ExpenseTransactions
 class ExpenseTransaction extends DataClass
     implements Insertable<ExpenseTransaction> {
   final String id;
-  final String accountId;
+  final String? accountId;
   final double amount;
   final DateTime date;
   final String bucket;
@@ -1936,7 +1934,7 @@ class ExpenseTransaction extends DataClass
   final String? linkedCreditCardId;
   const ExpenseTransaction(
       {required this.id,
-      required this.accountId,
+      this.accountId,
       required this.amount,
       required this.date,
       required this.bucket,
@@ -1952,7 +1950,9 @@ class ExpenseTransaction extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['account_id'] = Variable<String>(accountId);
+    if (!nullToAbsent || accountId != null) {
+      map['account_id'] = Variable<String>(accountId);
+    }
     map['amount'] = Variable<double>(amount);
     map['date'] = Variable<DateTime>(date);
     map['bucket'] = Variable<String>(bucket);
@@ -1979,7 +1979,9 @@ class ExpenseTransaction extends DataClass
   ExpenseTransactionsCompanion toCompanion(bool nullToAbsent) {
     return ExpenseTransactionsCompanion(
       id: Value(id),
-      accountId: Value(accountId),
+      accountId: accountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountId),
       amount: Value(amount),
       date: Value(date),
       bucket: Value(bucket),
@@ -2007,7 +2009,7 @@ class ExpenseTransaction extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ExpenseTransaction(
       id: serializer.fromJson<String>(json['id']),
-      accountId: serializer.fromJson<String>(json['accountId']),
+      accountId: serializer.fromJson<String?>(json['accountId']),
       amount: serializer.fromJson<double>(json['amount']),
       date: serializer.fromJson<DateTime>(json['date']),
       bucket: serializer.fromJson<String>(json['bucket']),
@@ -2030,7 +2032,7 @@ class ExpenseTransaction extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'accountId': serializer.toJson<String>(accountId),
+      'accountId': serializer.toJson<String?>(accountId),
       'amount': serializer.toJson<double>(amount),
       'date': serializer.toJson<DateTime>(date),
       'bucket': serializer.toJson<String>(bucket),
@@ -2048,7 +2050,7 @@ class ExpenseTransaction extends DataClass
 
   ExpenseTransaction copyWith(
           {String? id,
-          String? accountId,
+          Value<String?> accountId = const Value.absent(),
           double? amount,
           DateTime? date,
           String? bucket,
@@ -2062,7 +2064,7 @@ class ExpenseTransaction extends DataClass
           Value<String?> linkedCreditCardId = const Value.absent()}) =>
       ExpenseTransaction(
         id: id ?? this.id,
-        accountId: accountId ?? this.accountId,
+        accountId: accountId.present ? accountId.value : this.accountId,
         amount: amount ?? this.amount,
         date: date ?? this.date,
         bucket: bucket ?? this.bucket,
@@ -2166,7 +2168,7 @@ class ExpenseTransaction extends DataClass
 
 class ExpenseTransactionsCompanion extends UpdateCompanion<ExpenseTransaction> {
   final Value<String> id;
-  final Value<String> accountId;
+  final Value<String?> accountId;
   final Value<double> amount;
   final Value<DateTime> date;
   final Value<String> bucket;
@@ -2197,7 +2199,7 @@ class ExpenseTransactionsCompanion extends UpdateCompanion<ExpenseTransaction> {
   });
   ExpenseTransactionsCompanion.insert({
     required String id,
-    required String accountId,
+    this.accountId = const Value.absent(),
     required double amount,
     required DateTime date,
     this.bucket = const Value.absent(),
@@ -2211,7 +2213,6 @@ class ExpenseTransactionsCompanion extends UpdateCompanion<ExpenseTransaction> {
     this.linkedCreditCardId = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        accountId = Value(accountId),
         amount = Value(amount),
         date = Value(date);
   static Insertable<ExpenseTransaction> custom({
@@ -2253,7 +2254,7 @@ class ExpenseTransactionsCompanion extends UpdateCompanion<ExpenseTransaction> {
 
   ExpenseTransactionsCompanion copyWith(
       {Value<String>? id,
-      Value<String>? accountId,
+      Value<String?>? accountId,
       Value<double>? amount,
       Value<DateTime>? date,
       Value<String>? bucket,
@@ -7079,7 +7080,7 @@ typedef $$ExpenseAccountsTableProcessedTableManager = ProcessedTableManager<
 typedef $$ExpenseTransactionsTableCreateCompanionBuilder
     = ExpenseTransactionsCompanion Function({
   required String id,
-  required String accountId,
+  Value<String?> accountId,
   required double amount,
   required DateTime date,
   Value<String> bucket,
@@ -7096,7 +7097,7 @@ typedef $$ExpenseTransactionsTableCreateCompanionBuilder
 typedef $$ExpenseTransactionsTableUpdateCompanionBuilder
     = ExpenseTransactionsCompanion Function({
   Value<String> id,
-  Value<String> accountId,
+  Value<String?> accountId,
   Value<double> amount,
   Value<DateTime> date,
   Value<String> bucket,
@@ -7120,9 +7121,9 @@ final class $$ExpenseTransactionsTableReferences extends BaseReferences<
       db.expenseAccounts.createAlias($_aliasNameGenerator(
           db.expenseTransactions.accountId, db.expenseAccounts.id));
 
-  $$ExpenseAccountsTableProcessedTableManager get accountId {
-    final $_column = $_itemColumn<String>('account_id')!;
-
+  $$ExpenseAccountsTableProcessedTableManager? get accountId {
+    final $_column = $_itemColumn<String>('account_id');
+    if ($_column == null) return null;
     final manager =
         $$ExpenseAccountsTableTableManager($_db, $_db.expenseAccounts)
             .filter((f) => f.id.sqlEquals($_column));
@@ -7366,7 +7367,7 @@ class $$ExpenseTransactionsTableTableManager extends RootTableManager<
                   $db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> accountId = const Value.absent(),
+            Value<String?> accountId = const Value.absent(),
             Value<double> amount = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
             Value<String> bucket = const Value.absent(),
@@ -7398,7 +7399,7 @@ class $$ExpenseTransactionsTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String id,
-            required String accountId,
+            Value<String?> accountId = const Value.absent(),
             required double amount,
             required DateTime date,
             Value<String> bucket = const Value.absent(),
