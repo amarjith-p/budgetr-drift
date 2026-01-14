@@ -110,7 +110,6 @@ class CreditService {
         .map((rows) => rows.map(_mapTxn).toList());
   }
 
-  // MISSING METHOD ADDED HERE
   Stream<List<CreditTransactionModel>> getAllTransactions() {
     return (_db.select(_db.creditTransactions)
           ..orderBy([
@@ -178,13 +177,15 @@ class CreditService {
         isSettlementVerified: Value(txn.isSettlementVerified),
       ));
 
-      // 4. SYNC BACK TO EXPENSE MODULE [NEW]
+      // 4. SYNC BACK TO EXPENSE MODULE [UPDATED]
       if (txn.linkedExpenseId != null) {
-        // Use GetIt directly to prevent circular dependency
         await GetIt.I<ExpenseService>().updateTransactionFromCredit(
           txn.linkedExpenseId!,
-          txn.amount,
-          txn.date,
+          amount: txn.amount,
+          date: txn.date,
+          notes: txn.notes,
+          category: txn.category,
+          subCategory: txn.subCategory,
         );
       }
     });
@@ -206,8 +207,10 @@ class CreditService {
       await (_db.delete(_db.creditTransactions)..where((t) => t.id.equals(id)))
           .go();
 
-      // 3. SYNC BACK TO EXPENSE MODULE [NEW]
+      // 3. SYNC BACK TO EXPENSE MODULE [UPDATED]
       if (oldRow.linkedExpenseId != null) {
+        // Direct delete to avoid undefined method issues if interface mismatches
+        // But call service for balance revert safety
         await GetIt.I<ExpenseService>()
             .deleteTransactionFromCredit(oldRow.linkedExpenseId!);
       }

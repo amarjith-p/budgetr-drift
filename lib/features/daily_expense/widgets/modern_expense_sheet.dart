@@ -125,9 +125,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
 
       setState(() {
         _accounts = results[0] as List<ExpenseAccountModel>;
-        // NOTE: We do not add _externalAccount here to avoid it showing up everywhere.
-        // It is injected in the helper function `_getDisplayAccounts()`
-
         _creditCards = results[1] as List<CreditCardModel>;
         _allCategories = results[2] as List<TransactionCategoryModel>;
 
@@ -150,28 +147,48 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
             _selectedCreditCard = _creditCards.firstWhere(
                 (c) => c.id == t.linkedCreditCardId,
                 orElse: () => _creditCards.first);
+
+            // [FIX] If it's a credit expense, accountId might be empty/null, which is fine now.
+            // Only try to find account if ID is present.
+            if (t.accountId.isNotEmpty) {
+              try {
+                _selectedAccount = _accounts.firstWhere(
+                    (a) => a.id == t.accountId,
+                    orElse: () => _accounts.first);
+              } catch (_) {}
+            }
+          } else {
+            // Standard Transaction
+            if (t.accountId.isNotEmpty) {
+              _selectedAccount = _accounts.firstWhere(
+                  (a) => a.id == t.accountId,
+                  orElse: () => _accounts.first);
+            }
           }
 
           if (t.type == 'Transfer Out' || t.type == 'Transfer In') {
             _type = 'Transfer';
 
             if (t.type == 'Transfer Out') {
-              _selectedAccount = _accounts.firstWhere(
-                  (a) => a.id == t.accountId,
-                  orElse: () => _accounts.first);
-              if (t.transferAccountId == null) {
-                // Was External
-                _toAccount = _externalAccount;
+              // If it's a Credit Card Bill (Transfer Out to CC), account is source
+              if (_isCreditEntry) {
+                // Paying from Bank
+                // Source is already set above
               } else {
-                _toAccount = _accounts.firstWhere(
-                    (a) => a.id == t.transferAccountId,
-                    orElse: () => _accounts.first);
+                // Bank to Bank / External
+                if (t.transferAccountId == null) {
+                  _toAccount = _externalAccount;
+                } else {
+                  _toAccount = _accounts.firstWhere(
+                      (a) => a.id == t.transferAccountId,
+                      orElse: () => _accounts.first);
+                }
               }
             } else {
+              // Transfer In
               _toAccount = _accounts.firstWhere((a) => a.id == t.accountId,
                   orElse: () => _accounts.first);
               if (t.transferAccountId == null) {
-                // Was External
                 _selectedAccount = _externalAccount;
               } else {
                 _selectedAccount = _accounts.firstWhere(
@@ -179,9 +196,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                     orElse: () => _accounts.first);
               }
             }
-          } else {
-            _selectedAccount = _accounts.firstWhere((a) => a.id == t.accountId,
-                orElse: () => _accounts.first);
           }
         } else {
           if (widget.preSelectedAccount != null) {
@@ -198,12 +212,9 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
   }
 
   /// Helper to get clean list of accounts for selection
-  /// Filters out:
-  /// 1. "Credit Card Pool Account" (Internal system account)
-  /// 2. "External Account" (unless it's a Normal Transfer)
   List<ExpenseAccountModel> _getDisplayAccounts() {
     List<ExpenseAccountModel> filtered = _accounts.where((a) {
-      // Filter out internal Credit Pool accounts
+      // Filter out internal Credit Pool accounts if they still exist in DB
       return a.bankName != 'Credit Card Pool Account' &&
           a.accountType != 'Credit Card';
     }).toList();
@@ -324,18 +335,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
       }
     }
 
-    ExpenseAccountModel? poolAccount;
-    // Find pool account ID backend-only
-    if (_isCreditEntry || (_type == 'Transfer' && _isCreditEntry)) {
-      try {
-        poolAccount = _accounts.firstWhere((a) =>
-            a.bankName == 'Credit Card Pool Account' ||
-            a.accountType == 'Credit Card');
-      } catch (e) {
-        /* ignore */
-      }
-    }
-
     setState(() => _isLoading = true);
 
     try {
@@ -346,10 +345,12 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
 
       if (_type == 'Transfer') {
         if (_isCreditEntry) {
-          // paying credit card bill (Internal Bank -> Credit Pool)
+          // [UPDATED] Direct Credit Card Bill Payment
+          // From: Bank Account (selectedAccount)
+          // To: Credit Card ID (via transferAccountId)
           txn = ExpenseTransactionModel(
             id: txnId,
-            accountId: _selectedAccount!.id, // Paying FROM Bank
+            accountId: _selectedAccount!.id,
             amount: amount,
             date: _date,
             bucket: 'Unallocated',
@@ -357,13 +358,13 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
             category: 'Transfer',
             subCategory: 'Credit Card Bill',
             notes: _notesCtrl.text,
-            transferAccountId: poolAccount?.id,
-            transferAccountName: _selectedCreditCard!.name, // Name of the Card
+            transferAccountId: _selectedCreditCard!.id, // Direct Link
+            transferAccountName: _selectedCreditCard!.name,
             transferAccountBankName: _selectedCreditCard!.bankName,
             linkedCreditCardId: _selectedCreditCard!.id,
           );
         } else {
-          // Account Transfer
+          // Standard Account Transfer
           if (_toAccount!.id == _externalAccount.id) {
             txn = ExpenseTransactionModel(
               id: txnId,
@@ -412,14 +413,14 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
           }
         }
       } else {
-        // Expense / Income
-        final String finalAccountId =
-            isCardExpense ? (poolAccount?.id ?? '') : _selectedAccount!.id;
+        // [UPDATED] Expense / Income
+        // If Credit Card Expense: accountId is empty string ''
+        // If Bank Expense: accountId is _selectedAccount.id
+        final String finalAccountId = isCardExpense ? '' : _selectedAccount!.id;
 
         // Safety: ensure no external selection leaked into non-transfer
-        if (_selectedAccount?.id == _externalAccount.id) {
-          throw Exception(
-              "External Account is only allowed for Transfers. Please change the Account.");
+        if (!isCardExpense && _selectedAccount?.id == _externalAccount.id) {
+          throw Exception("External Account is only allowed for Transfers.");
         }
 
         txn = ExpenseTransactionModel(
@@ -445,7 +446,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
       }
 
       if (mounted) {
-        // await BudgetNotificationService().checkAndTriggerNotification(txn);
         Navigator.pop(context);
       }
     } catch (e) {
@@ -495,6 +495,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // ... [The UI Build method remains largely the same, logic handled in _save and _getDisplayAccounts]
     Color typeColor = _type == 'Income'
         ? BudgetrColors.success
         : (_type == 'Transfer' ? BudgetrColors.accent : BudgetrColors.error);
