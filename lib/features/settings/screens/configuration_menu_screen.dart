@@ -66,6 +66,7 @@ class ConfigurationMenuScreen extends StatelessWidget {
                 );
               },
             ),
+            const SizedBox(height: 16),
             _buildMenuCard(
               context,
               icon: Icons.table_view_rounded,
