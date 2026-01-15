@@ -1,3 +1,5 @@
+import 'package:budget/features/backup_restore/screens/backup_screen.dart';
+import 'package:budget/features/database_viewer/screens/database_viewer_screen.dart';
 import 'package:flutter/material.dart';
 import '../../settings/screens/settings_screen.dart';
 import 'category_manager_screen.dart';
@@ -51,6 +53,33 @@ class ConfigurationMenuScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+            _buildMenuCard(
+              context,
+              title: "Backup & Restore",
+              subtitle: "Export or Import your data",
+              icon: Icons.settings_backup_restore_rounded,
+              color: const Color.fromARGB(255, 110, 255, 14),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BackupScreen()),
+                );
+              },
+            ),
+            _buildMenuCard(
+              context,
+              icon: Icons.table_view_rounded,
+              title: "Database Viewer",
+              subtitle: "Inspect raw SQL tables (Dev)",
+              color: const Color.fromARGB(255, 255, 187, 14),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const DatabaseViewerScreen()),
+                );
+              },
+            ),
 
             // // NEW Notification Card
             // _buildMenuCard(
