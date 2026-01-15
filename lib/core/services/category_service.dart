@@ -9,7 +9,7 @@ class CategoryService {
   final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
 
-  // --- EXPANDED DEFAULT EXPENSES ---
+  // --- EXPANDED DEFAULT EXPENSES (Now using dynamic Icons.codePoint) ---
   final Map<String, dynamic> _defaultExpense = {
     'Food & Drink': {
       'subs': [
@@ -23,7 +23,7 @@ class CategoryService {
         'Liquor/Bars',
         'Snacks',
       ],
-      'icon': 57538,
+      'icon': Icons.restaurant.codePoint,
     },
     'Housing': {
       'subs': [
@@ -34,7 +34,7 @@ class CategoryService {
         'Decor',
         'Property Tax'
       ],
-      'icon': 57933,
+      'icon': Icons.home.codePoint,
     },
     'Transportation': {
       'subs': [
@@ -47,7 +47,7 @@ class CategoryService {
         'Parking/Tolls',
         'Vehicle Insurance',
       ],
-      'icon': 57681,
+      'icon': Icons.directions_car.codePoint,
     },
     'Utilities': {
       'subs': [
@@ -58,7 +58,7 @@ class CategoryService {
         'Gas/LPG',
         'DTH/Cable'
       ],
-      'icon': 58256,
+      'icon': Icons.lightbulb.codePoint,
     },
     'Shopping': {
       'subs': [
@@ -76,15 +76,15 @@ class CategoryService {
         'Personal Items',
         'Mobile/Accessories',
       ],
-      'icon': 58694,
+      'icon': Icons.shopping_bag.codePoint,
     },
     'Personal Care': {
       'subs': ['Salon/Spa', 'Gym/Fitness', 'Cosmetics', 'Grooming', 'Massage'],
-      'icon': 58654,
+      'icon': Icons.spa.codePoint,
     },
     'Health': {
       'subs': ['Doctor Fees', 'Medicine', 'Lab Tests', 'Health Insurance'],
-      'icon': 58361,
+      'icon': Icons.medical_services.codePoint,
     },
     'Education': {
       'subs': [
@@ -95,7 +95,7 @@ class CategoryService {
         'Stationery',
         'Tuition'
       ],
-      'icon': 58620,
+      'icon': Icons.school.codePoint,
     },
     'Entertainment': {
       'subs': [
@@ -108,11 +108,11 @@ class CategoryService {
         'Entry Fees',
         'Clubs/Bars'
       ],
-      'icon': 58372,
+      'icon': Icons.movie.codePoint,
     },
     'Travel': {
       'subs': ['Flights', 'Hotels', 'Vacation', 'Visa Fees'],
-      'icon': 57744,
+      'icon': Icons.flight.codePoint,
     },
     'Family & Kids': {
       'subs': [
@@ -123,7 +123,7 @@ class CategoryService {
         'Baby Supplies',
         'Toys'
       ],
-      'icon': 58002,
+      'icon': Icons.family_restroom.codePoint,
     },
     'Pet Care': {
       'subs': [
@@ -133,7 +133,7 @@ class CategoryService {
         'Vet Visits',
         'Training'
       ],
-      'icon': 58493,
+      'icon': Icons.pets.codePoint,
     },
     'Financial': {
       'subs': [
@@ -146,23 +146,23 @@ class CategoryService {
         'Failed Transactions',
         'Capital Losses'
       ],
-      'icon': 57356,
+      'icon': Icons.account_balance.codePoint,
     },
     'Work': {
       'subs': ['Office Commute', 'Business Expense', 'Tools/Software'],
-      'icon': 58857,
+      'icon': Icons.work.codePoint,
     },
     'Miscellaneous': {
       'subs': ['Charity', 'Donations', 'Gifts Given', 'Unexpected'],
-      'icon': 57540,
+      'icon': Icons.category.codePoint,
     },
     'Other': {
       'subs': ['Missing', 'Uncategorized'],
-      'icon': 57415,
+      'icon': Icons.help_outline.codePoint,
     },
     'Non-Calculated Expense': {
       'subs': [],
-      'icon': 57550,
+      'icon': Icons.money_off.codePoint,
     },
   };
 
@@ -170,7 +170,7 @@ class CategoryService {
   final Map<String, dynamic> _defaultIncome = {
     'Salary': {
       'subs': ['Monthly Salary', 'Bonus', 'Incentives', 'Overtime', 'Stipend'],
-      'icon': 57359,
+      'icon': Icons.currency_rupee_sharp.codePoint,
     },
     'Business': {
       'subs': [
@@ -180,7 +180,7 @@ class CategoryService {
         'Consulting',
         'Royalty'
       ],
-      'icon': 58715,
+      'icon': Icons.store.codePoint,
     },
     'Investments': {
       'subs': [
@@ -190,11 +190,11 @@ class CategoryService {
         'Rental Income',
         'Capital Gains'
       ],
-      'icon': 58808,
+      'icon': Icons.trending_up.codePoint,
     },
     'Gifts & Rewards': {
       'subs': ['Cash Gift', 'Cashback', 'Rewards', 'Lottery', 'Scholarship'],
-      'icon': 58696,
+      'icon': Icons.card_giftcard.codePoint,
     },
     'Refunds': {
       'subs': [
@@ -203,28 +203,26 @@ class CategoryService {
         'Bill Adjustments',
         'Failed Transaction Reversals'
       ],
-      'icon': 57429,
+      'icon': Icons.replay.codePoint,
     },
     'Sold Items': {
       'subs': ['Second-hand Sales', 'Property Sale', 'Scrap'],
-      'icon': 58652,
+      'icon': Icons.sell.codePoint,
     },
     'Other': {
       'subs': ['Miscellaneous', 'Uncategorized'],
-      'icon': 57415,
+      'icon': Icons.help_outline.codePoint,
     },
     'Non-Calculated Income': {
       'subs': [],
-      'icon': 57550,
+      'icon': Icons.money_off.codePoint,
     },
   };
 
-  /// Fetches categories
-  Stream<List<TransactionCategoryModel>> getCategories() async* {
-    // Check if table is empty
+  /// INITIALIZE SERVICE (Run once on startup)
+  /// Checks for data and seeds if empty
+  Future<void> init() async {
     final countExp = _db.transactionCategories.id.count();
-
-    // FIX: Using cascade operator (..) so we can chain .map on the query object, not on 'void'
     final count = await (_db.selectOnly(_db.transactionCategories)
               ..addColumns([countExp]))
             .map((row) => row.read(countExp))
@@ -234,8 +232,11 @@ class CategoryService {
     if (count == 0) {
       await _seedDefaults();
     }
+  }
 
-    yield* _db.select(_db.transactionCategories).watch().map((rows) {
+  /// Fetches categories - Pure stream, no side effects
+  Stream<List<TransactionCategoryModel>> getCategories() {
+    return _db.select(_db.transactionCategories).watch().map((rows) {
       final list = rows.map((row) {
         return TransactionCategoryModel(
           id: row.id,

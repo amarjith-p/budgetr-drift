@@ -9,14 +9,18 @@ import '../../features/dashboard/services/dashboard_service.dart';
 import '../../features/settlement/services/settlement_service.dart';
 import '../../features/custom_entry/services/custom_entry_service.dart';
 import '../../features/settings/services/settings_service.dart';
-import '../services/category_service.dart'; // Import this!
+import '../services/category_service.dart';
 
 final locator = GetIt.instance;
 
 class ServiceLocator {
   static Future<void> init() async {
     // 1. Core Services
-    locator.registerLazySingleton<CategoryService>(() => CategoryService());
+    // Initialize CategoryService explicitly to handle database seeding
+    final categoryService = CategoryService();
+    locator.registerSingleton<CategoryService>(categoryService);
+    await categoryService.init();
+
     locator.registerLazySingleton<SettingsService>(() => SettingsService());
 
     // 2. Feature Services
