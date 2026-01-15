@@ -580,7 +580,7 @@ class _UnifiedSpendingChartState extends State<UnifiedSpendingChart> {
 
       // 2. Type & Date
       if (t.type != 'Expense') return false;
-      if (!_matchesPeriod(t.date.toDate())) return false;
+      if (!_matchesPeriod(t.date)) return false;
 
       // 3. Budget Mode
       if (_isBudgetMode) {
