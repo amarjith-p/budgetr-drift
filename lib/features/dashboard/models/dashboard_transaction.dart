@@ -4,6 +4,7 @@ class DashboardTransaction {
   final String id;
   final double amount;
   final DateTime date;
+  final String type;
   final String category;
   final String subCategory; // NEW FIELD
   final String notes;
@@ -16,6 +17,7 @@ class DashboardTransaction {
     required this.id,
     required this.amount,
     required this.date,
+    required this.type,
     required this.category,
     required this.subCategory, // Required in constructor
     required this.notes,
