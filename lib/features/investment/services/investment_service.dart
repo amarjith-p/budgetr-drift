@@ -175,18 +175,33 @@ class InvestmentService {
 
   Future<List<InvestmentSearchResult>> _searchYahooStocks(String query) async {
     try {
+      // 1. URL: Matches your working version (removed newsCount=0 for consistency)
       final url = Uri.parse(
-          'https://query1.finance.yahoo.com/v1/finance/search?q=$query&quotesCount=10&newsCount=0');
-      final res = await http.get(url);
+          'https://query1.finance.yahoo.com/v1/finance/search?q=$query&quotesCount=10');
+
+      // 2. HEADER FIX: Add User-Agent to prevent 403 Forbidden errors
+      final res = await http.get(url, headers: {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      });
+
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         final quotes = data['quotes'] as List;
-        return quotes.map((q) {
+
+        return quotes
+            // 3. LOGIC RESTORED: Filter for 'EQUITY' only (ignores indices/futures)
+            .where((q) => q['quoteType'] == 'EQUITY')
+            // 4. LOGIC RESTORED: Ensure it has a suffix (e.g., .NS) if that was your preference
+            // Remove this line if you want to search US stocks like 'AAPL' which have no dot.
+            .where((q) => (q['symbol'] as String).contains('.'))
+            .map((q) {
           return InvestmentSearchResult(
             symbol: q['symbol'],
             name: q['shortname'] ?? q['longname'] ?? q['symbol'],
-            type: q['quoteType'] ?? 'Stock',
-            exchange: q['exchange'] ?? '',
+            type:
+                'Stock', // Standardized to 'Stock' instead of dynamic quoteType
+            exchange: q['exchange'] ?? 'N/A',
           );
         }).toList();
       }
@@ -235,19 +250,37 @@ class InvestmentService {
 
   Future<Map<String, double>> _fetchYahooPriceData(String symbol) async {
     try {
+      // 1. URL matched exactly to your working version (range=1d)
       final url = Uri.parse(
-          'https://query1.finance.yahoo.com/v8/finance/chart/$symbol?interval=1d&range=2d');
-      final res = await http.get(url);
-      if (res.statusCode == 200) {
-        final json = jsonDecode(res.body);
-        final result = json['chart']['result'][0];
-        final meta = result['meta'];
-        double price = (meta['regularMarketPrice'] as num).toDouble();
-        double prev = (meta['previousClose'] as num).toDouble();
+          'https://query1.finance.yahoo.com/v8/finance/chart/$symbol?interval=1d&range=1d');
+
+      // 2. Added User-Agent (Safety net: Yahoo sometimes blocks generic Dart requests)
+      final response = await http.get(url, headers: {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      });
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final result = data['chart']['result'];
+
+        // 3. Validation: Ensure result is not empty
+        if (result == null || result.isEmpty) {
+          return {'price': 0.0, 'prev': 0.0};
+        }
+
+        final meta = result[0]['meta'];
+
+        // 4. Safe Parsing: Matched your old file's null handling (?? 0.0)
+        double price = (meta['regularMarketPrice'] ?? 0.0).toDouble();
+        double prev = (meta['chartPreviousClose'] ?? 0.0).toDouble();
+
         return {'price': price, 'prev': prev};
+      } else {
+        print("Yahoo API Error: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-      print("Yahoo Price Error: $e");
+      print("Yahoo Price Exception: $e");
     }
     return {'price': 0.0, 'prev': 0.0};
   }
