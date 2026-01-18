@@ -258,7 +258,9 @@ class DashboardService {
       final map = <String, double>{};
       for (var t in txns) {
         // Exclude income/unallocated from spending charts
-        if (t.bucket == 'Income' || t.bucket == 'Unallocated') continue;
+        if (t.bucket == 'Income' ||
+            t.bucket == 'Unallocated' ||
+            t.sourceId == '') continue;
 
         final bucket = t.bucket.isEmpty ? 'Unallocated' : t.bucket;
         map[bucket] = (map[bucket] ?? 0.0) + t.amount;

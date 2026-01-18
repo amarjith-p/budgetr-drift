@@ -147,7 +147,10 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
                   return const Center(child: ModernLoader());
                 }
 
-                final transactions = snapshot.data ?? [];
+                var transactions = snapshot.data ?? [];
+                transactions = transactions
+                    .where((t) => t.type == 'Expense' && t.sourceId != '')
+                    .toList();
 
                 if (transactions.isEmpty) {
                   return Center(

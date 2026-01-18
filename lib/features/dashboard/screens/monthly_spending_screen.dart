@@ -136,8 +136,9 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
                 }
 
                 var transactions = snapshot.data ?? [];
-                transactions =
-                    transactions.where((t) => t.type == 'Expense').toList();
+                transactions = transactions
+                    .where((t) => t.type == 'Expense' && t.sourceId != '')
+                    .toList();
 
                 if (_hideOutOfBucket) {
                   transactions = transactions
