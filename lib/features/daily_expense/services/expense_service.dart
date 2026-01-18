@@ -128,6 +128,7 @@ class ExpenseService {
     if (accountId != null && accountId.isNotEmpty) {
       query.where((t) => t.accountId.equals(accountId));
     }
+    query.where((t) => t.accountId.isNotNull());
     query.orderBy(
         [(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)]);
 
