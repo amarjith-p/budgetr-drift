@@ -1,6 +1,7 @@
 import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
+import 'package:budget/features/custom_entry/services/custom_export_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -344,6 +345,151 @@ class _CustomDataPageState extends State<CustomDataPage>
     );
   }
 
+  // REPLACE THE _showExportOptions METHOD WITH THIS:
+
+  void _showExportOptions(
+      List<CustomRecord> records, Map<String, double> totals) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: _bgColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Export Data",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Save '${widget.template.name}' to device",
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildExportOption(
+                    icon: Icons.picture_as_pdf_rounded,
+                    label: "Save PDF",
+                    color: const Color(0xFFE71D36),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      try {
+                        final path = await CustomExportService()
+                            .exportToPdf(widget.template, records, totals);
+
+                        // Check if path is valid (User didn't cancel)
+                        if (path != null && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("PDF Saved to: $path"),
+                              backgroundColor: const Color(0xFF2EC4B6),
+                              duration: const Duration(seconds: 4),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text("Error: $e"),
+                                backgroundColor: Colors.red),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildExportOption(
+                    icon: Icons.table_chart_rounded,
+                    label: "Save CSV",
+                    color: const Color(0xFF2EC4B6),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      try {
+                        // FIX: Pass 'totals' here
+                        final path = await CustomExportService().exportToCsv(
+                          widget.template,
+                          records,
+                          totals, // <--- Added this argument
+                        );
+
+                        if (path != null && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("CSV Saved to: $path"),
+                              backgroundColor: const Color(0xFF2EC4B6),
+                              duration: const Duration(seconds: 4),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text("Error: $e"),
+                                backgroundColor: Colors.red),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExportOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -429,6 +575,17 @@ class _CustomDataPageState extends State<CustomDataPage>
                         ),
                         Row(
                           children: [
+                            IconButton(
+                              onPressed: () =>
+                                  _showExportOptions(records, totals),
+                              icon: const Icon(
+                                Icons
+                                    .ios_share_rounded, // or Icons.upload_rounded
+                                color: Colors.white70,
+                                size: 20,
+                              ),
+                              tooltip: 'Export',
+                            ),
                             // --- NEW FILTER BUTTON ---
                             IconButton(
                               onPressed: () => _showFilterSheet(rawRecords),
