@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/features/daily_expense/screens/spending_calendar_screen.dart';
 import 'package:budget/features/daily_expense/widgets/modern_expense_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -96,6 +97,67 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
           child: Container(color: Colors.transparent),
         ),
       ),
+      actions: [
+        // Add this widget to your actions[] list
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SpendingCalendarScreen()),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(right: 16),
+            width: 44, // Slightly wider to fit the text comfortably
+            height: 44, // Slightly taller for better touch target
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08), // Subtle glass effect
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withOpacity(0.15)),
+            ),
+            child: Column(
+              children: [
+                // --- RED HEADER WITH LABEL ---
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE71D36), // Red Accent
+                    borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(
+                            9)), // Match outer radius minus border
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    "HEATMAP",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 7, // Small, crisp text
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+
+                // --- DATE NUMBER ---
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      DateTime.now().day.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        )
+      ],
     );
   }
 

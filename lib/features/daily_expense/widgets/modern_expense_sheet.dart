@@ -23,10 +23,14 @@ import '../services/expense_service.dart';
 class ModernExpenseSheet extends StatefulWidget {
   final ExpenseTransactionModel? txnToEdit;
   final ExpenseAccountModel? preSelectedAccount;
+  // [FIX] Added initialDate parameter
+  final DateTime? initialDate;
+
   const ModernExpenseSheet({
     super.key,
     this.txnToEdit,
     this.preSelectedAccount,
+    this.initialDate,
   });
 
   @override
@@ -85,6 +89,11 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
   @override
   void initState() {
     super.initState();
+    // [FIX] Initialize date if passed from Calendar Screen
+    if (widget.initialDate != null) {
+      _date = widget.initialDate!;
+    }
+
     _loadData();
 
     _notesNode.addListener(() {
@@ -148,7 +157,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                 (c) => c.id == t.linkedCreditCardId,
                 orElse: () => _creditCards.first);
 
-            // [FIX] If it's a credit expense, accountId might be empty/null, which is fine now.
             // Only try to find account if ID is present.
             if (t.accountId.isNotEmpty) {
               try {
@@ -170,12 +178,9 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
             _type = 'Transfer';
 
             if (t.type == 'Transfer Out') {
-              // If it's a Credit Card Bill (Transfer Out to CC), account is source
               if (_isCreditEntry) {
-                // Paying from Bank
-                // Source is already set above
+                // Paying from Bank - Source already set
               } else {
-                // Bank to Bank / External
                 if (t.transferAccountId == null) {
                   _toAccount = _externalAccount;
                 } else {
@@ -345,9 +350,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
 
       if (_type == 'Transfer') {
         if (_isCreditEntry) {
-          // [UPDATED] Direct Credit Card Bill Payment
-          // From: Bank Account (selectedAccount)
-          // To: Credit Card ID (via transferAccountId)
           txn = ExpenseTransactionModel(
             id: txnId,
             accountId: _selectedAccount!.id,
@@ -358,7 +360,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
             category: 'Transfer',
             subCategory: 'Credit Card Bill',
             notes: _notesCtrl.text,
-            transferAccountId: _selectedCreditCard!.id, // Direct Link
+            transferAccountId: _selectedCreditCard!.id,
             transferAccountName: _selectedCreditCard!.name,
             transferAccountBankName: _selectedCreditCard!.bankName,
             linkedCreditCardId: _selectedCreditCard!.id,
@@ -413,12 +415,8 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
           }
         }
       } else {
-        // [UPDATED] Expense / Income
-        // If Credit Card Expense: accountId is empty string ''
-        // If Bank Expense: accountId is _selectedAccount.id
         final String finalAccountId = isCardExpense ? '' : _selectedAccount!.id;
 
-        // Safety: ensure no external selection leaked into non-transfer
         if (!isCardExpense && _selectedAccount?.id == _externalAccount.id) {
           throw Exception("External Account is only allowed for Transfers.");
         }
@@ -495,7 +493,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // ... [The UI Build method remains largely the same, logic handled in _save and _getDisplayAccounts]
     Color typeColor = _type == 'Income'
         ? BudgetrColors.success
         : (_type == 'Transfer' ? BudgetrColors.accent : BudgetrColors.error);
@@ -543,7 +540,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                           .copyWith(color: Colors.blueAccent))
                 ]),
               ),
-            // [NEW] SETTLED WARNING
+
             if (_isMonthSettled && _type == 'Expense')
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -619,12 +616,10 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                       onTap: () {
                         setState(() {
                           _isCreditEntry = !_isCreditEntry;
-                          // When switching modes, validate external usage
                           if (_isCreditEntry) {
                             if (_type == 'Transfer') {
-                              _toAccount = null; // Clear Target
+                              _toAccount = null;
                             }
-                            // Clear Source/Target if they were External (Ext not allowed in Credit Mode)
                             if (_selectedAccount?.id == _externalAccount.id)
                               _selectedAccount = null;
                             if (_toAccount?.id == _externalAccount.id)
@@ -793,7 +788,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
         onTap: () {
           if (_isLinkedTransaction) return;
           if (isCardExpense) {
-            // Credit Expense -> Select Card
             _showSelectionSheet<CreditCardModel>(
                 "Select Card",
                 _creditCards,
@@ -801,8 +795,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                 (c) => "${c.bankName} - ${c.name}",
                 (v) => setState(() => _selectedCreditCard = v));
           } else {
-            // Bank Account Selection
-            // Use helper to filter out Pool account + optionally add External
             List<ExpenseAccountModel> options = _getDisplayAccounts();
 
             _showSelectionSheet<ExpenseAccountModel>(
@@ -821,12 +813,10 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
       bool targetError = false;
 
       if (isBillPayment) {
-        // Paying Bill -> Target is Card
         targetLabel = "TO CARD";
         targetVal = _selectedCreditCard?.name ?? "Select Card";
         targetError = _attemptedSave && _selectedCreditCard == null;
       } else {
-        // Normal Transfer -> Target is Account
         targetVal = _toAccount?.name ?? "Select Account";
         targetError = _attemptedSave && _toAccount == null;
       }
@@ -840,7 +830,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
           onTap: () {
             if (_isLinkedTransaction) return;
             if (isBillPayment) {
-              // Target = Card
               _showSelectionSheet<CreditCardModel>(
                   "Select Card",
                   _creditCards,
@@ -848,12 +837,10 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                   (c) => "${c.bankName} - ${c.name}",
                   (v) => setState(() => _selectedCreditCard = v));
             } else {
-              // Target = Account
               final targets = _getDisplayAccounts()
                   .where((a) => a.id != _selectedAccount?.id)
                   .toList();
 
-              // Remove External if Source is already External (No External -> External)
               if (_selectedAccount?.id == _externalAccount.id) {
                 targets.removeWhere((e) => e.id == _externalAccount.id);
               }
@@ -1002,7 +989,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                   _type = label;
                   _category = null;
                   _subCategory = null;
-                  // IMPORTANT: Reset external logic when switching types
                   if (_type != 'Transfer') {
                     if (_selectedAccount?.id == _externalAccount.id)
                       _selectedAccount = null;
