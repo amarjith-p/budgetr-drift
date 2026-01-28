@@ -18,6 +18,13 @@ class CustomDataChart extends StatelessWidget {
     required this.yKey,
   });
 
+  // --- HELPER: Parse Date Safely ---
+  DateTime? _tryParseDate(dynamic val) {
+    if (val is DateTime) return val;
+    if (val is String) return DateTime.tryParse(val);
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     var sorted = List<CustomRecord>.from(records)
@@ -94,10 +101,14 @@ class CustomDataChart extends StatelessWidget {
 
                 final index = barSpot.x.toInt();
                 if (index >= 0 && index < sorted.length) {
-                  final d = sorted[index].data[xKey];
-                  String xLabel = (d is DateTime)
-                      ? DateFormat('dd MMM yyyy').format(d)
-                      : d.toString();
+                  final rawDate = sorted[index].data[xKey];
+                  final dt = _tryParseDate(rawDate);
+
+                  // FIX: Use Parsed Date for Tooltip
+                  String xLabel = dt != null
+                      ? DateFormat('dd MMM yyyy').format(dt)
+                      : rawDate.toString();
+
                   Color valColor =
                       barSpot.y > 0 ? positiveColor : negativeColor;
 
@@ -149,10 +160,14 @@ class CustomDataChart extends StatelessWidget {
                 if (index >= 0 &&
                     index < sorted.length &&
                     val == index.toDouble()) {
-                  final d = sorted[index].data[xKey];
-                  String label = (d is DateTime)
-                      ? DateFormat('dd/MM').format(d)
-                      : d.toString();
+                  final rawDate = sorted[index].data[xKey];
+                  final dt = _tryParseDate(rawDate);
+
+                  // FIX: Use Parsed Date for Axis Label
+                  String label = dt != null
+                      ? DateFormat('dd/MM').format(dt)
+                      : rawDate.toString();
+
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
                     child: Text(

@@ -10,7 +10,6 @@ class CustomEntryService {
 
   // --- Helper Methods ---
 
-  // Safely decode the List<CustomFieldConfig> from JSON
   List<CustomFieldConfig> _decodeFields(String jsonStr) {
     try {
       final List<dynamic> list = jsonDecode(jsonStr);
@@ -22,12 +21,9 @@ class CustomEntryService {
     }
   }
 
-  // Safely decode the Map<String, dynamic> data for records
   Map<String, dynamic> _decodeRecordData(String jsonStr) {
     try {
       final Map<String, dynamic> rawMap = jsonDecode(jsonStr);
-      // Ensure specific types are restored if needed (e.g., Dates stored as strings)
-      // For now, assuming basic JSON types are sufficient or handled by UI
       return rawMap;
     } catch (e) {
       return {};
@@ -80,7 +76,6 @@ class CustomEntryService {
 
   Future<void> deleteCustomTemplate(String id) async {
     await _db.transaction(() async {
-      // Cascade delete: Records first, then Template
       await (_db.delete(_db.customRecords)
             ..where((t) => t.templateId.equals(id)))
           .go();
@@ -89,10 +84,12 @@ class CustomEntryService {
     });
   }
 
-  // Specific helper for Investment Module
-  Future<String> ensureInvestmentTemplateExists(String templateName) async {
+  // --- NEW METHOD FOR INVESTMENT PORTFOLIO MASTER SHEET ---
+  Future<String> ensureInvestmentTemplateExists() async {
+    const masterName = "Investment Portfolio"; // Fixed Master Name
+
     final existing = await (_db.select(_db.customTemplates)
-          ..where((t) => t.name.equals(templateName))
+          ..where((t) => t.name.equals(masterName))
           ..limit(1))
         .getSingleOrNull();
 
@@ -100,10 +97,12 @@ class CustomEntryService {
       return existing.id;
     }
 
-    // Create default investment template
+    // Create the Master Template with Bucket Column
     final newId = _uuid.v4();
     final fields = [
       CustomFieldConfig(name: 'Date', type: CustomFieldType.date),
+      // NEW: Bucket Identifier
+      CustomFieldConfig(name: 'Bucket Name', type: CustomFieldType.string),
       CustomFieldConfig(
           name: 'Invested',
           type: CustomFieldType.currency,
@@ -114,13 +113,29 @@ class CustomEntryService {
           type: CustomFieldType.currency,
           currencySymbol: '₹',
           isSumRequired: true),
+      // NEW: Financial Metrics
+      CustomFieldConfig(
+          name: 'Day Gain',
+          type: CustomFieldType.currency,
+          currencySymbol: '₹',
+          isSumRequired: true),
+      CustomFieldConfig(
+          name: 'Total Gain',
+          type: CustomFieldType.currency,
+          currencySymbol: '₹',
+          isSumRequired: true),
+      CustomFieldConfig(
+          name: 'Returns %',
+          type: CustomFieldType.number,
+          serialSuffix: '%',
+          isSumRequired: false),
     ];
 
     await _db
         .into(_db.customTemplates)
         .insert(db.CustomTemplatesCompanion.insert(
           id: newId,
-          name: templateName,
+          name: masterName,
           createdAt: DateTime.now(),
           fields: jsonEncode(fields.map((e) => e.toMap()).toList()),
           xAxisField: const Value('Date'),
@@ -172,12 +187,6 @@ class CustomEntryService {
 
   Future<void> addCustomRecord(CustomRecord record) async {
     final id = record.id.isEmpty ? _uuid.v4() : record.id;
-
-    // We need to serialize the data map properly
-    // Note: Dates inside the map are handled by your toMap() logic usually,
-    // but here we just JSON encode the raw map.
-    // If your map contains DateTime objects, jsonEncode will throw error unless mapped to String.
-    // We should pre-process the map.
     final processedData = record.data.map((key, value) {
       if (value is DateTime) return MapEntry(key, value.toIso8601String());
       return MapEntry(key, value);
@@ -200,7 +209,7 @@ class CustomEntryService {
     await (_db.update(_db.customRecords)..where((t) => t.id.equals(record.id)))
         .write(db.CustomRecordsCompanion(
       data: Value(jsonEncode(processedData)),
-      createdAt: Value(record.createdAt), // In case date changed
+      createdAt: Value(record.createdAt),
     ));
   }
 
