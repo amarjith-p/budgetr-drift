@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart'; // Required for rootBundle
 import 'package:budget/core/models/custom_data_models.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
@@ -12,8 +14,18 @@ class CustomExportService {
   String _formatValue(dynamic val, CustomFieldConfig field) {
     if (val == null) return '';
 
-    if (field.type == CustomFieldType.date && val is DateTime) {
-      return DateFormat('dd MMM yyyy').format(val);
+    // Handle both DateTime objects and ISO Strings
+    if (field.type == CustomFieldType.date) {
+      if (val is DateTime) {
+        return DateFormat('dd MMM yyyy').format(val);
+      } else if (val is String) {
+        try {
+          final dt = DateTime.parse(val);
+          return DateFormat('dd MMM yyyy').format(dt);
+        } catch (_) {
+          return val;
+        }
+      }
     } else if (field.type == CustomFieldType.currency) {
       double numVal = 0.0;
       if (val is num) {
@@ -65,8 +77,7 @@ class CustomExportService {
     return null;
   }
 
-  // --- CSV EXPORT (UPDATED) ---
-  // Added 'totals' parameter
+  // --- CSV EXPORT ---
   Future<String?> exportToCsv(CustomTemplate template,
       List<CustomRecord> records, Map<String, double> totals) async {
     List<List<dynamic>> rows = [];
@@ -83,7 +94,7 @@ class CustomExportService {
       rows.add(row);
     }
 
-    // 3. Totals Row (FIXED: Added this block)
+    // 3. Totals Row
     if (totals.isNotEmpty) {
       List<dynamic> totalRow = [];
       bool firstLabelSet = false;
@@ -96,7 +107,6 @@ class CustomExportService {
           }
           totalRow.add(val);
         } else if (!firstLabelSet) {
-          // Place 'TOTAL' in the first non-numeric column usually
           totalRow.add('TOTAL');
           firstLabelSet = true;
         } else {
@@ -106,9 +116,11 @@ class CustomExportService {
       rows.add(totalRow);
     }
 
-    // 4. Generate CSV Data
+    // 4. Generate CSV Data with UTF-8 BOM
+    // The BOM (Byte Order Mark) helps Excel recognize special chars like ₹
     String csvString = const ListToCsvConverter().convert(rows);
-    List<int> csvBytes = csvString.codeUnits;
+    final List<int> bom = [0xEF, 0xBB, 0xBF];
+    List<int> csvBytes = bom + utf8.encode(csvString);
 
     // 5. Save
     String defaultName =
@@ -120,6 +132,11 @@ class CustomExportService {
   Future<String?> exportToPdf(CustomTemplate template,
       List<CustomRecord> records, Map<String, double> totals) async {
     final pdf = pw.Document();
+
+    // 1. Load Custom Font (Required for Rupee Symbol)
+    // Ensure 'assets/fonts/Roboto-Regular.ttf' is in pubspec.yaml
+    final fontData = await rootBundle.load("assets/fonts/Roboto-Regular.ttf");
+    final ttf = pw.Font.ttf(fontData);
 
     final headers = template.fields.map((f) => f.name.toUpperCase()).toList();
     final data = records.map((record) {
@@ -148,8 +165,10 @@ class CustomExportService {
       data.add(totalsRow);
     }
 
+    // 2. Apply Font to Theme
     final pageTheme = pw.PageTheme(
       pageFormat: PdfPageFormat.a4.landscape,
+      theme: pw.ThemeData.withFont(base: ttf), // <--- Critical Fix
       margin: const pw.EdgeInsets.all(40),
       buildBackground: (pw.Context context) {
         return pw.FullPage(
