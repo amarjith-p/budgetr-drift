@@ -120,7 +120,8 @@ class CustomRecord {
     final storageData = <String, dynamic>{};
     data.forEach((key, value) {
       if (value is DateTime) {
-        storageData[key] = DateTime.timestamp();
+        storageData[key] = value.toIso8601String();
+        // DateTime.timestamp();
       } else {
         storageData[key] = value;
       }
@@ -129,7 +130,8 @@ class CustomRecord {
     return {
       'templateId': templateId,
       'data': storageData,
-      'createdAt': DateTime.timestamp(),
+      'createdAt': createdAt.toIso8601String(),
+      // DateTime.timestamp(),
     };
   }
 

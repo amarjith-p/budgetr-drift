@@ -12,8 +12,6 @@ import '../utils/formula_utils.dart';
 import '../widgets/data_view/custom_data_chart.dart';
 import 'dynamic_entry_sheet.dart';
 import '../services/custom_entry_service.dart';
-
-// --- NEW IMPORTS ---
 import '../utils/filter_engine.dart';
 import 'data_view/filter_sheet.dart';
 
@@ -33,7 +31,6 @@ class _CustomDataPageState extends State<CustomDataPage>
   final Color _accentColor = const Color(0xFF3A86FF);
   final Color _bgColor = const Color(0xff0D1B2A);
 
-  // --- FILTER STATE ---
   List<FilterCondition> _activeFilters = [];
 
   @override
@@ -41,7 +38,6 @@ class _CustomDataPageState extends State<CustomDataPage>
 
   bool get _isAutoTracker => widget.template.name.endsWith('AutoTracker');
 
-  // --- STALE DATA LOGIC ---
   bool _isRowStale(CustomRecord record) {
     for (var field in widget.template.fields) {
       if (field.type == CustomFieldType.formula &&
@@ -98,7 +94,7 @@ class _CustomDataPageState extends State<CustomDataPage>
       builder: (context) => FilterSheet(
         template: widget.template,
         activeFilters: _activeFilters,
-        sourceData: records, // NEW: Pass the data
+        sourceData: records,
         onApply: (filters) {
           setState(() {
             _activeFilters = filters;
@@ -345,8 +341,6 @@ class _CustomDataPageState extends State<CustomDataPage>
     );
   }
 
-  // REPLACE THE _showExportOptions METHOD WITH THIS:
-
   void _showExportOptions(
       List<CustomRecord> records, Map<String, double> totals) {
     showModalBottomSheet(
@@ -390,7 +384,6 @@ class _CustomDataPageState extends State<CustomDataPage>
                         final path = await CustomExportService()
                             .exportToPdf(widget.template, records, totals);
 
-                        // Check if path is valid (User didn't cancel)
                         if (path != null && mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -421,11 +414,10 @@ class _CustomDataPageState extends State<CustomDataPage>
                     onTap: () async {
                       Navigator.pop(ctx);
                       try {
-                        // FIX: Pass 'totals' here
                         final path = await CustomExportService().exportToCsv(
                           widget.template,
                           records,
-                          totals, // <--- Added this argument
+                          totals,
                         );
 
                         if (path != null && mounted) {
@@ -497,8 +489,6 @@ class _CustomDataPageState extends State<CustomDataPage>
       stream: _service.getCustomRecords(widget.template.id),
       builder: (context, snapshot) {
         final rawRecords = snapshot.data ?? [];
-
-        // --- APPLY FILTERS ---
         final records = FilterEngine.applyFilters(rawRecords, _activeFilters);
 
         return Scaffold(
@@ -579,14 +569,12 @@ class _CustomDataPageState extends State<CustomDataPage>
                               onPressed: () =>
                                   _showExportOptions(records, totals),
                               icon: const Icon(
-                                Icons
-                                    .ios_share_rounded, // or Icons.upload_rounded
+                                Icons.ios_share_rounded,
                                 color: Colors.white70,
                                 size: 20,
                               ),
                               tooltip: 'Export',
                             ),
-                            // --- NEW FILTER BUTTON ---
                             IconButton(
                               onPressed: () => _showFilterSheet(rawRecords),
                               icon: Icon(
@@ -733,11 +721,23 @@ class _CustomDataPageState extends State<CustomDataPage>
                                     final val = r.data[f.name];
                                     String display = '-';
                                     if (val != null) {
-                                      if (f.type == CustomFieldType.date &&
-                                          val is DateTime) {
-                                        display = DateFormat('dd MMM yyyy')
-                                            .format(val);
-                                      } else if (f.type ==
+                                      // --- FIXED DATE DISPLAY LOGIC ---
+                                      if (f.type == CustomFieldType.date) {
+                                        if (val is DateTime) {
+                                          display = DateFormat('dd MMM yyyy')
+                                              .format(val);
+                                        } else if (val is String) {
+                                          try {
+                                            final dt = DateTime.parse(val);
+                                            display = DateFormat('dd MMM yyyy')
+                                                .format(dt);
+                                          } catch (e) {
+                                            display = val;
+                                          }
+                                        }
+                                      }
+                                      // --------------------------------
+                                      else if (f.type ==
                                           CustomFieldType.currency) {
                                         double numVal = 0.0;
                                         if (val is num) {
@@ -872,13 +872,13 @@ class _CustomDataPageState extends State<CustomDataPage>
                         child: Column(
                           children: [
                             Icon(
-                              Icons.filter_list_off, // CHANGED ICON
+                              Icons.filter_list_off,
                               size: 48,
                               color: Colors.white.withOpacity(0.1),
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              "No matching records", // CHANGED TEXT
+                              "No matching records",
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.3),
                               ),

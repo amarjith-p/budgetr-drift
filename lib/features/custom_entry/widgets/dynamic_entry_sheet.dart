@@ -65,13 +65,27 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
         _focusNodes[field.name] = FocusNode();
       }
 
+      // if (field.type == CustomFieldType.date) {
+      //   if (initialVal is DateTime)
+      //     _formData[field.name] = initialVal;
+      //   else if (initialVal is DateTime)
+      //     _formData[field.name] = initialVal;
+      //   else
+      //     _formData[field.name] = DateTime.now();
+      // }
       if (field.type == CustomFieldType.date) {
-        if (initialVal is DateTime)
+        if (initialVal is DateTime) {
           _formData[field.name] = initialVal;
-        else if (initialVal is DateTime)
-          _formData[field.name] = initialVal;
-        else
+        } else if (initialVal is String) {
+          // FIX: Parse String from JSON back to DateTime
+          try {
+            _formData[field.name] = DateTime.parse(initialVal);
+          } catch (_) {
+            _formData[field.name] = DateTime.now();
+          }
+        } else {
           _formData[field.name] = DateTime.now();
+        }
       } else if (field.type == CustomFieldType.dropdown) {
         _formData[field.name] = initialVal;
       } else if (field.type == CustomFieldType.serial) {
