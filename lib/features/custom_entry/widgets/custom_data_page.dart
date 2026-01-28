@@ -36,7 +36,17 @@ class _CustomDataPageState extends State<CustomDataPage>
   @override
   bool get wantKeepAlive => true;
 
-  bool get _isAutoTracker => widget.template.name.endsWith('AutoTracker');
+  // FIX: Identify Investment Portfolio to disable Edit/Totals
+  bool get _isSystemTemplate =>
+      widget.template.name.endsWith('AutoTracker') ||
+      widget.template.name == "Investment Portfolio";
+
+  // --- DATE HELPER ---
+  DateTime? _tryParseDate(dynamic val) {
+    if (val is DateTime) return val;
+    if (val is String) return DateTime.tryParse(val);
+    return null;
+  }
 
   bool _isRowStale(CustomRecord record) {
     for (var field in widget.template.fields) {
@@ -493,7 +503,7 @@ class _CustomDataPageState extends State<CustomDataPage>
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          floatingActionButton: _isAutoTracker
+          floatingActionButton: _isSystemTemplate
               ? null
               : FloatingActionButton.extended(
                   heroTag: 'custom_data_fab_${widget.template.id}',
@@ -521,22 +531,27 @@ class _CustomDataPageState extends State<CustomDataPage>
                 );
               }
 
+              // --- CALCULATE TOTALS ---
               Map<String, double> totals = {};
-              for (var field in widget.template.fields) {
-                if ((field.type == CustomFieldType.number ||
-                        field.type == CustomFieldType.currency ||
-                        field.type == CustomFieldType.formula) &&
-                    field.isSumRequired) {
-                  totals[field.name] = records.fold(0.0, (sum, r) {
-                    final rawVal = r.data[field.name];
-                    double val = 0.0;
-                    if (rawVal is num) {
-                      val = rawVal.toDouble();
-                    } else if (rawVal is String) {
-                      val = double.tryParse(rawVal) ?? 0.0;
-                    }
-                    return sum + val;
-                  });
+
+              // FIX: Disable Totals for Investment Portfolio as they are meaningless
+              if (widget.template.name != "Investment Portfolio") {
+                for (var field in widget.template.fields) {
+                  if ((field.type == CustomFieldType.number ||
+                          field.type == CustomFieldType.currency ||
+                          field.type == CustomFieldType.formula) &&
+                      field.isSumRequired) {
+                    totals[field.name] = records.fold(0.0, (sum, r) {
+                      final rawVal = r.data[field.name];
+                      double val = 0.0;
+                      if (rawVal is num) {
+                        val = rawVal.toDouble();
+                      } else if (rawVal is String) {
+                        val = double.tryParse(rawVal) ?? 0.0;
+                      }
+                      return sum + val;
+                    });
+                  }
                 }
               }
 
@@ -721,23 +736,15 @@ class _CustomDataPageState extends State<CustomDataPage>
                                     final val = r.data[f.name];
                                     String display = '-';
                                     if (val != null) {
-                                      // --- FIXED DATE DISPLAY LOGIC ---
                                       if (f.type == CustomFieldType.date) {
-                                        if (val is DateTime) {
+                                        final dt = _tryParseDate(val);
+                                        if (dt != null) {
                                           display = DateFormat('dd MMM yyyy')
-                                              .format(val);
-                                        } else if (val is String) {
-                                          try {
-                                            final dt = DateTime.parse(val);
-                                            display = DateFormat('dd MMM yyyy')
-                                                .format(dt);
-                                          } catch (e) {
-                                            display = val;
-                                          }
+                                              .format(dt);
+                                        } else {
+                                          display = val.toString();
                                         }
-                                      }
-                                      // --------------------------------
-                                      else if (f.type ==
+                                      } else if (f.type ==
                                           CustomFieldType.currency) {
                                         double numVal = 0.0;
                                         if (val is num) {
@@ -793,7 +800,8 @@ class _CustomDataPageState extends State<CustomDataPage>
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        if (!_isAutoTracker) ...[
+                                        // FIX: Hide Edit Button if it's a System Template (Investment/Auto)
+                                        if (!_isSystemTemplate) ...[
                                           IconButton(
                                             icon: const Icon(
                                               Icons.edit,
@@ -823,7 +831,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                                 ],
                               );
                             }),
-                            if (totals.isNotEmpty && !_isAutoTracker)
+                            if (totals.isNotEmpty && !_isSystemTemplate)
                               DataRow(
                                 cells: [
                                   ...widget.template.fields.map((f) {
@@ -852,6 +860,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: Colors.white,
+                                            fontSize: 11,
                                           ),
                                         ),
                                       );
