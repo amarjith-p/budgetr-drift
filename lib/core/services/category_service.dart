@@ -20,6 +20,7 @@ class CategoryService {
         'Online Delivery',
         'Coffee/Tea',
         'Cooldrinks/Juices',
+        'Bakery',
         'Liquor/Bars',
         'Snacks',
       ],
@@ -131,7 +132,8 @@ class CategoryService {
         'Grooming',
         'Pet Accessories',
         'Vet Visits',
-        'Training'
+        'Training',
+        'Pet Medicine'
       ],
       'icon': Icons.pets.codePoint,
     },
@@ -216,6 +218,10 @@ class CategoryService {
     'Non-Calculated Income': {
       'subs': [],
       'icon': Icons.money_off.codePoint,
+    },
+    'Repayment': {
+      'subs': ['Credit Card Bill', 'Loan Repayment', 'Debt Collection'],
+      'icon': Icons.payments.codePoint,
     },
   };
 

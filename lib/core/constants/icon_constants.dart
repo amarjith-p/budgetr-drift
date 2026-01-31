@@ -34,7 +34,7 @@ class IconConstants {
 
   static const List<IconGroup> iconGroups = [
     IconGroup('General & Finance', [
-      IconMetadata(Icons.currency_rupee, [
+      IconMetadata(Icons.currency_rupee_sharp, [
         'rupee',
         'inr',
         'money',
