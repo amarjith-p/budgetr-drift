@@ -13,8 +13,8 @@ import '../../../core/design/budgetr_styles.dart';
 
 // --- FEATURE IMPORTS ---
 import '../../settings/services/settings_service.dart';
-import '../../dashboard/services/dashboard_service.dart'; // Added
-import '../../settlement/services/settlement_service.dart'; // Added
+import '../../dashboard/services/dashboard_service.dart';
+import '../../settlement/services/settlement_service.dart';
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
 
@@ -36,10 +36,13 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
   final FocusNode _amountNode = FocusNode();
   final FocusNode _notesNode = FocusNode();
 
+  // [NEW] LayerLink for floating suggestions
+  final LayerLink _layerLink = LayerLink();
+
   // --- LOGIC STATE ---
   bool _isLinked = false; // Locks Type & Card if true
   bool _attemptedSave = false;
-  bool _isMonthSettled = false; // [NEW] Closed Budget Check
+  bool _isMonthSettled = false; // Closed Budget Check
 
   // Selections
   CreditCardModel? _selectedCard;
@@ -47,8 +50,9 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
   // Data lists
   List<CreditCardModel> _cards = [];
   List<String> _buckets = [];
-  List<String> _globalFallbackBuckets = []; // [NEW] Store default buckets
+  List<String> _globalFallbackBuckets = [];
   List<TransactionCategoryModel> _allCategories = [];
+  List<String> _notesList = []; // [NEW]
 
   // Fields
   DateTime _date = DateTime.now();
@@ -98,11 +102,14 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
     final cardsFuture = GetIt.I<CreditService>().getCreditCards().first;
     final catsFuture = GetIt.I<CategoryService>().getCategories().first;
     final configFuture = GetIt.I<SettingsService>().getPercentageConfig();
+    // [NEW] Fetch Notes
+    final notesFuture = GetIt.I<CreditService>().getDistinctNotes();
 
     final results = await Future.wait([
       cardsFuture,
       catsFuture,
       configFuture,
+      notesFuture,
     ]);
 
     if (mounted) {
@@ -115,6 +122,7 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
       setState(() {
         _cards = results[0] as List<CreditCardModel>;
         _allCategories = results[1] as List<TransactionCategoryModel>;
+        _notesList = results[3] as List<String>; // [NEW]
 
         // 2. Populate if Editing
         if (widget.transactionToEdit != null) {
@@ -144,12 +152,12 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
         }
       });
 
-      // [NEW] Trigger Date/Settlement Check
+      // Trigger Date/Settlement Check
       await _updateBucketsForDate(_date);
     }
   }
 
-  // [NEW] Smart Bucket Logic & Settlement Check
+  // Smart Bucket Logic & Settlement Check
   Future<void> _updateBucketsForDate(DateTime date) async {
     try {
       // 1. Check if Month is Settled (Closed)
@@ -193,7 +201,6 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
       setState(() {
         _isMonthSettled = false;
         _buckets = newBuckets;
-        // Reset selection if it doesn't exist in new list (unless logic dictates otherwise)
         if (_selectedBucket != null && !_buckets.contains(_selectedBucket)) {
           _selectedBucket = null;
         }
@@ -254,17 +261,9 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
       if (widget.transactionToEdit == null) {
         // Add
         await GetIt.I<CreditService>().addTransaction(txn);
-        if (mounted) {
-          //   await BudgetNotificationService()
-          //       .checkAndTriggerCreditNotification(txn);
-        }
       } else {
         // Update
         await GetIt.I<CreditService>().updateTransaction(txn);
-        if (mounted) {
-          // await BudgetNotificationService()
-          //     .checkAndTriggerCreditNotification(txn);
-        }
       }
 
       if (mounted) Navigator.pop(context);
@@ -305,7 +304,7 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
       if (t != null) {
         final newDate = DateTime(d.year, d.month, d.day, t.hour, t.minute);
         setState(() => _date = newDate);
-        // [NEW] Update buckets when date changes
+        // Update buckets when date changes
         await _updateBucketsForDate(newDate);
       }
     }
@@ -376,7 +375,7 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
                       ),
                     ),
 
-                  // [NEW] SETTLED WARNING
+                  // SETTLED WARNING
                   if (_isMonthSettled && _type == 'Expense')
                     Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -470,27 +469,123 @@ class _ModernCreditTxnSheetState extends State<ModernCreditTxnSheet> {
 
                       const SizedBox(height: 12),
 
-                      // Notes
-                      TextFormField(
-                        controller: _notesCtrl,
-                        focusNode: _notesNode,
-                        style: BudgetrStyles.body.copyWith(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: "Add a note...",
-                          hintStyle:
-                              TextStyle(color: Colors.white.withOpacity(0.3)),
-                          prefixIcon: Icon(Icons.edit_note,
-                              color: Colors.white.withOpacity(0.5)),
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.05),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none),
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 16),
-                          isDense: true,
-                        ),
-                      ),
+                      // [UPDATED] Notes with Autocomplete (Keyboard Fix)
+                      LayoutBuilder(builder: (context, constraints) {
+                        return RawAutocomplete<String>(
+                          textEditingController: _notesCtrl,
+                          focusNode: _notesNode,
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text == '') {
+                              return const Iterable<String>.empty();
+                            }
+                            return _notesList.where((String option) {
+                              return option.toLowerCase().contains(
+                                  textEditingValue.text.toLowerCase());
+                            });
+                          },
+                          // 1. Wrap Field in CompositedTransformTarget
+                          fieldViewBuilder: (BuildContext context,
+                              TextEditingController textEditingController,
+                              FocusNode focusNode,
+                              VoidCallback onFieldSubmitted) {
+                            return CompositedTransformTarget(
+                              link: _layerLink,
+                              child: TextFormField(
+                                controller: textEditingController,
+                                focusNode: focusNode,
+                                style: BudgetrStyles.body
+                                    .copyWith(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: "Add a note...",
+                                  hintStyle: TextStyle(
+                                      color: Colors.white.withOpacity(0.3)),
+                                  prefixIcon: Icon(Icons.edit_note,
+                                      color: Colors.white.withOpacity(0.5)),
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.05),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
+                                  isDense: true,
+                                ),
+                                onFieldSubmitted: (String value) {
+                                  onFieldSubmitted();
+                                },
+                              ),
+                            );
+                          },
+                          // 2. Wrap Options in CompositedTransformFollower
+                          optionsViewBuilder: (BuildContext context,
+                              AutocompleteOnSelected<String> onSelected,
+                              Iterable<String> options) {
+                            // Align bottom-left to render upwards above the field
+                            return Align(
+                              alignment: Alignment.bottomLeft,
+                              child: CompositedTransformFollower(
+                                link: _layerLink,
+                                showWhenUnlinked: false,
+                                targetAnchor: Alignment.topLeft,
+                                followerAnchor: Alignment.bottomLeft,
+                                offset: const Offset(
+                                    0, -5), // Slight gap above field
+                                child: Material(
+                                  elevation: 8.0,
+                                  color: Colors.transparent,
+                                  child: Container(
+                                    width: constraints
+                                        .maxWidth, // Match field width
+                                    decoration: BoxDecoration(
+                                        color: BudgetrColors.cardSurface,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border:
+                                            Border.all(color: Colors.white10),
+                                        boxShadow: [
+                                          BoxShadow(
+                                              color:
+                                                  Colors.black.withOpacity(0.5),
+                                              blurRadius: 15,
+                                              offset: const Offset(
+                                                  0, -2)) // Shadow going up
+                                        ]),
+                                    constraints:
+                                        const BoxConstraints(maxHeight: 200),
+                                    child: ListView.separated(
+                                      padding: EdgeInsets.zero,
+                                      shrinkWrap: true,
+                                      reverse: true, // Grow upwards
+                                      itemCount: options.length,
+                                      separatorBuilder: (_, __) =>
+                                          const Divider(
+                                              height: 1, color: Colors.white10),
+                                      itemBuilder:
+                                          (BuildContext context, int index) {
+                                        final String option =
+                                            options.elementAt(index);
+                                        return InkWell(
+                                          onTap: () => onSelected(option),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 12),
+                                            child: Text(
+                                              option,
+                                              style: const TextStyle(
+                                                  color: Colors.white70),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }),
                       const SizedBox(height: 12),
                     ],
                   ),

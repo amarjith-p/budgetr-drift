@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart' as db;
 import '../models/credit_models.dart';
+import '../../../core/database/tables.dart'; // Ensure tables are imported for access
 
 class CreditService {
   final db.AppDatabase _db = db.AppDatabase.instance;
@@ -119,6 +120,19 @@ class CreditService {
         .map((rows) => rows.map(_mapTxn).toList());
   }
 
+  // [NEW] Get distinct notes for suggestions
+  Future<List<String>> getDistinctNotes() async {
+    final query = _db.selectOnly(_db.creditTransactions, distinct: true)
+      ..addColumns([_db.creditTransactions.notes])
+      ..where(_db.creditTransactions.notes.isNotNull() &
+          _db.creditTransactions.notes.equals('').not());
+
+    final results = await query.get();
+    return results
+        .map((row) => row.read(_db.creditTransactions.notes)!)
+        .toList();
+  }
+
   Future<void> addTransaction(CreditTransactionModel txn) async {
     await _db.transaction(() async {
       final newId = txn.id.isNotEmpty ? txn.id : _uuid.v4();
@@ -177,7 +191,7 @@ class CreditService {
         isSettlementVerified: Value(txn.isSettlementVerified),
       ));
 
-      // 4. SYNC BACK TO EXPENSE MODULE [UPDATED]
+      // 4. SYNC BACK TO EXPENSE MODULE
       if (txn.linkedExpenseId != null) {
         await GetIt.I<ExpenseService>().updateTransactionFromCredit(
           txn.linkedExpenseId!,
@@ -207,10 +221,8 @@ class CreditService {
       await (_db.delete(_db.creditTransactions)..where((t) => t.id.equals(id)))
           .go();
 
-      // 3. SYNC BACK TO EXPENSE MODULE [UPDATED]
+      // 3. SYNC BACK TO EXPENSE MODULE
       if (oldRow.linkedExpenseId != null) {
-        // Direct delete to avoid undefined method issues if interface mismatches
-        // But call service for balance revert safety
         await GetIt.I<ExpenseService>()
             .deleteTransactionFromCredit(oldRow.linkedExpenseId!);
       }
