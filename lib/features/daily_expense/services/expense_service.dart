@@ -153,7 +153,10 @@ class ExpenseService {
         .map((rows) => rows.map(_mapTransaction).toList());
   }
 
-  Future<void> addTransaction(ExpenseTransactionModel txn) async {
+  // [UPDATED] Added optional overrides for linked credit transaction
+  Future<void> addTransaction(ExpenseTransactionModel txn,
+      {String? creditCategoryOverride,
+      String? creditSubCategoryOverride}) async {
     await _db.transaction(() async {
       final docId = txn.id.isNotEmpty ? txn.id : _uuid.v4();
       final String? dbAccountId =
@@ -187,7 +190,11 @@ class ExpenseService {
             txn.transferAccountId == txn.linkedCreditCardId;
         await _updateCreditBalance(txn.linkedCreditCardId!, txn.amount,
             isExpense: !isPayment);
-        await _addCreditTransaction(txn, docId, isPayment);
+
+        // [UPDATED] Pass overrides here
+        await _addCreditTransaction(txn, docId, isPayment,
+            categoryOverride: creditCategoryOverride,
+            subCategoryOverride: creditSubCategoryOverride);
       }
 
       if ((txn.type == 'Transfer Out' || txn.type == 'Transfer In') &&
@@ -474,8 +481,10 @@ class ExpenseService {
     }
   }
 
+  // [UPDATED] Uses Overrides if provided
   Future<void> _addCreditTransaction(
-      ExpenseTransactionModel txn, String expenseId, bool isPayment) async {
+      ExpenseTransactionModel txn, String expenseId, bool isPayment,
+      {String? categoryOverride, String? subCategoryOverride}) async {
     await _db
         .into(_db.creditTransactions)
         .insert(db.CreditTransactionsCompanion.insert(
@@ -485,9 +494,9 @@ class ExpenseService {
           date: txn.date,
           description: txn.notes.isEmpty ? txn.category : txn.notes,
           bucket: Value(txn.bucket),
-          type: isPayment ? 'Payment' : 'Expense',
-          category: txn.category,
-          subCategory: txn.subCategory,
+          type: isPayment ? 'Income' : 'Expense',
+          category: categoryOverride ?? txn.category,
+          subCategory: subCategoryOverride ?? txn.subCategory,
           notes: txn.notes,
           linkedExpenseId: Value(expenseId),
         ));

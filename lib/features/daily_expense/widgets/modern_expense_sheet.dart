@@ -17,13 +17,13 @@ import '../../dashboard/services/dashboard_service.dart';
 import '../../settlement/services/settlement_service.dart';
 import '../../credit_tracker/models/credit_models.dart';
 import '../../credit_tracker/services/credit_service.dart';
+import '../../credit_tracker/utils/billing_cycle_utils.dart'; // [NEW IMPORT]
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
 
 class ModernExpenseSheet extends StatefulWidget {
   final ExpenseTransactionModel? txnToEdit;
   final ExpenseAccountModel? preSelectedAccount;
-  // [FIX] Added initialDate parameter
   final DateTime? initialDate;
 
   const ModernExpenseSheet({
@@ -89,7 +89,6 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
   @override
   void initState() {
     super.initState();
-    // [FIX] Initialize date if passed from Calendar Screen
     if (widget.initialDate != null) {
       _date = widget.initialDate!;
     }
@@ -348,8 +347,29 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
 
       ExpenseTransactionModel txn;
 
+      // Variables to hold overrides for Credit Tracker
+      String? finalCreditCategory;
+      String? finalCreditSubCategory;
+
       if (_type == 'Transfer') {
         if (_isCreditEntry) {
+          // [NEW LOGIC] Check if this transfer is a potential Bill Repayment
+          if (!isEditing && _selectedCreditCard != null) {
+            final isRepaymentWindow =
+                _checkIfRepaymentWindow(_date, _selectedCreditCard!);
+
+            if (isRepaymentWindow) {
+              setState(() => _isLoading = false); // Pause loader
+              final bool isRepayment = await _askRepaymentConfirmation();
+
+              if (isRepayment) {
+                finalCreditCategory = 'Repayment';
+                finalCreditSubCategory = 'Bill Payment';
+              }
+              setState(() => _isLoading = true); // Resume loader
+            }
+          }
+
           txn = ExpenseTransactionModel(
             id: txnId,
             accountId: _selectedAccount!.id,
@@ -440,7 +460,10 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
       if (isEditing) {
         await GetIt.I<ExpenseService>().updateTransaction(txn);
       } else {
-        await GetIt.I<ExpenseService>().addTransaction(txn);
+        // [UPDATED] Pass the overrides to the service
+        await GetIt.I<ExpenseService>().addTransaction(txn,
+            creditCategoryOverride: finalCreditCategory,
+            creditSubCategoryOverride: finalCreditSubCategory);
       }
 
       if (mounted) {
@@ -450,6 +473,95 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
       setState(() => _isLoading = false);
       if (mounted) _showError(e.toString());
     }
+  }
+
+  // --- REPAYMENT HELPERS ---
+
+  bool _checkIfRepaymentWindow(DateTime date, CreditCardModel card) {
+    // 1. Get Last Statement Date
+    final lastStatement =
+        BillingCycleUtils.getLastBillDate(date, card.billDate);
+    // 2. Get Due Date for that Statement
+    final dueDate =
+        BillingCycleUtils.getDueDateForStatement(lastStatement, card.dueDate);
+
+    // 3. Check if date is strictly after Statement AND (before OR on) Due Date
+    // Using strict comparison for Due Date to ensure it covers the full day
+    return date.isAfter(lastStatement) &&
+        !date.isAfter(dueDate.add(const Duration(seconds: 1)));
+  }
+
+  Future<bool> _askRepaymentConfirmation() async {
+    return await showModalBottomSheet<bool>(
+            context: context,
+            backgroundColor: Colors.transparent,
+            builder: (context) => Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    color: Color(0xff1B263B), // Dark theme surface
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                              color: Colors.white24,
+                              borderRadius: BorderRadius.circular(2))),
+                      const SizedBox(height: 24),
+                      const Icon(Icons.receipt_long_rounded,
+                          size: 48, color: BudgetrColors.accent),
+                      const SizedBox(height: 16),
+                      const Text("Mark as Bill Repayment?",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      const Text(
+                        "This transfer falls within the payment period for this card. Should this be treated as a Bill Repayment in the Credit Tracker?",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              style: TextButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                foregroundColor: Colors.white60,
+                              ),
+                              child: const Text("No, Just Transfer"),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: BudgetrColors.accent,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text("Yes, Repayment"),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: MediaQuery.of(context).padding.bottom),
+                    ],
+                  ),
+                )) ??
+        false;
   }
 
   void _showError(String msg) {
