@@ -102,9 +102,19 @@ class FilterEngine {
     switch (filter.type) {
       case CustomFieldType.string:
       case CustomFieldType.serial:
-        final String strVal = val.toString().toLowerCase();
+        final String strVal = val
+            .toString(); // Case sensitive check for list? usually better to keep original casing for exact match
+
+        // 1. Check Multi-Select List (OR Logic: Must be one of the selected)
+        if (filter.selectedOptions != null &&
+            filter.selectedOptions!.isNotEmpty) {
+          if (!filter.selectedOptions!.contains(strVal)) return false;
+        }
+
+        // 2. Check Text Search (Substring match)
         if (filter.textQuery != null && filter.textQuery!.isNotEmpty) {
-          if (!strVal.contains(filter.textQuery!.toLowerCase())) return false;
+          if (!strVal.toLowerCase().contains(filter.textQuery!.toLowerCase()))
+            return false;
         }
         break;
 
@@ -121,7 +131,7 @@ class FilterEngine {
         break;
 
       case CustomFieldType.date:
-        // [FIX] Handle both String (from JSON) and DateTime objects
+        // [FIXED] Handle both String (from JSON) and DateTime objects
         DateTime? dateVal;
         if (val is DateTime) {
           dateVal = val;
@@ -131,19 +141,17 @@ class FilterEngine {
 
         if (dateVal == null) return false;
 
-        // Normalize to start of day for comparison
+        // Normalize to start of day
         final date = DateTime(dateVal.year, dateVal.month, dateVal.day);
 
         if (filter.startDate != null) {
           final start = DateTime(filter.startDate!.year,
               filter.startDate!.month, filter.startDate!.day);
-          // Check if strictly before start date
           if (date.isBefore(start)) return false;
         }
         if (filter.endDate != null) {
           final end = DateTime(
               filter.endDate!.year, filter.endDate!.month, filter.endDate!.day);
-          // Check if strictly after end date
           if (date.isAfter(end)) return false;
         }
         break;

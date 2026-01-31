@@ -62,7 +62,6 @@ class _FilterSheetState extends State<FilterSheet> {
     final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      // CHANGED: Use constraints instead of fixed height
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
@@ -73,7 +72,6 @@ class _FilterSheetState extends State<FilterSheet> {
       child: Padding(
         padding: EdgeInsets.only(bottom: bottomPadding),
         child: Column(
-          // CHANGED: Shrink to fit content
           mainAxisSize: MainAxisSize.min,
           children: [
             // --- HEADER ---
@@ -118,7 +116,6 @@ class _FilterSheetState extends State<FilterSheet> {
             const Divider(height: 1, color: Colors.white10),
 
             // --- LIST ---
-            // CHANGED: Flexible + shrinkWrap allows it to wrap content or scroll if too big
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
@@ -147,7 +144,6 @@ class _FilterSheetState extends State<FilterSheet> {
               padding: const EdgeInsets.all(24),
               child: Row(
                 children: [
-                  // CHANGED: Added Cancel Button
                   Expanded(
                     child: SizedBox(
                       height: 54,
@@ -166,7 +162,6 @@ class _FilterSheetState extends State<FilterSheet> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Apply Button
                   Expanded(
                     child: SizedBox(
                       height: 54,
@@ -197,8 +192,6 @@ class _FilterSheetState extends State<FilterSheet> {
     );
   }
 }
-
-// --- ROW WIDGET (No Changes, keep existing implementation) ---
 
 class _FilterRow extends StatefulWidget {
   final CustomFieldConfig field;
@@ -408,14 +401,46 @@ class _FilterRowState extends State<_FilterRow> {
     final type = widget.field.type;
 
     if (type == CustomFieldType.string || type == CustomFieldType.serial) {
+      final selected = _condition.selectedOptions ?? [];
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Display Selected Chips
+          if (selected.isNotEmpty) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: selected.map((opt) {
+                return Chip(
+                  label: Text(opt, style: const TextStyle(fontSize: 12)),
+                  backgroundColor: widget.accentColor.withOpacity(0.2),
+                  labelStyle: TextStyle(color: widget.accentColor),
+                  deleteIcon: const Icon(Icons.close, size: 16),
+                  deleteIconColor: widget.accentColor,
+                  side: BorderSide.none,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  onDeleted: () {
+                    List<String> newSelected = List.from(selected)..remove(opt);
+                    setState(() {
+                      _condition = _condition.copyWith(
+                          selectedOptions: newSelected,
+                          clearOptions: newSelected.isEmpty);
+                    });
+                    _emitChange();
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           TextFormField(
             controller: _textCtrl,
             focusNode: _textFocus,
             style: const TextStyle(color: Colors.white),
-            decoration: _inputDeco("Search text..."),
+            decoration: _inputDeco("Search or add value..."),
             onChanged: (val) {
               _condition = _condition.copyWith(
                 textQuery: val,
@@ -427,34 +452,52 @@ class _FilterRowState extends State<_FilterRow> {
           ),
           if (_filteredSuggestions.isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text("Suggestions:",
+            const Text("Suggestions (Tap to add):",
                 style: TextStyle(color: Colors.white24, fontSize: 11)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: _filteredSuggestions.map((s) {
+                final isAlreadySelected = selected.contains(s);
                 return InkWell(
                   onTap: () {
-                    _textCtrl.text = s;
-                    _condition = _condition.copyWith(textQuery: s);
-                    _filterSuggestions(s);
-                    _emitChange();
-                    FocusManager.instance.primaryFocus?.unfocus();
+                    // Add to selected list and clear text
+                    if (!isAlreadySelected) {
+                      List<String> newSelected = List.from(selected)..add(s);
+                      setState(() {
+                        _condition = _condition.copyWith(
+                            selectedOptions: newSelected,
+                            textQuery: "", // Clear text query
+                            clearText: true);
+                        _textCtrl.clear();
+                        _filterSuggestions("");
+                      });
+                      _emitChange();
+                      FocusManager.instance.primaryFocus?.unfocus();
+                    }
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: isAlreadySelected
+                          ? widget.accentColor.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white12),
+                      border: Border.all(
+                          color: isAlreadySelected
+                              ? widget.accentColor
+                              : Colors.white12),
                     ),
                     child: Text(
                       s,
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(
+                          color: isAlreadySelected
+                              ? widget.accentColor
+                              : Colors.white70,
+                          fontSize: 12),
                     ),
                   ),
                 );
@@ -609,7 +652,7 @@ class _FilterRowState extends State<_FilterRow> {
           children: [
             Expanded(
               child: Text(
-                val == null ? label : DateFormat('dd MMM yyyy').format(val),
+                val == null ? label : DateFormat('dd/MM/yyyy').format(val),
                 style: TextStyle(
                   color: val == null ? Colors.white38 : Colors.white,
                   fontSize: 13,
