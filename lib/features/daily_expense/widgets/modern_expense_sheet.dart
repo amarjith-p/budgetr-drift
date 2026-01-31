@@ -46,6 +46,8 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
   final FocusNode _amountNode = FocusNode();
   final FocusNode _notesNode = FocusNode();
 
+  final LayerLink _layerLink = LayerLink();
+
   // --- LOGIC STATE ---
   bool _isCreditEntry = false;
   bool _isLinkedTransaction = false;
@@ -796,7 +798,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                       _buildMainGrid(),
                       const SizedBox(height: 12),
 
-                      // [NEW] Suggestions Autocomplete
+                      // [UPDATED] Autocomplete with Upward Rendering
                       LayoutBuilder(builder: (context, constraints) {
                         return RawAutocomplete<String>(
                           textEditingController: _notesCtrl,
@@ -810,83 +812,102 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                                   textEditingValue.text.toLowerCase());
                             });
                           },
+                          // 1. Wrap Field in CompositedTransformTarget
                           fieldViewBuilder: (BuildContext context,
                               TextEditingController textEditingController,
                               FocusNode focusNode,
                               VoidCallback onFieldSubmitted) {
-                            return TextFormField(
-                              controller: textEditingController,
-                              focusNode: focusNode,
-                              style: BudgetrStyles.body
-                                  .copyWith(color: Colors.white),
-                              decoration: InputDecoration(
-                                hintText: "Add a note...",
-                                hintStyle: TextStyle(
-                                    color: Colors.white.withOpacity(0.3)),
-                                prefixIcon: Icon(Icons.edit_note,
-                                    color: Colors.white.withOpacity(0.5)),
-                                filled: true,
-                                fillColor: Colors.white.withOpacity(0.05),
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none),
-                                contentPadding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                isDense: true,
+                            return CompositedTransformTarget(
+                              link: _layerLink,
+                              child: TextFormField(
+                                controller: textEditingController,
+                                focusNode: focusNode,
+                                style: BudgetrStyles.body
+                                    .copyWith(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: "Add a note...",
+                                  hintStyle: TextStyle(
+                                      color: Colors.white.withOpacity(0.3)),
+                                  prefixIcon: Icon(Icons.edit_note,
+                                      color: Colors.white.withOpacity(0.5)),
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.05),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
+                                  isDense: true,
+                                ),
+                                onFieldSubmitted: (String value) {
+                                  onFieldSubmitted();
+                                },
                               ),
-                              onFieldSubmitted: (String value) {
-                                onFieldSubmitted();
-                              },
                             );
                           },
+                          // 2. Wrap Options in CompositedTransformFollower
                           optionsViewBuilder: (BuildContext context,
                               AutocompleteOnSelected<String> onSelected,
                               Iterable<String> options) {
                             return Align(
                               alignment: Alignment.topLeft,
-                              child: Material(
-                                elevation: 4.0,
-                                color: Colors.transparent,
-                                child: Container(
-                                  width: constraints.maxWidth,
-                                  margin: const EdgeInsets.only(top: 8),
-                                  decoration: BoxDecoration(
-                                      color: BudgetrColors.cardSurface,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.white10),
-                                      boxShadow: [
-                                        BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.3),
-                                            blurRadius: 10,
-                                            offset: const Offset(0, 5))
-                                      ]),
-                                  constraints:
-                                      const BoxConstraints(maxHeight: 200),
-                                  child: ListView.separated(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 4),
-                                    shrinkWrap: true,
-                                    itemCount: options.length,
-                                    separatorBuilder: (_, __) => const Divider(
-                                        height: 1, color: Colors.white10),
-                                    itemBuilder:
-                                        (BuildContext context, int index) {
-                                      final String option =
-                                          options.elementAt(index);
-                                      return InkWell(
-                                        onTap: () => onSelected(option),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 16, vertical: 12),
-                                          child: Text(
-                                            option,
-                                            style: const TextStyle(
-                                                color: Colors.white70),
+                              child: CompositedTransformFollower(
+                                link: _layerLink,
+                                showWhenUnlinked: false,
+                                // Anchor: Bottom-Left of follower touches Top-Left of target
+                                targetAnchor: Alignment.topLeft,
+                                followerAnchor: Alignment.bottomLeft,
+                                offset: const Offset(
+                                    0, -5), // Slight gap above field
+                                child: Material(
+                                  elevation: 8.0,
+                                  color: Colors.transparent,
+                                  child: Container(
+                                    width: constraints
+                                        .maxWidth, // Match field width
+                                    decoration: BoxDecoration(
+                                        color: BudgetrColors.cardSurface,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border:
+                                            Border.all(color: Colors.white10),
+                                        boxShadow: [
+                                          BoxShadow(
+                                              color:
+                                                  Colors.black.withOpacity(0.5),
+                                              blurRadius: 15,
+                                              offset: const Offset(0, -2))
+                                        ]),
+                                    constraints:
+                                        const BoxConstraints(maxHeight: 200),
+                                    child: ListView.separated(
+                                      padding: EdgeInsets.zero,
+                                      shrinkWrap: true,
+                                      // Reverse to make it feel like growing up from the field
+                                      reverse: true,
+                                      itemCount: options.length,
+                                      separatorBuilder: (_, __) =>
+                                          const Divider(
+                                              height: 1, color: Colors.white10),
+                                      itemBuilder:
+                                          (BuildContext context, int index) {
+                                        final String option =
+                                            options.elementAt(index);
+                                        return InkWell(
+                                          onTap: () => onSelected(option),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 12),
+                                            child: Text(
+                                              option,
+                                              style: const TextStyle(
+                                                  color: Colors.white70),
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                    },
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
