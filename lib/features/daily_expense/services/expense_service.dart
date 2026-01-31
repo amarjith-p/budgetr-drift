@@ -153,7 +153,19 @@ class ExpenseService {
         .map((rows) => rows.map(_mapTransaction).toList());
   }
 
-  // [UPDATED] Added optional overrides for linked credit transaction
+  // [NEW] Get distinct notes for suggestions
+  Future<List<String>> getDistinctNotes() async {
+    final query = _db.selectOnly(_db.expenseTransactions, distinct: true)
+      ..addColumns([_db.expenseTransactions.notes])
+      ..where(_db.expenseTransactions.notes.isNotNull() &
+          _db.expenseTransactions.notes.equals('').not());
+
+    final results = await query.get();
+    return results
+        .map((row) => row.read(_db.expenseTransactions.notes)!)
+        .toList();
+  }
+
   Future<void> addTransaction(ExpenseTransactionModel txn,
       {String? creditCategoryOverride,
       String? creditSubCategoryOverride}) async {
@@ -190,8 +202,6 @@ class ExpenseService {
             txn.transferAccountId == txn.linkedCreditCardId;
         await _updateCreditBalance(txn.linkedCreditCardId!, txn.amount,
             isExpense: !isPayment);
-
-        // [UPDATED] Pass overrides here
         await _addCreditTransaction(txn, docId, isPayment,
             categoryOverride: creditCategoryOverride,
             subCategoryOverride: creditSubCategoryOverride);
@@ -481,7 +491,6 @@ class ExpenseService {
     }
   }
 
-  // [UPDATED] Uses Overrides if provided
   Future<void> _addCreditTransaction(
       ExpenseTransactionModel txn, String expenseId, bool isPayment,
       {String? categoryOverride, String? subCategoryOverride}) async {
@@ -494,6 +503,7 @@ class ExpenseService {
           date: txn.date,
           description: txn.notes.isEmpty ? txn.category : txn.notes,
           bucket: Value(txn.bucket),
+          // [FIX] Changed 'Payment' to 'Income' to match BillingCycleUtils
           type: isPayment ? 'Income' : 'Expense',
           category: categoryOverride ?? txn.category,
           subCategory: subCategoryOverride ?? txn.subCategory,

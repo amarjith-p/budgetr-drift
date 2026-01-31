@@ -63,6 +63,9 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
   List<String> _globalFallbackBuckets = [];
   List<TransactionCategoryModel> _allCategories = [];
 
+  // [NEW] Suggestions
+  List<String> _notesList = [];
+
   // Fields
   DateTime _date = DateTime.now();
   String? _selectedBucket;
@@ -122,8 +125,11 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
     final catsFuture = GetIt.I<CategoryService>().getCategories().first;
     final configFuture = GetIt.I<SettingsService>().getPercentageConfig();
 
-    final results =
-        await Future.wait([accsFuture, creditFuture, catsFuture, configFuture]);
+    // [NEW] Fetch Notes
+    final notesFuture = GetIt.I<ExpenseService>().getDistinctNotes();
+
+    final results = await Future.wait(
+        [accsFuture, creditFuture, catsFuture, configFuture, notesFuture]);
 
     if (mounted) {
       final config = results[3] as dynamic;
@@ -135,6 +141,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
         _accounts = results[0] as List<ExpenseAccountModel>;
         _creditCards = results[1] as List<CreditCardModel>;
         _allCategories = results[2] as List<TransactionCategoryModel>;
+        _notesList = results[4] as List<String>; // [NEW]
 
         if (widget.txnToEdit != null) {
           final t = widget.txnToEdit!;
@@ -788,26 +795,106 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
                     children: [
                       _buildMainGrid(),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _notesCtrl,
-                        focusNode: _notesNode,
-                        style: BudgetrStyles.body.copyWith(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: "Add a note...",
-                          hintStyle:
-                              TextStyle(color: Colors.white.withOpacity(0.3)),
-                          prefixIcon: Icon(Icons.edit_note,
-                              color: Colors.white.withOpacity(0.5)),
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.05),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none),
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 16),
-                          isDense: true,
-                        ),
-                      ),
+
+                      // [NEW] Suggestions Autocomplete
+                      LayoutBuilder(builder: (context, constraints) {
+                        return RawAutocomplete<String>(
+                          textEditingController: _notesCtrl,
+                          focusNode: _notesNode,
+                          optionsBuilder: (TextEditingValue textEditingValue) {
+                            if (textEditingValue.text == '') {
+                              return const Iterable<String>.empty();
+                            }
+                            return _notesList.where((String option) {
+                              return option.toLowerCase().contains(
+                                  textEditingValue.text.toLowerCase());
+                            });
+                          },
+                          fieldViewBuilder: (BuildContext context,
+                              TextEditingController textEditingController,
+                              FocusNode focusNode,
+                              VoidCallback onFieldSubmitted) {
+                            return TextFormField(
+                              controller: textEditingController,
+                              focusNode: focusNode,
+                              style: BudgetrStyles.body
+                                  .copyWith(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: "Add a note...",
+                                hintStyle: TextStyle(
+                                    color: Colors.white.withOpacity(0.3)),
+                                prefixIcon: Icon(Icons.edit_note,
+                                    color: Colors.white.withOpacity(0.5)),
+                                filled: true,
+                                fillColor: Colors.white.withOpacity(0.05),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none),
+                                contentPadding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                isDense: true,
+                              ),
+                              onFieldSubmitted: (String value) {
+                                onFieldSubmitted();
+                              },
+                            );
+                          },
+                          optionsViewBuilder: (BuildContext context,
+                              AutocompleteOnSelected<String> onSelected,
+                              Iterable<String> options) {
+                            return Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 4.0,
+                                color: Colors.transparent,
+                                child: Container(
+                                  width: constraints.maxWidth,
+                                  margin: const EdgeInsets.only(top: 8),
+                                  decoration: BoxDecoration(
+                                      color: BudgetrColors.cardSurface,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.white10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.3),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 5))
+                                      ]),
+                                  constraints:
+                                      const BoxConstraints(maxHeight: 200),
+                                  child: ListView.separated(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 4),
+                                    shrinkWrap: true,
+                                    itemCount: options.length,
+                                    separatorBuilder: (_, __) => const Divider(
+                                        height: 1, color: Colors.white10),
+                                    itemBuilder:
+                                        (BuildContext context, int index) {
+                                      final String option =
+                                          options.elementAt(index);
+                                      return InkWell(
+                                        onTap: () => onSelected(option),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 12),
+                                          child: Text(
+                                            option,
+                                            style: const TextStyle(
+                                                color: Colors.white70),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }),
+
                       const SizedBox(height: 12),
                     ],
                   ),
