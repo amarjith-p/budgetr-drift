@@ -121,17 +121,29 @@ class FilterEngine {
         break;
 
       case CustomFieldType.date:
-        if (val is! DateTime) return false;
-        final date = DateTime(val.year, val.month, val.day);
+        // [FIX] Handle both String (from JSON) and DateTime objects
+        DateTime? dateVal;
+        if (val is DateTime) {
+          dateVal = val;
+        } else if (val is String) {
+          dateVal = DateTime.tryParse(val);
+        }
+
+        if (dateVal == null) return false;
+
+        // Normalize to start of day for comparison
+        final date = DateTime(dateVal.year, dateVal.month, dateVal.day);
 
         if (filter.startDate != null) {
           final start = DateTime(filter.startDate!.year,
               filter.startDate!.month, filter.startDate!.day);
+          // Check if strictly before start date
           if (date.isBefore(start)) return false;
         }
         if (filter.endDate != null) {
           final end = DateTime(
               filter.endDate!.year, filter.endDate!.month, filter.endDate!.day);
+          // Check if strictly after end date
           if (date.isAfter(end)) return false;
         }
         break;

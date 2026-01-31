@@ -609,7 +609,7 @@ class _FilterRowState extends State<_FilterRow> {
           children: [
             Expanded(
               child: Text(
-                val == null ? label : DateFormat('dd/MM/yy').format(val),
+                val == null ? label : DateFormat('dd MMM yyyy').format(val),
                 style: TextStyle(
                   color: val == null ? Colors.white38 : Colors.white,
                   fontSize: 13,
