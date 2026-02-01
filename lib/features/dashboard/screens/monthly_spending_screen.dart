@@ -99,6 +99,7 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
     ).format(DateTime(widget.record.year, widget.record.month));
 
     final double totalBudget = widget.record.effectiveIncome;
+    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
     return Scaffold(
       backgroundColor: BudgetrColors.background,
@@ -139,6 +140,11 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
                 transactions = transactions
                     .where((t) => t.type == 'Expense' && t.sourceId != '')
                     .toList();
+
+                // [NEW] Calculate Total Out of Bucket Amount
+                final double outOfBucketTotal = transactions
+                    .where((t) => t.bucket == 'Out of Bucket')
+                    .fold(0.0, (sum, t) => sum + t.amount);
 
                 if (_hideOutOfBucket) {
                   transactions = transactions
@@ -248,6 +254,18 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
                                       fontSize: 11,
                                     ),
                                   ),
+                                  // [NEW] Display Total Amount
+                                  if (outOfBucketTotal > 0) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "Out of Bucket Total: ${currencyFormat.format(outOfBucketTotal)}",
+                                      style: const TextStyle(
+                                        color: Colors.redAccent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ]
                                 ],
                               ),
                             ),
@@ -445,7 +463,6 @@ class _MonthlyTransactionCardState extends State<MonthlyTransactionCard> {
 
             // --- EXPANDED DETAILS ---
             AnimatedCrossFade(
-              // FIX: Use infinite width, 0 height to maintain width constraints during animation
               firstChild: const SizedBox(width: double.infinity, height: 0),
               secondChild: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

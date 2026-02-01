@@ -161,30 +161,32 @@ class SettlementChart extends StatelessWidget {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
+              reservedSize: 40, // Reduced height since text is shorter
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
                 if (index >= 0 && index < keys.length) {
                   String text = keys[index];
-                  if (text.length > 8) {
-                    text = '${text.substring(0, 6)}..';
+
+                  // [UPDATED] Strict truncation to first 4 characters
+                  if (text.length > 4) {
+                    text = text.substring(0, 4);
                   }
+
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        text.toUpperCase(),
-                        style: BudgetrStyles.caption.copyWith(
-                          fontSize: 10,
-                          color: Colors.white.withOpacity(0.5),
-                        ),
+                    space: 8,
+                    child: Text(
+                      text.toUpperCase(),
+                      style: BudgetrStyles.caption.copyWith(
+                        fontSize: 10,
+                        color: Colors.white.withOpacity(0.5),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   );
                 }
                 return const SizedBox.shrink();
               },
-              reservedSize: 30,
             ),
           ),
         ),

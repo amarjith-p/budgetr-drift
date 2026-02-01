@@ -10,7 +10,7 @@ import '../../../core/design/budgetr_styles.dart';
 class SettlementTable extends StatelessWidget {
   final Settlement settlement;
   final PercentageConfig?
-  percentageConfig; // Deprecated for sorting, kept for API compat
+      percentageConfig; // Deprecated for sorting, kept for API compat
   final NumberFormat currencyFormat;
 
   const SettlementTable({
@@ -145,7 +145,8 @@ class SettlementTable extends StatelessWidget {
         borderRadius: BudgetrStyles.radiusM,
         child: Table(
           columnWidths: const {
-            0: FlexColumnWidth(1.4),
+            // [Adjusted] Reduced width of first column slightly to give more room to numbers
+            0: FlexColumnWidth(1.2),
             1: FlexColumnWidth(1.0),
             2: FlexColumnWidth(1.0),
           },
@@ -160,15 +161,19 @@ class SettlementTable extends StatelessWidget {
 
   Widget _buildHeaderCell(String text, Alignment alignment) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      // [Adjusted] Reduced horizontal padding from 16 to 8 to prevent overflow
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
       child: Align(
         alignment: alignment,
-        child: Text(
-          text,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: BudgetrColors.accent,
-            fontSize: 13,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            text,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: BudgetrColors.accent,
+              fontSize: 13,
+            ),
           ),
         ),
       ),
@@ -177,10 +182,15 @@ class SettlementTable extends StatelessWidget {
 
   Widget _buildCell(String text, Alignment alignment, {TextStyle? style}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      // [Adjusted] Reduced horizontal padding from 16 to 8
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       child: Align(
         alignment: alignment,
-        child: Text(text, style: style ?? BudgetrStyles.body),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: alignment,
+          child: Text(text, style: style ?? BudgetrStyles.body),
+        ),
       ),
     );
   }
@@ -192,27 +202,36 @@ class SettlementTable extends StatelessWidget {
     bool isTotal = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      // [Adjusted] Reduced horizontal padding from 16 to 8
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Align(
         alignment: alignment,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              currencyFormat.format(v1),
-              style: isTotal
-                  ? const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    )
-                  : BudgetrStyles.body,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                currencyFormat.format(v1),
+                style: isTotal
+                    ? const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      )
+                    : BudgetrStyles.body,
+              ),
             ),
-            Text(
-              currencyFormat.format(v2),
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: v2 >= 0 ? BudgetrColors.success : BudgetrColors.error,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                currencyFormat.format(v2),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: v2 >= 0 ? BudgetrColors.success : BudgetrColors.error,
+                ),
               ),
             ),
           ],
