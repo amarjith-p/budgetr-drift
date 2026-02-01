@@ -8,7 +8,7 @@ class GoalLoanService {
   final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
 
-  // --- MAPPER ---
+  // ... (Keep existing Mappers _mapGoal, _mapLoan, _mapLog) ...
   GoalModel _mapGoal(db.Goal row) {
     return GoalModel(
       id: row.id,
@@ -32,7 +32,7 @@ class GoalLoanService {
       id: row.id,
       title: row.title,
       provider: row.provider,
-      principalAmount: row.principalAmount, // [NEW]
+      principalAmount: row.principalAmount,
       totalAmount: row.totalAmount,
       paidAmount: row.paidAmount,
       interestRate: row.interestRate,
@@ -59,20 +59,27 @@ class GoalLoanService {
   }
 
   // --- GOALS ---
+
+  // [NEW] Watch a single goal for real-time updates
+  Stream<GoalModel> watchGoal(String id) {
+    return (_db.select(_db.goals)..where((t) => t.id.equals(id)))
+        .watchSingle()
+        .map(_mapGoal);
+  }
+
   Stream<List<GoalModel>> getActiveGoals() {
     return (_db.select(_db.goals)
           ..where((t) => t.isCompleted.equals(false))
           ..orderBy([
             (t) => OrderingTerm(expression: t.priority, mode: OrderingMode.asc)
-          ])) // Sort by Priority
+          ]))
         .watch()
         .map((rows) => rows.map(_mapGoal).toList());
   }
 
-  // [FIXED] Now creates an Opening Balance log if currentAmount > 0
   Future<void> createGoal(GoalModel goal) async {
     await _db.transaction(() async {
-      final goalId = _uuid.v4(); // Generate ID manually to use for log
+      final goalId = _uuid.v4();
 
       await _db.into(_db.goals).insert(db.GoalsCompanion.insert(
             id: goalId,
@@ -91,12 +98,12 @@ class GoalLoanService {
             createdAt: DateTime.now(),
           ));
 
-      // Create Initial Log for the Ledger
+      // Create Initial Log if needed
       if (goal.currentAmount > 0) {
         await _db.into(_db.assetLogs).insert(db.AssetLogsCompanion.insert(
               id: _uuid.v4(),
               parentId: goalId,
-              type: 'Goal_Contribution', // Treated as Principal
+              type: 'Goal_Contribution',
               amount: goal.currentAmount,
               interestComponent: const Value(0.0),
               date: DateTime.now(),
@@ -106,36 +113,11 @@ class GoalLoanService {
     });
   }
 
-// [NEW] Delete Goal & Logs
   Future<void> deleteGoal(String goalId) async {
     await _db.transaction(() async {
-      // 1. Delete all associated logs
       await (_db.delete(_db.assetLogs)..where((t) => t.parentId.equals(goalId)))
           .go();
-      // 2. Delete the goal itself
       await (_db.delete(_db.goals)..where((t) => t.id.equals(goalId))).go();
-    });
-  }
-
-  Future<void> deleteGoalLog(String logId) async {
-    await _db.transaction(() async {
-      final log = await (_db.select(_db.assetLogs)
-            ..where((t) => t.id.equals(logId)))
-          .getSingle();
-      final goal = await (_db.select(_db.goals)
-            ..where((t) => t.id.equals(log.parentId)))
-          .getSingle();
-
-      final newBalance = goal.currentAmount - log.amount;
-      final isComplete = newBalance >= goal.targetAmount;
-
-      await (_db.delete(_db.assetLogs)..where((t) => t.id.equals(logId))).go();
-
-      await (_db.update(_db.goals)..where((t) => t.id.equals(goal.id)))
-          .write(db.GoalsCompanion(
-        currentAmount: Value(newBalance),
-        isCompleted: Value(isComplete),
-      ));
     });
   }
 
@@ -148,7 +130,7 @@ class GoalLoanService {
             type: 'Goal_Contribution',
             amount: principal,
             interestComponent: const Value(0.0),
-            date: date, // Use selected date
+            date: date,
             notes: Value(notes),
           ));
 
@@ -166,14 +148,12 @@ class GoalLoanService {
     });
   }
 
-  // 2. REVALUATION: For updating market value (Calculates Profit/Loss)
   Future<void> adjustGoalValue(
       String goalId, double newTotalValue, String notes, DateTime date) async {
     await _db.transaction(() async {
       final goal = await (_db.select(_db.goals)
             ..where((t) => t.id.equals(goalId)))
           .getSingle();
-
       final difference = newTotalValue - goal.currentAmount;
       if (difference == 0) return;
 
@@ -183,7 +163,7 @@ class GoalLoanService {
             type: 'Goal_Revaluation',
             amount: difference,
             interestComponent: Value(difference),
-            date: date, // Use selected date
+            date: date,
             notes: Value(notes),
           ));
 
@@ -197,8 +177,28 @@ class GoalLoanService {
     });
   }
 
-  // ================= LOANS =================
+  Future<void> deleteGoalLog(String logId) async {
+    await _db.transaction(() async {
+      final log = await (_db.select(_db.assetLogs)
+            ..where((t) => t.id.equals(logId)))
+          .getSingle();
+      final goal = await (_db.select(_db.goals)
+            ..where((t) => t.id.equals(log.parentId)))
+          .getSingle();
 
+      final newBalance = goal.currentAmount - log.amount;
+      final isComplete = newBalance >= goal.targetAmount;
+
+      await (_db.delete(_db.assetLogs)..where((t) => t.id.equals(logId))).go();
+      await (_db.update(_db.goals)..where((t) => t.id.equals(goal.id)))
+          .write(db.GoalsCompanion(
+        currentAmount: Value(newBalance),
+        isCompleted: Value(isComplete),
+      ));
+    });
+  }
+
+  // ... (Loans and Log methods remain same) ...
   Stream<List<LoanModel>> getActiveLoans() {
     return (_db.select(_db.loans)
           ..where((t) => t.isClosed.equals(false))
@@ -214,7 +214,7 @@ class GoalLoanService {
           id: _uuid.v4(),
           title: loan.title,
           provider: loan.provider,
-          principalAmount: Value(loan.principalAmount), // [NEW]
+          principalAmount: Value(loan.principalAmount),
           totalAmount: loan.totalAmount,
           paidAmount: const Value(0.0),
           type: loan.type,
@@ -223,11 +223,10 @@ class GoalLoanService {
           dueDate: Value(loan.dueDate),
           emiAmount: Value(loan.emiAmount),
           nextPaymentDate: Value(loan.nextPaymentDate),
-          notes: Value(loan.notes), // [NEW]
+          notes: Value(loan.notes),
         ));
   }
 
-  // [NEW] Delete Loan & Logs
   Future<void> deleteLoan(String loanId) async {
     await _db.transaction(() async {
       await (_db.delete(_db.assetLogs)..where((t) => t.parentId.equals(loanId)))
@@ -236,7 +235,33 @@ class GoalLoanService {
     });
   }
 
-// [NEW] Delete Loan Log
+  Future<void> addLoanPayment(
+      String loanId, double amount, String type, DateTime date) async {
+    await _db.transaction(() async {
+      await _db.into(_db.assetLogs).insert(db.AssetLogsCompanion.insert(
+            id: _uuid.v4(),
+            parentId: loanId,
+            type: type == 'EMI' ? 'Loan_EMI' : 'Loan_Prepayment',
+            amount: amount,
+            interestComponent: const Value(0.0),
+            date: date,
+            notes: Value(type == 'EMI' ? 'Monthly EMI' : 'Extra Payment'),
+          ));
+
+      final loan = await (_db.select(_db.loans)
+            ..where((t) => t.id.equals(loanId)))
+          .getSingle();
+      final newPaid = loan.paidAmount + amount;
+      final isClosed = newPaid >= loan.totalAmount;
+
+      await (_db.update(_db.loans)..where((t) => t.id.equals(loanId)))
+          .write(db.LoansCompanion(
+        paidAmount: Value(newPaid),
+        isClosed: Value(isClosed),
+      ));
+    });
+  }
+
   Future<void> deleteLoanLog(String logId) async {
     await _db.transaction(() async {
       final log = await (_db.select(_db.assetLogs)
@@ -259,38 +284,6 @@ class GoalLoanService {
     });
   }
 
-  // [NEW] Add Loan Transaction
-  Future<void> addLoanPayment(
-      String loanId, double amount, String type, DateTime date) async {
-    await _db.transaction(() async {
-      // type can be 'EMI' or 'PREPAYMENT'
-      await _db.into(_db.assetLogs).insert(db.AssetLogsCompanion.insert(
-            id: _uuid.v4(),
-            parentId: loanId,
-            type: type == 'EMI' ? 'Loan_EMI' : 'Loan_Prepayment',
-            amount: amount,
-            interestComponent: const Value(
-                0.0), // For loans, we track total paid against total due
-            date: date,
-            notes: Value(type == 'EMI' ? 'Monthly EMI' : 'Extra Payment'),
-          ));
-
-      final loan = await (_db.select(_db.loans)
-            ..where((t) => t.id.equals(loanId)))
-          .getSingle();
-
-      final newPaid = loan.paidAmount + amount;
-      final isClosed = newPaid >= loan.totalAmount;
-
-      await (_db.update(_db.loans)..where((t) => t.id.equals(loanId)))
-          .write(db.LoansCompanion(
-        paidAmount: Value(newPaid),
-        isClosed: Value(isClosed),
-      ));
-    });
-  }
-
-  // --- LOGS ---
   Stream<List<AssetLogModel>> getLogsForParent(String parentId) {
     return (_db.select(_db.assetLogs)
           ..where((t) => t.parentId.equals(parentId))
@@ -300,19 +293,4 @@ class GoalLoanService {
         .watch()
         .map((rows) => rows.map(_mapLog).toList());
   }
-}
-
-// --- ANALYTICS HELPERS ---
-
-double calculateRequiredMonthlySavings(GoalModel goal) {
-  if (goal.deadline == null) return 0.0;
-  if (goal.isCompleted) return 0.0;
-
-  final now = DateTime.now();
-  final difference = goal.deadline!.difference(now).inDays;
-  final monthsLeft = (difference / 30).ceil();
-
-  if (monthsLeft <= 0) return goal.targetAmount - goal.currentAmount; // Due now
-
-  return (goal.targetAmount - goal.currentAmount) / monthsLeft;
 }
