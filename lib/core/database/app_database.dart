@@ -28,6 +28,9 @@ part 'app_database.g.dart';
   TransactionCategories, // <--- Ensure this is here
   Settlements, // <--- New
   Settings,
+  AssetLogs,
+  Loans,
+  Goals,
 ])
 class AppDatabase extends _$AppDatabase {
   static final AppDatabase _instance = AppDatabase._internal();

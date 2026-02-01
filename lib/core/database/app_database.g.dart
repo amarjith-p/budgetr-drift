@@ -6145,6 +6145,1905 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   }
 }
 
+class $AssetLogsTable extends AssetLogs
+    with TableInfo<$AssetLogsTable, AssetLog> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AssetLogsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _parentIdMeta =
+      const VerificationMeta('parentId');
+  @override
+  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
+      'parent_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+      'type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+      'amount', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _interestComponentMeta =
+      const VerificationMeta('interestComponent');
+  @override
+  late final GeneratedColumn<double> interestComponent =
+      GeneratedColumn<double>('interest_component', aliasedName, false,
+          type: DriftSqlType.double,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(0.0));
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+      'date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, parentId, type, amount, interestComponent, date, notes];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'asset_logs';
+  @override
+  VerificationContext validateIntegrity(Insertable<AssetLog> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('parent_id')) {
+      context.handle(_parentIdMeta,
+          parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta));
+    } else if (isInserting) {
+      context.missing(_parentIdMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+          _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(_amountMeta,
+          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('interest_component')) {
+      context.handle(
+          _interestComponentMeta,
+          interestComponent.isAcceptableOrUnknown(
+              data['interest_component']!, _interestComponentMeta));
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AssetLog map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AssetLog(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      parentId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}parent_id'])!,
+      type: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      amount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
+      interestComponent: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}interest_component'])!,
+      date: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+    );
+  }
+
+  @override
+  $AssetLogsTable createAlias(String alias) {
+    return $AssetLogsTable(attachedDatabase, alias);
+  }
+}
+
+class AssetLog extends DataClass implements Insertable<AssetLog> {
+  final String id;
+  final String parentId;
+  final String type;
+  final double amount;
+  final double interestComponent;
+  final DateTime date;
+  final String? notes;
+  const AssetLog(
+      {required this.id,
+      required this.parentId,
+      required this.type,
+      required this.amount,
+      required this.interestComponent,
+      required this.date,
+      this.notes});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['parent_id'] = Variable<String>(parentId);
+    map['type'] = Variable<String>(type);
+    map['amount'] = Variable<double>(amount);
+    map['interest_component'] = Variable<double>(interestComponent);
+    map['date'] = Variable<DateTime>(date);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    return map;
+  }
+
+  AssetLogsCompanion toCompanion(bool nullToAbsent) {
+    return AssetLogsCompanion(
+      id: Value(id),
+      parentId: Value(parentId),
+      type: Value(type),
+      amount: Value(amount),
+      interestComponent: Value(interestComponent),
+      date: Value(date),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+    );
+  }
+
+  factory AssetLog.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AssetLog(
+      id: serializer.fromJson<String>(json['id']),
+      parentId: serializer.fromJson<String>(json['parentId']),
+      type: serializer.fromJson<String>(json['type']),
+      amount: serializer.fromJson<double>(json['amount']),
+      interestComponent: serializer.fromJson<double>(json['interestComponent']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      notes: serializer.fromJson<String?>(json['notes']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'parentId': serializer.toJson<String>(parentId),
+      'type': serializer.toJson<String>(type),
+      'amount': serializer.toJson<double>(amount),
+      'interestComponent': serializer.toJson<double>(interestComponent),
+      'date': serializer.toJson<DateTime>(date),
+      'notes': serializer.toJson<String?>(notes),
+    };
+  }
+
+  AssetLog copyWith(
+          {String? id,
+          String? parentId,
+          String? type,
+          double? amount,
+          double? interestComponent,
+          DateTime? date,
+          Value<String?> notes = const Value.absent()}) =>
+      AssetLog(
+        id: id ?? this.id,
+        parentId: parentId ?? this.parentId,
+        type: type ?? this.type,
+        amount: amount ?? this.amount,
+        interestComponent: interestComponent ?? this.interestComponent,
+        date: date ?? this.date,
+        notes: notes.present ? notes.value : this.notes,
+      );
+  AssetLog copyWithCompanion(AssetLogsCompanion data) {
+    return AssetLog(
+      id: data.id.present ? data.id.value : this.id,
+      parentId: data.parentId.present ? data.parentId.value : this.parentId,
+      type: data.type.present ? data.type.value : this.type,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      interestComponent: data.interestComponent.present
+          ? data.interestComponent.value
+          : this.interestComponent,
+      date: data.date.present ? data.date.value : this.date,
+      notes: data.notes.present ? data.notes.value : this.notes,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssetLog(')
+          ..write('id: $id, ')
+          ..write('parentId: $parentId, ')
+          ..write('type: $type, ')
+          ..write('amount: $amount, ')
+          ..write('interestComponent: $interestComponent, ')
+          ..write('date: $date, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, parentId, type, amount, interestComponent, date, notes);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AssetLog &&
+          other.id == this.id &&
+          other.parentId == this.parentId &&
+          other.type == this.type &&
+          other.amount == this.amount &&
+          other.interestComponent == this.interestComponent &&
+          other.date == this.date &&
+          other.notes == this.notes);
+}
+
+class AssetLogsCompanion extends UpdateCompanion<AssetLog> {
+  final Value<String> id;
+  final Value<String> parentId;
+  final Value<String> type;
+  final Value<double> amount;
+  final Value<double> interestComponent;
+  final Value<DateTime> date;
+  final Value<String?> notes;
+  final Value<int> rowid;
+  const AssetLogsCompanion({
+    this.id = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.type = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.interestComponent = const Value.absent(),
+    this.date = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AssetLogsCompanion.insert({
+    required String id,
+    required String parentId,
+    required String type,
+    required double amount,
+    this.interestComponent = const Value.absent(),
+    required DateTime date,
+    this.notes = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        parentId = Value(parentId),
+        type = Value(type),
+        amount = Value(amount),
+        date = Value(date);
+  static Insertable<AssetLog> custom({
+    Expression<String>? id,
+    Expression<String>? parentId,
+    Expression<String>? type,
+    Expression<double>? amount,
+    Expression<double>? interestComponent,
+    Expression<DateTime>? date,
+    Expression<String>? notes,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (parentId != null) 'parent_id': parentId,
+      if (type != null) 'type': type,
+      if (amount != null) 'amount': amount,
+      if (interestComponent != null) 'interest_component': interestComponent,
+      if (date != null) 'date': date,
+      if (notes != null) 'notes': notes,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AssetLogsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? parentId,
+      Value<String>? type,
+      Value<double>? amount,
+      Value<double>? interestComponent,
+      Value<DateTime>? date,
+      Value<String?>? notes,
+      Value<int>? rowid}) {
+    return AssetLogsCompanion(
+      id: id ?? this.id,
+      parentId: parentId ?? this.parentId,
+      type: type ?? this.type,
+      amount: amount ?? this.amount,
+      interestComponent: interestComponent ?? this.interestComponent,
+      date: date ?? this.date,
+      notes: notes ?? this.notes,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (parentId.present) {
+      map['parent_id'] = Variable<String>(parentId.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (interestComponent.present) {
+      map['interest_component'] = Variable<double>(interestComponent.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssetLogsCompanion(')
+          ..write('id: $id, ')
+          ..write('parentId: $parentId, ')
+          ..write('type: $type, ')
+          ..write('amount: $amount, ')
+          ..write('interestComponent: $interestComponent, ')
+          ..write('date: $date, ')
+          ..write('notes: $notes, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LoansTable extends Loans with TableInfo<$LoansTable, Loan> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LoansTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _providerMeta =
+      const VerificationMeta('provider');
+  @override
+  late final GeneratedColumn<String> provider = GeneratedColumn<String>(
+      'provider', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+      'type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _principalAmountMeta =
+      const VerificationMeta('principalAmount');
+  @override
+  late final GeneratedColumn<double> principalAmount = GeneratedColumn<double>(
+      'principal_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _totalAmountMeta =
+      const VerificationMeta('totalAmount');
+  @override
+  late final GeneratedColumn<double> totalAmount = GeneratedColumn<double>(
+      'total_amount', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _paidAmountMeta =
+      const VerificationMeta('paidAmount');
+  @override
+  late final GeneratedColumn<double> paidAmount = GeneratedColumn<double>(
+      'paid_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _interestRateMeta =
+      const VerificationMeta('interestRate');
+  @override
+  late final GeneratedColumn<double> interestRate = GeneratedColumn<double>(
+      'interest_rate', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _emiAmountMeta =
+      const VerificationMeta('emiAmount');
+  @override
+  late final GeneratedColumn<double> emiAmount = GeneratedColumn<double>(
+      'emi_amount', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _startDateMeta =
+      const VerificationMeta('startDate');
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+      'start_date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _dueDateMeta =
+      const VerificationMeta('dueDate');
+  @override
+  late final GeneratedColumn<DateTime> dueDate = GeneratedColumn<DateTime>(
+      'due_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _nextPaymentDateMeta =
+      const VerificationMeta('nextPaymentDate');
+  @override
+  late final GeneratedColumn<DateTime> nextPaymentDate =
+      GeneratedColumn<DateTime>('next_payment_date', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isClosedMeta =
+      const VerificationMeta('isClosed');
+  @override
+  late final GeneratedColumn<bool> isClosed = GeneratedColumn<bool>(
+      'is_closed', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_closed" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        title,
+        provider,
+        type,
+        principalAmount,
+        totalAmount,
+        paidAmount,
+        interestRate,
+        emiAmount,
+        startDate,
+        dueDate,
+        nextPaymentDate,
+        notes,
+        isClosed
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'loans';
+  @override
+  VerificationContext validateIntegrity(Insertable<Loan> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('provider')) {
+      context.handle(_providerMeta,
+          provider.isAcceptableOrUnknown(data['provider']!, _providerMeta));
+    } else if (isInserting) {
+      context.missing(_providerMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+          _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('principal_amount')) {
+      context.handle(
+          _principalAmountMeta,
+          principalAmount.isAcceptableOrUnknown(
+              data['principal_amount']!, _principalAmountMeta));
+    }
+    if (data.containsKey('total_amount')) {
+      context.handle(
+          _totalAmountMeta,
+          totalAmount.isAcceptableOrUnknown(
+              data['total_amount']!, _totalAmountMeta));
+    } else if (isInserting) {
+      context.missing(_totalAmountMeta);
+    }
+    if (data.containsKey('paid_amount')) {
+      context.handle(
+          _paidAmountMeta,
+          paidAmount.isAcceptableOrUnknown(
+              data['paid_amount']!, _paidAmountMeta));
+    }
+    if (data.containsKey('interest_rate')) {
+      context.handle(
+          _interestRateMeta,
+          interestRate.isAcceptableOrUnknown(
+              data['interest_rate']!, _interestRateMeta));
+    }
+    if (data.containsKey('emi_amount')) {
+      context.handle(_emiAmountMeta,
+          emiAmount.isAcceptableOrUnknown(data['emi_amount']!, _emiAmountMeta));
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(_startDateMeta,
+          startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta));
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('due_date')) {
+      context.handle(_dueDateMeta,
+          dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta));
+    }
+    if (data.containsKey('next_payment_date')) {
+      context.handle(
+          _nextPaymentDateMeta,
+          nextPaymentDate.isAcceptableOrUnknown(
+              data['next_payment_date']!, _nextPaymentDateMeta));
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('is_closed')) {
+      context.handle(_isClosedMeta,
+          isClosed.isAcceptableOrUnknown(data['is_closed']!, _isClosedMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Loan map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Loan(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      provider: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}provider'])!,
+      type: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      principalAmount: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}principal_amount'])!,
+      totalAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}total_amount'])!,
+      paidAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}paid_amount'])!,
+      interestRate: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}interest_rate'])!,
+      emiAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}emi_amount']),
+      startDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date'])!,
+      dueDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}due_date']),
+      nextPaymentDate: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}next_payment_date']),
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      isClosed: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_closed'])!,
+    );
+  }
+
+  @override
+  $LoansTable createAlias(String alias) {
+    return $LoansTable(attachedDatabase, alias);
+  }
+}
+
+class Loan extends DataClass implements Insertable<Loan> {
+  final String id;
+  final String title;
+  final String provider;
+  final String type;
+  final double principalAmount;
+  final double totalAmount;
+  final double paidAmount;
+  final double interestRate;
+  final double? emiAmount;
+  final DateTime startDate;
+  final DateTime? dueDate;
+  final DateTime? nextPaymentDate;
+  final String? notes;
+  final bool isClosed;
+  const Loan(
+      {required this.id,
+      required this.title,
+      required this.provider,
+      required this.type,
+      required this.principalAmount,
+      required this.totalAmount,
+      required this.paidAmount,
+      required this.interestRate,
+      this.emiAmount,
+      required this.startDate,
+      this.dueDate,
+      this.nextPaymentDate,
+      this.notes,
+      required this.isClosed});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['provider'] = Variable<String>(provider);
+    map['type'] = Variable<String>(type);
+    map['principal_amount'] = Variable<double>(principalAmount);
+    map['total_amount'] = Variable<double>(totalAmount);
+    map['paid_amount'] = Variable<double>(paidAmount);
+    map['interest_rate'] = Variable<double>(interestRate);
+    if (!nullToAbsent || emiAmount != null) {
+      map['emi_amount'] = Variable<double>(emiAmount);
+    }
+    map['start_date'] = Variable<DateTime>(startDate);
+    if (!nullToAbsent || dueDate != null) {
+      map['due_date'] = Variable<DateTime>(dueDate);
+    }
+    if (!nullToAbsent || nextPaymentDate != null) {
+      map['next_payment_date'] = Variable<DateTime>(nextPaymentDate);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['is_closed'] = Variable<bool>(isClosed);
+    return map;
+  }
+
+  LoansCompanion toCompanion(bool nullToAbsent) {
+    return LoansCompanion(
+      id: Value(id),
+      title: Value(title),
+      provider: Value(provider),
+      type: Value(type),
+      principalAmount: Value(principalAmount),
+      totalAmount: Value(totalAmount),
+      paidAmount: Value(paidAmount),
+      interestRate: Value(interestRate),
+      emiAmount: emiAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(emiAmount),
+      startDate: Value(startDate),
+      dueDate: dueDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDate),
+      nextPaymentDate: nextPaymentDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextPaymentDate),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      isClosed: Value(isClosed),
+    );
+  }
+
+  factory Loan.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Loan(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      provider: serializer.fromJson<String>(json['provider']),
+      type: serializer.fromJson<String>(json['type']),
+      principalAmount: serializer.fromJson<double>(json['principalAmount']),
+      totalAmount: serializer.fromJson<double>(json['totalAmount']),
+      paidAmount: serializer.fromJson<double>(json['paidAmount']),
+      interestRate: serializer.fromJson<double>(json['interestRate']),
+      emiAmount: serializer.fromJson<double?>(json['emiAmount']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
+      nextPaymentDate: serializer.fromJson<DateTime?>(json['nextPaymentDate']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      isClosed: serializer.fromJson<bool>(json['isClosed']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'provider': serializer.toJson<String>(provider),
+      'type': serializer.toJson<String>(type),
+      'principalAmount': serializer.toJson<double>(principalAmount),
+      'totalAmount': serializer.toJson<double>(totalAmount),
+      'paidAmount': serializer.toJson<double>(paidAmount),
+      'interestRate': serializer.toJson<double>(interestRate),
+      'emiAmount': serializer.toJson<double?>(emiAmount),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'dueDate': serializer.toJson<DateTime?>(dueDate),
+      'nextPaymentDate': serializer.toJson<DateTime?>(nextPaymentDate),
+      'notes': serializer.toJson<String?>(notes),
+      'isClosed': serializer.toJson<bool>(isClosed),
+    };
+  }
+
+  Loan copyWith(
+          {String? id,
+          String? title,
+          String? provider,
+          String? type,
+          double? principalAmount,
+          double? totalAmount,
+          double? paidAmount,
+          double? interestRate,
+          Value<double?> emiAmount = const Value.absent(),
+          DateTime? startDate,
+          Value<DateTime?> dueDate = const Value.absent(),
+          Value<DateTime?> nextPaymentDate = const Value.absent(),
+          Value<String?> notes = const Value.absent(),
+          bool? isClosed}) =>
+      Loan(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        provider: provider ?? this.provider,
+        type: type ?? this.type,
+        principalAmount: principalAmount ?? this.principalAmount,
+        totalAmount: totalAmount ?? this.totalAmount,
+        paidAmount: paidAmount ?? this.paidAmount,
+        interestRate: interestRate ?? this.interestRate,
+        emiAmount: emiAmount.present ? emiAmount.value : this.emiAmount,
+        startDate: startDate ?? this.startDate,
+        dueDate: dueDate.present ? dueDate.value : this.dueDate,
+        nextPaymentDate: nextPaymentDate.present
+            ? nextPaymentDate.value
+            : this.nextPaymentDate,
+        notes: notes.present ? notes.value : this.notes,
+        isClosed: isClosed ?? this.isClosed,
+      );
+  Loan copyWithCompanion(LoansCompanion data) {
+    return Loan(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      provider: data.provider.present ? data.provider.value : this.provider,
+      type: data.type.present ? data.type.value : this.type,
+      principalAmount: data.principalAmount.present
+          ? data.principalAmount.value
+          : this.principalAmount,
+      totalAmount:
+          data.totalAmount.present ? data.totalAmount.value : this.totalAmount,
+      paidAmount:
+          data.paidAmount.present ? data.paidAmount.value : this.paidAmount,
+      interestRate: data.interestRate.present
+          ? data.interestRate.value
+          : this.interestRate,
+      emiAmount: data.emiAmount.present ? data.emiAmount.value : this.emiAmount,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      nextPaymentDate: data.nextPaymentDate.present
+          ? data.nextPaymentDate.value
+          : this.nextPaymentDate,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      isClosed: data.isClosed.present ? data.isClosed.value : this.isClosed,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Loan(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('provider: $provider, ')
+          ..write('type: $type, ')
+          ..write('principalAmount: $principalAmount, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('paidAmount: $paidAmount, ')
+          ..write('interestRate: $interestRate, ')
+          ..write('emiAmount: $emiAmount, ')
+          ..write('startDate: $startDate, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('nextPaymentDate: $nextPaymentDate, ')
+          ..write('notes: $notes, ')
+          ..write('isClosed: $isClosed')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      title,
+      provider,
+      type,
+      principalAmount,
+      totalAmount,
+      paidAmount,
+      interestRate,
+      emiAmount,
+      startDate,
+      dueDate,
+      nextPaymentDate,
+      notes,
+      isClosed);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Loan &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.provider == this.provider &&
+          other.type == this.type &&
+          other.principalAmount == this.principalAmount &&
+          other.totalAmount == this.totalAmount &&
+          other.paidAmount == this.paidAmount &&
+          other.interestRate == this.interestRate &&
+          other.emiAmount == this.emiAmount &&
+          other.startDate == this.startDate &&
+          other.dueDate == this.dueDate &&
+          other.nextPaymentDate == this.nextPaymentDate &&
+          other.notes == this.notes &&
+          other.isClosed == this.isClosed);
+}
+
+class LoansCompanion extends UpdateCompanion<Loan> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String> provider;
+  final Value<String> type;
+  final Value<double> principalAmount;
+  final Value<double> totalAmount;
+  final Value<double> paidAmount;
+  final Value<double> interestRate;
+  final Value<double?> emiAmount;
+  final Value<DateTime> startDate;
+  final Value<DateTime?> dueDate;
+  final Value<DateTime?> nextPaymentDate;
+  final Value<String?> notes;
+  final Value<bool> isClosed;
+  final Value<int> rowid;
+  const LoansCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.provider = const Value.absent(),
+    this.type = const Value.absent(),
+    this.principalAmount = const Value.absent(),
+    this.totalAmount = const Value.absent(),
+    this.paidAmount = const Value.absent(),
+    this.interestRate = const Value.absent(),
+    this.emiAmount = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.nextPaymentDate = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.isClosed = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LoansCompanion.insert({
+    required String id,
+    required String title,
+    required String provider,
+    required String type,
+    this.principalAmount = const Value.absent(),
+    required double totalAmount,
+    this.paidAmount = const Value.absent(),
+    this.interestRate = const Value.absent(),
+    this.emiAmount = const Value.absent(),
+    required DateTime startDate,
+    this.dueDate = const Value.absent(),
+    this.nextPaymentDate = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.isClosed = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        title = Value(title),
+        provider = Value(provider),
+        type = Value(type),
+        totalAmount = Value(totalAmount),
+        startDate = Value(startDate);
+  static Insertable<Loan> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? provider,
+    Expression<String>? type,
+    Expression<double>? principalAmount,
+    Expression<double>? totalAmount,
+    Expression<double>? paidAmount,
+    Expression<double>? interestRate,
+    Expression<double>? emiAmount,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? dueDate,
+    Expression<DateTime>? nextPaymentDate,
+    Expression<String>? notes,
+    Expression<bool>? isClosed,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (provider != null) 'provider': provider,
+      if (type != null) 'type': type,
+      if (principalAmount != null) 'principal_amount': principalAmount,
+      if (totalAmount != null) 'total_amount': totalAmount,
+      if (paidAmount != null) 'paid_amount': paidAmount,
+      if (interestRate != null) 'interest_rate': interestRate,
+      if (emiAmount != null) 'emi_amount': emiAmount,
+      if (startDate != null) 'start_date': startDate,
+      if (dueDate != null) 'due_date': dueDate,
+      if (nextPaymentDate != null) 'next_payment_date': nextPaymentDate,
+      if (notes != null) 'notes': notes,
+      if (isClosed != null) 'is_closed': isClosed,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LoansCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? title,
+      Value<String>? provider,
+      Value<String>? type,
+      Value<double>? principalAmount,
+      Value<double>? totalAmount,
+      Value<double>? paidAmount,
+      Value<double>? interestRate,
+      Value<double?>? emiAmount,
+      Value<DateTime>? startDate,
+      Value<DateTime?>? dueDate,
+      Value<DateTime?>? nextPaymentDate,
+      Value<String?>? notes,
+      Value<bool>? isClosed,
+      Value<int>? rowid}) {
+    return LoansCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      provider: provider ?? this.provider,
+      type: type ?? this.type,
+      principalAmount: principalAmount ?? this.principalAmount,
+      totalAmount: totalAmount ?? this.totalAmount,
+      paidAmount: paidAmount ?? this.paidAmount,
+      interestRate: interestRate ?? this.interestRate,
+      emiAmount: emiAmount ?? this.emiAmount,
+      startDate: startDate ?? this.startDate,
+      dueDate: dueDate ?? this.dueDate,
+      nextPaymentDate: nextPaymentDate ?? this.nextPaymentDate,
+      notes: notes ?? this.notes,
+      isClosed: isClosed ?? this.isClosed,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (provider.present) {
+      map['provider'] = Variable<String>(provider.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (principalAmount.present) {
+      map['principal_amount'] = Variable<double>(principalAmount.value);
+    }
+    if (totalAmount.present) {
+      map['total_amount'] = Variable<double>(totalAmount.value);
+    }
+    if (paidAmount.present) {
+      map['paid_amount'] = Variable<double>(paidAmount.value);
+    }
+    if (interestRate.present) {
+      map['interest_rate'] = Variable<double>(interestRate.value);
+    }
+    if (emiAmount.present) {
+      map['emi_amount'] = Variable<double>(emiAmount.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (dueDate.present) {
+      map['due_date'] = Variable<DateTime>(dueDate.value);
+    }
+    if (nextPaymentDate.present) {
+      map['next_payment_date'] = Variable<DateTime>(nextPaymentDate.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (isClosed.present) {
+      map['is_closed'] = Variable<bool>(isClosed.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LoansCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('provider: $provider, ')
+          ..write('type: $type, ')
+          ..write('principalAmount: $principalAmount, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('paidAmount: $paidAmount, ')
+          ..write('interestRate: $interestRate, ')
+          ..write('emiAmount: $emiAmount, ')
+          ..write('startDate: $startDate, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('nextPaymentDate: $nextPaymentDate, ')
+          ..write('notes: $notes, ')
+          ..write('isClosed: $isClosed, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GoalsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _purposeMeta =
+      const VerificationMeta('purpose');
+  @override
+  late final GeneratedColumn<String> purpose = GeneratedColumn<String>(
+      'purpose', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _investmentTypeMeta =
+      const VerificationMeta('investmentType');
+  @override
+  late final GeneratedColumn<String> investmentType = GeneratedColumn<String>(
+      'investment_type', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('Others'));
+  static const VerificationMeta _identificationNumberMeta =
+      const VerificationMeta('identificationNumber');
+  @override
+  late final GeneratedColumn<String> identificationNumber =
+      GeneratedColumn<String>('identification_number', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _currentAmountMeta =
+      const VerificationMeta('currentAmount');
+  @override
+  late final GeneratedColumn<double> currentAmount = GeneratedColumn<double>(
+      'current_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _targetAmountMeta =
+      const VerificationMeta('targetAmount');
+  @override
+  late final GeneratedColumn<double> targetAmount = GeneratedColumn<double>(
+      'target_amount', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _startDateMeta =
+      const VerificationMeta('startDate');
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+      'start_date', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDate);
+  static const VerificationMeta _deadlineMeta =
+      const VerificationMeta('deadline');
+  @override
+  late final GeneratedColumn<DateTime> deadline = GeneratedColumn<DateTime>(
+      'deadline', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _expectedReturnMeta =
+      const VerificationMeta('expectedReturn');
+  @override
+  late final GeneratedColumn<double> expectedReturn = GeneratedColumn<double>(
+      'expected_return', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<int> color = GeneratedColumn<int>(
+      'color', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _iconMeta = const VerificationMeta('icon');
+  @override
+  late final GeneratedColumn<String> icon = GeneratedColumn<String>(
+      'icon', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isCompletedMeta =
+      const VerificationMeta('isCompleted');
+  @override
+  late final GeneratedColumn<bool> isCompleted = GeneratedColumn<bool>(
+      'is_completed', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_completed" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _priorityMeta =
+      const VerificationMeta('priority');
+  @override
+  late final GeneratedColumn<String> priority = GeneratedColumn<String>(
+      'priority', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('Medium'));
+  static const VerificationMeta _monthlyContributionTargetMeta =
+      const VerificationMeta('monthlyContributionTarget');
+  @override
+  late final GeneratedColumn<double> monthlyContributionTarget =
+      GeneratedColumn<double>('monthly_contribution_target', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        purpose,
+        investmentType,
+        identificationNumber,
+        currentAmount,
+        targetAmount,
+        startDate,
+        deadline,
+        expectedReturn,
+        color,
+        icon,
+        isCompleted,
+        createdAt,
+        category,
+        priority,
+        monthlyContributionTarget
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'goals';
+  @override
+  VerificationContext validateIntegrity(Insertable<Goal> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('purpose')) {
+      context.handle(_purposeMeta,
+          purpose.isAcceptableOrUnknown(data['purpose']!, _purposeMeta));
+    }
+    if (data.containsKey('investment_type')) {
+      context.handle(
+          _investmentTypeMeta,
+          investmentType.isAcceptableOrUnknown(
+              data['investment_type']!, _investmentTypeMeta));
+    }
+    if (data.containsKey('identification_number')) {
+      context.handle(
+          _identificationNumberMeta,
+          identificationNumber.isAcceptableOrUnknown(
+              data['identification_number']!, _identificationNumberMeta));
+    }
+    if (data.containsKey('current_amount')) {
+      context.handle(
+          _currentAmountMeta,
+          currentAmount.isAcceptableOrUnknown(
+              data['current_amount']!, _currentAmountMeta));
+    }
+    if (data.containsKey('target_amount')) {
+      context.handle(
+          _targetAmountMeta,
+          targetAmount.isAcceptableOrUnknown(
+              data['target_amount']!, _targetAmountMeta));
+    } else if (isInserting) {
+      context.missing(_targetAmountMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(_startDateMeta,
+          startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta));
+    }
+    if (data.containsKey('deadline')) {
+      context.handle(_deadlineMeta,
+          deadline.isAcceptableOrUnknown(data['deadline']!, _deadlineMeta));
+    }
+    if (data.containsKey('expected_return')) {
+      context.handle(
+          _expectedReturnMeta,
+          expectedReturn.isAcceptableOrUnknown(
+              data['expected_return']!, _expectedReturnMeta));
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+          _colorMeta, color.isAcceptableOrUnknown(data['color']!, _colorMeta));
+    } else if (isInserting) {
+      context.missing(_colorMeta);
+    }
+    if (data.containsKey('icon')) {
+      context.handle(
+          _iconMeta, icon.isAcceptableOrUnknown(data['icon']!, _iconMeta));
+    }
+    if (data.containsKey('is_completed')) {
+      context.handle(
+          _isCompletedMeta,
+          isCompleted.isAcceptableOrUnknown(
+              data['is_completed']!, _isCompletedMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
+    }
+    if (data.containsKey('priority')) {
+      context.handle(_priorityMeta,
+          priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta));
+    }
+    if (data.containsKey('monthly_contribution_target')) {
+      context.handle(
+          _monthlyContributionTargetMeta,
+          monthlyContributionTarget.isAcceptableOrUnknown(
+              data['monthly_contribution_target']!,
+              _monthlyContributionTargetMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Goal map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Goal(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      purpose: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}purpose']),
+      investmentType: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}investment_type'])!,
+      identificationNumber: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}identification_number']),
+      currentAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}current_amount'])!,
+      targetAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}target_amount'])!,
+      startDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date'])!,
+      deadline: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deadline']),
+      expectedReturn: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}expected_return']),
+      color: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}color'])!,
+      icon: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}icon']),
+      isCompleted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_completed'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category']),
+      priority: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}priority'])!,
+      monthlyContributionTarget: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}monthly_contribution_target']),
+    );
+  }
+
+  @override
+  $GoalsTable createAlias(String alias) {
+    return $GoalsTable(attachedDatabase, alias);
+  }
+}
+
+class Goal extends DataClass implements Insertable<Goal> {
+  final String id;
+  final String name;
+  final String? purpose;
+  final String investmentType;
+  final String? identificationNumber;
+  final double currentAmount;
+  final double targetAmount;
+  final DateTime startDate;
+  final DateTime? deadline;
+  final double? expectedReturn;
+  final int color;
+  final String? icon;
+  final bool isCompleted;
+  final DateTime createdAt;
+  final String? category;
+  final String priority;
+  final double? monthlyContributionTarget;
+  const Goal(
+      {required this.id,
+      required this.name,
+      this.purpose,
+      required this.investmentType,
+      this.identificationNumber,
+      required this.currentAmount,
+      required this.targetAmount,
+      required this.startDate,
+      this.deadline,
+      this.expectedReturn,
+      required this.color,
+      this.icon,
+      required this.isCompleted,
+      required this.createdAt,
+      this.category,
+      required this.priority,
+      this.monthlyContributionTarget});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || purpose != null) {
+      map['purpose'] = Variable<String>(purpose);
+    }
+    map['investment_type'] = Variable<String>(investmentType);
+    if (!nullToAbsent || identificationNumber != null) {
+      map['identification_number'] = Variable<String>(identificationNumber);
+    }
+    map['current_amount'] = Variable<double>(currentAmount);
+    map['target_amount'] = Variable<double>(targetAmount);
+    map['start_date'] = Variable<DateTime>(startDate);
+    if (!nullToAbsent || deadline != null) {
+      map['deadline'] = Variable<DateTime>(deadline);
+    }
+    if (!nullToAbsent || expectedReturn != null) {
+      map['expected_return'] = Variable<double>(expectedReturn);
+    }
+    map['color'] = Variable<int>(color);
+    if (!nullToAbsent || icon != null) {
+      map['icon'] = Variable<String>(icon);
+    }
+    map['is_completed'] = Variable<bool>(isCompleted);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
+    map['priority'] = Variable<String>(priority);
+    if (!nullToAbsent || monthlyContributionTarget != null) {
+      map['monthly_contribution_target'] =
+          Variable<double>(monthlyContributionTarget);
+    }
+    return map;
+  }
+
+  GoalsCompanion toCompanion(bool nullToAbsent) {
+    return GoalsCompanion(
+      id: Value(id),
+      name: Value(name),
+      purpose: purpose == null && nullToAbsent
+          ? const Value.absent()
+          : Value(purpose),
+      investmentType: Value(investmentType),
+      identificationNumber: identificationNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(identificationNumber),
+      currentAmount: Value(currentAmount),
+      targetAmount: Value(targetAmount),
+      startDate: Value(startDate),
+      deadline: deadline == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deadline),
+      expectedReturn: expectedReturn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expectedReturn),
+      color: Value(color),
+      icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
+      isCompleted: Value(isCompleted),
+      createdAt: Value(createdAt),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
+      priority: Value(priority),
+      monthlyContributionTarget:
+          monthlyContributionTarget == null && nullToAbsent
+              ? const Value.absent()
+              : Value(monthlyContributionTarget),
+    );
+  }
+
+  factory Goal.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Goal(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      purpose: serializer.fromJson<String?>(json['purpose']),
+      investmentType: serializer.fromJson<String>(json['investmentType']),
+      identificationNumber:
+          serializer.fromJson<String?>(json['identificationNumber']),
+      currentAmount: serializer.fromJson<double>(json['currentAmount']),
+      targetAmount: serializer.fromJson<double>(json['targetAmount']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      deadline: serializer.fromJson<DateTime?>(json['deadline']),
+      expectedReturn: serializer.fromJson<double?>(json['expectedReturn']),
+      color: serializer.fromJson<int>(json['color']),
+      icon: serializer.fromJson<String?>(json['icon']),
+      isCompleted: serializer.fromJson<bool>(json['isCompleted']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      category: serializer.fromJson<String?>(json['category']),
+      priority: serializer.fromJson<String>(json['priority']),
+      monthlyContributionTarget:
+          serializer.fromJson<double?>(json['monthlyContributionTarget']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'purpose': serializer.toJson<String?>(purpose),
+      'investmentType': serializer.toJson<String>(investmentType),
+      'identificationNumber': serializer.toJson<String?>(identificationNumber),
+      'currentAmount': serializer.toJson<double>(currentAmount),
+      'targetAmount': serializer.toJson<double>(targetAmount),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'deadline': serializer.toJson<DateTime?>(deadline),
+      'expectedReturn': serializer.toJson<double?>(expectedReturn),
+      'color': serializer.toJson<int>(color),
+      'icon': serializer.toJson<String?>(icon),
+      'isCompleted': serializer.toJson<bool>(isCompleted),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'category': serializer.toJson<String?>(category),
+      'priority': serializer.toJson<String>(priority),
+      'monthlyContributionTarget':
+          serializer.toJson<double?>(monthlyContributionTarget),
+    };
+  }
+
+  Goal copyWith(
+          {String? id,
+          String? name,
+          Value<String?> purpose = const Value.absent(),
+          String? investmentType,
+          Value<String?> identificationNumber = const Value.absent(),
+          double? currentAmount,
+          double? targetAmount,
+          DateTime? startDate,
+          Value<DateTime?> deadline = const Value.absent(),
+          Value<double?> expectedReturn = const Value.absent(),
+          int? color,
+          Value<String?> icon = const Value.absent(),
+          bool? isCompleted,
+          DateTime? createdAt,
+          Value<String?> category = const Value.absent(),
+          String? priority,
+          Value<double?> monthlyContributionTarget = const Value.absent()}) =>
+      Goal(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        purpose: purpose.present ? purpose.value : this.purpose,
+        investmentType: investmentType ?? this.investmentType,
+        identificationNumber: identificationNumber.present
+            ? identificationNumber.value
+            : this.identificationNumber,
+        currentAmount: currentAmount ?? this.currentAmount,
+        targetAmount: targetAmount ?? this.targetAmount,
+        startDate: startDate ?? this.startDate,
+        deadline: deadline.present ? deadline.value : this.deadline,
+        expectedReturn:
+            expectedReturn.present ? expectedReturn.value : this.expectedReturn,
+        color: color ?? this.color,
+        icon: icon.present ? icon.value : this.icon,
+        isCompleted: isCompleted ?? this.isCompleted,
+        createdAt: createdAt ?? this.createdAt,
+        category: category.present ? category.value : this.category,
+        priority: priority ?? this.priority,
+        monthlyContributionTarget: monthlyContributionTarget.present
+            ? monthlyContributionTarget.value
+            : this.monthlyContributionTarget,
+      );
+  Goal copyWithCompanion(GoalsCompanion data) {
+    return Goal(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      purpose: data.purpose.present ? data.purpose.value : this.purpose,
+      investmentType: data.investmentType.present
+          ? data.investmentType.value
+          : this.investmentType,
+      identificationNumber: data.identificationNumber.present
+          ? data.identificationNumber.value
+          : this.identificationNumber,
+      currentAmount: data.currentAmount.present
+          ? data.currentAmount.value
+          : this.currentAmount,
+      targetAmount: data.targetAmount.present
+          ? data.targetAmount.value
+          : this.targetAmount,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      deadline: data.deadline.present ? data.deadline.value : this.deadline,
+      expectedReturn: data.expectedReturn.present
+          ? data.expectedReturn.value
+          : this.expectedReturn,
+      color: data.color.present ? data.color.value : this.color,
+      icon: data.icon.present ? data.icon.value : this.icon,
+      isCompleted:
+          data.isCompleted.present ? data.isCompleted.value : this.isCompleted,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      category: data.category.present ? data.category.value : this.category,
+      priority: data.priority.present ? data.priority.value : this.priority,
+      monthlyContributionTarget: data.monthlyContributionTarget.present
+          ? data.monthlyContributionTarget.value
+          : this.monthlyContributionTarget,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Goal(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('purpose: $purpose, ')
+          ..write('investmentType: $investmentType, ')
+          ..write('identificationNumber: $identificationNumber, ')
+          ..write('currentAmount: $currentAmount, ')
+          ..write('targetAmount: $targetAmount, ')
+          ..write('startDate: $startDate, ')
+          ..write('deadline: $deadline, ')
+          ..write('expectedReturn: $expectedReturn, ')
+          ..write('color: $color, ')
+          ..write('icon: $icon, ')
+          ..write('isCompleted: $isCompleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('category: $category, ')
+          ..write('priority: $priority, ')
+          ..write('monthlyContributionTarget: $monthlyContributionTarget')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      name,
+      purpose,
+      investmentType,
+      identificationNumber,
+      currentAmount,
+      targetAmount,
+      startDate,
+      deadline,
+      expectedReturn,
+      color,
+      icon,
+      isCompleted,
+      createdAt,
+      category,
+      priority,
+      monthlyContributionTarget);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Goal &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.purpose == this.purpose &&
+          other.investmentType == this.investmentType &&
+          other.identificationNumber == this.identificationNumber &&
+          other.currentAmount == this.currentAmount &&
+          other.targetAmount == this.targetAmount &&
+          other.startDate == this.startDate &&
+          other.deadline == this.deadline &&
+          other.expectedReturn == this.expectedReturn &&
+          other.color == this.color &&
+          other.icon == this.icon &&
+          other.isCompleted == this.isCompleted &&
+          other.createdAt == this.createdAt &&
+          other.category == this.category &&
+          other.priority == this.priority &&
+          other.monthlyContributionTarget == this.monthlyContributionTarget);
+}
+
+class GoalsCompanion extends UpdateCompanion<Goal> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> purpose;
+  final Value<String> investmentType;
+  final Value<String?> identificationNumber;
+  final Value<double> currentAmount;
+  final Value<double> targetAmount;
+  final Value<DateTime> startDate;
+  final Value<DateTime?> deadline;
+  final Value<double?> expectedReturn;
+  final Value<int> color;
+  final Value<String?> icon;
+  final Value<bool> isCompleted;
+  final Value<DateTime> createdAt;
+  final Value<String?> category;
+  final Value<String> priority;
+  final Value<double?> monthlyContributionTarget;
+  final Value<int> rowid;
+  const GoalsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.purpose = const Value.absent(),
+    this.investmentType = const Value.absent(),
+    this.identificationNumber = const Value.absent(),
+    this.currentAmount = const Value.absent(),
+    this.targetAmount = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.deadline = const Value.absent(),
+    this.expectedReturn = const Value.absent(),
+    this.color = const Value.absent(),
+    this.icon = const Value.absent(),
+    this.isCompleted = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.category = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.monthlyContributionTarget = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  GoalsCompanion.insert({
+    required String id,
+    required String name,
+    this.purpose = const Value.absent(),
+    this.investmentType = const Value.absent(),
+    this.identificationNumber = const Value.absent(),
+    this.currentAmount = const Value.absent(),
+    required double targetAmount,
+    this.startDate = const Value.absent(),
+    this.deadline = const Value.absent(),
+    this.expectedReturn = const Value.absent(),
+    required int color,
+    this.icon = const Value.absent(),
+    this.isCompleted = const Value.absent(),
+    required DateTime createdAt,
+    this.category = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.monthlyContributionTarget = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        targetAmount = Value(targetAmount),
+        color = Value(color),
+        createdAt = Value(createdAt);
+  static Insertable<Goal> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? purpose,
+    Expression<String>? investmentType,
+    Expression<String>? identificationNumber,
+    Expression<double>? currentAmount,
+    Expression<double>? targetAmount,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? deadline,
+    Expression<double>? expectedReturn,
+    Expression<int>? color,
+    Expression<String>? icon,
+    Expression<bool>? isCompleted,
+    Expression<DateTime>? createdAt,
+    Expression<String>? category,
+    Expression<String>? priority,
+    Expression<double>? monthlyContributionTarget,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (purpose != null) 'purpose': purpose,
+      if (investmentType != null) 'investment_type': investmentType,
+      if (identificationNumber != null)
+        'identification_number': identificationNumber,
+      if (currentAmount != null) 'current_amount': currentAmount,
+      if (targetAmount != null) 'target_amount': targetAmount,
+      if (startDate != null) 'start_date': startDate,
+      if (deadline != null) 'deadline': deadline,
+      if (expectedReturn != null) 'expected_return': expectedReturn,
+      if (color != null) 'color': color,
+      if (icon != null) 'icon': icon,
+      if (isCompleted != null) 'is_completed': isCompleted,
+      if (createdAt != null) 'created_at': createdAt,
+      if (category != null) 'category': category,
+      if (priority != null) 'priority': priority,
+      if (monthlyContributionTarget != null)
+        'monthly_contribution_target': monthlyContributionTarget,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  GoalsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<String?>? purpose,
+      Value<String>? investmentType,
+      Value<String?>? identificationNumber,
+      Value<double>? currentAmount,
+      Value<double>? targetAmount,
+      Value<DateTime>? startDate,
+      Value<DateTime?>? deadline,
+      Value<double?>? expectedReturn,
+      Value<int>? color,
+      Value<String?>? icon,
+      Value<bool>? isCompleted,
+      Value<DateTime>? createdAt,
+      Value<String?>? category,
+      Value<String>? priority,
+      Value<double?>? monthlyContributionTarget,
+      Value<int>? rowid}) {
+    return GoalsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      purpose: purpose ?? this.purpose,
+      investmentType: investmentType ?? this.investmentType,
+      identificationNumber: identificationNumber ?? this.identificationNumber,
+      currentAmount: currentAmount ?? this.currentAmount,
+      targetAmount: targetAmount ?? this.targetAmount,
+      startDate: startDate ?? this.startDate,
+      deadline: deadline ?? this.deadline,
+      expectedReturn: expectedReturn ?? this.expectedReturn,
+      color: color ?? this.color,
+      icon: icon ?? this.icon,
+      isCompleted: isCompleted ?? this.isCompleted,
+      createdAt: createdAt ?? this.createdAt,
+      category: category ?? this.category,
+      priority: priority ?? this.priority,
+      monthlyContributionTarget:
+          monthlyContributionTarget ?? this.monthlyContributionTarget,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (purpose.present) {
+      map['purpose'] = Variable<String>(purpose.value);
+    }
+    if (investmentType.present) {
+      map['investment_type'] = Variable<String>(investmentType.value);
+    }
+    if (identificationNumber.present) {
+      map['identification_number'] =
+          Variable<String>(identificationNumber.value);
+    }
+    if (currentAmount.present) {
+      map['current_amount'] = Variable<double>(currentAmount.value);
+    }
+    if (targetAmount.present) {
+      map['target_amount'] = Variable<double>(targetAmount.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (deadline.present) {
+      map['deadline'] = Variable<DateTime>(deadline.value);
+    }
+    if (expectedReturn.present) {
+      map['expected_return'] = Variable<double>(expectedReturn.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<int>(color.value);
+    }
+    if (icon.present) {
+      map['icon'] = Variable<String>(icon.value);
+    }
+    if (isCompleted.present) {
+      map['is_completed'] = Variable<bool>(isCompleted.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (priority.present) {
+      map['priority'] = Variable<String>(priority.value);
+    }
+    if (monthlyContributionTarget.present) {
+      map['monthly_contribution_target'] =
+          Variable<double>(monthlyContributionTarget.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GoalsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('purpose: $purpose, ')
+          ..write('investmentType: $investmentType, ')
+          ..write('identificationNumber: $identificationNumber, ')
+          ..write('currentAmount: $currentAmount, ')
+          ..write('targetAmount: $targetAmount, ')
+          ..write('startDate: $startDate, ')
+          ..write('deadline: $deadline, ')
+          ..write('expectedReturn: $expectedReturn, ')
+          ..write('color: $color, ')
+          ..write('icon: $icon, ')
+          ..write('isCompleted: $isCompleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('category: $category, ')
+          ..write('priority: $priority, ')
+          ..write('monthlyContributionTarget: $monthlyContributionTarget, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6169,6 +8068,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TransactionCategoriesTable transactionCategories =
       $TransactionCategoriesTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
+  late final $AssetLogsTable assetLogs = $AssetLogsTable(this);
+  late final $LoansTable loans = $LoansTable(this);
+  late final $GoalsTable goals = $GoalsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6186,7 +8088,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         customTemplates,
         customRecords,
         transactionCategories,
-        settings
+        settings,
+        assetLogs,
+        loans,
+        goals
       ];
 }
 
@@ -9793,6 +11698,861 @@ typedef $$SettingsTableProcessedTableManager = ProcessedTableManager<
     (Setting, BaseReferences<_$AppDatabase, $SettingsTable, Setting>),
     Setting,
     PrefetchHooks Function()>;
+typedef $$AssetLogsTableCreateCompanionBuilder = AssetLogsCompanion Function({
+  required String id,
+  required String parentId,
+  required String type,
+  required double amount,
+  Value<double> interestComponent,
+  required DateTime date,
+  Value<String?> notes,
+  Value<int> rowid,
+});
+typedef $$AssetLogsTableUpdateCompanionBuilder = AssetLogsCompanion Function({
+  Value<String> id,
+  Value<String> parentId,
+  Value<String> type,
+  Value<double> amount,
+  Value<double> interestComponent,
+  Value<DateTime> date,
+  Value<String?> notes,
+  Value<int> rowid,
+});
+
+class $$AssetLogsTableFilterComposer
+    extends Composer<_$AppDatabase, $AssetLogsTable> {
+  $$AssetLogsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get parentId => $composableBuilder(
+      column: $table.parentId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get interestComponent => $composableBuilder(
+      column: $table.interestComponent,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+}
+
+class $$AssetLogsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AssetLogsTable> {
+  $$AssetLogsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get parentId => $composableBuilder(
+      column: $table.parentId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get interestComponent => $composableBuilder(
+      column: $table.interestComponent,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AssetLogsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AssetLogsTable> {
+  $$AssetLogsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get parentId =>
+      $composableBuilder(column: $table.parentId, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<double> get interestComponent => $composableBuilder(
+      column: $table.interestComponent, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+}
+
+class $$AssetLogsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AssetLogsTable,
+    AssetLog,
+    $$AssetLogsTableFilterComposer,
+    $$AssetLogsTableOrderingComposer,
+    $$AssetLogsTableAnnotationComposer,
+    $$AssetLogsTableCreateCompanionBuilder,
+    $$AssetLogsTableUpdateCompanionBuilder,
+    (AssetLog, BaseReferences<_$AppDatabase, $AssetLogsTable, AssetLog>),
+    AssetLog,
+    PrefetchHooks Function()> {
+  $$AssetLogsTableTableManager(_$AppDatabase db, $AssetLogsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AssetLogsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AssetLogsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AssetLogsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> parentId = const Value.absent(),
+            Value<String> type = const Value.absent(),
+            Value<double> amount = const Value.absent(),
+            Value<double> interestComponent = const Value.absent(),
+            Value<DateTime> date = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AssetLogsCompanion(
+            id: id,
+            parentId: parentId,
+            type: type,
+            amount: amount,
+            interestComponent: interestComponent,
+            date: date,
+            notes: notes,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String parentId,
+            required String type,
+            required double amount,
+            Value<double> interestComponent = const Value.absent(),
+            required DateTime date,
+            Value<String?> notes = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AssetLogsCompanion.insert(
+            id: id,
+            parentId: parentId,
+            type: type,
+            amount: amount,
+            interestComponent: interestComponent,
+            date: date,
+            notes: notes,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AssetLogsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AssetLogsTable,
+    AssetLog,
+    $$AssetLogsTableFilterComposer,
+    $$AssetLogsTableOrderingComposer,
+    $$AssetLogsTableAnnotationComposer,
+    $$AssetLogsTableCreateCompanionBuilder,
+    $$AssetLogsTableUpdateCompanionBuilder,
+    (AssetLog, BaseReferences<_$AppDatabase, $AssetLogsTable, AssetLog>),
+    AssetLog,
+    PrefetchHooks Function()>;
+typedef $$LoansTableCreateCompanionBuilder = LoansCompanion Function({
+  required String id,
+  required String title,
+  required String provider,
+  required String type,
+  Value<double> principalAmount,
+  required double totalAmount,
+  Value<double> paidAmount,
+  Value<double> interestRate,
+  Value<double?> emiAmount,
+  required DateTime startDate,
+  Value<DateTime?> dueDate,
+  Value<DateTime?> nextPaymentDate,
+  Value<String?> notes,
+  Value<bool> isClosed,
+  Value<int> rowid,
+});
+typedef $$LoansTableUpdateCompanionBuilder = LoansCompanion Function({
+  Value<String> id,
+  Value<String> title,
+  Value<String> provider,
+  Value<String> type,
+  Value<double> principalAmount,
+  Value<double> totalAmount,
+  Value<double> paidAmount,
+  Value<double> interestRate,
+  Value<double?> emiAmount,
+  Value<DateTime> startDate,
+  Value<DateTime?> dueDate,
+  Value<DateTime?> nextPaymentDate,
+  Value<String?> notes,
+  Value<bool> isClosed,
+  Value<int> rowid,
+});
+
+class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
+  $$LoansTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get provider => $composableBuilder(
+      column: $table.provider, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get principalAmount => $composableBuilder(
+      column: $table.principalAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get totalAmount => $composableBuilder(
+      column: $table.totalAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get paidAmount => $composableBuilder(
+      column: $table.paidAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get interestRate => $composableBuilder(
+      column: $table.interestRate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get emiAmount => $composableBuilder(
+      column: $table.emiAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get dueDate => $composableBuilder(
+      column: $table.dueDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get nextPaymentDate => $composableBuilder(
+      column: $table.nextPaymentDate,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isClosed => $composableBuilder(
+      column: $table.isClosed, builder: (column) => ColumnFilters(column));
+}
+
+class $$LoansTableOrderingComposer
+    extends Composer<_$AppDatabase, $LoansTable> {
+  $$LoansTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get provider => $composableBuilder(
+      column: $table.provider, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get principalAmount => $composableBuilder(
+      column: $table.principalAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get totalAmount => $composableBuilder(
+      column: $table.totalAmount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get paidAmount => $composableBuilder(
+      column: $table.paidAmount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get interestRate => $composableBuilder(
+      column: $table.interestRate,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get emiAmount => $composableBuilder(
+      column: $table.emiAmount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get dueDate => $composableBuilder(
+      column: $table.dueDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get nextPaymentDate => $composableBuilder(
+      column: $table.nextPaymentDate,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isClosed => $composableBuilder(
+      column: $table.isClosed, builder: (column) => ColumnOrderings(column));
+}
+
+class $$LoansTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LoansTable> {
+  $$LoansTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get provider =>
+      $composableBuilder(column: $table.provider, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<double> get principalAmount => $composableBuilder(
+      column: $table.principalAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get totalAmount => $composableBuilder(
+      column: $table.totalAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get paidAmount => $composableBuilder(
+      column: $table.paidAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get interestRate => $composableBuilder(
+      column: $table.interestRate, builder: (column) => column);
+
+  GeneratedColumn<double> get emiAmount =>
+      $composableBuilder(column: $table.emiAmount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dueDate =>
+      $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextPaymentDate => $composableBuilder(
+      column: $table.nextPaymentDate, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<bool> get isClosed =>
+      $composableBuilder(column: $table.isClosed, builder: (column) => column);
+}
+
+class $$LoansTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LoansTable,
+    Loan,
+    $$LoansTableFilterComposer,
+    $$LoansTableOrderingComposer,
+    $$LoansTableAnnotationComposer,
+    $$LoansTableCreateCompanionBuilder,
+    $$LoansTableUpdateCompanionBuilder,
+    (Loan, BaseReferences<_$AppDatabase, $LoansTable, Loan>),
+    Loan,
+    PrefetchHooks Function()> {
+  $$LoansTableTableManager(_$AppDatabase db, $LoansTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LoansTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LoansTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LoansTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String> provider = const Value.absent(),
+            Value<String> type = const Value.absent(),
+            Value<double> principalAmount = const Value.absent(),
+            Value<double> totalAmount = const Value.absent(),
+            Value<double> paidAmount = const Value.absent(),
+            Value<double> interestRate = const Value.absent(),
+            Value<double?> emiAmount = const Value.absent(),
+            Value<DateTime> startDate = const Value.absent(),
+            Value<DateTime?> dueDate = const Value.absent(),
+            Value<DateTime?> nextPaymentDate = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<bool> isClosed = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LoansCompanion(
+            id: id,
+            title: title,
+            provider: provider,
+            type: type,
+            principalAmount: principalAmount,
+            totalAmount: totalAmount,
+            paidAmount: paidAmount,
+            interestRate: interestRate,
+            emiAmount: emiAmount,
+            startDate: startDate,
+            dueDate: dueDate,
+            nextPaymentDate: nextPaymentDate,
+            notes: notes,
+            isClosed: isClosed,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String title,
+            required String provider,
+            required String type,
+            Value<double> principalAmount = const Value.absent(),
+            required double totalAmount,
+            Value<double> paidAmount = const Value.absent(),
+            Value<double> interestRate = const Value.absent(),
+            Value<double?> emiAmount = const Value.absent(),
+            required DateTime startDate,
+            Value<DateTime?> dueDate = const Value.absent(),
+            Value<DateTime?> nextPaymentDate = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<bool> isClosed = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LoansCompanion.insert(
+            id: id,
+            title: title,
+            provider: provider,
+            type: type,
+            principalAmount: principalAmount,
+            totalAmount: totalAmount,
+            paidAmount: paidAmount,
+            interestRate: interestRate,
+            emiAmount: emiAmount,
+            startDate: startDate,
+            dueDate: dueDate,
+            nextPaymentDate: nextPaymentDate,
+            notes: notes,
+            isClosed: isClosed,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LoansTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $LoansTable,
+    Loan,
+    $$LoansTableFilterComposer,
+    $$LoansTableOrderingComposer,
+    $$LoansTableAnnotationComposer,
+    $$LoansTableCreateCompanionBuilder,
+    $$LoansTableUpdateCompanionBuilder,
+    (Loan, BaseReferences<_$AppDatabase, $LoansTable, Loan>),
+    Loan,
+    PrefetchHooks Function()>;
+typedef $$GoalsTableCreateCompanionBuilder = GoalsCompanion Function({
+  required String id,
+  required String name,
+  Value<String?> purpose,
+  Value<String> investmentType,
+  Value<String?> identificationNumber,
+  Value<double> currentAmount,
+  required double targetAmount,
+  Value<DateTime> startDate,
+  Value<DateTime?> deadline,
+  Value<double?> expectedReturn,
+  required int color,
+  Value<String?> icon,
+  Value<bool> isCompleted,
+  required DateTime createdAt,
+  Value<String?> category,
+  Value<String> priority,
+  Value<double?> monthlyContributionTarget,
+  Value<int> rowid,
+});
+typedef $$GoalsTableUpdateCompanionBuilder = GoalsCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<String?> purpose,
+  Value<String> investmentType,
+  Value<String?> identificationNumber,
+  Value<double> currentAmount,
+  Value<double> targetAmount,
+  Value<DateTime> startDate,
+  Value<DateTime?> deadline,
+  Value<double?> expectedReturn,
+  Value<int> color,
+  Value<String?> icon,
+  Value<bool> isCompleted,
+  Value<DateTime> createdAt,
+  Value<String?> category,
+  Value<String> priority,
+  Value<double?> monthlyContributionTarget,
+  Value<int> rowid,
+});
+
+class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
+  $$GoalsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get purpose => $composableBuilder(
+      column: $table.purpose, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get investmentType => $composableBuilder(
+      column: $table.investmentType,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get identificationNumber => $composableBuilder(
+      column: $table.identificationNumber,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get currentAmount => $composableBuilder(
+      column: $table.currentAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get targetAmount => $composableBuilder(
+      column: $table.targetAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get deadline => $composableBuilder(
+      column: $table.deadline, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get expectedReturn => $composableBuilder(
+      column: $table.expectedReturn,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get color => $composableBuilder(
+      column: $table.color, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get icon => $composableBuilder(
+      column: $table.icon, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isCompleted => $composableBuilder(
+      column: $table.isCompleted, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get priority => $composableBuilder(
+      column: $table.priority, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get monthlyContributionTarget => $composableBuilder(
+      column: $table.monthlyContributionTarget,
+      builder: (column) => ColumnFilters(column));
+}
+
+class $$GoalsTableOrderingComposer
+    extends Composer<_$AppDatabase, $GoalsTable> {
+  $$GoalsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get purpose => $composableBuilder(
+      column: $table.purpose, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get investmentType => $composableBuilder(
+      column: $table.investmentType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get identificationNumber => $composableBuilder(
+      column: $table.identificationNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get currentAmount => $composableBuilder(
+      column: $table.currentAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get targetAmount => $composableBuilder(
+      column: $table.targetAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get deadline => $composableBuilder(
+      column: $table.deadline, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get expectedReturn => $composableBuilder(
+      column: $table.expectedReturn,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get color => $composableBuilder(
+      column: $table.color, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get icon => $composableBuilder(
+      column: $table.icon, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isCompleted => $composableBuilder(
+      column: $table.isCompleted, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get priority => $composableBuilder(
+      column: $table.priority, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get monthlyContributionTarget => $composableBuilder(
+      column: $table.monthlyContributionTarget,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$GoalsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $GoalsTable> {
+  $$GoalsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get purpose =>
+      $composableBuilder(column: $table.purpose, builder: (column) => column);
+
+  GeneratedColumn<String> get investmentType => $composableBuilder(
+      column: $table.investmentType, builder: (column) => column);
+
+  GeneratedColumn<String> get identificationNumber => $composableBuilder(
+      column: $table.identificationNumber, builder: (column) => column);
+
+  GeneratedColumn<double> get currentAmount => $composableBuilder(
+      column: $table.currentAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get targetAmount => $composableBuilder(
+      column: $table.targetAmount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deadline =>
+      $composableBuilder(column: $table.deadline, builder: (column) => column);
+
+  GeneratedColumn<double> get expectedReturn => $composableBuilder(
+      column: $table.expectedReturn, builder: (column) => column);
+
+  GeneratedColumn<int> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<String> get icon =>
+      $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCompleted => $composableBuilder(
+      column: $table.isCompleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumn<double> get monthlyContributionTarget => $composableBuilder(
+      column: $table.monthlyContributionTarget, builder: (column) => column);
+}
+
+class $$GoalsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $GoalsTable,
+    Goal,
+    $$GoalsTableFilterComposer,
+    $$GoalsTableOrderingComposer,
+    $$GoalsTableAnnotationComposer,
+    $$GoalsTableCreateCompanionBuilder,
+    $$GoalsTableUpdateCompanionBuilder,
+    (Goal, BaseReferences<_$AppDatabase, $GoalsTable, Goal>),
+    Goal,
+    PrefetchHooks Function()> {
+  $$GoalsTableTableManager(_$AppDatabase db, $GoalsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GoalsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GoalsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$GoalsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String?> purpose = const Value.absent(),
+            Value<String> investmentType = const Value.absent(),
+            Value<String?> identificationNumber = const Value.absent(),
+            Value<double> currentAmount = const Value.absent(),
+            Value<double> targetAmount = const Value.absent(),
+            Value<DateTime> startDate = const Value.absent(),
+            Value<DateTime?> deadline = const Value.absent(),
+            Value<double?> expectedReturn = const Value.absent(),
+            Value<int> color = const Value.absent(),
+            Value<String?> icon = const Value.absent(),
+            Value<bool> isCompleted = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<String?> category = const Value.absent(),
+            Value<String> priority = const Value.absent(),
+            Value<double?> monthlyContributionTarget = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              GoalsCompanion(
+            id: id,
+            name: name,
+            purpose: purpose,
+            investmentType: investmentType,
+            identificationNumber: identificationNumber,
+            currentAmount: currentAmount,
+            targetAmount: targetAmount,
+            startDate: startDate,
+            deadline: deadline,
+            expectedReturn: expectedReturn,
+            color: color,
+            icon: icon,
+            isCompleted: isCompleted,
+            createdAt: createdAt,
+            category: category,
+            priority: priority,
+            monthlyContributionTarget: monthlyContributionTarget,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            Value<String?> purpose = const Value.absent(),
+            Value<String> investmentType = const Value.absent(),
+            Value<String?> identificationNumber = const Value.absent(),
+            Value<double> currentAmount = const Value.absent(),
+            required double targetAmount,
+            Value<DateTime> startDate = const Value.absent(),
+            Value<DateTime?> deadline = const Value.absent(),
+            Value<double?> expectedReturn = const Value.absent(),
+            required int color,
+            Value<String?> icon = const Value.absent(),
+            Value<bool> isCompleted = const Value.absent(),
+            required DateTime createdAt,
+            Value<String?> category = const Value.absent(),
+            Value<String> priority = const Value.absent(),
+            Value<double?> monthlyContributionTarget = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              GoalsCompanion.insert(
+            id: id,
+            name: name,
+            purpose: purpose,
+            investmentType: investmentType,
+            identificationNumber: identificationNumber,
+            currentAmount: currentAmount,
+            targetAmount: targetAmount,
+            startDate: startDate,
+            deadline: deadline,
+            expectedReturn: expectedReturn,
+            color: color,
+            icon: icon,
+            isCompleted: isCompleted,
+            createdAt: createdAt,
+            category: category,
+            priority: priority,
+            monthlyContributionTarget: monthlyContributionTarget,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$GoalsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $GoalsTable,
+    Goal,
+    $$GoalsTableFilterComposer,
+    $$GoalsTableOrderingComposer,
+    $$GoalsTableAnnotationComposer,
+    $$GoalsTableCreateCompanionBuilder,
+    $$GoalsTableUpdateCompanionBuilder,
+    (Goal, BaseReferences<_$AppDatabase, $GoalsTable, Goal>),
+    Goal,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9823,4 +12583,10 @@ class $AppDatabaseManager {
       $$TransactionCategoriesTableTableManager(_db, _db.transactionCategories);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
+  $$AssetLogsTableTableManager get assetLogs =>
+      $$AssetLogsTableTableManager(_db, _db.assetLogs);
+  $$LoansTableTableManager get loans =>
+      $$LoansTableTableManager(_db, _db.loans);
+  $$GoalsTableTableManager get goals =>
+      $$GoalsTableTableManager(_db, _db.goals);
 }

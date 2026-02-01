@@ -1,0 +1,318 @@
+import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
+import '../../../core/database/app_database.dart' as db;
+import '../models/goal_loan_models.dart';
+import '../../../core/database/tables.dart';
+
+class GoalLoanService {
+  final db.AppDatabase _db = db.AppDatabase.instance;
+  final _uuid = const Uuid();
+
+  // --- MAPPER ---
+  GoalModel _mapGoal(db.Goal row) {
+    return GoalModel(
+      id: row.id,
+      name: row.name,
+      purpose: row.purpose,
+      investmentType: row.investmentType,
+      identificationNumber: row.identificationNumber,
+      currentAmount: row.currentAmount,
+      targetAmount: row.targetAmount,
+      startDate: row.startDate,
+      deadline: row.deadline,
+      expectedReturn: row.expectedReturn,
+      color: row.color,
+      icon: row.icon,
+      isCompleted: row.isCompleted,
+    );
+  }
+
+  LoanModel _mapLoan(db.Loan row) {
+    return LoanModel(
+      id: row.id,
+      title: row.title,
+      provider: row.provider,
+      principalAmount: row.principalAmount, // [NEW]
+      totalAmount: row.totalAmount,
+      paidAmount: row.paidAmount,
+      interestRate: row.interestRate,
+      type: row.type,
+      startDate: row.startDate,
+      dueDate: row.dueDate,
+      emiAmount: row.emiAmount,
+      nextPaymentDate: row.nextPaymentDate,
+      notes: row.notes,
+      isClosed: row.isClosed,
+    );
+  }
+
+  AssetLogModel _mapLog(db.AssetLog row) {
+    return AssetLogModel(
+      id: row.id,
+      parentId: row.parentId,
+      type: row.type,
+      amount: row.amount,
+      interestComponent: row.interestComponent,
+      date: row.date,
+      notes: row.notes ?? '',
+    );
+  }
+
+  // --- GOALS ---
+  Stream<List<GoalModel>> getActiveGoals() {
+    return (_db.select(_db.goals)
+          ..where((t) => t.isCompleted.equals(false))
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.priority, mode: OrderingMode.asc)
+          ])) // Sort by Priority
+        .watch()
+        .map((rows) => rows.map(_mapGoal).toList());
+  }
+
+  // [FIXED] Now creates an Opening Balance log if currentAmount > 0
+  Future<void> createGoal(GoalModel goal) async {
+    await _db.transaction(() async {
+      final goalId = _uuid.v4(); // Generate ID manually to use for log
+
+      await _db.into(_db.goals).insert(db.GoalsCompanion.insert(
+            id: goalId,
+            name: goal.name,
+            purpose: Value(goal.purpose),
+            investmentType: Value(goal.investmentType),
+            identificationNumber: Value(goal.identificationNumber),
+            currentAmount: Value(goal.currentAmount),
+            targetAmount: goal.targetAmount,
+            startDate: Value(goal.startDate),
+            deadline: Value(goal.deadline),
+            expectedReturn: Value(goal.expectedReturn),
+            color: goal.color,
+            icon: Value(goal.icon),
+            isCompleted: const Value(false),
+            createdAt: DateTime.now(),
+          ));
+
+      // Create Initial Log for the Ledger
+      if (goal.currentAmount > 0) {
+        await _db.into(_db.assetLogs).insert(db.AssetLogsCompanion.insert(
+              id: _uuid.v4(),
+              parentId: goalId,
+              type: 'Goal_Contribution', // Treated as Principal
+              amount: goal.currentAmount,
+              interestComponent: const Value(0.0),
+              date: DateTime.now(),
+              notes: const Value("Opening Balance"),
+            ));
+      }
+    });
+  }
+
+// [NEW] Delete Goal & Logs
+  Future<void> deleteGoal(String goalId) async {
+    await _db.transaction(() async {
+      // 1. Delete all associated logs
+      await (_db.delete(_db.assetLogs)..where((t) => t.parentId.equals(goalId)))
+          .go();
+      // 2. Delete the goal itself
+      await (_db.delete(_db.goals)..where((t) => t.id.equals(goalId))).go();
+    });
+  }
+
+  Future<void> deleteGoalLog(String logId) async {
+    await _db.transaction(() async {
+      final log = await (_db.select(_db.assetLogs)
+            ..where((t) => t.id.equals(logId)))
+          .getSingle();
+      final goal = await (_db.select(_db.goals)
+            ..where((t) => t.id.equals(log.parentId)))
+          .getSingle();
+
+      final newBalance = goal.currentAmount - log.amount;
+      final isComplete = newBalance >= goal.targetAmount;
+
+      await (_db.delete(_db.assetLogs)..where((t) => t.id.equals(logId))).go();
+
+      await (_db.update(_db.goals)..where((t) => t.id.equals(goal.id)))
+          .write(db.GoalsCompanion(
+        currentAmount: Value(newBalance),
+        isCompleted: Value(isComplete),
+      ));
+    });
+  }
+
+  Future<void> addGoalContribution(
+      String goalId, double principal, String notes, DateTime date) async {
+    await _db.transaction(() async {
+      await _db.into(_db.assetLogs).insert(db.AssetLogsCompanion.insert(
+            id: _uuid.v4(),
+            parentId: goalId,
+            type: 'Goal_Contribution',
+            amount: principal,
+            interestComponent: const Value(0.0),
+            date: date, // Use selected date
+            notes: Value(notes),
+          ));
+
+      final goal = await (_db.select(_db.goals)
+            ..where((t) => t.id.equals(goalId)))
+          .getSingle();
+      final newBalance = goal.currentAmount + principal;
+      final isComplete = newBalance >= goal.targetAmount;
+
+      await (_db.update(_db.goals)..where((t) => t.id.equals(goalId)))
+          .write(db.GoalsCompanion(
+        currentAmount: Value(newBalance),
+        isCompleted: Value(isComplete),
+      ));
+    });
+  }
+
+  // 2. REVALUATION: For updating market value (Calculates Profit/Loss)
+  Future<void> adjustGoalValue(
+      String goalId, double newTotalValue, String notes, DateTime date) async {
+    await _db.transaction(() async {
+      final goal = await (_db.select(_db.goals)
+            ..where((t) => t.id.equals(goalId)))
+          .getSingle();
+
+      final difference = newTotalValue - goal.currentAmount;
+      if (difference == 0) return;
+
+      await _db.into(_db.assetLogs).insert(db.AssetLogsCompanion.insert(
+            id: _uuid.v4(),
+            parentId: goalId,
+            type: 'Goal_Revaluation',
+            amount: difference,
+            interestComponent: Value(difference),
+            date: date, // Use selected date
+            notes: Value(notes),
+          ));
+
+      final isComplete = newTotalValue >= goal.targetAmount;
+
+      await (_db.update(_db.goals)..where((t) => t.id.equals(goalId)))
+          .write(db.GoalsCompanion(
+        currentAmount: Value(newTotalValue),
+        isCompleted: Value(isComplete),
+      ));
+    });
+  }
+
+  // ================= LOANS =================
+
+  Stream<List<LoanModel>> getActiveLoans() {
+    return (_db.select(_db.loans)
+          ..where((t) => t.isClosed.equals(false))
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.dueDate, mode: OrderingMode.asc)
+          ]))
+        .watch()
+        .map((rows) => rows.map(_mapLoan).toList());
+  }
+
+  Future<void> createLoan(LoanModel loan) async {
+    await _db.into(_db.loans).insert(db.LoansCompanion.insert(
+          id: _uuid.v4(),
+          title: loan.title,
+          provider: loan.provider,
+          principalAmount: Value(loan.principalAmount), // [NEW]
+          totalAmount: loan.totalAmount,
+          paidAmount: const Value(0.0),
+          type: loan.type,
+          interestRate: Value(loan.interestRate),
+          startDate: loan.startDate,
+          dueDate: Value(loan.dueDate),
+          emiAmount: Value(loan.emiAmount),
+          nextPaymentDate: Value(loan.nextPaymentDate),
+          notes: Value(loan.notes), // [NEW]
+        ));
+  }
+
+  // [NEW] Delete Loan & Logs
+  Future<void> deleteLoan(String loanId) async {
+    await _db.transaction(() async {
+      await (_db.delete(_db.assetLogs)..where((t) => t.parentId.equals(loanId)))
+          .go();
+      await (_db.delete(_db.loans)..where((t) => t.id.equals(loanId))).go();
+    });
+  }
+
+// [NEW] Delete Loan Log
+  Future<void> deleteLoanLog(String logId) async {
+    await _db.transaction(() async {
+      final log = await (_db.select(_db.assetLogs)
+            ..where((t) => t.id.equals(logId)))
+          .getSingle();
+      final loan = await (_db.select(_db.loans)
+            ..where((t) => t.id.equals(log.parentId)))
+          .getSingle();
+
+      final newPaid = loan.paidAmount - log.amount;
+      final isClosed = newPaid >= loan.totalAmount;
+
+      await (_db.delete(_db.assetLogs)..where((t) => t.id.equals(logId))).go();
+
+      await (_db.update(_db.loans)..where((t) => t.id.equals(loan.id)))
+          .write(db.LoansCompanion(
+        paidAmount: Value(newPaid),
+        isClosed: Value(isClosed),
+      ));
+    });
+  }
+
+  // [NEW] Add Loan Transaction
+  Future<void> addLoanPayment(
+      String loanId, double amount, String type, DateTime date) async {
+    await _db.transaction(() async {
+      // type can be 'EMI' or 'PREPAYMENT'
+      await _db.into(_db.assetLogs).insert(db.AssetLogsCompanion.insert(
+            id: _uuid.v4(),
+            parentId: loanId,
+            type: type == 'EMI' ? 'Loan_EMI' : 'Loan_Prepayment',
+            amount: amount,
+            interestComponent: const Value(
+                0.0), // For loans, we track total paid against total due
+            date: date,
+            notes: Value(type == 'EMI' ? 'Monthly EMI' : 'Extra Payment'),
+          ));
+
+      final loan = await (_db.select(_db.loans)
+            ..where((t) => t.id.equals(loanId)))
+          .getSingle();
+
+      final newPaid = loan.paidAmount + amount;
+      final isClosed = newPaid >= loan.totalAmount;
+
+      await (_db.update(_db.loans)..where((t) => t.id.equals(loanId)))
+          .write(db.LoansCompanion(
+        paidAmount: Value(newPaid),
+        isClosed: Value(isClosed),
+      ));
+    });
+  }
+
+  // --- LOGS ---
+  Stream<List<AssetLogModel>> getLogsForParent(String parentId) {
+    return (_db.select(_db.assetLogs)
+          ..where((t) => t.parentId.equals(parentId))
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)
+          ]))
+        .watch()
+        .map((rows) => rows.map(_mapLog).toList());
+  }
+}
+
+// --- ANALYTICS HELPERS ---
+
+double calculateRequiredMonthlySavings(GoalModel goal) {
+  if (goal.deadline == null) return 0.0;
+  if (goal.isCompleted) return 0.0;
+
+  final now = DateTime.now();
+  final difference = goal.deadline!.difference(now).inDays;
+  final monthsLeft = (difference / 30).ceil();
+
+  if (monthsLeft <= 0) return goal.targetAmount - goal.currentAmount; // Due now
+
+  return (goal.targetAmount - goal.currentAmount) / monthsLeft;
+}
