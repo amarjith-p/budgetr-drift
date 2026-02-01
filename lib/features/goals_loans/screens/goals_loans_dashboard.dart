@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -154,7 +155,7 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
               color: Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.flag_circle_sharp, color: Colors.white70),
+            child: const Icon(Icons.flag_circle_rounded, color: Colors.white70),
           )
         ],
       ),
@@ -238,15 +239,25 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
     );
   }
 
-  // --- 3. VIEWS ---
+  // --- 3. VIEWS (UPDATED FOR PROGRESS BAR FIX) ---
 
   Widget _buildGoalsView() {
     return StreamBuilder<List<GoalModel>>(
       stream: GetIt.I<GoalLoanService>().getActiveGoals(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator());
-        final goals = snapshot.data!;
+        // [FIX] Handle Loading State Explicitly
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: ModernLoader());
+        }
+
+        // [FIX] Handle Error State (Stops infinite spinner on DB error)
+        if (snapshot.hasError) {
+          return const Center(
+              child: Text("Unable to load goals",
+                  style: TextStyle(color: Colors.white24)));
+        }
+
+        final goals = snapshot.data ?? [];
 
         if (goals.isEmpty) {
           return _buildEmptyState("No active goals", Icons.flag_outlined);
@@ -274,9 +285,19 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
     return StreamBuilder<List<LoanModel>>(
       stream: GetIt.I<GoalLoanService>().getActiveLoans(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator());
-        final loans = snapshot.data!;
+        // [FIX] Handle Loading State Explicitly
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: ModernLoader());
+        }
+
+        // [FIX] Handle Error State (Stops infinite spinner on DB error)
+        if (snapshot.hasError) {
+          return const Center(
+              child: Text("Unable to load loans",
+                  style: TextStyle(color: Colors.white24)));
+        }
+
+        final loans = snapshot.data ?? [];
 
         if (loans.isEmpty) {
           return _buildEmptyState("Debt free", Icons.check_circle_outline);
@@ -354,10 +375,6 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
   Widget _buildDashboardStat(String label, double value, {Color? valueColor}) {
     // 2 Decimal Formatting for Summary
     final fmt = NumberFormat('#,##0.00');
-    // If numbers are too big, we might want compact, but user asked for 2 decimal.
-    // Let's use compact for summary only if very large, but '0.00' as requested.
-    // To fit '2 decimal' in summary without overflow, we might need a smaller font or wrapping.
-    // I will use compact for the summary header to keep it clean, but cards will have full 2 decimal.
     final displayValue = value > 9999999
         ? NumberFormat.compact().format(value)
         : fmt.format(value);
@@ -467,7 +484,7 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
   }
 }
 
-// --- MODERN CARDS WITH DONUT CHART ---
+// --- MODERN CARDS ---
 
 class _GoalCard extends StatelessWidget {
   final GoalModel goal;
@@ -478,7 +495,7 @@ class _GoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Color(goal.color);
     final remaining = goal.targetAmount - goal.currentAmount;
-    final currencyFmt = NumberFormat('#,##0.00'); // 2 Decimal
+    final currencyFmt = NumberFormat('#,##0.00');
 
     return GestureDetector(
       onTap: onTap,
@@ -499,7 +516,7 @@ class _GoalCard extends StatelessWidget {
                   // Icon + Name
                   Row(
                     children: [
-                      Icon(Icons.flag, color: color, size: 16),
+                      Icon(Icons.flag_circle_sharp, color: color, size: 16),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -595,7 +612,7 @@ class _LoanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final progress =
         (loan.totalAmount == 0) ? 0.0 : (loan.paidAmount / loan.totalAmount);
-    final currencyFmt = NumberFormat('#,##0.00'); // 2 Decimal
+    final currencyFmt = NumberFormat('#,##0.00');
 
     return GestureDetector(
       onTap: onTap,
@@ -616,9 +633,8 @@ class _LoanCard extends StatelessWidget {
                   // Icon + Name
                   Row(
                     children: [
-                      const Icon(Icons.credit_score,
-                          color: BudgetrColors.error,
-                          size: 16), // [FIX] New Icon
+                      const Icon(Icons.credit_score_sharp,
+                          color: BudgetrColors.error, size: 16),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -656,7 +672,7 @@ class _LoanCard extends StatelessWidget {
                               fontSize: 12)),
                       if (loan.nextPaymentDate != null)
                         Text(
-                            "  (${DateFormat('d MMM').format(loan.nextPaymentDate!)})",
+                            "  (${DateFormat('dd/MMM').format(loan.nextPaymentDate!)})",
                             style: const TextStyle(
                                 color: Colors.white38, fontSize: 10)),
                     ],

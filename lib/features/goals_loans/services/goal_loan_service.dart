@@ -113,6 +113,23 @@ class GoalLoanService {
     });
   }
 
+  // [NEW] Update Goal Metadata
+  Future<void> updateGoal(GoalModel goal) async {
+    await (_db.update(_db.goals)..where((t) => t.id.equals(goal.id)))
+        .write(db.GoalsCompanion(
+      name: Value(goal.name),
+      targetAmount: Value(goal.targetAmount),
+      deadline: Value(goal.deadline),
+      color: Value(goal.color),
+      icon: Value(goal.icon),
+      purpose: Value(goal.purpose),
+      investmentType: Value(goal.investmentType),
+      identificationNumber: Value(goal.identificationNumber),
+      expectedReturn: Value(goal.expectedReturn),
+      // currentAmount is NOT updated here to avoid breaking ledger sync
+    ));
+  }
+
   Future<void> deleteGoal(String goalId) async {
     await _db.transaction(() async {
       await (_db.delete(_db.assetLogs)..where((t) => t.parentId.equals(goalId)))
@@ -209,6 +226,13 @@ class GoalLoanService {
         .map((rows) => rows.map(_mapLoan).toList());
   }
 
+// [NEW] Watch single loan
+  Stream<LoanModel> watchLoan(String id) {
+    return (_db.select(_db.loans)..where((t) => t.id.equals(id)))
+        .watchSingle()
+        .map(_mapLoan);
+  }
+
   Future<void> createLoan(LoanModel loan) async {
     await _db.into(_db.loans).insert(db.LoansCompanion.insert(
           id: _uuid.v4(),
@@ -225,6 +249,24 @@ class GoalLoanService {
           nextPaymentDate: Value(loan.nextPaymentDate),
           notes: Value(loan.notes),
         ));
+  }
+
+  // [NEW] Update Loan Metadata
+  Future<void> updateLoan(LoanModel loan) async {
+    await (_db.update(_db.loans)..where((t) => t.id.equals(loan.id)))
+        .write(db.LoansCompanion(
+      title: Value(loan.title),
+      provider: Value(loan.provider),
+      // We allow updating financials but use caution.
+      // If principal changes, total amount should be recalculated by UI and passed here.
+      principalAmount: Value(loan.principalAmount),
+      totalAmount: Value(loan.totalAmount),
+      interestRate: Value(loan.interestRate),
+      emiAmount: Value(loan.emiAmount),
+      nextPaymentDate: Value(loan.nextPaymentDate),
+      dueDate: Value(loan.dueDate),
+      notes: Value(loan.notes),
+    ));
   }
 
   Future<void> deleteLoan(String loanId) async {

@@ -6,6 +6,7 @@ import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
 import '../services/goal_loan_service.dart';
 import '../models/goal_loan_models.dart';
+import '../widgets/add_goal_sheet.dart'; // [NEW] Import for editing
 
 class GoalDetailScreen extends StatefulWidget {
   final GoalModel goal;
@@ -52,6 +53,20 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2)),
         actions: [
+          // [NEW] Edit Button
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.white70),
+            tooltip: "Edit Goal",
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) =>
+                    AddGoalSheet(goalToEdit: widget.goal), // Edit Mode
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.white54),
             tooltip: "Delete Goal",

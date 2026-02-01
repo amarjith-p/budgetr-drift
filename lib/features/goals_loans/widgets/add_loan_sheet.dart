@@ -8,7 +8,8 @@ import '../models/goal_loan_models.dart';
 import '../services/goal_loan_service.dart';
 
 class AddLoanSheet extends StatefulWidget {
-  const AddLoanSheet({super.key});
+  final LoanModel? loanToEdit; // [NEW] Optional loan for editing
+  const AddLoanSheet({super.key, this.loanToEdit});
 
   @override
   State<AddLoanSheet> createState() => _AddLoanSheetState();
@@ -42,9 +43,39 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
   DateTime _endDate = DateTime.now().add(const Duration(days: 365));
   DateTime _emiDate = DateTime.now().add(const Duration(days: 30));
 
+  // New state to track loan type
+  String _type = 'BORROWED';
+
   @override
   void initState() {
     super.initState();
+    // [NEW] Pre-fill if editing
+    if (widget.loanToEdit != null) {
+      final l = widget.loanToEdit!;
+      _nameCtrl.text = l.title;
+      _selectedBank = _banks.contains(l.provider)
+          ? l.provider
+          : 'Others'; // Simplified match
+      if (!_banks.contains(l.provider)) {
+        // Ideally handle "Others" text input, but for now we keep simple
+      }
+      _accountNoCtrl.text = l.notes?.replaceAll("Account: ", "") ?? "";
+      _amountCtrl.text = l.principalAmount.toString();
+      _rateCtrl.text = l.interestRate.toString();
+      _emiCtrl.text = l.emiAmount?.toStringAsFixed(2) ?? "";
+      _totalPayableCtrl.text = l.totalAmount.toStringAsFixed(2);
+
+      _startDate = l.startDate;
+      if (l.dueDate != null) _endDate = l.dueDate!;
+      if (l.nextPaymentDate != null) _emiDate = l.nextPaymentDate!;
+      _type = l.type;
+
+      // Calculate tenure approximation for display
+      if (l.emiAmount != null && l.emiAmount! > 0) {
+        _tenureCtrl.text = (l.totalAmount / l.emiAmount!).round().toString();
+      }
+    }
+
     _amountCtrl.addListener(_calculateLoanDetails);
     _tenureCtrl.addListener(_calculateLoanDetails);
     _rateCtrl.addListener(_calculateLoanDetails);
@@ -61,6 +92,8 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
   }
 
   void _calculateLoanDetails() {
+    // Only calculate if not editing, OR if user explicitly changes values in edit mode
+    // Just using the same logic for simplicity
     final principal = double.tryParse(_amountCtrl.text) ?? 0;
     final tenureMonths = int.tryParse(_tenureCtrl.text) ?? 0;
     final annualRate = double.tryParse(_rateCtrl.text) ?? 0;
@@ -69,7 +102,7 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
       final newEndDate =
           DateTime(_emiDate.year, _emiDate.month + tenureMonths, _emiDate.day);
 
-      // EMI Calculation: [P x R x (1+R)^N]/[(1+R)^N-1]
+      // EMI Calculation
       final monthlyRate = annualRate / 12 / 100;
       final emi =
           (principal * monthlyRate * pow(1 + monthlyRate, tenureMonths)) /
@@ -87,6 +120,8 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.loanToEdit != null;
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.92,
       decoration: const BoxDecoration(
@@ -103,8 +138,8 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
-          const Text("Add New Loan",
-              style: TextStyle(
+          Text(isEdit ? "Edit Loan Details" : "Add New Loan",
+              style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -197,7 +232,7 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
                               date: _emiDate,
                               onPick: (d) => setState(() {
                                     _emiDate = d;
-                                    _calculateLoanDetails(); // [UPDATED] Recalculate end date if EMI date changes
+                                    _calculateLoanDetails();
                                   }))),
                     ],
                   ),
@@ -229,8 +264,8 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text("CREATE LOAN",
-                    style: TextStyle(
+                child: Text(isEdit ? "UPDATE LOAN" : "CREATE LOAN",
+                    style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -399,7 +434,7 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
 
   void _saveLoan() {
     final totalPayable = double.tryParse(_totalPayableCtrl.text);
-    final principal = double.tryParse(_amountCtrl.text); // Get Principal
+    final principal = double.tryParse(_amountCtrl.text);
     final emi = double.tryParse(_emiCtrl.text);
     final rate = double.tryParse(_rateCtrl.text);
 
@@ -410,14 +445,14 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
     }
 
     final loan = LoanModel(
-      id: '',
+      id: widget.loanToEdit?.id ?? '', // Use existing ID if editing
       title: _nameCtrl.text,
       provider: _selectedBank,
-      principalAmount: principal ?? 0, // [FIX] Now properly saving Principal
+      principalAmount: principal ?? 0,
       totalAmount: totalPayable,
-      paidAmount: 0,
+      paidAmount: widget.loanToEdit?.paidAmount ?? 0, // Preserve payments
       interestRate: rate ?? 0,
-      type: 'BORROWED',
+      type: _type,
       startDate: _startDate,
       dueDate: _endDate,
       emiAmount: emi,
@@ -426,7 +461,12 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
       notes: "Account: ${_accountNoCtrl.text}",
     );
 
-    GetIt.I<GoalLoanService>().createLoan(loan);
+    if (widget.loanToEdit != null) {
+      GetIt.I<GoalLoanService>().updateLoan(loan);
+    } else {
+      GetIt.I<GoalLoanService>().createLoan(loan);
+    }
+
     Navigator.pop(context);
   }
 }

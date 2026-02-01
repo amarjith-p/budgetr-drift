@@ -7,7 +7,8 @@ import '../models/goal_loan_models.dart';
 import '../services/goal_loan_service.dart';
 
 class AddGoalSheet extends StatefulWidget {
-  const AddGoalSheet({super.key});
+  final GoalModel? goalToEdit; // [NEW] Optional goal for editing
+  const AddGoalSheet({super.key, this.goalToEdit});
 
   @override
   State<AddGoalSheet> createState() => _AddGoalSheetState();
@@ -40,7 +41,27 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // [NEW] Pre-fill if editing
+    if (widget.goalToEdit != null) {
+      final g = widget.goalToEdit!;
+      _nameCtrl.text = g.name;
+      _purposeCtrl.text = g.purpose ?? '';
+      _idNoCtrl.text = g.identificationNumber ?? '';
+      _currentValueCtrl.text = g.currentAmount.toString();
+      _targetValueCtrl.text = g.targetAmount.toString();
+      _returnRateCtrl.text = g.expectedReturn?.toString() ?? '';
+      _investmentType = g.investmentType;
+      _startDate = g.startDate;
+      _targetDate = g.deadline;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isEdit = widget.goalToEdit != null;
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
@@ -58,7 +79,8 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
-          const Text("New Financial Goal", style: BudgetrStyles.h2),
+          Text(isEdit ? "Edit Financial Goal" : "New Financial Goal",
+              style: BudgetrStyles.h2),
           const SizedBox(height: 24),
 
           // 2. Form Content
@@ -108,7 +130,8 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
                             label: "Current Value",
                             hint: "0.00",
                             icon: Icons.currency_rupee,
-                            isNumber: true),
+                            isNumber: true,
+                            enabled: !isEdit), // [NEW] Disabled in Edit Mode
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -183,8 +206,8 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text("CREATE GOAL",
-                    style: TextStyle(
+                child: Text(isEdit ? "UPDATE GOAL" : "CREATE GOAL",
+                    style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         letterSpacing: 1)),
@@ -209,6 +232,7 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
     required String hint,
     required IconData icon,
     bool isNumber = false,
+    bool enabled = true, // [NEW] Added enabled flag
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,14 +241,16 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          enabled: enabled,
           keyboardType: isNumber
               ? const TextInputType.numberWithOptions(decimal: true)
               : TextInputType.text,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: enabled ? Colors.white : Colors.white38),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
-            prefixIcon: Icon(icon, color: Colors.white38, size: 20),
+            prefixIcon: Icon(icon,
+                color: enabled ? Colors.white38 : Colors.white24, size: 20),
             filled: true,
             fillColor: Colors.white.withOpacity(0.05),
             contentPadding:
@@ -390,21 +416,29 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
     final expReturn = double.tryParse(_returnRateCtrl.text.trim());
 
     final goal = GoalModel(
-      id: '', // Generated in service
+      id: widget.goalToEdit?.id ?? '', // Use existing ID if editing
       name: name,
       purpose: _purposeCtrl.text.trim(),
       investmentType: _investmentType,
       identificationNumber: _idNoCtrl.text.trim(),
-      currentAmount: currentVal,
+      currentAmount: currentVal, // Ignored in update
       targetAmount: targetVal,
       startDate: _startDate,
       deadline: _targetDate,
       expectedReturn: expReturn,
-      color: Colors.blueAccent.value,
+      color: widget.goalToEdit?.color ?? Colors.blueAccent.value,
+      // icon: widget.goalToEdit?.icon ?? Icons.flag.codePoint,
       isCompleted: currentVal >= targetVal,
     );
 
-    await GetIt.I<GoalLoanService>().createGoal(goal);
+    if (widget.goalToEdit != null) {
+      // [NEW] Update existing
+      await GetIt.I<GoalLoanService>().updateGoal(goal);
+    } else {
+      // Create new
+      await GetIt.I<GoalLoanService>().createGoal(goal);
+    }
+
     if (mounted) Navigator.pop(context);
   }
 

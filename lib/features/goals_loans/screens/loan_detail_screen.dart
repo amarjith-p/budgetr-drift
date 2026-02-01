@@ -6,6 +6,7 @@ import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
 import '../services/goal_loan_service.dart';
 import '../models/goal_loan_models.dart';
+import '../widgets/add_loan_sheet.dart'; // [NEW] Import for editing
 
 class LoanDetailScreen extends StatefulWidget {
   final LoanModel loan;
@@ -57,6 +58,20 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2)),
         actions: [
+          // [NEW] Edit Button
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.white70),
+            tooltip: "Edit Loan",
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) =>
+                    AddLoanSheet(loanToEdit: widget.loan), // Edit Mode
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.white54),
             tooltip: "Delete Loan",
@@ -163,229 +178,238 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
   }
 
   Widget _buildLoanSummary(Color themeColor) {
-    return StreamBuilder<List<AssetLogModel>>(
-      stream: GetIt.I<GoalLoanService>().getLogsForParent(widget.loan.id),
-      builder: (context, snapshot) {
-        double realPaidAmount = 0;
-        if (snapshot.hasData) {
-          for (var log in snapshot.data!) {
-            realPaidAmount += log.amount;
-          }
-        } else {
-          realPaidAmount = widget.loan.paidAmount;
-        }
+    // [NEW] Use watchLoan for real-time updates of loan details
+    return StreamBuilder<LoanModel>(
+      stream: GetIt.I<GoalLoanService>().watchLoan(widget.loan.id),
+      builder: (context, loanSnapshot) {
+        final liveLoan = loanSnapshot.data ?? widget.loan;
 
-        final outstanding = widget.loan.totalAmount - realPaidAmount;
-        final progress = (widget.loan.totalAmount == 0)
-            ? 0.0
-            : (realPaidAmount / widget.loan.totalAmount).clamp(0.0, 1.0);
-        final currencyFmt = NumberFormat('#,##0.00');
+        return StreamBuilder<List<AssetLogModel>>(
+          stream: GetIt.I<GoalLoanService>().getLogsForParent(liveLoan.id),
+          builder: (context, snapshot) {
+            double realPaidAmount = 0;
+            if (snapshot.hasData) {
+              for (var log in snapshot.data!) {
+                realPaidAmount += log.amount;
+              }
+            } else {
+              realPaidAmount = liveLoan.paidAmount;
+            }
 
-        // Calculate Interest Portion
-        final totalInterest =
-            widget.loan.totalAmount - widget.loan.principalAmount;
+            final outstanding = liveLoan.totalAmount - realPaidAmount;
+            final progress = (liveLoan.totalAmount == 0)
+                ? 0.0
+                : (realPaidAmount / liveLoan.totalAmount).clamp(0.0, 1.0);
+            final currencyFmt = NumberFormat('#,##0.00');
 
-        return Column(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
-                ],
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
-              ),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Column(
+            // Calculate Interest Portion
+            final totalInterest =
+                liveLoan.totalAmount - liveLoan.principalAmount;
+
+            return Column(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E293B),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4))
+                    ],
+                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text("Outstanding Balance",
-                                style: TextStyle(
-                                    color: Colors.white54, fontSize: 14)),
-                            const SizedBox(height: 6),
-                            Text("₹${currencyFmt.format(outstanding)}",
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: -0.5)),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("Outstanding Balance",
+                                    style: TextStyle(
+                                        color: Colors.white54, fontSize: 14)),
+                                const SizedBox(height: 6),
+                                Text("₹${currencyFmt.format(outstanding)}",
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: -0.5)),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: themeColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                  "${(progress * 100).toStringAsFixed(1)}% Paid",
+                                  style: TextStyle(
+                                      color: themeColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14)),
+                            ),
                           ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: themeColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.black26,
+                            color: themeColor,
+                            minHeight: 8,
                           ),
-                          child: Text(
-                              "${(progress * 100).toStringAsFixed(1)}% Paid",
-                              style: TextStyle(
-                                  color: themeColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14)),
                         ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: Colors.black26,
-                        color: themeColor,
-                        minHeight: 8,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Divider(height: 1, color: Colors.white10),
+                      const SizedBox(height: 24),
+                      const Divider(height: 1, color: Colors.white10),
 
-                  // 4-Column Grid for Metrics
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        Row(
+                      // 4-Column Grid for Metrics
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
                           children: [
-                            Expanded(
-                                child: _buildStatColumn(
-                                    "Principal", widget.loan.principalAmount)),
-                            Container(
-                                width: 1,
-                                height: 40,
-                                color: Colors.white10,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 12)),
-                            Expanded(
-                                child: _buildStatColumn(
-                                    "Repaid", realPaidAmount,
-                                    valueColor: BudgetrColors.success)),
+                            Row(
+                              children: [
+                                Expanded(
+                                    child: _buildStatColumn(
+                                        "Principal", liveLoan.principalAmount)),
+                                Container(
+                                    width: 1,
+                                    height: 40,
+                                    color: Colors.white10,
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 12)),
+                                Expanded(
+                                    child: _buildStatColumn(
+                                        "Repaid", realPaidAmount,
+                                        valueColor: BudgetrColors.success)),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
+                              children: [
+                                Expanded(
+                                    child: _buildStatColumn(
+                                        "Total Payable", liveLoan.totalAmount)),
+                                Container(
+                                    width: 1,
+                                    height: 40,
+                                    color: Colors.white10,
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 12)),
+                                Expanded(
+                                    child: _buildStatColumn(
+                                        "Total Interest", totalInterest,
+                                        valueColor: Colors.white54)),
+                              ],
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Expanded(
-                                child: _buildStatColumn(
-                                    "Total Payable", widget.loan.totalAmount)),
-                            Container(
-                                width: 1,
-                                height: 40,
-                                color: Colors.white10,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 12)),
-                            Expanded(
-                                child: _buildStatColumn(
-                                    "Total Interest", totalInterest,
-                                    valueColor: Colors.white54)),
-                          ],
+                      ),
+
+                      InkWell(
+                        onTap: () =>
+                            setState(() => _showDetails = !_showDetails),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.2),
+                            borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(16)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                  _showDetails
+                                      ? "Hide Details"
+                                      : "View Loan Details",
+                                  style: const TextStyle(
+                                      color: Colors.white54, fontSize: 12)),
+                              const SizedBox(width: 8),
+                              Icon(
+                                  _showDetails
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
+                                  color: Colors.white54,
+                                  size: 16),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+
+                      if (_showDetails)
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: const BoxDecoration(
+                              border: Border(
+                                  top: BorderSide(color: Colors.white10))),
+                          child: Column(
+                            children: [
+                              _buildDetailRow(
+                                  "Bank / Provider", liveLoan.provider),
+                              const SizedBox(height: 12),
+                              _buildDetailRow(
+                                  "Loan Account", liveLoan.notes ?? "--"),
+                              const SizedBox(height: 12),
+                              _buildDetailRow("Interest Rate",
+                                  "${liveLoan.interestRate}% p.a."),
+                              const SizedBox(height: 12),
+                              _buildDetailRow("EMI Amount",
+                                  "₹${NumberFormat('#,##0.00').format(liveLoan.emiAmount ?? 0)}"),
+                              const SizedBox(height: 12),
+                              _buildDetailRow(
+                                  "Next EMI Date",
+                                  liveLoan.nextPaymentDate != null
+                                      ? DateFormat('dd/MM/yyyy')
+                                          .format(liveLoan.nextPaymentDate!)
+                                      : "N/A"),
+                              const SizedBox(height: 12),
+                              _buildDetailRow(
+                                  "Start Date",
+                                  DateFormat('dd/MM/yyyy')
+                                      .format(liveLoan.startDate)),
+                              const SizedBox(height: 12),
+                              _buildDetailRow(
+                                  "End Date",
+                                  liveLoan.dueDate != null
+                                      ? DateFormat('dd/MM/yyyy')
+                                          .format(liveLoan.dueDate!)
+                                      : "N/A"),
+                            ],
+                          ),
+                        )
+                    ],
                   ),
+                ),
 
-                  InkWell(
-                    onTap: () => setState(() => _showDetails = !_showDetails),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.2),
-                        borderRadius: const BorderRadius.vertical(
-                            bottom: Radius.circular(16)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                              _showDetails
-                                  ? "Hide Details"
-                                  : "View Loan Details",
-                              style: const TextStyle(
-                                  color: Colors.white54, fontSize: 12)),
-                          const SizedBox(width: 8),
-                          Icon(
-                              _showDetails
-                                  ? Icons.keyboard_arrow_up
-                                  : Icons.keyboard_arrow_down,
-                              color: Colors.white54,
-                              size: 16),
-                        ],
-                      ),
-                    ),
-                  ),
+                const SizedBox(height: 16),
 
-                  if (_showDetails)
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: const BoxDecoration(
-                          border:
-                              Border(top: BorderSide(color: Colors.white10))),
-                      child: Column(
-                        children: [
-                          _buildDetailRow(
-                              "Bank / Provider", widget.loan.provider),
-                          const SizedBox(height: 12),
-                          _buildDetailRow(
-                              "Loan Account", widget.loan.notes ?? "--"),
-                          const SizedBox(height: 12),
-                          _buildDetailRow("Interest Rate",
-                              "${widget.loan.interestRate}% p.a."),
-                          const SizedBox(height: 12),
-                          _buildDetailRow("EMI Amount",
-                              "₹${NumberFormat('#,##0.00').format(widget.loan.emiAmount ?? 0)}"),
-                          const SizedBox(height: 12),
-                          _buildDetailRow(
-                              "Next EMI Date",
-                              widget.loan.nextPaymentDate != null
-                                  ? DateFormat('dd/MM/yyyy')
-                                      .format(widget.loan.nextPaymentDate!)
-                                  : "N/A"),
-                          const SizedBox(height: 12),
-                          _buildDetailRow(
-                              "Start Date",
-                              DateFormat('dd/MM/yyyy')
-                                  .format(widget.loan.startDate)),
-                          const SizedBox(height: 12),
-                          _buildDetailRow(
-                              "End Date",
-                              widget.loan.dueDate != null
-                                  ? DateFormat('dd/MM/yyyy')
-                                      .format(widget.loan.dueDate!)
-                                  : "N/A"),
-                        ],
-                      ),
-                    )
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // [NEW] INTELLIGENT INSIGHTS
-            _buildSmartLoanInsights(realPaidAmount, widget.loan.totalAmount,
-                widget.loan.startDate, widget.loan.emiAmount),
-          ],
+                // [NEW] INTELLIGENT INSIGHTS
+                _buildSmartLoanInsights(realPaidAmount, liveLoan.totalAmount,
+                    liveLoan.startDate, liveLoan.emiAmount),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-// --- SMART LOAN INSIGHTS (CORRECTED) ---
+// --- SMART LOAN INSIGHTS ---
   Widget _buildSmartLoanInsights(
       double paid, double total, DateTime start, double? emi) {
     final now = DateTime.now();
