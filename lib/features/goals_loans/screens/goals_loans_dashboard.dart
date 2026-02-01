@@ -134,7 +134,7 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
           const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("PORTFOLIO",
+              Text("",
                   style: TextStyle(
                       color: Colors.white38,
                       fontSize: 11,
@@ -154,7 +154,7 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
               color: Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.pie_chart_outline, color: Colors.white70),
+            child: const Icon(Icons.flag_circle_sharp, color: Colors.white70),
           )
         ],
       ),
@@ -398,10 +398,10 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildFabOption("New Loan", Icons.money_off, BudgetrColors.error,
+        _buildFabOption("New Loan", Icons.credit_score, BudgetrColors.error,
             () => _showAddSheet(1)),
         const SizedBox(height: 16),
-        _buildFabOption("New Goal", Icons.savings, BudgetrColors.success,
+        _buildFabOption("New Goal", Icons.flag_outlined, BudgetrColors.success,
             () => _showAddSheet(0)),
         const SizedBox(height: 16),
         FloatingActionButton(
@@ -635,7 +635,7 @@ class _LoanCard extends StatelessWidget {
                   const SizedBox(height: 12),
 
                   // Key Metrics
-                  _buildMetricRow("Outstanding",
+                  _buildMetricRow("Remaining",
                       currencyFmt.format(loan.remaining), BudgetrColors.error),
                   const SizedBox(height: 4),
                   _buildMetricRow("Payable",
