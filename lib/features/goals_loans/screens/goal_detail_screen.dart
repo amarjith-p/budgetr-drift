@@ -64,10 +64,10 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.2)),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.white70),
-                  tooltip: "Edit Goal",
-                  onPressed: () {
+                _buildAppBarButton(
+                  icon: Icons.edit,
+                  color: Colors.blueAccent,
+                  onTap: () {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
@@ -77,12 +77,12 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                     );
                   },
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.white54),
-                  tooltip: "Delete Goal",
-                  onPressed: () => _confirmDeleteGoal(liveGoal.id),
-                ),
                 const SizedBox(width: 8),
+                _buildAppBarButton(
+                    icon: Icons.delete_outline,
+                    color: BudgetrColors.error,
+                    onTap: () => _confirmDeleteGoal(liveGoal.id)),
+                const SizedBox(width: 12),
               ],
             ),
             body: CustomScrollView(
@@ -150,6 +150,26 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
             ),
           );
         });
+  }
+
+  // [NEW] Helper for Unique AppBar Buttons
+  Widget _buildAppBarButton(
+      {required IconData icon,
+      required Color color,
+      required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Icon(icon, size: 20, color: color),
+      ),
+    );
   }
 
   Widget _buildTabButton(String label, int index, Color color) {
