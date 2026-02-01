@@ -6,7 +6,7 @@ import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
 import '../services/goal_loan_service.dart';
 import '../models/goal_loan_models.dart';
-import '../widgets/add_goal_sheet.dart'; // [NEW] Import for editing
+import '../widgets/add_goal_sheet.dart';
 
 class GoalDetailScreen extends StatefulWidget {
   final GoalModel goal;
@@ -17,11 +17,8 @@ class GoalDetailScreen extends StatefulWidget {
 }
 
 class _GoalDetailScreenState extends State<GoalDetailScreen> {
-  // Input Controllers
   final _amountCtrl = TextEditingController();
-
-  // State
-  int _inputMode = 0; // 0 = Cashflow (Invest), 1 = Revalue (Market Update)
+  int _inputMode = 0;
   DateTime _txnDate = DateTime.now();
   bool _isAdding = false;
   bool _showDetails = false;
@@ -34,119 +31,125 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final color = Color(widget.goal.color);
+    // [FIX] Watch the specific Goal ID for real-time metadata updates (Name, Color, etc.)
+    return StreamBuilder<GoalModel>(
+        stream: GetIt.I<GoalLoanService>().watchGoal(widget.goal.id),
+        initialData: widget.goal, // Show stale data while loading fresh
+        builder: (context, goalSnap) {
+          // If the goal is deleted, this might return null, handle gracefully
+          if (!goalSnap.hasData && goalSnap.data == null) {
+            return const Scaffold(
+                backgroundColor: Color(0xFF0F172A),
+                body: Center(child: CircularProgressIndicator()));
+          }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Dark Slate
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0F172A),
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white70),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(widget.goal.name.toUpperCase(),
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2)),
-        actions: [
-          // [NEW] Edit Button
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white70),
-            tooltip: "Edit Goal",
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) =>
-                    AddGoalSheet(goalToEdit: widget.goal), // Edit Mode
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.white54),
-            tooltip: "Delete Goal",
-            onPressed: () => _confirmDeleteGoal(),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // 1. Dashboard Section (Summary + Smart Insights)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              child: _buildDashboardSection(color),
-            ),
-          ),
+          final liveGoal = goalSnap.data ?? widget.goal;
+          final color = Color(liveGoal.color);
 
-          // 2. Action Tabs
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
-                ),
-                child: Row(
-                  children: [
-                    _buildTabButton("INVEST / WITHDRAW", 0, color),
-                    _buildTabButton("CURRENT VALUE", 1, color),
-                  ],
-                ),
+          return Scaffold(
+            backgroundColor: const Color(0xFF0F172A),
+            appBar: AppBar(
+              backgroundColor: const Color(0xFF0F172A),
+              elevation: 0,
+              centerTitle: true,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                onPressed: () => Navigator.pop(context),
               ),
+              // [FIX] Use liveGoal.name so title updates instantly
+              title: Text(liveGoal.name.toUpperCase(),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2)),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.white70),
+                  tooltip: "Edit Goal",
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      // [FIX] Pass liveGoal so the edit sheet gets current data
+                      builder: (_) => AddGoalSheet(goalToEdit: liveGoal),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.white54),
+                  tooltip: "Delete Goal",
+                  onPressed: () => _confirmDeleteGoal(liveGoal.id),
+                ),
+                const SizedBox(width: 8),
+              ],
             ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-          // 3. Dynamic Input Form
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildTransactionForm(color),
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    // [FIX] Pass liveGoal to dashboard
+                    child: _buildDashboardSection(liveGoal, color),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E293B),
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.05)),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildTabButton("INVEST / WITHDRAW", 0, color),
+                          _buildTabButton("CURRENT VALUE", 1, color),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    // [FIX] Pass liveGoal id
+                    child: _buildTransactionForm(liveGoal.id, color),
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16, 32, 16, 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("ACTIVITY LEDGER",
+                            style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0)),
+                        Text("INR",
+                            style: TextStyle(
+                                color: Colors.white24,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+                _buildLedgerList(liveGoal.id, color),
+                const SliverToBoxAdapter(child: SizedBox(height: 50)),
+              ],
             ),
-          ),
-
-          // 4. Ledger Title
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 32, 16, 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("ACTIVITY LEDGER",
-                      style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.0)),
-                  Text("INR",
-                      style: TextStyle(
-                          color: Colors.white24,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-          ),
-
-          // 5. Ledger List
-          _buildLedgerList(color),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 50)),
-        ],
-      ),
-    );
+          );
+        });
   }
 
   Widget _buildTabButton(String label, int index, Color color) {
@@ -175,286 +178,252 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
     );
   }
 
-  // --- 1. DASHBOARD SECTION (UPDATED FOR REFRESH) ---
-  Widget _buildDashboardSection(Color accentColor) {
-    // [NEW] Listen to the Goal stream for real-time updates
-    return StreamBuilder<GoalModel>(
-      stream: GetIt.I<GoalLoanService>().watchGoal(widget.goal.id),
-      builder: (context, goalSnapshot) {
-        // Use live data if available, else fallback to widget data
-        final liveGoal = goalSnapshot.data ?? widget.goal;
-        final currentVal = liveGoal.currentAmount;
+  // [FIX] Removed internal watchGoal, relying on passed liveGoal
+  Widget _buildDashboardSection(GoalModel liveGoal, Color accentColor) {
+    final currentVal = liveGoal.currentAmount;
 
-        // Listen to Logs for Breakdown
-        return StreamBuilder<List<AssetLogModel>>(
-          stream: GetIt.I<GoalLoanService>().getLogsForParent(widget.goal.id),
-          builder: (context, snapshot) {
-            double totalPrincipal = 0;
-            double totalReturns = 0;
-            bool hasLogs = false;
+    return StreamBuilder<List<AssetLogModel>>(
+      stream: GetIt.I<GoalLoanService>().getLogsForParent(liveGoal.id),
+      builder: (context, snapshot) {
+        double totalPrincipal = 0;
+        double totalReturns = 0;
 
-            if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-              hasLogs = true;
-              final logs = snapshot.data!;
-              for (var log in logs) {
-                totalPrincipal += (log.amount - log.interestComponent);
-                totalReturns += log.interestComponent;
-              }
-            } else {
-              // Fallback: If no logs exist but currentVal > 0 (e.g. Opening Balance), treat as principal
-              if (currentVal > 0) totalPrincipal = currentVal;
-            }
+        if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+          final logs = snapshot.data!;
+          for (var log in logs) {
+            totalPrincipal += (log.amount - log.interestComponent);
+            totalReturns += log.interestComponent;
+          }
+        } else {
+          if (currentVal > 0) totalPrincipal = currentVal;
+        }
 
-            final target = liveGoal.targetAmount;
-            final isSurplus = currentVal >= target;
-            final surplusAmount = currentVal - target;
-            final rawProgress = (target == 0) ? 0.0 : (currentVal / target);
-            final visualProgress = rawProgress.clamp(0.0, 1.0);
+        final target = liveGoal.targetAmount;
+        final isSurplus = currentVal >= target;
+        final surplusAmount = currentVal - target;
+        final rawProgress = (target == 0) ? 0.0 : (currentVal / target);
+        final visualProgress = rawProgress.clamp(0.0, 1.0);
 
-            final statusColor =
-                isSurplus ? const Color(0xFFFFD700) : accentColor;
-            final currencyFmt = NumberFormat('#,##0.00');
+        final statusColor = isSurplus ? const Color(0xFFFFD700) : accentColor;
+        final currencyFmt = NumberFormat('#,##0.00');
 
-            return Column(
-              children: [
-                // A. MAIN SUMMARY CARD
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4))
-                    ],
-                    border: Border.all(
-                        color: isSurplus
-                            ? statusColor.withOpacity(0.3)
-                            : Colors.white.withOpacity(0.05)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4))
+                ],
+                border: Border.all(
+                    color: isSurplus
+                        ? statusColor.withOpacity(0.3)
+                        : Colors.white.withOpacity(0.05)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Text("Portfolio Value",
-                                        style: TextStyle(
-                                            color: Colors.white54,
-                                            fontSize: 14)),
-                                    if (isSurplus) ...[
-                                      const SizedBox(width: 8),
-                                      const Icon(Icons.check_circle,
-                                          size: 14, color: Color(0xFFFFD700))
-                                    ]
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Text("₹${currencyFmt.format(currentVal)}",
-                                    style: TextStyle(
-                                        color: isSurplus
-                                            ? const Color(0xFFFFD700)
-                                            : Colors.white,
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: -0.5)),
-                              ],
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: isSurplus
-                                      ? Border.all(
-                                          color: statusColor.withOpacity(0.3))
-                                      : null),
-                              child: Text(
-                                  "${(rawProgress * 100).toStringAsFixed(1)}%",
-                                  style: TextStyle(
-                                      color: statusColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14)),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Progress Bar
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(3),
-                              child: LinearProgressIndicator(
-                                value: visualProgress,
-                                backgroundColor: Colors.black26,
-                                color: statusColor,
-                                minHeight: 8,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("₹0.00",
+                                const Text("Portfolio Value",
                                     style: TextStyle(
-                                        color: Colors.white24, fontSize: 12)),
-                                Text("Target: ₹${currencyFmt.format(target)}",
-                                    style: const TextStyle(
-                                        color: Colors.white54, fontSize: 12)),
+                                        color: Colors.white54, fontSize: 14)),
+                                if (isSurplus) ...[
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.check_circle,
+                                      size: 14, color: Color(0xFFFFD700))
+                                ]
                               ],
-                            )
+                            ),
+                            const SizedBox(height: 6),
+                            Text("₹${currencyFmt.format(currentVal)}",
+                                style: TextStyle(
+                                    color: isSurplus
+                                        ? const Color(0xFFFFD700)
+                                        : Colors.white,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: -0.5)),
                           ],
                         ),
-                      ),
-
-                      const SizedBox(height: 24),
-                      const Divider(height: 1, color: Colors.white10),
-
-                      // Metrics
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Row(
-                          children: [
-                            Expanded(
-                                child: _buildStatColumn(
-                                    "Invested", totalPrincipal)),
-                            Container(
-                                width: 1,
-                                height: 40,
-                                color: Colors.white10,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 12)),
-                            Expanded(
-                                child: _buildStatColumn("Returns", totalReturns,
-                                    valueColor: totalReturns >= 0
-                                        ? BudgetrColors.success
-                                        : BudgetrColors.error)),
-                            Container(
-                                width: 1,
-                                height: 40,
-                                color: Colors.white10,
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 12)),
-                            Expanded(
-                                child: _buildStatColumn(
-                                    isSurplus ? "Surplus" : "Remaining",
-                                    isSurplus
-                                        ? surplusAmount
-                                        : (target - currentVal),
-                                    valueColor: isSurplus
-                                        ? const Color(0xFF00E676)
-                                        : Colors.white)),
-                          ],
-                        ),
-                      ),
-
-                      // Expandable Details
-                      InkWell(
-                        onTap: () =>
-                            setState(() => _showDetails = !_showDetails),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.2),
-                            borderRadius: const BorderRadius.vertical(
-                                bottom: Radius.circular(16)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                  _showDetails
-                                      ? "Hide Info"
-                                      : "View Asset Info",
-                                  style: const TextStyle(
-                                      color: Colors.white54, fontSize: 12)),
-                              const SizedBox(width: 8),
-                              Icon(
-                                  _showDetails
-                                      ? Icons.keyboard_arrow_up
-                                      : Icons.keyboard_arrow_down,
-                                  color: Colors.white54,
-                                  size: 16),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      if (_showDetails)
                         Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: const BoxDecoration(
-                              border: Border(
-                                  top: BorderSide(color: Colors.white10))),
-                          child: Column(
-                            children: [
-                              _buildDetailRow(
-                                  "Goal Purpose", liveGoal.purpose ?? "--"),
-                              const SizedBox(height: 12),
-                              _buildDetailRow(
-                                  "Asset Type", liveGoal.investmentType),
-                              const SizedBox(height: 12),
-                              _buildDetailRow("Reference ID",
-                                  liveGoal.identificationNumber ?? "--"),
-                              const SizedBox(height: 12),
-                              _buildDetailRow(
-                                  "Start Date",
-                                  DateFormat('dd MMM yyyy')
-                                      .format(liveGoal.startDate)),
-                              const SizedBox(height: 12),
-                              _buildDetailRow(
-                                  "Target Date",
-                                  liveGoal.deadline != null
-                                      ? DateFormat('dd MMM yyyy')
-                                          .format(liveGoal.deadline!)
-                                      : "No Deadline"),
-                              if (liveGoal.expectedReturn != null) ...[
-                                const SizedBox(height: 12),
-                                _buildDetailRow("Exp. Return",
-                                    "${liveGoal.expectedReturn}%"),
-                              ]
-                            ],
-                          ),
-                        )
-                    ],
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: isSurplus
+                                  ? Border.all(
+                                      color: statusColor.withOpacity(0.3))
+                                  : null),
+                          child: Text(
+                              "${(rawProgress * 100).toStringAsFixed(1)}%",
+                              style: TextStyle(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14)),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // B. SMART INSIGHTS
-                if (!isSurplus && snapshot.hasData && snapshot.data!.isNotEmpty)
-                  _buildSmartInsights(
-                      currentVal: currentVal,
-                      target: target,
-                      startDate: liveGoal.startDate,
-                      deadline: liveGoal.deadline,
-                      totalPrincipal: totalPrincipal,
-                      expectedReturn: liveGoal.expectedReturn),
-              ],
-            );
-          },
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: visualProgress,
+                            backgroundColor: Colors.black26,
+                            color: statusColor,
+                            minHeight: 8,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("₹0.00",
+                                style: TextStyle(
+                                    color: Colors.white24, fontSize: 12)),
+                            Text("Target: ₹${currencyFmt.format(target)}",
+                                style: const TextStyle(
+                                    color: Colors.white54, fontSize: 12)),
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(height: 1, color: Colors.white10),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Row(
+                      children: [
+                        Expanded(
+                            child:
+                                _buildStatColumn("Invested", totalPrincipal)),
+                        Container(
+                            width: 1,
+                            height: 40,
+                            color: Colors.white10,
+                            margin: const EdgeInsets.symmetric(horizontal: 12)),
+                        Expanded(
+                            child: _buildStatColumn("Returns", totalReturns,
+                                valueColor: totalReturns >= 0
+                                    ? BudgetrColors.success
+                                    : BudgetrColors.error)),
+                        Container(
+                            width: 1,
+                            height: 40,
+                            color: Colors.white10,
+                            margin: const EdgeInsets.symmetric(horizontal: 12)),
+                        Expanded(
+                            child: _buildStatColumn(
+                                isSurplus ? "Surplus" : "Remaining",
+                                isSurplus
+                                    ? surplusAmount
+                                    : (target - currentVal),
+                                valueColor: isSurplus
+                                    ? const Color(0xFF00E676)
+                                    : Colors.white)),
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => setState(() => _showDetails = !_showDetails),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.2),
+                        borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(16)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(_showDetails ? "Hide Info" : "View Asset Info",
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 12)),
+                          const SizedBox(width: 8),
+                          Icon(
+                              _showDetails
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
+                              color: Colors.white54,
+                              size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_showDetails)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: const BoxDecoration(
+                          border:
+                              Border(top: BorderSide(color: Colors.white10))),
+                      child: Column(
+                        children: [
+                          _buildDetailRow(
+                              "Goal Purpose", liveGoal.purpose ?? "--"),
+                          const SizedBox(height: 12),
+                          _buildDetailRow(
+                              "Asset Type", liveGoal.investmentType),
+                          const SizedBox(height: 12),
+                          _buildDetailRow("Reference ID",
+                              liveGoal.identificationNumber ?? "--"),
+                          const SizedBox(height: 12),
+                          _buildDetailRow(
+                              "Start Date",
+                              DateFormat('dd MMM yyyy')
+                                  .format(liveGoal.startDate)),
+                          const SizedBox(height: 12),
+                          _buildDetailRow(
+                              "Target Date",
+                              liveGoal.deadline != null
+                                  ? DateFormat('dd MMM yyyy')
+                                      .format(liveGoal.deadline!)
+                                  : "No Deadline"),
+                          if (liveGoal.expectedReturn != null) ...[
+                            const SizedBox(height: 12),
+                            _buildDetailRow(
+                                "Exp. Return", "${liveGoal.expectedReturn}%"),
+                          ]
+                        ],
+                      ),
+                    )
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (!isSurplus && snapshot.hasData && snapshot.data!.isNotEmpty)
+              _buildSmartInsights(
+                  currentVal: currentVal,
+                  target: target,
+                  startDate: liveGoal.startDate,
+                  deadline: liveGoal.deadline,
+                  totalPrincipal: totalPrincipal,
+                  expectedReturn: liveGoal.expectedReturn),
+          ],
         );
       },
     );
   }
 
-  // --- SMART INSIGHTS LOGIC ---
   Widget _buildSmartInsights({
     required double currentVal,
     required double target,
@@ -464,13 +433,10 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
     required double? expectedReturn,
   }) {
     final now = DateTime.now();
-
-    // 1. Current Velocity
     final monthsActive = now.difference(startDate).inDays / 30;
     final effectiveMonths = monthsActive < 1 ? 1.0 : monthsActive;
     final avgMonthly = totalPrincipal / effectiveMonths;
 
-    // 2. Future Projection Logic
     String label = "STATUS";
     String value = "On Track";
     Color color = BudgetrColors.success;
@@ -482,17 +448,13 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
 
       if (monthsRemaining > 0) {
         double requiredMonthly = 0;
-
         if (expectedReturn != null && expectedReturn > 0) {
           double r = (expectedReturn / 100) / 12;
           double n = monthsRemaining;
           double fvExisting = currentVal * pow((1 + r), n);
           double gap = target - fvExisting;
-
           if (gap > 0) {
             requiredMonthly = (gap * r) / (pow((1 + r), n) - 1);
-          } else {
-            requiredMonthly = 0;
           }
         } else {
           requiredMonthly = (target - currentVal) / monthsRemaining;
@@ -621,8 +583,7 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
     );
   }
 
-  // --- 2. DYNAMIC FORM ---
-  Widget _buildTransactionForm(Color accentColor) {
+  Widget _buildTransactionForm(String goalId, Color accentColor) {
     final isRevalue = _inputMode == 1;
     final hint = isRevalue ? "Enter Current Value (₹)" : "Enter Amount (₹)";
     final helper = isRevalue
@@ -645,7 +606,6 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                   fontSize: 12,
                   fontStyle: FontStyle.italic)),
           const SizedBox(height: 12),
-
           Row(
             children: [
               Expanded(
@@ -673,11 +633,8 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 16),
           Divider(height: 1, color: Colors.white.withOpacity(0.05)),
-
-          // Controls
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Row(
@@ -714,7 +671,8 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                 ),
                 const Spacer(),
                 ElevatedButton(
-                  onPressed: _isAdding ? null : _submitTransaction,
+                  onPressed:
+                      _isAdding ? null : () => _submitTransaction(goalId),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accentColor,
                     shape: RoundedRectangleBorder(
@@ -741,15 +699,13 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
     );
   }
 
-  // --- 3. LEDGER LIST ---
-  Widget _buildLedgerList(Color color) {
+  Widget _buildLedgerList(String goalId, Color color) {
     return StreamBuilder<List<AssetLogModel>>(
-      stream: GetIt.I<GoalLoanService>().getLogsForParent(widget.goal.id),
+      stream: GetIt.I<GoalLoanService>().getLogsForParent(goalId),
       builder: (context, snapshot) {
         if (!snapshot.hasData)
           return const SliverToBoxAdapter(child: SizedBox());
         final logs = snapshot.data!;
-
         if (logs.isEmpty) {
           return const SliverToBoxAdapter(
             child: Padding(
@@ -760,7 +716,6 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
             ),
           );
         }
-
         return SliverList(
           delegate: SliverChildBuilderDelegate(
             (context, index) {
@@ -822,7 +777,7 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                       ),
                       const SizedBox(width: 16),
                       GestureDetector(
-                        onTap: () => _confirmDeleteLedger(log.id),
+                        onTap: () => _confirmDeleteLog(log.id),
                         child: Icon(Icons.delete_outline,
                             color: Colors.white.withOpacity(0.3), size: 18),
                       ),
@@ -837,8 +792,6 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
       },
     );
   }
-
-  // --- HELPER WIDGETS ---
 
   Widget _buildStatColumn(String label, double val,
       {Color valueColor = Colors.white}) {
@@ -875,24 +828,18 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
     );
   }
 
-  // --- LOGIC ---
-
-  Future<void> _submitTransaction() async {
+  Future<void> _submitTransaction(String goalId) async {
     final amount = double.tryParse(_amountCtrl.text);
-
     if (amount == null) return;
-
     setState(() => _isAdding = true);
-
     try {
       if (_inputMode == 0) {
-        await GetIt.I<GoalLoanService>().addGoalContribution(
-            widget.goal.id, amount, "Investment", _txnDate);
+        await GetIt.I<GoalLoanService>()
+            .addGoalContribution(goalId, amount, "Investment", _txnDate);
       } else {
-        await GetIt.I<GoalLoanService>().adjustGoalValue(
-            widget.goal.id, amount, "Valuation Update", _txnDate);
+        await GetIt.I<GoalLoanService>()
+            .adjustGoalValue(goalId, amount, "Valuation Update", _txnDate);
       }
-
       if (mounted) {
         _amountCtrl.clear();
         FocusScope.of(context).unfocus();
@@ -908,13 +855,11 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
     }
   }
 
-  // [NEW] Generic Confirmation Sheet
-  void _showConfirmationSheet({
-    required String title,
-    required String subtitle,
-    required String buttonText,
-    required VoidCallback onPressed,
-  }) {
+  void _showConfirmationSheet(
+      {required String title,
+      required String subtitle,
+      required String buttonText,
+      required VoidCallback onPressed}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -928,12 +873,11 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2)),
-            ),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 24),
             const Icon(Icons.warning_amber_rounded,
                 size: 48, color: Color(0xFFFF5252)),
@@ -951,12 +895,10 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
             Row(
               children: [
                 Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text("Cancel",
-                        style: TextStyle(color: Colors.white70)),
-                  ),
-                ),
+                    child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text("Cancel",
+                            style: TextStyle(color: Colors.white70)))),
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
@@ -981,30 +923,28 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
     );
   }
 
-  // [NEW] Confirmation for Goal Deletion
-  void _confirmDeleteGoal() {
+  void _confirmDeleteGoal(String goalId) {
     _showConfirmationSheet(
       title: "Delete Goal?",
       subtitle:
           "This will permanently remove the goal and all related transaction history. This action cannot be undone.",
       buttonText: "DELETE GOAL",
       onPressed: () async {
-        Navigator.pop(context); // Close sheet
-        await GetIt.I<GoalLoanService>().deleteGoal(widget.goal.id);
-        if (mounted) Navigator.pop(context); // Close screen
+        Navigator.pop(context);
+        await GetIt.I<GoalLoanService>().deleteGoal(goalId);
+        if (mounted) Navigator.pop(context);
       },
     );
   }
 
-  // [NEW] Confirmation for Ledger Deletion
-  void _confirmDeleteLedger(String logId) {
+  void _confirmDeleteLog(String logId) {
     _showConfirmationSheet(
       title: "Revoke Entry?",
       subtitle:
           "This transaction will be removed from your ledger and portfolio balances will be reverted.",
       buttonText: "REVOKE",
       onPressed: () async {
-        Navigator.pop(context); // Close sheet
+        Navigator.pop(context);
         await GetIt.I<GoalLoanService>().deleteGoalLog(logId);
       },
     );
