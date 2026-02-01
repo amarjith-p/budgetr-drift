@@ -1,13 +1,9 @@
-import 'package:budget/core/design/budgetr_colors.dart';
-import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
-
+import '../../../core/design/budgetr_colors.dart';
+import '../../../core/design/budgetr_styles.dart';
 import '../../../core/models/net_worth_split_model.dart';
-import '../../../core/widgets/date_filter_row.dart';
-import '../../../core/widgets/modern_loader.dart';
 import '../services/net_worth_service.dart';
 import 'split_input_sheet.dart';
 
@@ -19,330 +15,305 @@ class NetWorthSplitsTab extends StatefulWidget {
 }
 
 class _NetWorthSplitsTabState extends State<NetWorthSplitsTab> {
-  final NetWorthService _netWorthService = GetIt.I<NetWorthService>();
-  final NumberFormat _currencyFormat = NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-  );
-  final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
-  final Color _cardColor = const Color(0xFF1B263B).withOpacity(0.6);
-
-  final Color _greenColor = const Color(0xFF00E676);
-  final Color _redColor = const Color(0xFFFF5252);
-  final Color _accentColor = const Color(0xFF2EC4B6);
-
-  int? _filterYear;
-  int? _filterMonth;
-
-  Future<void> _deleteSplit(String id) async {
-    // bool confirm =
-    //     await showDialog(
-    //       context: context,
-    //       builder: (ctx) => AlertDialog(
-    //         backgroundColor: const Color(0xFF0D1B2A),
-    //         title: const Text(
-    //           'Delete Record?',
-    //           style: TextStyle(color: Colors.white),
-    //         ),
-    //         content: const Text(
-    //           'This cannot be undone.',
-    //           style: TextStyle(color: Colors.white70),
-    //         ),
-    //         actions: [
-    //           TextButton(
-    //             onPressed: () => Navigator.pop(ctx, false),
-    //             child: const Text(
-    //               'Cancel',
-    //               style: TextStyle(color: Colors.white70),
-    //             ),
-    //           ),
-    //           TextButton(
-    //             onPressed: () => Navigator.pop(ctx, true),
-    //             child: const Text(
-    //               'Delete',
-    //               style: TextStyle(color: Colors.redAccent),
-    //             ),
-    //           ),
-    //         ],
-    //       ),
-    //     ) ??
-    //     false;
-    // if (confirm) await _netWorthService.deleteNetWorthSplit(id);
-
-    showStatusSheet(
+  // Open the new 3-section input sheet
+  void _openAddSheet() {
+    showModalBottomSheet(
       context: context,
-      title: "Delete Record?",
-      message:
-          "Are you sure you want to remove this transaction? This action cannot be undone.",
-      icon: Icons.delete_sweep_sharp,
-      color: Colors.redAccent,
-      cancelButtonText: "Cancel",
-      onCancel: () {},
-      buttonText: "Delete",
-      onDismiss: () async {
-        await _netWorthService.deleteNetWorthSplit(id);
-      },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const SplitInputSheet(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<NetWorthSplit>>(
-      stream: _netWorthService.getNetWorthSplits(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: ModernLoader());
-        }
-        var records = snapshot.data ?? [];
-
-        var filteredRecords = records.where((record) {
-          bool matchesYear =
-              _filterYear == null || record.date.year == _filterYear;
-          bool matchesMonth =
-              _filterMonth == null || record.date.month == _filterMonth;
-          return matchesYear && matchesMonth;
-        }).toList();
-
-        filteredRecords.sort((a, b) => b.date.compareTo(a.date));
-
-        return Stack(
-          children: [
-            Column(
-              children: [
-                _buildFilters(records),
-                Expanded(
-                  child: filteredRecords.isEmpty
-                      ? Center(
-                          child: Text(
-                            'No split records found',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(
-                            bottom: 100,
-                            left: 16,
-                            right: 16,
-                          ),
-                          itemCount: filteredRecords.length,
-                          itemBuilder: (context, index) {
-                            final split = filteredRecords[index];
-                            return _buildSplitCard(split);
-                          },
-                        ),
-                ),
-              ],
-            ),
-            // Floating Action Button
-            Positioned(
-              bottom: 20,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      useSafeArea: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => const SplitInputSheet(),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      // gradient: LinearGradient(
-                      //   colors: [_accentColor, const Color(0xFF2563EB)],
-                      // ),
-                      color: BudgetrColors.accent,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _accentColor.withOpacity(0.4),
-                          blurRadius: 20,
-                          spreadRadius: -5,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.playlist_add_rounded, color: Colors.white),
-                        SizedBox(width: 12),
-                        Text(
-                          "Add New Split",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildFilters(List<NetWorthSplit> allRecords) {
-    final years = allRecords.map((e) => e.date.year).toSet().toList();
-    years.sort((a, b) => b.compareTo(a));
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      // [FIX] Center Floating Action Button
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openAddSheet,
+        backgroundColor: BudgetrColors.accent,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text("Add Net Worth Split",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
-      child: DateFilterRow(
-        selectedYear: _filterYear,
-        selectedMonth: _filterMonth,
-        availableYears: years,
-        availableMonths: List.generate(12, (i) => i + 1),
-        onYearSelected: (val) => setState(() {
-          _filterYear = val;
-          if (val == null) _filterMonth = null;
-        }),
-        onMonthSelected: (val) => setState(() => _filterMonth = val),
-      ),
-    );
-  }
+      body: StreamBuilder<List<NetWorthSplitModel>>(
+        stream: GetIt.I<NetWorthService>().getSplits(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData)
+            return const Center(child: CircularProgressIndicator());
+          final splits = snapshot.data!;
 
-  Widget _buildSplitCard(NetWorthSplit split) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-          iconTheme: const IconThemeData(color: Colors.white70),
-        ),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _dateFormat.format(split.date),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                _currencyFormat.format(split.effectiveSavings),
-                style: TextStyle(
-                  color: split.effectiveSavings >= 0 ? _greenColor : _redColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          if (splits.isEmpty) {
+            return Center(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Divider(color: Colors.white10),
-                  _detailRow('Income', split.effectiveIncome, _greenColor),
-                  _detailRow('Expense', split.effectiveExpense, _redColor),
-                  const SizedBox(height: 12),
-                  _subRow('Net Income', split.netIncome),
-                  _subRow('Capital Gain', split.capitalGain),
-                  _subRow('Non-Calc Income', split.nonCalcIncome),
-                  const SizedBox(height: 8),
-                  _subRow('Net Expense', split.netExpense),
-                  _subRow('Capital Loss', split.capitalLoss),
-                  _subRow('Non-Calc Expense', split.nonCalcExpense),
+                  Icon(Icons.pie_chart_outline,
+                      size: 48, color: Colors.white.withOpacity(0.1)),
                   const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _deleteSplit(split.id),
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: 16,
-                        color: Colors.redAccent,
-                      ),
-                      label: const Text(
-                        "Delete",
-                        style: TextStyle(color: Colors.redAccent),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: Colors.redAccent.withOpacity(0.3),
-                        ),
-                      ),
+                  const Text("No Net Worth entries yet",
+                      style: TextStyle(color: Colors.white38)),
+                ],
+              ),
+            );
+          }
+
+          return ListView.separated(
+            // Extra padding at bottom for the Center Float FAB
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            itemCount: splits.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              return _NetWorthCard(split: splits[index]);
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _NetWorthCard extends StatefulWidget {
+  final NetWorthSplitModel split;
+  const _NetWorthCard({required this.split});
+
+  @override
+  State<_NetWorthCard> createState() => _NetWorthCardState();
+}
+
+class _NetWorthCardState extends State<_NetWorthCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.split;
+    final fullCurrency = NumberFormat('#,##0.00');
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      decoration: BoxDecoration(
+        color: BudgetrColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        children: [
+          // Header (Always Visible)
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8)),
+                    child: Column(
+                      children: [
+                        Text(DateFormat('dd').format(s.date),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16)),
+                        Text(DateFormat('MMM').format(s.date),
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 10)),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Net Worth",
+                            style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 10,
+                                letterSpacing: 1)),
+                        const SizedBox(height: 4),
+                        Text("₹${fullCurrency.format(s.netWorth)}",
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                      _expanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: Colors.white38),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(String label, double amount, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white)),
-          Text(
-            _currencyFormat.format(amount),
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
           ),
+
+          // Expanded Details (3 Sections)
+          AnimatedCrossFade(
+            firstChild: const SizedBox(height: 0, width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                children: [
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 8),
+
+                  // 1. Assets
+                  _buildSection(
+                      "ASSETS",
+                      s.totalAssets,
+                      BudgetrColors.success,
+                      [
+                        _item("Bank A/C", s.bankAccounts),
+                        _item("Cash in Hand", s.cashInHand),
+                        _item("Mutual Funds", s.mutualFunds),
+                        _item("Equity", s.equity),
+                        _item("Bonds", s.bonds),
+                        _item("Deposits", s.deposits),
+                        _item("Real Estate", s.realEstate),
+                        _item("Others", s.otherAssets),
+                      ],
+                      notes: s.assetNotes),
+
+                  const SizedBox(height: 16),
+
+                  // 2. Liabilities
+                  _buildSection(
+                      "LIABILITIES",
+                      s.totalLiabilities,
+                      BudgetrColors.error,
+                      [
+                        _item("Loans", s.loans),
+                        _item("Credit Cards", s.creditCardOutstanding),
+                        _item("Other Debts", s.otherDebts),
+                      ],
+                      notes: s.liabilityNotes),
+
+                  const SizedBox(height: 16),
+
+                  // 3. Cashflow
+                  _buildSection("CASHFLOW (MONTHLY)", null, Colors.blueAccent, [
+                    _item("Budget Income", s.budgetedIncome),
+                    _item("Budget Expense", s.budgetedExpense),
+                    _item("Non-Calc Income", s.nonCalcIncome),
+                    _item("Non-Calc Exp", s.nonCalcExpense),
+                    _item("Out of Bucket", s.outOfBucketExpense),
+                  ]),
+
+                  const SizedBox(height: 16),
+
+                  // Edit/Delete Actions
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.edit,
+                            size: 16, color: Colors.white70),
+                        label: const Text("Edit",
+                            style: TextStyle(color: Colors.white70)),
+                        onPressed: () => showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => SplitInputSheet(splitToEdit: s)),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        icon: const Icon(Icons.delete,
+                            size: 16, color: BudgetrColors.error),
+                        label: const Text("Delete",
+                            style: TextStyle(color: BudgetrColors.error)),
+                        onPressed: () =>
+                            GetIt.I<NetWorthService>().deleteSplit(s.id),
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            ),
+            crossFadeState: _expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          )
         ],
       ),
     );
   }
 
-  Widget _subRow(String label, double amount) {
+  Widget _buildSection(
+      String title, double? total, Color color, List<Widget> items,
+      {String? notes}) {
+    // Hide zero values to keep UI clean
+    final validItems =
+        items.where((w) => w is _DetailRow && w.value != 0).toList();
+    if (validItems.isEmpty && (notes == null || notes.isEmpty))
+      return const SizedBox();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+          color: Colors.black26, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title,
+                  style: TextStyle(
+                      color: color, fontWeight: FontWeight.bold, fontSize: 11)),
+              if (total != null)
+                Text("₹${NumberFormat.compact().format(total)}",
+                    style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...validItems,
+          if (notes != null && notes.isNotEmpty) ...[
+            if (validItems.isNotEmpty) const SizedBox(height: 8),
+            Text("Note: $notes",
+                style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic)),
+          ]
+        ],
+      ),
+    );
+  }
+
+  Widget _item(String label, double val) =>
+      _DetailRow(label: label, value: val);
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final double value;
+  const _DetailRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    if (value == 0) return const SizedBox();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withOpacity(0.5),
-            ),
-          ),
-          Text(
-            _currencyFormat.format(amount),
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Text("₹${NumberFormat('#,##0.##').format(value)}",
+              style: const TextStyle(color: Colors.white, fontSize: 12)),
         ],
       ),
     );

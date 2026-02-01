@@ -141,7 +141,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         HomeFeatureCard(
                           title: "Goals & Loans",
-                          subtitle: "Targets & Debt Mgmt",
+                          subtitle: "Planned Payments & Debt Management",
                           icon: Icons.flag_outlined,
                           color: const Color(0xFF7209B7), // Violet
                           destination: const GoalsLoansDashboard(),

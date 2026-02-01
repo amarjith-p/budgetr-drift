@@ -4591,35 +4591,116 @@ class $NetWorthSplitsTable extends NetWorthSplits
   late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
       'date', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _netIncomeMeta =
-      const VerificationMeta('netIncome');
+  static const VerificationMeta _bankAccountsMeta =
+      const VerificationMeta('bankAccounts');
   @override
-  late final GeneratedColumn<double> netIncome = GeneratedColumn<double>(
-      'net_income', aliasedName, false,
+  late final GeneratedColumn<double> bankAccounts = GeneratedColumn<double>(
+      'bank_accounts', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
-  static const VerificationMeta _netExpenseMeta =
-      const VerificationMeta('netExpense');
+  static const VerificationMeta _cashInHandMeta =
+      const VerificationMeta('cashInHand');
   @override
-  late final GeneratedColumn<double> netExpense = GeneratedColumn<double>(
-      'net_expense', aliasedName, false,
+  late final GeneratedColumn<double> cashInHand = GeneratedColumn<double>(
+      'cash_in_hand', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
-  static const VerificationMeta _capitalGainMeta =
-      const VerificationMeta('capitalGain');
+  static const VerificationMeta _mutualFundsMeta =
+      const VerificationMeta('mutualFunds');
   @override
-  late final GeneratedColumn<double> capitalGain = GeneratedColumn<double>(
-      'capital_gain', aliasedName, false,
+  late final GeneratedColumn<double> mutualFunds = GeneratedColumn<double>(
+      'mutual_funds', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
-  static const VerificationMeta _capitalLossMeta =
-      const VerificationMeta('capitalLoss');
+  static const VerificationMeta _equityMeta = const VerificationMeta('equity');
   @override
-  late final GeneratedColumn<double> capitalLoss = GeneratedColumn<double>(
-      'capital_loss', aliasedName, false,
+  late final GeneratedColumn<double> equity = GeneratedColumn<double>(
+      'equity', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _bondsMeta = const VerificationMeta('bonds');
+  @override
+  late final GeneratedColumn<double> bonds = GeneratedColumn<double>(
+      'bonds', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _depositsMeta =
+      const VerificationMeta('deposits');
+  @override
+  late final GeneratedColumn<double> deposits = GeneratedColumn<double>(
+      'deposits', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _realEstateMeta =
+      const VerificationMeta('realEstate');
+  @override
+  late final GeneratedColumn<double> realEstate = GeneratedColumn<double>(
+      'real_estate', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _otherAssetsMeta =
+      const VerificationMeta('otherAssets');
+  @override
+  late final GeneratedColumn<double> otherAssets = GeneratedColumn<double>(
+      'other_assets', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _assetNotesMeta =
+      const VerificationMeta('assetNotes');
+  @override
+  late final GeneratedColumn<String> assetNotes = GeneratedColumn<String>(
+      'asset_notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _loansMeta = const VerificationMeta('loans');
+  @override
+  late final GeneratedColumn<double> loans = GeneratedColumn<double>(
+      'loans', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _creditCardOutstandingMeta =
+      const VerificationMeta('creditCardOutstanding');
+  @override
+  late final GeneratedColumn<double> creditCardOutstanding =
+      GeneratedColumn<double>('credit_card_outstanding', aliasedName, false,
+          type: DriftSqlType.double,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(0.0));
+  static const VerificationMeta _otherDebtsMeta =
+      const VerificationMeta('otherDebts');
+  @override
+  late final GeneratedColumn<double> otherDebts = GeneratedColumn<double>(
+      'other_debts', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _liabilityNotesMeta =
+      const VerificationMeta('liabilityNotes');
+  @override
+  late final GeneratedColumn<String> liabilityNotes = GeneratedColumn<String>(
+      'liability_notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _budgetedIncomeMeta =
+      const VerificationMeta('budgetedIncome');
+  @override
+  late final GeneratedColumn<double> budgetedIncome = GeneratedColumn<double>(
+      'budgeted_income', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _budgetedExpenseMeta =
+      const VerificationMeta('budgetedExpense');
+  @override
+  late final GeneratedColumn<double> budgetedExpense = GeneratedColumn<double>(
+      'budgeted_expense', aliasedName, false,
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
@@ -4639,16 +4720,36 @@ class $NetWorthSplitsTable extends NetWorthSplits
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
+  static const VerificationMeta _outOfBucketExpenseMeta =
+      const VerificationMeta('outOfBucketExpense');
+  @override
+  late final GeneratedColumn<double> outOfBucketExpense =
+      GeneratedColumn<double>('out_of_bucket_expense', aliasedName, false,
+          type: DriftSqlType.double,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(0.0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
         date,
-        netIncome,
-        netExpense,
-        capitalGain,
-        capitalLoss,
+        bankAccounts,
+        cashInHand,
+        mutualFunds,
+        equity,
+        bonds,
+        deposits,
+        realEstate,
+        otherAssets,
+        assetNotes,
+        loans,
+        creditCardOutstanding,
+        otherDebts,
+        liabilityNotes,
+        budgetedIncome,
+        budgetedExpense,
         nonCalcIncome,
-        nonCalcExpense
+        nonCalcExpense,
+        outOfBucketExpense
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4671,27 +4772,87 @@ class $NetWorthSplitsTable extends NetWorthSplits
     } else if (isInserting) {
       context.missing(_dateMeta);
     }
-    if (data.containsKey('net_income')) {
-      context.handle(_netIncomeMeta,
-          netIncome.isAcceptableOrUnknown(data['net_income']!, _netIncomeMeta));
-    }
-    if (data.containsKey('net_expense')) {
+    if (data.containsKey('bank_accounts')) {
       context.handle(
-          _netExpenseMeta,
-          netExpense.isAcceptableOrUnknown(
-              data['net_expense']!, _netExpenseMeta));
+          _bankAccountsMeta,
+          bankAccounts.isAcceptableOrUnknown(
+              data['bank_accounts']!, _bankAccountsMeta));
     }
-    if (data.containsKey('capital_gain')) {
+    if (data.containsKey('cash_in_hand')) {
       context.handle(
-          _capitalGainMeta,
-          capitalGain.isAcceptableOrUnknown(
-              data['capital_gain']!, _capitalGainMeta));
+          _cashInHandMeta,
+          cashInHand.isAcceptableOrUnknown(
+              data['cash_in_hand']!, _cashInHandMeta));
     }
-    if (data.containsKey('capital_loss')) {
+    if (data.containsKey('mutual_funds')) {
       context.handle(
-          _capitalLossMeta,
-          capitalLoss.isAcceptableOrUnknown(
-              data['capital_loss']!, _capitalLossMeta));
+          _mutualFundsMeta,
+          mutualFunds.isAcceptableOrUnknown(
+              data['mutual_funds']!, _mutualFundsMeta));
+    }
+    if (data.containsKey('equity')) {
+      context.handle(_equityMeta,
+          equity.isAcceptableOrUnknown(data['equity']!, _equityMeta));
+    }
+    if (data.containsKey('bonds')) {
+      context.handle(
+          _bondsMeta, bonds.isAcceptableOrUnknown(data['bonds']!, _bondsMeta));
+    }
+    if (data.containsKey('deposits')) {
+      context.handle(_depositsMeta,
+          deposits.isAcceptableOrUnknown(data['deposits']!, _depositsMeta));
+    }
+    if (data.containsKey('real_estate')) {
+      context.handle(
+          _realEstateMeta,
+          realEstate.isAcceptableOrUnknown(
+              data['real_estate']!, _realEstateMeta));
+    }
+    if (data.containsKey('other_assets')) {
+      context.handle(
+          _otherAssetsMeta,
+          otherAssets.isAcceptableOrUnknown(
+              data['other_assets']!, _otherAssetsMeta));
+    }
+    if (data.containsKey('asset_notes')) {
+      context.handle(
+          _assetNotesMeta,
+          assetNotes.isAcceptableOrUnknown(
+              data['asset_notes']!, _assetNotesMeta));
+    }
+    if (data.containsKey('loans')) {
+      context.handle(
+          _loansMeta, loans.isAcceptableOrUnknown(data['loans']!, _loansMeta));
+    }
+    if (data.containsKey('credit_card_outstanding')) {
+      context.handle(
+          _creditCardOutstandingMeta,
+          creditCardOutstanding.isAcceptableOrUnknown(
+              data['credit_card_outstanding']!, _creditCardOutstandingMeta));
+    }
+    if (data.containsKey('other_debts')) {
+      context.handle(
+          _otherDebtsMeta,
+          otherDebts.isAcceptableOrUnknown(
+              data['other_debts']!, _otherDebtsMeta));
+    }
+    if (data.containsKey('liability_notes')) {
+      context.handle(
+          _liabilityNotesMeta,
+          liabilityNotes.isAcceptableOrUnknown(
+              data['liability_notes']!, _liabilityNotesMeta));
+    }
+    if (data.containsKey('budgeted_income')) {
+      context.handle(
+          _budgetedIncomeMeta,
+          budgetedIncome.isAcceptableOrUnknown(
+              data['budgeted_income']!, _budgetedIncomeMeta));
+    }
+    if (data.containsKey('budgeted_expense')) {
+      context.handle(
+          _budgetedExpenseMeta,
+          budgetedExpense.isAcceptableOrUnknown(
+              data['budgeted_expense']!, _budgetedExpenseMeta));
     }
     if (data.containsKey('non_calc_income')) {
       context.handle(
@@ -4704,6 +4865,12 @@ class $NetWorthSplitsTable extends NetWorthSplits
           _nonCalcExpenseMeta,
           nonCalcExpense.isAcceptableOrUnknown(
               data['non_calc_expense']!, _nonCalcExpenseMeta));
+    }
+    if (data.containsKey('out_of_bucket_expense')) {
+      context.handle(
+          _outOfBucketExpenseMeta,
+          outOfBucketExpense.isAcceptableOrUnknown(
+              data['out_of_bucket_expense']!, _outOfBucketExpenseMeta));
     }
     return context;
   }
@@ -4718,18 +4885,43 @@ class $NetWorthSplitsTable extends NetWorthSplits
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       date: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
-      netIncome: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}net_income'])!,
-      netExpense: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}net_expense'])!,
-      capitalGain: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}capital_gain'])!,
-      capitalLoss: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}capital_loss'])!,
+      bankAccounts: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}bank_accounts'])!,
+      cashInHand: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cash_in_hand'])!,
+      mutualFunds: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}mutual_funds'])!,
+      equity: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}equity'])!,
+      bonds: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}bonds'])!,
+      deposits: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}deposits'])!,
+      realEstate: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}real_estate'])!,
+      otherAssets: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}other_assets'])!,
+      assetNotes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}asset_notes']),
+      loans: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}loans'])!,
+      creditCardOutstanding: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}credit_card_outstanding'])!,
+      otherDebts: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}other_debts'])!,
+      liabilityNotes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}liability_notes']),
+      budgetedIncome: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}budgeted_income'])!,
+      budgetedExpense: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}budgeted_expense'])!,
       nonCalcIncome: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}non_calc_income'])!,
       nonCalcExpense: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}non_calc_expense'])!,
+      outOfBucketExpense: attachedDatabase.typeMapping.read(DriftSqlType.double,
+          data['${effectivePrefix}out_of_bucket_expense'])!,
     );
   }
 
@@ -4742,32 +4934,72 @@ class $NetWorthSplitsTable extends NetWorthSplits
 class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
   final String id;
   final DateTime date;
-  final double netIncome;
-  final double netExpense;
-  final double capitalGain;
-  final double capitalLoss;
+  final double bankAccounts;
+  final double cashInHand;
+  final double mutualFunds;
+  final double equity;
+  final double bonds;
+  final double deposits;
+  final double realEstate;
+  final double otherAssets;
+  final String? assetNotes;
+  final double loans;
+  final double creditCardOutstanding;
+  final double otherDebts;
+  final String? liabilityNotes;
+  final double budgetedIncome;
+  final double budgetedExpense;
   final double nonCalcIncome;
   final double nonCalcExpense;
+  final double outOfBucketExpense;
   const NetWorthSplit(
       {required this.id,
       required this.date,
-      required this.netIncome,
-      required this.netExpense,
-      required this.capitalGain,
-      required this.capitalLoss,
+      required this.bankAccounts,
+      required this.cashInHand,
+      required this.mutualFunds,
+      required this.equity,
+      required this.bonds,
+      required this.deposits,
+      required this.realEstate,
+      required this.otherAssets,
+      this.assetNotes,
+      required this.loans,
+      required this.creditCardOutstanding,
+      required this.otherDebts,
+      this.liabilityNotes,
+      required this.budgetedIncome,
+      required this.budgetedExpense,
       required this.nonCalcIncome,
-      required this.nonCalcExpense});
+      required this.nonCalcExpense,
+      required this.outOfBucketExpense});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['date'] = Variable<DateTime>(date);
-    map['net_income'] = Variable<double>(netIncome);
-    map['net_expense'] = Variable<double>(netExpense);
-    map['capital_gain'] = Variable<double>(capitalGain);
-    map['capital_loss'] = Variable<double>(capitalLoss);
+    map['bank_accounts'] = Variable<double>(bankAccounts);
+    map['cash_in_hand'] = Variable<double>(cashInHand);
+    map['mutual_funds'] = Variable<double>(mutualFunds);
+    map['equity'] = Variable<double>(equity);
+    map['bonds'] = Variable<double>(bonds);
+    map['deposits'] = Variable<double>(deposits);
+    map['real_estate'] = Variable<double>(realEstate);
+    map['other_assets'] = Variable<double>(otherAssets);
+    if (!nullToAbsent || assetNotes != null) {
+      map['asset_notes'] = Variable<String>(assetNotes);
+    }
+    map['loans'] = Variable<double>(loans);
+    map['credit_card_outstanding'] = Variable<double>(creditCardOutstanding);
+    map['other_debts'] = Variable<double>(otherDebts);
+    if (!nullToAbsent || liabilityNotes != null) {
+      map['liability_notes'] = Variable<String>(liabilityNotes);
+    }
+    map['budgeted_income'] = Variable<double>(budgetedIncome);
+    map['budgeted_expense'] = Variable<double>(budgetedExpense);
     map['non_calc_income'] = Variable<double>(nonCalcIncome);
     map['non_calc_expense'] = Variable<double>(nonCalcExpense);
+    map['out_of_bucket_expense'] = Variable<double>(outOfBucketExpense);
     return map;
   }
 
@@ -4775,12 +5007,28 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
     return NetWorthSplitsCompanion(
       id: Value(id),
       date: Value(date),
-      netIncome: Value(netIncome),
-      netExpense: Value(netExpense),
-      capitalGain: Value(capitalGain),
-      capitalLoss: Value(capitalLoss),
+      bankAccounts: Value(bankAccounts),
+      cashInHand: Value(cashInHand),
+      mutualFunds: Value(mutualFunds),
+      equity: Value(equity),
+      bonds: Value(bonds),
+      deposits: Value(deposits),
+      realEstate: Value(realEstate),
+      otherAssets: Value(otherAssets),
+      assetNotes: assetNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assetNotes),
+      loans: Value(loans),
+      creditCardOutstanding: Value(creditCardOutstanding),
+      otherDebts: Value(otherDebts),
+      liabilityNotes: liabilityNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(liabilityNotes),
+      budgetedIncome: Value(budgetedIncome),
+      budgetedExpense: Value(budgetedExpense),
       nonCalcIncome: Value(nonCalcIncome),
       nonCalcExpense: Value(nonCalcExpense),
+      outOfBucketExpense: Value(outOfBucketExpense),
     );
   }
 
@@ -4790,12 +5038,26 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
     return NetWorthSplit(
       id: serializer.fromJson<String>(json['id']),
       date: serializer.fromJson<DateTime>(json['date']),
-      netIncome: serializer.fromJson<double>(json['netIncome']),
-      netExpense: serializer.fromJson<double>(json['netExpense']),
-      capitalGain: serializer.fromJson<double>(json['capitalGain']),
-      capitalLoss: serializer.fromJson<double>(json['capitalLoss']),
+      bankAccounts: serializer.fromJson<double>(json['bankAccounts']),
+      cashInHand: serializer.fromJson<double>(json['cashInHand']),
+      mutualFunds: serializer.fromJson<double>(json['mutualFunds']),
+      equity: serializer.fromJson<double>(json['equity']),
+      bonds: serializer.fromJson<double>(json['bonds']),
+      deposits: serializer.fromJson<double>(json['deposits']),
+      realEstate: serializer.fromJson<double>(json['realEstate']),
+      otherAssets: serializer.fromJson<double>(json['otherAssets']),
+      assetNotes: serializer.fromJson<String?>(json['assetNotes']),
+      loans: serializer.fromJson<double>(json['loans']),
+      creditCardOutstanding:
+          serializer.fromJson<double>(json['creditCardOutstanding']),
+      otherDebts: serializer.fromJson<double>(json['otherDebts']),
+      liabilityNotes: serializer.fromJson<String?>(json['liabilityNotes']),
+      budgetedIncome: serializer.fromJson<double>(json['budgetedIncome']),
+      budgetedExpense: serializer.fromJson<double>(json['budgetedExpense']),
       nonCalcIncome: serializer.fromJson<double>(json['nonCalcIncome']),
       nonCalcExpense: serializer.fromJson<double>(json['nonCalcExpense']),
+      outOfBucketExpense:
+          serializer.fromJson<double>(json['outOfBucketExpense']),
     );
   }
   @override
@@ -4804,51 +5066,116 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'date': serializer.toJson<DateTime>(date),
-      'netIncome': serializer.toJson<double>(netIncome),
-      'netExpense': serializer.toJson<double>(netExpense),
-      'capitalGain': serializer.toJson<double>(capitalGain),
-      'capitalLoss': serializer.toJson<double>(capitalLoss),
+      'bankAccounts': serializer.toJson<double>(bankAccounts),
+      'cashInHand': serializer.toJson<double>(cashInHand),
+      'mutualFunds': serializer.toJson<double>(mutualFunds),
+      'equity': serializer.toJson<double>(equity),
+      'bonds': serializer.toJson<double>(bonds),
+      'deposits': serializer.toJson<double>(deposits),
+      'realEstate': serializer.toJson<double>(realEstate),
+      'otherAssets': serializer.toJson<double>(otherAssets),
+      'assetNotes': serializer.toJson<String?>(assetNotes),
+      'loans': serializer.toJson<double>(loans),
+      'creditCardOutstanding': serializer.toJson<double>(creditCardOutstanding),
+      'otherDebts': serializer.toJson<double>(otherDebts),
+      'liabilityNotes': serializer.toJson<String?>(liabilityNotes),
+      'budgetedIncome': serializer.toJson<double>(budgetedIncome),
+      'budgetedExpense': serializer.toJson<double>(budgetedExpense),
       'nonCalcIncome': serializer.toJson<double>(nonCalcIncome),
       'nonCalcExpense': serializer.toJson<double>(nonCalcExpense),
+      'outOfBucketExpense': serializer.toJson<double>(outOfBucketExpense),
     };
   }
 
   NetWorthSplit copyWith(
           {String? id,
           DateTime? date,
-          double? netIncome,
-          double? netExpense,
-          double? capitalGain,
-          double? capitalLoss,
+          double? bankAccounts,
+          double? cashInHand,
+          double? mutualFunds,
+          double? equity,
+          double? bonds,
+          double? deposits,
+          double? realEstate,
+          double? otherAssets,
+          Value<String?> assetNotes = const Value.absent(),
+          double? loans,
+          double? creditCardOutstanding,
+          double? otherDebts,
+          Value<String?> liabilityNotes = const Value.absent(),
+          double? budgetedIncome,
+          double? budgetedExpense,
           double? nonCalcIncome,
-          double? nonCalcExpense}) =>
+          double? nonCalcExpense,
+          double? outOfBucketExpense}) =>
       NetWorthSplit(
         id: id ?? this.id,
         date: date ?? this.date,
-        netIncome: netIncome ?? this.netIncome,
-        netExpense: netExpense ?? this.netExpense,
-        capitalGain: capitalGain ?? this.capitalGain,
-        capitalLoss: capitalLoss ?? this.capitalLoss,
+        bankAccounts: bankAccounts ?? this.bankAccounts,
+        cashInHand: cashInHand ?? this.cashInHand,
+        mutualFunds: mutualFunds ?? this.mutualFunds,
+        equity: equity ?? this.equity,
+        bonds: bonds ?? this.bonds,
+        deposits: deposits ?? this.deposits,
+        realEstate: realEstate ?? this.realEstate,
+        otherAssets: otherAssets ?? this.otherAssets,
+        assetNotes: assetNotes.present ? assetNotes.value : this.assetNotes,
+        loans: loans ?? this.loans,
+        creditCardOutstanding:
+            creditCardOutstanding ?? this.creditCardOutstanding,
+        otherDebts: otherDebts ?? this.otherDebts,
+        liabilityNotes:
+            liabilityNotes.present ? liabilityNotes.value : this.liabilityNotes,
+        budgetedIncome: budgetedIncome ?? this.budgetedIncome,
+        budgetedExpense: budgetedExpense ?? this.budgetedExpense,
         nonCalcIncome: nonCalcIncome ?? this.nonCalcIncome,
         nonCalcExpense: nonCalcExpense ?? this.nonCalcExpense,
+        outOfBucketExpense: outOfBucketExpense ?? this.outOfBucketExpense,
       );
   NetWorthSplit copyWithCompanion(NetWorthSplitsCompanion data) {
     return NetWorthSplit(
       id: data.id.present ? data.id.value : this.id,
       date: data.date.present ? data.date.value : this.date,
-      netIncome: data.netIncome.present ? data.netIncome.value : this.netIncome,
-      netExpense:
-          data.netExpense.present ? data.netExpense.value : this.netExpense,
-      capitalGain:
-          data.capitalGain.present ? data.capitalGain.value : this.capitalGain,
-      capitalLoss:
-          data.capitalLoss.present ? data.capitalLoss.value : this.capitalLoss,
+      bankAccounts: data.bankAccounts.present
+          ? data.bankAccounts.value
+          : this.bankAccounts,
+      cashInHand:
+          data.cashInHand.present ? data.cashInHand.value : this.cashInHand,
+      mutualFunds:
+          data.mutualFunds.present ? data.mutualFunds.value : this.mutualFunds,
+      equity: data.equity.present ? data.equity.value : this.equity,
+      bonds: data.bonds.present ? data.bonds.value : this.bonds,
+      deposits: data.deposits.present ? data.deposits.value : this.deposits,
+      realEstate:
+          data.realEstate.present ? data.realEstate.value : this.realEstate,
+      otherAssets:
+          data.otherAssets.present ? data.otherAssets.value : this.otherAssets,
+      assetNotes:
+          data.assetNotes.present ? data.assetNotes.value : this.assetNotes,
+      loans: data.loans.present ? data.loans.value : this.loans,
+      creditCardOutstanding: data.creditCardOutstanding.present
+          ? data.creditCardOutstanding.value
+          : this.creditCardOutstanding,
+      otherDebts:
+          data.otherDebts.present ? data.otherDebts.value : this.otherDebts,
+      liabilityNotes: data.liabilityNotes.present
+          ? data.liabilityNotes.value
+          : this.liabilityNotes,
+      budgetedIncome: data.budgetedIncome.present
+          ? data.budgetedIncome.value
+          : this.budgetedIncome,
+      budgetedExpense: data.budgetedExpense.present
+          ? data.budgetedExpense.value
+          : this.budgetedExpense,
       nonCalcIncome: data.nonCalcIncome.present
           ? data.nonCalcIncome.value
           : this.nonCalcIncome,
       nonCalcExpense: data.nonCalcExpense.present
           ? data.nonCalcExpense.value
           : this.nonCalcExpense,
+      outOfBucketExpense: data.outOfBucketExpense.present
+          ? data.outOfBucketExpense.value
+          : this.outOfBucketExpense,
     );
   }
 
@@ -4857,86 +5184,191 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
     return (StringBuffer('NetWorthSplit(')
           ..write('id: $id, ')
           ..write('date: $date, ')
-          ..write('netIncome: $netIncome, ')
-          ..write('netExpense: $netExpense, ')
-          ..write('capitalGain: $capitalGain, ')
-          ..write('capitalLoss: $capitalLoss, ')
+          ..write('bankAccounts: $bankAccounts, ')
+          ..write('cashInHand: $cashInHand, ')
+          ..write('mutualFunds: $mutualFunds, ')
+          ..write('equity: $equity, ')
+          ..write('bonds: $bonds, ')
+          ..write('deposits: $deposits, ')
+          ..write('realEstate: $realEstate, ')
+          ..write('otherAssets: $otherAssets, ')
+          ..write('assetNotes: $assetNotes, ')
+          ..write('loans: $loans, ')
+          ..write('creditCardOutstanding: $creditCardOutstanding, ')
+          ..write('otherDebts: $otherDebts, ')
+          ..write('liabilityNotes: $liabilityNotes, ')
+          ..write('budgetedIncome: $budgetedIncome, ')
+          ..write('budgetedExpense: $budgetedExpense, ')
           ..write('nonCalcIncome: $nonCalcIncome, ')
-          ..write('nonCalcExpense: $nonCalcExpense')
+          ..write('nonCalcExpense: $nonCalcExpense, ')
+          ..write('outOfBucketExpense: $outOfBucketExpense')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, date, netIncome, netExpense, capitalGain,
-      capitalLoss, nonCalcIncome, nonCalcExpense);
+  int get hashCode => Object.hash(
+      id,
+      date,
+      bankAccounts,
+      cashInHand,
+      mutualFunds,
+      equity,
+      bonds,
+      deposits,
+      realEstate,
+      otherAssets,
+      assetNotes,
+      loans,
+      creditCardOutstanding,
+      otherDebts,
+      liabilityNotes,
+      budgetedIncome,
+      budgetedExpense,
+      nonCalcIncome,
+      nonCalcExpense,
+      outOfBucketExpense);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is NetWorthSplit &&
           other.id == this.id &&
           other.date == this.date &&
-          other.netIncome == this.netIncome &&
-          other.netExpense == this.netExpense &&
-          other.capitalGain == this.capitalGain &&
-          other.capitalLoss == this.capitalLoss &&
+          other.bankAccounts == this.bankAccounts &&
+          other.cashInHand == this.cashInHand &&
+          other.mutualFunds == this.mutualFunds &&
+          other.equity == this.equity &&
+          other.bonds == this.bonds &&
+          other.deposits == this.deposits &&
+          other.realEstate == this.realEstate &&
+          other.otherAssets == this.otherAssets &&
+          other.assetNotes == this.assetNotes &&
+          other.loans == this.loans &&
+          other.creditCardOutstanding == this.creditCardOutstanding &&
+          other.otherDebts == this.otherDebts &&
+          other.liabilityNotes == this.liabilityNotes &&
+          other.budgetedIncome == this.budgetedIncome &&
+          other.budgetedExpense == this.budgetedExpense &&
           other.nonCalcIncome == this.nonCalcIncome &&
-          other.nonCalcExpense == this.nonCalcExpense);
+          other.nonCalcExpense == this.nonCalcExpense &&
+          other.outOfBucketExpense == this.outOfBucketExpense);
 }
 
 class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
   final Value<String> id;
   final Value<DateTime> date;
-  final Value<double> netIncome;
-  final Value<double> netExpense;
-  final Value<double> capitalGain;
-  final Value<double> capitalLoss;
+  final Value<double> bankAccounts;
+  final Value<double> cashInHand;
+  final Value<double> mutualFunds;
+  final Value<double> equity;
+  final Value<double> bonds;
+  final Value<double> deposits;
+  final Value<double> realEstate;
+  final Value<double> otherAssets;
+  final Value<String?> assetNotes;
+  final Value<double> loans;
+  final Value<double> creditCardOutstanding;
+  final Value<double> otherDebts;
+  final Value<String?> liabilityNotes;
+  final Value<double> budgetedIncome;
+  final Value<double> budgetedExpense;
   final Value<double> nonCalcIncome;
   final Value<double> nonCalcExpense;
+  final Value<double> outOfBucketExpense;
   final Value<int> rowid;
   const NetWorthSplitsCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
-    this.netIncome = const Value.absent(),
-    this.netExpense = const Value.absent(),
-    this.capitalGain = const Value.absent(),
-    this.capitalLoss = const Value.absent(),
+    this.bankAccounts = const Value.absent(),
+    this.cashInHand = const Value.absent(),
+    this.mutualFunds = const Value.absent(),
+    this.equity = const Value.absent(),
+    this.bonds = const Value.absent(),
+    this.deposits = const Value.absent(),
+    this.realEstate = const Value.absent(),
+    this.otherAssets = const Value.absent(),
+    this.assetNotes = const Value.absent(),
+    this.loans = const Value.absent(),
+    this.creditCardOutstanding = const Value.absent(),
+    this.otherDebts = const Value.absent(),
+    this.liabilityNotes = const Value.absent(),
+    this.budgetedIncome = const Value.absent(),
+    this.budgetedExpense = const Value.absent(),
     this.nonCalcIncome = const Value.absent(),
     this.nonCalcExpense = const Value.absent(),
+    this.outOfBucketExpense = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   NetWorthSplitsCompanion.insert({
     required String id,
     required DateTime date,
-    this.netIncome = const Value.absent(),
-    this.netExpense = const Value.absent(),
-    this.capitalGain = const Value.absent(),
-    this.capitalLoss = const Value.absent(),
+    this.bankAccounts = const Value.absent(),
+    this.cashInHand = const Value.absent(),
+    this.mutualFunds = const Value.absent(),
+    this.equity = const Value.absent(),
+    this.bonds = const Value.absent(),
+    this.deposits = const Value.absent(),
+    this.realEstate = const Value.absent(),
+    this.otherAssets = const Value.absent(),
+    this.assetNotes = const Value.absent(),
+    this.loans = const Value.absent(),
+    this.creditCardOutstanding = const Value.absent(),
+    this.otherDebts = const Value.absent(),
+    this.liabilityNotes = const Value.absent(),
+    this.budgetedIncome = const Value.absent(),
+    this.budgetedExpense = const Value.absent(),
     this.nonCalcIncome = const Value.absent(),
     this.nonCalcExpense = const Value.absent(),
+    this.outOfBucketExpense = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         date = Value(date);
   static Insertable<NetWorthSplit> custom({
     Expression<String>? id,
     Expression<DateTime>? date,
-    Expression<double>? netIncome,
-    Expression<double>? netExpense,
-    Expression<double>? capitalGain,
-    Expression<double>? capitalLoss,
+    Expression<double>? bankAccounts,
+    Expression<double>? cashInHand,
+    Expression<double>? mutualFunds,
+    Expression<double>? equity,
+    Expression<double>? bonds,
+    Expression<double>? deposits,
+    Expression<double>? realEstate,
+    Expression<double>? otherAssets,
+    Expression<String>? assetNotes,
+    Expression<double>? loans,
+    Expression<double>? creditCardOutstanding,
+    Expression<double>? otherDebts,
+    Expression<String>? liabilityNotes,
+    Expression<double>? budgetedIncome,
+    Expression<double>? budgetedExpense,
     Expression<double>? nonCalcIncome,
     Expression<double>? nonCalcExpense,
+    Expression<double>? outOfBucketExpense,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (date != null) 'date': date,
-      if (netIncome != null) 'net_income': netIncome,
-      if (netExpense != null) 'net_expense': netExpense,
-      if (capitalGain != null) 'capital_gain': capitalGain,
-      if (capitalLoss != null) 'capital_loss': capitalLoss,
+      if (bankAccounts != null) 'bank_accounts': bankAccounts,
+      if (cashInHand != null) 'cash_in_hand': cashInHand,
+      if (mutualFunds != null) 'mutual_funds': mutualFunds,
+      if (equity != null) 'equity': equity,
+      if (bonds != null) 'bonds': bonds,
+      if (deposits != null) 'deposits': deposits,
+      if (realEstate != null) 'real_estate': realEstate,
+      if (otherAssets != null) 'other_assets': otherAssets,
+      if (assetNotes != null) 'asset_notes': assetNotes,
+      if (loans != null) 'loans': loans,
+      if (creditCardOutstanding != null)
+        'credit_card_outstanding': creditCardOutstanding,
+      if (otherDebts != null) 'other_debts': otherDebts,
+      if (liabilityNotes != null) 'liability_notes': liabilityNotes,
+      if (budgetedIncome != null) 'budgeted_income': budgetedIncome,
+      if (budgetedExpense != null) 'budgeted_expense': budgetedExpense,
       if (nonCalcIncome != null) 'non_calc_income': nonCalcIncome,
       if (nonCalcExpense != null) 'non_calc_expense': nonCalcExpense,
+      if (outOfBucketExpense != null)
+        'out_of_bucket_expense': outOfBucketExpense,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4944,22 +5376,47 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
   NetWorthSplitsCompanion copyWith(
       {Value<String>? id,
       Value<DateTime>? date,
-      Value<double>? netIncome,
-      Value<double>? netExpense,
-      Value<double>? capitalGain,
-      Value<double>? capitalLoss,
+      Value<double>? bankAccounts,
+      Value<double>? cashInHand,
+      Value<double>? mutualFunds,
+      Value<double>? equity,
+      Value<double>? bonds,
+      Value<double>? deposits,
+      Value<double>? realEstate,
+      Value<double>? otherAssets,
+      Value<String?>? assetNotes,
+      Value<double>? loans,
+      Value<double>? creditCardOutstanding,
+      Value<double>? otherDebts,
+      Value<String?>? liabilityNotes,
+      Value<double>? budgetedIncome,
+      Value<double>? budgetedExpense,
       Value<double>? nonCalcIncome,
       Value<double>? nonCalcExpense,
+      Value<double>? outOfBucketExpense,
       Value<int>? rowid}) {
     return NetWorthSplitsCompanion(
       id: id ?? this.id,
       date: date ?? this.date,
-      netIncome: netIncome ?? this.netIncome,
-      netExpense: netExpense ?? this.netExpense,
-      capitalGain: capitalGain ?? this.capitalGain,
-      capitalLoss: capitalLoss ?? this.capitalLoss,
+      bankAccounts: bankAccounts ?? this.bankAccounts,
+      cashInHand: cashInHand ?? this.cashInHand,
+      mutualFunds: mutualFunds ?? this.mutualFunds,
+      equity: equity ?? this.equity,
+      bonds: bonds ?? this.bonds,
+      deposits: deposits ?? this.deposits,
+      realEstate: realEstate ?? this.realEstate,
+      otherAssets: otherAssets ?? this.otherAssets,
+      assetNotes: assetNotes ?? this.assetNotes,
+      loans: loans ?? this.loans,
+      creditCardOutstanding:
+          creditCardOutstanding ?? this.creditCardOutstanding,
+      otherDebts: otherDebts ?? this.otherDebts,
+      liabilityNotes: liabilityNotes ?? this.liabilityNotes,
+      budgetedIncome: budgetedIncome ?? this.budgetedIncome,
+      budgetedExpense: budgetedExpense ?? this.budgetedExpense,
       nonCalcIncome: nonCalcIncome ?? this.nonCalcIncome,
       nonCalcExpense: nonCalcExpense ?? this.nonCalcExpense,
+      outOfBucketExpense: outOfBucketExpense ?? this.outOfBucketExpense,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4973,23 +5430,60 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
     }
-    if (netIncome.present) {
-      map['net_income'] = Variable<double>(netIncome.value);
+    if (bankAccounts.present) {
+      map['bank_accounts'] = Variable<double>(bankAccounts.value);
     }
-    if (netExpense.present) {
-      map['net_expense'] = Variable<double>(netExpense.value);
+    if (cashInHand.present) {
+      map['cash_in_hand'] = Variable<double>(cashInHand.value);
     }
-    if (capitalGain.present) {
-      map['capital_gain'] = Variable<double>(capitalGain.value);
+    if (mutualFunds.present) {
+      map['mutual_funds'] = Variable<double>(mutualFunds.value);
     }
-    if (capitalLoss.present) {
-      map['capital_loss'] = Variable<double>(capitalLoss.value);
+    if (equity.present) {
+      map['equity'] = Variable<double>(equity.value);
+    }
+    if (bonds.present) {
+      map['bonds'] = Variable<double>(bonds.value);
+    }
+    if (deposits.present) {
+      map['deposits'] = Variable<double>(deposits.value);
+    }
+    if (realEstate.present) {
+      map['real_estate'] = Variable<double>(realEstate.value);
+    }
+    if (otherAssets.present) {
+      map['other_assets'] = Variable<double>(otherAssets.value);
+    }
+    if (assetNotes.present) {
+      map['asset_notes'] = Variable<String>(assetNotes.value);
+    }
+    if (loans.present) {
+      map['loans'] = Variable<double>(loans.value);
+    }
+    if (creditCardOutstanding.present) {
+      map['credit_card_outstanding'] =
+          Variable<double>(creditCardOutstanding.value);
+    }
+    if (otherDebts.present) {
+      map['other_debts'] = Variable<double>(otherDebts.value);
+    }
+    if (liabilityNotes.present) {
+      map['liability_notes'] = Variable<String>(liabilityNotes.value);
+    }
+    if (budgetedIncome.present) {
+      map['budgeted_income'] = Variable<double>(budgetedIncome.value);
+    }
+    if (budgetedExpense.present) {
+      map['budgeted_expense'] = Variable<double>(budgetedExpense.value);
     }
     if (nonCalcIncome.present) {
       map['non_calc_income'] = Variable<double>(nonCalcIncome.value);
     }
     if (nonCalcExpense.present) {
       map['non_calc_expense'] = Variable<double>(nonCalcExpense.value);
+    }
+    if (outOfBucketExpense.present) {
+      map['out_of_bucket_expense'] = Variable<double>(outOfBucketExpense.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -5002,12 +5496,24 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
     return (StringBuffer('NetWorthSplitsCompanion(')
           ..write('id: $id, ')
           ..write('date: $date, ')
-          ..write('netIncome: $netIncome, ')
-          ..write('netExpense: $netExpense, ')
-          ..write('capitalGain: $capitalGain, ')
-          ..write('capitalLoss: $capitalLoss, ')
+          ..write('bankAccounts: $bankAccounts, ')
+          ..write('cashInHand: $cashInHand, ')
+          ..write('mutualFunds: $mutualFunds, ')
+          ..write('equity: $equity, ')
+          ..write('bonds: $bonds, ')
+          ..write('deposits: $deposits, ')
+          ..write('realEstate: $realEstate, ')
+          ..write('otherAssets: $otherAssets, ')
+          ..write('assetNotes: $assetNotes, ')
+          ..write('loans: $loans, ')
+          ..write('creditCardOutstanding: $creditCardOutstanding, ')
+          ..write('otherDebts: $otherDebts, ')
+          ..write('liabilityNotes: $liabilityNotes, ')
+          ..write('budgetedIncome: $budgetedIncome, ')
+          ..write('budgetedExpense: $budgetedExpense, ')
           ..write('nonCalcIncome: $nonCalcIncome, ')
           ..write('nonCalcExpense: $nonCalcExpense, ')
+          ..write('outOfBucketExpense: $outOfBucketExpense, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10643,24 +11149,48 @@ typedef $$NetWorthSplitsTableCreateCompanionBuilder = NetWorthSplitsCompanion
     Function({
   required String id,
   required DateTime date,
-  Value<double> netIncome,
-  Value<double> netExpense,
-  Value<double> capitalGain,
-  Value<double> capitalLoss,
+  Value<double> bankAccounts,
+  Value<double> cashInHand,
+  Value<double> mutualFunds,
+  Value<double> equity,
+  Value<double> bonds,
+  Value<double> deposits,
+  Value<double> realEstate,
+  Value<double> otherAssets,
+  Value<String?> assetNotes,
+  Value<double> loans,
+  Value<double> creditCardOutstanding,
+  Value<double> otherDebts,
+  Value<String?> liabilityNotes,
+  Value<double> budgetedIncome,
+  Value<double> budgetedExpense,
   Value<double> nonCalcIncome,
   Value<double> nonCalcExpense,
+  Value<double> outOfBucketExpense,
   Value<int> rowid,
 });
 typedef $$NetWorthSplitsTableUpdateCompanionBuilder = NetWorthSplitsCompanion
     Function({
   Value<String> id,
   Value<DateTime> date,
-  Value<double> netIncome,
-  Value<double> netExpense,
-  Value<double> capitalGain,
-  Value<double> capitalLoss,
+  Value<double> bankAccounts,
+  Value<double> cashInHand,
+  Value<double> mutualFunds,
+  Value<double> equity,
+  Value<double> bonds,
+  Value<double> deposits,
+  Value<double> realEstate,
+  Value<double> otherAssets,
+  Value<String?> assetNotes,
+  Value<double> loans,
+  Value<double> creditCardOutstanding,
+  Value<double> otherDebts,
+  Value<String?> liabilityNotes,
+  Value<double> budgetedIncome,
+  Value<double> budgetedExpense,
   Value<double> nonCalcIncome,
   Value<double> nonCalcExpense,
+  Value<double> outOfBucketExpense,
   Value<int> rowid,
 });
 
@@ -10679,23 +11209,64 @@ class $$NetWorthSplitsTableFilterComposer
   ColumnFilters<DateTime> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get netIncome => $composableBuilder(
-      column: $table.netIncome, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get bankAccounts => $composableBuilder(
+      column: $table.bankAccounts, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get netExpense => $composableBuilder(
-      column: $table.netExpense, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get cashInHand => $composableBuilder(
+      column: $table.cashInHand, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get capitalGain => $composableBuilder(
-      column: $table.capitalGain, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get mutualFunds => $composableBuilder(
+      column: $table.mutualFunds, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get capitalLoss => $composableBuilder(
-      column: $table.capitalLoss, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get equity => $composableBuilder(
+      column: $table.equity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get bonds => $composableBuilder(
+      column: $table.bonds, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get deposits => $composableBuilder(
+      column: $table.deposits, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get realEstate => $composableBuilder(
+      column: $table.realEstate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get otherAssets => $composableBuilder(
+      column: $table.otherAssets, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get assetNotes => $composableBuilder(
+      column: $table.assetNotes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get loans => $composableBuilder(
+      column: $table.loans, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get creditCardOutstanding => $composableBuilder(
+      column: $table.creditCardOutstanding,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get otherDebts => $composableBuilder(
+      column: $table.otherDebts, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get liabilityNotes => $composableBuilder(
+      column: $table.liabilityNotes,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get budgetedIncome => $composableBuilder(
+      column: $table.budgetedIncome,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get budgetedExpense => $composableBuilder(
+      column: $table.budgetedExpense,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get nonCalcIncome => $composableBuilder(
       column: $table.nonCalcIncome, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get nonCalcExpense => $composableBuilder(
       column: $table.nonCalcExpense,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get outOfBucketExpense => $composableBuilder(
+      column: $table.outOfBucketExpense,
       builder: (column) => ColumnFilters(column));
 }
 
@@ -10714,17 +11285,55 @@ class $$NetWorthSplitsTableOrderingComposer
   ColumnOrderings<DateTime> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get netIncome => $composableBuilder(
-      column: $table.netIncome, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get bankAccounts => $composableBuilder(
+      column: $table.bankAccounts,
+      builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get netExpense => $composableBuilder(
-      column: $table.netExpense, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get cashInHand => $composableBuilder(
+      column: $table.cashInHand, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get capitalGain => $composableBuilder(
-      column: $table.capitalGain, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get mutualFunds => $composableBuilder(
+      column: $table.mutualFunds, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get capitalLoss => $composableBuilder(
-      column: $table.capitalLoss, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get equity => $composableBuilder(
+      column: $table.equity, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get bonds => $composableBuilder(
+      column: $table.bonds, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get deposits => $composableBuilder(
+      column: $table.deposits, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get realEstate => $composableBuilder(
+      column: $table.realEstate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get otherAssets => $composableBuilder(
+      column: $table.otherAssets, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get assetNotes => $composableBuilder(
+      column: $table.assetNotes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get loans => $composableBuilder(
+      column: $table.loans, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get creditCardOutstanding => $composableBuilder(
+      column: $table.creditCardOutstanding,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get otherDebts => $composableBuilder(
+      column: $table.otherDebts, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get liabilityNotes => $composableBuilder(
+      column: $table.liabilityNotes,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get budgetedIncome => $composableBuilder(
+      column: $table.budgetedIncome,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get budgetedExpense => $composableBuilder(
+      column: $table.budgetedExpense,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get nonCalcIncome => $composableBuilder(
       column: $table.nonCalcIncome,
@@ -10732,6 +11341,10 @@ class $$NetWorthSplitsTableOrderingComposer
 
   ColumnOrderings<double> get nonCalcExpense => $composableBuilder(
       column: $table.nonCalcExpense,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get outOfBucketExpense => $composableBuilder(
+      column: $table.outOfBucketExpense,
       builder: (column) => ColumnOrderings(column));
 }
 
@@ -10750,23 +11363,59 @@ class $$NetWorthSplitsTableAnnotationComposer
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
-  GeneratedColumn<double> get netIncome =>
-      $composableBuilder(column: $table.netIncome, builder: (column) => column);
+  GeneratedColumn<double> get bankAccounts => $composableBuilder(
+      column: $table.bankAccounts, builder: (column) => column);
 
-  GeneratedColumn<double> get netExpense => $composableBuilder(
-      column: $table.netExpense, builder: (column) => column);
+  GeneratedColumn<double> get cashInHand => $composableBuilder(
+      column: $table.cashInHand, builder: (column) => column);
 
-  GeneratedColumn<double> get capitalGain => $composableBuilder(
-      column: $table.capitalGain, builder: (column) => column);
+  GeneratedColumn<double> get mutualFunds => $composableBuilder(
+      column: $table.mutualFunds, builder: (column) => column);
 
-  GeneratedColumn<double> get capitalLoss => $composableBuilder(
-      column: $table.capitalLoss, builder: (column) => column);
+  GeneratedColumn<double> get equity =>
+      $composableBuilder(column: $table.equity, builder: (column) => column);
+
+  GeneratedColumn<double> get bonds =>
+      $composableBuilder(column: $table.bonds, builder: (column) => column);
+
+  GeneratedColumn<double> get deposits =>
+      $composableBuilder(column: $table.deposits, builder: (column) => column);
+
+  GeneratedColumn<double> get realEstate => $composableBuilder(
+      column: $table.realEstate, builder: (column) => column);
+
+  GeneratedColumn<double> get otherAssets => $composableBuilder(
+      column: $table.otherAssets, builder: (column) => column);
+
+  GeneratedColumn<String> get assetNotes => $composableBuilder(
+      column: $table.assetNotes, builder: (column) => column);
+
+  GeneratedColumn<double> get loans =>
+      $composableBuilder(column: $table.loans, builder: (column) => column);
+
+  GeneratedColumn<double> get creditCardOutstanding => $composableBuilder(
+      column: $table.creditCardOutstanding, builder: (column) => column);
+
+  GeneratedColumn<double> get otherDebts => $composableBuilder(
+      column: $table.otherDebts, builder: (column) => column);
+
+  GeneratedColumn<String> get liabilityNotes => $composableBuilder(
+      column: $table.liabilityNotes, builder: (column) => column);
+
+  GeneratedColumn<double> get budgetedIncome => $composableBuilder(
+      column: $table.budgetedIncome, builder: (column) => column);
+
+  GeneratedColumn<double> get budgetedExpense => $composableBuilder(
+      column: $table.budgetedExpense, builder: (column) => column);
 
   GeneratedColumn<double> get nonCalcIncome => $composableBuilder(
       column: $table.nonCalcIncome, builder: (column) => column);
 
   GeneratedColumn<double> get nonCalcExpense => $composableBuilder(
       column: $table.nonCalcExpense, builder: (column) => column);
+
+  GeneratedColumn<double> get outOfBucketExpense => $composableBuilder(
+      column: $table.outOfBucketExpense, builder: (column) => column);
 }
 
 class $$NetWorthSplitsTableTableManager extends RootTableManager<
@@ -10798,45 +11447,93 @@ class $$NetWorthSplitsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
-            Value<double> netIncome = const Value.absent(),
-            Value<double> netExpense = const Value.absent(),
-            Value<double> capitalGain = const Value.absent(),
-            Value<double> capitalLoss = const Value.absent(),
+            Value<double> bankAccounts = const Value.absent(),
+            Value<double> cashInHand = const Value.absent(),
+            Value<double> mutualFunds = const Value.absent(),
+            Value<double> equity = const Value.absent(),
+            Value<double> bonds = const Value.absent(),
+            Value<double> deposits = const Value.absent(),
+            Value<double> realEstate = const Value.absent(),
+            Value<double> otherAssets = const Value.absent(),
+            Value<String?> assetNotes = const Value.absent(),
+            Value<double> loans = const Value.absent(),
+            Value<double> creditCardOutstanding = const Value.absent(),
+            Value<double> otherDebts = const Value.absent(),
+            Value<String?> liabilityNotes = const Value.absent(),
+            Value<double> budgetedIncome = const Value.absent(),
+            Value<double> budgetedExpense = const Value.absent(),
             Value<double> nonCalcIncome = const Value.absent(),
             Value<double> nonCalcExpense = const Value.absent(),
+            Value<double> outOfBucketExpense = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               NetWorthSplitsCompanion(
             id: id,
             date: date,
-            netIncome: netIncome,
-            netExpense: netExpense,
-            capitalGain: capitalGain,
-            capitalLoss: capitalLoss,
+            bankAccounts: bankAccounts,
+            cashInHand: cashInHand,
+            mutualFunds: mutualFunds,
+            equity: equity,
+            bonds: bonds,
+            deposits: deposits,
+            realEstate: realEstate,
+            otherAssets: otherAssets,
+            assetNotes: assetNotes,
+            loans: loans,
+            creditCardOutstanding: creditCardOutstanding,
+            otherDebts: otherDebts,
+            liabilityNotes: liabilityNotes,
+            budgetedIncome: budgetedIncome,
+            budgetedExpense: budgetedExpense,
             nonCalcIncome: nonCalcIncome,
             nonCalcExpense: nonCalcExpense,
+            outOfBucketExpense: outOfBucketExpense,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
             required DateTime date,
-            Value<double> netIncome = const Value.absent(),
-            Value<double> netExpense = const Value.absent(),
-            Value<double> capitalGain = const Value.absent(),
-            Value<double> capitalLoss = const Value.absent(),
+            Value<double> bankAccounts = const Value.absent(),
+            Value<double> cashInHand = const Value.absent(),
+            Value<double> mutualFunds = const Value.absent(),
+            Value<double> equity = const Value.absent(),
+            Value<double> bonds = const Value.absent(),
+            Value<double> deposits = const Value.absent(),
+            Value<double> realEstate = const Value.absent(),
+            Value<double> otherAssets = const Value.absent(),
+            Value<String?> assetNotes = const Value.absent(),
+            Value<double> loans = const Value.absent(),
+            Value<double> creditCardOutstanding = const Value.absent(),
+            Value<double> otherDebts = const Value.absent(),
+            Value<String?> liabilityNotes = const Value.absent(),
+            Value<double> budgetedIncome = const Value.absent(),
+            Value<double> budgetedExpense = const Value.absent(),
             Value<double> nonCalcIncome = const Value.absent(),
             Value<double> nonCalcExpense = const Value.absent(),
+            Value<double> outOfBucketExpense = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               NetWorthSplitsCompanion.insert(
             id: id,
             date: date,
-            netIncome: netIncome,
-            netExpense: netExpense,
-            capitalGain: capitalGain,
-            capitalLoss: capitalLoss,
+            bankAccounts: bankAccounts,
+            cashInHand: cashInHand,
+            mutualFunds: mutualFunds,
+            equity: equity,
+            bonds: bonds,
+            deposits: deposits,
+            realEstate: realEstate,
+            otherAssets: otherAssets,
+            assetNotes: assetNotes,
+            loans: loans,
+            creditCardOutstanding: creditCardOutstanding,
+            otherDebts: otherDebts,
+            liabilityNotes: liabilityNotes,
+            budgetedIncome: budgetedIncome,
+            budgetedExpense: budgetedExpense,
             nonCalcIncome: nonCalcIncome,
             nonCalcExpense: nonCalcExpense,
+            outOfBucketExpense: outOfBucketExpense,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

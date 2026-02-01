@@ -1,465 +1,504 @@
-import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
-
+import '../../../core/design/budgetr_colors.dart';
+import '../../../core/design/budgetr_styles.dart';
 import '../../../core/models/net_worth_split_model.dart';
 import '../../../core/widgets/calculator_keyboard.dart';
 import '../services/net_worth_service.dart';
 
 class SplitInputSheet extends StatefulWidget {
-  const SplitInputSheet({super.key});
+  final NetWorthSplitModel? splitToEdit;
+  const SplitInputSheet({super.key, this.splitToEdit});
 
   @override
   State<SplitInputSheet> createState() => _SplitInputSheetState();
 }
 
 class _SplitInputSheetState extends State<SplitInputSheet> {
-  final _netWorthService = GetIt.I<NetWorthService>();
-  final ScrollController _scrollController = ScrollController();
-
-  // Controllers
-  final _netIncomeCtrl = TextEditingController();
-  final _netExpenseCtrl = TextEditingController();
-  final _capGainCtrl = TextEditingController();
-  final _capLossCtrl = TextEditingController();
-  final _nonCalcIncomeCtrl = TextEditingController();
-  final _nonCalcExpenseCtrl = TextEditingController();
-
-  // Focus Nodes
-  final _netIncomeFocus = FocusNode();
-  final _netExpenseFocus = FocusNode();
-  final _capGainFocus = FocusNode();
-  final _capLossFocus = FocusNode();
-  final _nonCalcIncomeFocus = FocusNode();
-  final _nonCalcExpenseFocus = FocusNode();
-
+  // Date
   DateTime _selectedDate = DateTime.now();
 
-  // Keyboard State
+  // Calculator State
   TextEditingController? _activeController;
-  bool _isKeyboardVisible = false;
-  bool _useSystemKeyboard = false;
+  late final List<TextEditingController> _orderedControllers;
+  late final List<FocusNode> _orderedFocusNodes;
+  late final List<GlobalKey> _fieldKeys; // [NEW] Keys for scrolling
+
+  // 1. Assets
+  final _bankCtrl = TextEditingController();
+  final _cashInHandCtrl = TextEditingController();
+  final _mfCtrl = TextEditingController();
+  final _equityCtrl = TextEditingController();
+  final _bondCtrl = TextEditingController();
+  final _depositCtrl = TextEditingController();
+  final _realEstateCtrl = TextEditingController();
+  final _otherAssetCtrl = TextEditingController();
+  final _assetNoteCtrl = TextEditingController();
+
+  // 2. Liabilities
+  final _loanCtrl = TextEditingController();
+  final _ccCtrl = TextEditingController();
+  final _otherDebtCtrl = TextEditingController();
+  final _liabNoteCtrl = TextEditingController();
+
+  // 3. Cashflow
+  final _budInCtrl = TextEditingController();
+  final _budExCtrl = TextEditingController();
+  final _nonCalcInCtrl = TextEditingController();
+  final _nonCalcExCtrl = TextEditingController();
+  final _outBucketCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Define Order
+    _orderedControllers = [
+      _bankCtrl,
+      _cashInHandCtrl,
+      _mfCtrl,
+      _equityCtrl,
+      _bondCtrl,
+      _depositCtrl,
+      _realEstateCtrl,
+      _otherAssetCtrl,
+      _loanCtrl,
+      _ccCtrl,
+      _otherDebtCtrl,
+      _budInCtrl,
+      _budExCtrl,
+      _nonCalcInCtrl,
+      _nonCalcExCtrl,
+      _outBucketCtrl
+    ];
+
+    // Create Focus Nodes
+    _orderedFocusNodes =
+        List.generate(_orderedControllers.length, (_) => FocusNode());
+
+    // [NEW] Create Global Keys for Auto-Scrolling
+    _fieldKeys = List.generate(_orderedControllers.length, (_) => GlobalKey());
+
+    if (widget.splitToEdit != null) {
+      final s = widget.splitToEdit!;
+      _selectedDate = s.date;
+
+      _bankCtrl.text = _fmt(s.bankAccounts);
+      _cashInHandCtrl.text = _fmt(s.cashInHand);
+      _mfCtrl.text = _fmt(s.mutualFunds);
+      _equityCtrl.text = _fmt(s.equity);
+      _bondCtrl.text = _fmt(s.bonds);
+      _depositCtrl.text = _fmt(s.deposits);
+      _realEstateCtrl.text = _fmt(s.realEstate);
+      _otherAssetCtrl.text = _fmt(s.otherAssets);
+      _assetNoteCtrl.text = s.assetNotes ?? '';
+
+      _loanCtrl.text = _fmt(s.loans);
+      _ccCtrl.text = _fmt(s.creditCardOutstanding);
+      _otherDebtCtrl.text = _fmt(s.otherDebts);
+      _liabNoteCtrl.text = s.liabilityNotes ?? '';
+
+      _budInCtrl.text = _fmt(s.budgetedIncome);
+      _budExCtrl.text = _fmt(s.budgetedExpense);
+      _nonCalcInCtrl.text = _fmt(s.nonCalcIncome);
+      _nonCalcExCtrl.text = _fmt(s.nonCalcExpense);
+      _outBucketCtrl.text = _fmt(s.outOfBucketExpense);
+    }
+  }
 
   @override
   void dispose() {
-    _netIncomeCtrl.dispose();
-    _netExpenseCtrl.dispose();
-    _capGainCtrl.dispose();
-    _capLossCtrl.dispose();
-    _nonCalcIncomeCtrl.dispose();
-    _nonCalcExpenseCtrl.dispose();
-
-    _netIncomeFocus.dispose();
-    _netExpenseFocus.dispose();
-    _capGainFocus.dispose();
-    _capLossFocus.dispose();
-    _nonCalcIncomeFocus.dispose();
-    _nonCalcExpenseFocus.dispose();
-    _scrollController.dispose();
+    for (var node in _orderedFocusNodes) {
+      node.dispose();
+    }
+    _bankCtrl.dispose();
+    _cashInHandCtrl.dispose();
+    _mfCtrl.dispose();
+    _equityCtrl.dispose();
+    _bondCtrl.dispose();
+    _depositCtrl.dispose();
+    _realEstateCtrl.dispose();
+    _otherAssetCtrl.dispose();
+    _assetNoteCtrl.dispose();
+    _loanCtrl.dispose();
+    _ccCtrl.dispose();
+    _otherDebtCtrl.dispose();
+    _liabNoteCtrl.dispose();
+    _budInCtrl.dispose();
+    _budExCtrl.dispose();
+    _nonCalcInCtrl.dispose();
+    _nonCalcExCtrl.dispose();
+    _outBucketCtrl.dispose();
     super.dispose();
   }
 
-  void _scrollToInput(FocusNode node) {
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (node.context != null && mounted) {
-        Scrollable.ensureVisible(
-          node.context!,
-          alignment: 0.5,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
+  String _fmt(double v) => v == 0 ? '' : v.toString();
+  double _val(TextEditingController c) => double.tryParse(c.text) ?? 0.0;
+
+  // --- CALCULATOR LOGIC ---
+
+  void _onKeyPress(String value) {
+    if (_activeController != null) {
+      CalculatorKeyboard.handleKeyPress(_activeController!, value);
+    }
+  }
+
+  void _onBackspace() {
+    if (_activeController != null) {
+      CalculatorKeyboard.handleBackspace(_activeController!);
+    }
+  }
+
+  void _onEquals() {
+    if (_activeController != null) {
+      CalculatorKeyboard.handleEquals(_activeController!);
+    }
+  }
+
+  void _onClear() {
+    if (_activeController != null) {
+      _activeController!.clear();
+    }
+  }
+
+  // [NEW] Helper to scroll to field
+  void _scrollToField(int index) {
+    // Small delay to allow keyboard layout update if needed, then scroll
+    Future.delayed(const Duration(milliseconds: 100), () {
+      final context = _fieldKeys[index].currentContext;
+      if (context != null) {
+        Scrollable.ensureVisible(context,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            alignment: 0.5 // Center the field in the viewport
+            );
       }
     });
   }
 
-  void _setActive(TextEditingController ctrl, FocusNode node) {
-    setState(() {
-      _activeController = ctrl;
-      if (!_useSystemKeyboard) {
-        _isKeyboardVisible = true;
-        FocusScope.of(context).requestFocus(node);
-      } else {
-        _isKeyboardVisible = false;
-      }
-    });
-    _scrollToInput(node);
+  void _onNext() {
+    if (_activeController == null) return;
+    final index = _orderedControllers.indexOf(_activeController!);
+    if (index < _orderedControllers.length - 1) {
+      final nextIndex = index + 1;
+      setState(() {
+        _activeController = _orderedControllers[nextIndex];
+      });
+      _orderedFocusNodes[nextIndex].requestFocus();
+      _scrollToField(nextIndex); // [FIX] Trigger Scroll
+    } else {
+      setState(() => _activeController = null);
+      FocusScope.of(context).unfocus();
+    }
   }
 
-  void _closeKeyboard() {
-    setState(() => _isKeyboardVisible = false);
-    FocusScope.of(context).unfocus();
-  }
-
-  void _switchToSystemKeyboard() {
-    setState(() {
-      _useSystemKeyboard = true;
-      _isKeyboardVisible = false;
-    });
-    FocusScope.of(context).unfocus();
-  }
-
-  void _handleNext() {
-    if (_activeController == _netIncomeCtrl)
-      _setActive(_netExpenseCtrl, _netExpenseFocus);
-    else if (_activeController == _netExpenseCtrl)
-      _setActive(_capGainCtrl, _capGainFocus);
-    else if (_activeController == _capGainCtrl)
-      _setActive(_capLossCtrl, _capLossFocus);
-    else if (_activeController == _capLossCtrl)
-      _setActive(_nonCalcIncomeCtrl, _nonCalcIncomeFocus);
-    else if (_activeController == _nonCalcIncomeCtrl)
-      _setActive(_nonCalcExpenseCtrl, _nonCalcExpenseFocus);
-    else
-      _closeKeyboard();
-  }
-
-  // --- NEW: Handle Previous Field ---
-  void _handlePrevious() {
-    if (_activeController == _nonCalcExpenseCtrl)
-      _setActive(_nonCalcIncomeCtrl, _nonCalcIncomeFocus);
-    else if (_activeController == _nonCalcIncomeCtrl)
-      _setActive(_capLossCtrl, _capLossFocus);
-    else if (_activeController == _capLossCtrl)
-      _setActive(_capGainCtrl, _capGainFocus);
-    else if (_activeController == _capGainCtrl)
-      _setActive(_netExpenseCtrl, _netExpenseFocus);
-    else if (_activeController == _netExpenseCtrl)
-      _setActive(_netIncomeCtrl, _netIncomeFocus);
-    else
-      _closeKeyboard();
-  }
-
-  Future<void> _save() async {
-    _closeKeyboard();
-
-    final split = NetWorthSplit(
-      id: '',
-      date: _selectedDate,
-      netIncome: double.tryParse(_netIncomeCtrl.text) ?? 0,
-      netExpense: double.tryParse(_netExpenseCtrl.text) ?? 0,
-      capitalGain: double.tryParse(_capGainCtrl.text) ?? 0,
-      capitalLoss: double.tryParse(_capLossCtrl.text) ?? 0,
-      nonCalcIncome: double.tryParse(_nonCalcIncomeCtrl.text) ?? 0,
-      nonCalcExpense: double.tryParse(_nonCalcExpenseCtrl.text) ?? 0,
-    );
-
-    await _netWorthService.addNetWorthSplit(split);
-    if (mounted) Navigator.pop(context);
+  void _onPrev() {
+    if (_activeController == null) return;
+    final index = _orderedControllers.indexOf(_activeController!);
+    if (index > 0) {
+      final prevIndex = index - 1;
+      setState(() {
+        _activeController = _orderedControllers[prevIndex];
+      });
+      _orderedFocusNodes[prevIndex].requestFocus();
+      _scrollToField(prevIndex); // [FIX] Trigger Scroll
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = _activeController != null
+        ? 0.0
+        : MediaQuery.of(context).viewInsets.bottom;
+
     return Container(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+      height: MediaQuery.of(context).size.height * 0.92,
+      decoration: const BoxDecoration(
+        color: BudgetrColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      color: const Color(0xff0D1B2A),
       child: Column(
-        mainAxisSize: MainAxisSize.max,
         children: [
-          // Content
+          const SizedBox(height: 16),
+          Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          Text(
+              widget.splitToEdit == null ? "Add Net Worth Entry" : "Edit Entry",
+              style: BudgetrStyles.h3),
+          const SizedBox(height: 16),
+
           Expanded(
             child: SingleChildScrollView(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
+                  _buildDateSelector(),
                   const SizedBox(height: 24),
-
-                  // Header with Date Picker
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Add Split Analysis",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () async {
-                          final d = await showDatePicker(
-                            context: context,
-                            initialDate: _selectedDate,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime.now(),
-                            builder: (context, child) => Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: const ColorScheme.dark(
-                                  primary: Color(0xFF2EC4B6),
-                                  surface: Color(0xFF1B263B),
-                                ),
-                              ),
-                              child: child!,
-                            ),
-                          );
-                          if (d != null) setState(() => _selectedDate = d);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.calendar_today,
-                                size: 14,
-                                color: Colors.white70,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                DateFormat('dd MMM').format(_selectedDate),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // --- Input Fields Grid ---
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSplitInput(
-                          "Net Income",
-                          _netIncomeCtrl,
-                          _netIncomeFocus,
-                          BudgetrColors.success,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildSplitInput(
-                          "Net Expense",
-                          _netExpenseCtrl,
-                          _netExpenseFocus,
-                          BudgetrColors.error,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSplitInput(
-                          "Capital Gain",
-                          _capGainCtrl,
-                          _capGainFocus,
-                          BudgetrColors.success,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildSplitInput(
-                          "Capital Loss",
-                          _capLossCtrl,
-                          _capLossFocus,
-                          BudgetrColors.error,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSplitInput(
-                          "Non Calculated Income",
-                          _nonCalcIncomeCtrl,
-                          _nonCalcIncomeFocus,
-                          BudgetrColors.inputFill,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildSplitInput(
-                          "Non Calculated Expense",
-                          _nonCalcExpenseCtrl,
-                          _nonCalcExpenseFocus,
-                          BudgetrColors.inputFill,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 40),
+                  _buildSectionHeader("ASSETS", Icons.account_balance_wallet,
+                      BudgetrColors.success),
+                  _buildGrid([
+                    _buildField(_bankCtrl, "Bank Accounts"),
+                    _buildField(_cashInHandCtrl, "Cash in Hand"),
+                    _buildField(_mfCtrl, "Mutual Funds"),
+                    _buildField(_equityCtrl, "Equity / Stocks"),
+                    _buildField(_bondCtrl, "Bonds"),
+                    _buildField(_depositCtrl, "Deposits (FD/RD)"),
+                    _buildField(_realEstateCtrl, "Real Estate"),
+                    _buildField(_otherAssetCtrl, "Other Assets"),
+                  ]),
+                  const SizedBox(height: 18),
+                  _buildNoteField(_assetNoteCtrl, "Asset Notes"),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader(
+                      "LIABILITIES", Icons.credit_score, BudgetrColors.error),
+                  _buildGrid([
+                    _buildField(_loanCtrl, "Loans"),
+                    _buildField(_ccCtrl, "Credit Card Due"),
+                    _buildField(_otherDebtCtrl, "Other Debts"),
+                  ]),
+                  const SizedBox(height: 18),
+                  _buildNoteField(_liabNoteCtrl, "Liability Notes"),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader("OTHER MONTHLY CASHFLOWS",
+                      Icons.swap_horiz, Colors.blueAccent),
+                  _buildGrid([
+                    _buildField(_budInCtrl, "Budgeted Income"),
+                    _buildField(_budExCtrl, "Budgeted Expense"),
+                    _buildField(_nonCalcInCtrl, "Non-Calc Income"),
+                    _buildField(_nonCalcExCtrl, "Non-Calc Expense"),
+                    _buildField(_outBucketCtrl, "Out of Bucket Exp"),
+                  ]),
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
           ),
 
-          // --- Sticky Action Bar ---
+          // Save Button
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.fromLTRB(20, 16, 20, bottomPadding + 20),
             decoration: BoxDecoration(
-              color: const Color(0xff0D1B2A),
-              border: Border(
-                top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                color: BudgetrColors.background,
+                border: Border(
+                    top: BorderSide(color: Colors.white.withOpacity(0.1)))),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _save,
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: BudgetrColors.accent,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12))),
+                child: const Text("SAVE ENTRY",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.white)),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 10,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: BorderSide(color: Colors.white.withOpacity(0.2)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text(
-                      "Cancel",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: BudgetrColors.accent,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text(
-                      "Save Split",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
 
-          // --- Keyboard ---
-          AnimatedSize(
-            duration: const Duration(milliseconds: 250),
-            child: _isKeyboardVisible
-                ? CalculatorKeyboard(
-                    onKeyPress: (v) => CalculatorKeyboard.handleKeyPress(
-                      _activeController!,
-                      v,
-                    ),
-                    onBackspace: () =>
-                        CalculatorKeyboard.handleBackspace(_activeController!),
-                    onClear: () => _activeController!.clear(),
-                    onEquals: () =>
-                        CalculatorKeyboard.handleEquals(_activeController!),
-                    onClose: _closeKeyboard,
-                    onSwitchToSystem: _switchToSystemKeyboard,
-                    onNext: _handleNext,
-                    onPrevious: _handlePrevious, // Added Callback
-                  )
-                : const SizedBox.shrink(),
-          ),
+          // Calculator
+          if (_activeController != null)
+            CalculatorKeyboard(
+              onKeyPress: _onKeyPress,
+              onBackspace: _onBackspace,
+              onClear: _onClear,
+              onEquals: _onEquals,
+              onNext: _onNext,
+              onPrevious: _onPrev,
+              onClose: () {
+                setState(() => _activeController = null);
+                FocusScope.of(context).unfocus();
+              },
+              onSwitchToSystem: () {
+                setState(() => _activeController = null);
+              },
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildSplitInput(
-    String label,
-    TextEditingController ctrl,
-    FocusNode node,
-    Color accent,
-  ) {
-    return TextFormField(
-      controller: ctrl,
-      focusNode: node,
-      readOnly: !_useSystemKeyboard,
-      showCursor: true,
-      keyboardType: TextInputType.number,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 18,
-        fontWeight: FontWeight.w500,
+  Widget _buildSectionHeader(String title, IconData icon, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(title,
+              style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 1.2)),
+          const SizedBox(width: 8),
+          Expanded(child: Divider(color: color.withOpacity(0.3))),
+        ],
       ),
-      decoration: InputDecoration(
-        labelText: label, // Floating label
-        labelStyle: TextStyle(
-          color: Colors.white.withOpacity(0.5),
-          fontSize: 14,
-        ),
-        floatingLabelStyle: TextStyle(
-          color: accent,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-        prefixText: '₹ ',
-        prefixStyle: const TextStyle(
-          color: Colors.white54,
-          fontSize: 18,
-        ),
-        hintText: '0',
-        hintStyle: TextStyle(color: Colors.white12, fontSize: 18),
-        filled: true,
-        fillColor: const Color(0xff162032),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: Colors.white.withOpacity(0.1),
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: Colors.white.withOpacity(0.1),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: accent, width: 1.5),
-        ),
-      ),
-      onTap: () => _setActive(ctrl, node),
     );
+  }
+
+  Widget _buildGrid(List<Widget> children) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: children
+          .map((c) => SizedBox(
+              width: (MediaQuery.of(context).size.width - 52) / 2, child: c))
+          .toList(),
+    );
+  }
+
+  Widget _buildField(TextEditingController ctrl, String label) {
+    final isActive = _activeController == ctrl;
+    final index = _orderedControllers.indexOf(ctrl);
+    final focusNode = index != -1 ? _orderedFocusNodes[index] : null;
+    final key = index != -1 ? _fieldKeys[index] : null; // [NEW] Get Key
+
+    return Column(
+      key: key, // [NEW] Assign GlobalKey for scrolling
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: TextStyle(
+                color: isActive ? BudgetrColors.accent : Colors.white54,
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 6),
+        TextField(
+          controller: ctrl,
+          focusNode: focusNode,
+          readOnly: true,
+          showCursor: true,
+          onTap: () {
+            setState(() {
+              _activeController = ctrl;
+            });
+            focusNode?.requestFocus();
+            if (index != -1) _scrollToField(index); // Scroll on tap too
+          },
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: "0.00",
+            hintStyle: const TextStyle(color: Colors.white24),
+            filled: true,
+            fillColor: isActive
+                ? BudgetrColors.accent.withOpacity(0.1)
+                : Colors.white.withOpacity(0.05),
+            isDense: true,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                    color:
+                        isActive ? BudgetrColors.accent : Colors.transparent)),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                    color:
+                        isActive ? BudgetrColors.accent : Colors.transparent)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNoteField(TextEditingController ctrl, String hint) {
+    return TextField(
+      controller: ctrl,
+      onTap: () {
+        setState(() => _activeController = null);
+      },
+      style: const TextStyle(color: Colors.white, fontSize: 13),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white24),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none),
+      ),
+    );
+  }
+
+  Widget _buildDateSelector() {
+    return GestureDetector(
+      onTap: () async {
+        setState(() => _activeController = null);
+        FocusScope.of(context).unfocus();
+        final d = await showDatePicker(
+            context: context,
+            initialDate: _selectedDate,
+            firstDate: DateTime(2000),
+            lastDate: DateTime.now(),
+            builder: (c, child) =>
+                Theme(data: ThemeData.dark(), child: child!));
+        if (d != null) setState(() => _selectedDate = d);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.calendar_month, color: Colors.white70, size: 18),
+            const SizedBox(width: 8),
+            Text(DateFormat('dd MMM yyyy').format(_selectedDate),
+                style: const TextStyle(color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _save() {
+    final split = NetWorthSplitModel(
+      id: widget.splitToEdit?.id ?? '',
+      date: _selectedDate,
+      bankAccounts: _val(_bankCtrl),
+      cashInHand: _val(_cashInHandCtrl),
+      mutualFunds: _val(_mfCtrl),
+      equity: _val(_equityCtrl),
+      bonds: _val(_bondCtrl),
+      deposits: _val(_depositCtrl),
+      realEstate: _val(_realEstateCtrl),
+      otherAssets: _val(_otherAssetCtrl),
+      assetNotes: _assetNoteCtrl.text,
+      loans: _val(_loanCtrl),
+      creditCardOutstanding: _val(_ccCtrl),
+      otherDebts: _val(_otherDebtCtrl),
+      liabilityNotes: _liabNoteCtrl.text,
+      budgetedIncome: _val(_budInCtrl),
+      budgetedExpense: _val(_budExCtrl),
+      nonCalcIncome: _val(_nonCalcInCtrl),
+      nonCalcExpense: _val(_nonCalcExCtrl),
+      outOfBucketExpense: _val(_outBucketCtrl),
+    );
+
+    if (widget.splitToEdit != null) {
+      GetIt.I<NetWorthService>().updateSplit(split);
+    } else {
+      GetIt.I<NetWorthService>().createSplit(split);
+    }
+    Navigator.pop(context);
   }
 }

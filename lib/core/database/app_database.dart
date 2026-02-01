@@ -39,7 +39,24 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (Migrator m) async {
+        await m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 2) {
+          // If upgrading, we recreate the table to ensure new columns exist
+          // Warning: This clears existing split data. Ideally, use addColumn for each new field.
+          // For development speed, we drop and recreate.
+          await m.deleteTable(netWorthSplits.actualTableName);
+          await m.createTable(netWorthSplits);
+        }
+      },
+    );
+  }
 }
 
 LazyDatabase _openConnection() {
