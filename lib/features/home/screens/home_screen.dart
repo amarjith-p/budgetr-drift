@@ -1,3 +1,4 @@
+import 'package:budget/features/goals_loans/screens/goals_loans_dashboard.dart';
 import 'package:flutter/material.dart';
 
 import '../../custom_entry/screens/custom_entry_dashboard.dart';
@@ -137,6 +138,13 @@ class HomeScreen extends StatelessWidget {
                           icon: Icons.dashboard_customize_outlined,
                           color: const Color(0xFFF72585),
                           destination: const CustomEntryDashboard(),
+                        ),
+                        HomeFeatureCard(
+                          title: "Goals & Loans",
+                          subtitle: "Targets & Debt Mgmt",
+                          icon: Icons.flag_outlined,
+                          color: const Color(0xFF7209B7), // Violet
+                          destination: const GoalsLoansDashboard(),
                         ),
                       ],
                     ),

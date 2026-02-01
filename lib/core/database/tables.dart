@@ -265,3 +265,93 @@ class Settings extends Table {
   @override
   Set<Column> get primaryKey => {key};
 }
+
+class Goals extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+
+  // [NEW] Asset Details
+  TextColumn get purpose => text().nullable()(); // "Retirement", "Car", etc.
+  TextColumn get investmentType => text()
+      .withDefault(const Constant('Others'))(); // "Mutual Fund", "Stocks" etc.
+  TextColumn get identificationNumber =>
+      text().nullable()(); // Folio/Account No
+
+  // Valuation
+  RealColumn get currentAmount =>
+      real().withDefault(const Constant(0.0))(); // Current Value
+  RealColumn get targetAmount => real()(); // Target Value
+
+  // Dates
+  DateTimeColumn get startDate =>
+      dateTime().withDefault(currentDate)(); // Start Date
+  DateTimeColumn get deadline => dateTime().nullable()(); // Target Date
+
+  // Performance
+  RealColumn get expectedReturn =>
+      real().nullable()(); // Expected Rate of Return (%)
+
+  // UI & Meta
+  IntColumn get color => integer()();
+  TextColumn get icon => text().nullable()();
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  // Legacy fields (Optional to keep or remove, keeping for safety)
+  TextColumn get category => text().nullable()();
+  TextColumn get priority => text().withDefault(const Constant('Medium'))();
+  RealColumn get monthlyContributionTarget => real().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class Loans extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get provider => text()(); // Bank Name
+  TextColumn get type => text()(); // 'BORROWED' or 'LENT'
+
+  // Amounts
+  RealColumn get principalAmount => real()
+      .withDefault(const Constant(0.0))(); // [NEW] The original loan amount
+  RealColumn get totalAmount =>
+      real()(); // Total Repayment Amount (Principal + Interest)
+  RealColumn get paidAmount => real().withDefault(const Constant(0.0))();
+
+  // Terms
+  RealColumn get interestRate => real().withDefault(const Constant(0.0))();
+  RealColumn get emiAmount => real().nullable()(); // [NEW]
+
+  // Dates
+  DateTimeColumn get startDate => dateTime()();
+  DateTimeColumn get dueDate => dateTime().nullable()(); // Loan End Date
+  DateTimeColumn get nextPaymentDate => dateTime().nullable()(); // [NEW]
+
+  // Meta
+  TextColumn get notes => text().nullable()(); // [NEW] Account No etc.
+  BoolColumn get isClosed => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// --- ASSET LOGS (Enhanced) ---
+class AssetLogs extends Table {
+  TextColumn get id => text()();
+  TextColumn get parentId => text()();
+  TextColumn get type =>
+      text()(); // 'Goal_Contribution', 'Loan_Repayment', etc.
+
+  // The Total Amount of the transaction
+  RealColumn get amount => real()();
+
+  // [NEW] The portion of 'amount' that is Interest/Profit
+  RealColumn get interestComponent => real().withDefault(const Constant(0.0))();
+
+  DateTimeColumn get date => dateTime()();
+  TextColumn get notes => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
