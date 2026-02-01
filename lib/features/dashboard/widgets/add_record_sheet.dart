@@ -113,8 +113,11 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
   void _calculate() {
     if (_config == null) return;
     final salary = double.tryParse(_salaryController.text) ?? 0;
+    final extra = double.tryParse(_extraIncomeController.text) ?? 0;
+    final emi = double.tryParse(_emiController.text) ?? 0;
     setState(() {
-      _effectiveIncome = salary;
+      _effectiveIncome = (salary + extra) - emi;
+      if (_effectiveIncome < 0) _effectiveIncome = 0;
     });
   }
 
