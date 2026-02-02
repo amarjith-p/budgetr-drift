@@ -203,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               Text("₹ ${currentBalance.toStringAsFixed(2)}",
-                  style: GoogleFonts.robotoSlab(
+                  style: GoogleFonts.openSans(
                       color: Colors.white,
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
@@ -244,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 4),
         Text(value,
-            style: GoogleFonts.robotoSlab(
+            style: GoogleFonts.openSans(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600)),
