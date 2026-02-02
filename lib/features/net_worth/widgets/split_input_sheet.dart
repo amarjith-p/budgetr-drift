@@ -39,10 +39,13 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
   // 2. Liabilities
   final _loanCtrl = TextEditingController();
   final _ccCtrl = TextEditingController();
+  final _cclnCtrl = TextEditingController();
   final _otherDebtCtrl = TextEditingController();
   final _liabNoteCtrl = TextEditingController();
 
   // 3. Cashflow
+  final _totInCtrl = TextEditingController();
+  final _totExCtrl = TextEditingController();
   final _budInCtrl = TextEditingController();
   final _budExCtrl = TextEditingController();
   final _nonCalcInCtrl = TextEditingController();
@@ -65,7 +68,10 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
       _otherAssetCtrl,
       _loanCtrl,
       _ccCtrl,
+      _cclnCtrl,
       _otherDebtCtrl,
+      _totInCtrl,
+      _totExCtrl,
       _budInCtrl,
       _budExCtrl,
       _nonCalcInCtrl,
@@ -96,9 +102,12 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
 
       _loanCtrl.text = _fmt(s.loans);
       _ccCtrl.text = _fmt(s.creditCardOutstanding);
+      _cclnCtrl.text = _fmt(s.creditLineOutstanding);
       _otherDebtCtrl.text = _fmt(s.otherDebts);
       _liabNoteCtrl.text = s.liabilityNotes ?? '';
 
+      _totInCtrl.text = _fmt(s.totalIncome);
+      _totExCtrl.text = _fmt(s.totalExpense);
       _budInCtrl.text = _fmt(s.budgetedIncome);
       _budExCtrl.text = _fmt(s.budgetedExpense);
       _nonCalcInCtrl.text = _fmt(s.nonCalcIncome);
@@ -123,8 +132,11 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
     _assetNoteCtrl.dispose();
     _loanCtrl.dispose();
     _ccCtrl.dispose();
+    _cclnCtrl.dispose();
     _otherDebtCtrl.dispose();
     _liabNoteCtrl.dispose();
+    _totInCtrl.dispose();
+    _totExCtrl.dispose();
     _budInCtrl.dispose();
     _budExCtrl.dispose();
     _nonCalcInCtrl.dispose();
@@ -261,6 +273,7 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
                   _buildGrid([
                     _buildField(_loanCtrl, "Loans"),
                     _buildField(_ccCtrl, "Credit Card Due"),
+                    _buildField(_cclnCtrl, "Credit Line Due"),
                     _buildField(_otherDebtCtrl, "Other Debts"),
                   ]),
                   const SizedBox(height: 18),
@@ -269,6 +282,8 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
                   _buildSectionHeader("OTHER MONTHLY CASHFLOWS",
                       Icons.swap_horiz, Colors.blueAccent),
                   _buildGrid([
+                    _buildField(_totInCtrl, "Total Income"),
+                    _buildField(_totExCtrl, "Total Expense"),
                     _buildField(_budInCtrl, "Budgeted Income"),
                     _buildField(_budExCtrl, "Budgeted Expense"),
                     _buildField(_nonCalcInCtrl, "Non-Calc Income"),
@@ -485,8 +500,11 @@ class _SplitInputSheetState extends State<SplitInputSheet> {
       assetNotes: _assetNoteCtrl.text,
       loans: _val(_loanCtrl),
       creditCardOutstanding: _val(_ccCtrl),
+      creditLineOutstanding: _val(_cclnCtrl),
       otherDebts: _val(_otherDebtCtrl),
       liabilityNotes: _liabNoteCtrl.text,
+      totalIncome: _val(_totInCtrl),
+      totalExpense: _val(_totExCtrl),
       budgetedIncome: _val(_budInCtrl),
       budgetedExpense: _val(_budExCtrl),
       nonCalcIncome: _val(_nonCalcInCtrl),

@@ -16,10 +16,13 @@ class NetWorthSplitModel {
   // Liabilities
   final double loans;
   final double creditCardOutstanding;
+  final double creditLineOutstanding;
   final double otherDebts;
   final String? liabilityNotes;
 
   // Cashflows
+  final double totalIncome;
+  final double totalExpense;
   final double budgetedIncome;
   final double budgetedExpense;
   final double nonCalcIncome;
@@ -40,8 +43,11 @@ class NetWorthSplitModel {
     this.assetNotes,
     this.loans = 0,
     this.creditCardOutstanding = 0,
+    this.creditLineOutstanding = 0,
     this.otherDebts = 0,
     this.liabilityNotes,
+    this.totalIncome = 0,
+    this.totalExpense = 0,
     this.budgetedIncome = 0,
     this.budgetedExpense = 0,
     this.nonCalcIncome = 0,
@@ -63,4 +69,6 @@ class NetWorthSplitModel {
   double get totalLiabilities => loans + creditCardOutstanding + otherDebts;
 
   double get netWorth => totalAssets - totalLiabilities;
+  double get netCashflow => totalIncome - totalExpense;
+  double get budgetedCashflow => budgetedIncome - budgetedExpense;
 }

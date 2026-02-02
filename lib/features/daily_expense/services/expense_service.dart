@@ -561,4 +561,34 @@ class ExpenseService {
               currentBalance: Value(acc.currentBalance + change)));
     }
   }
+
+  // 1. Get Limits for a specific month
+  Future<db.HeatmapLimit> getMonthLimits(DateTime date) async {
+    final id = "${date.year}${date.month.toString().padLeft(2, '0')}";
+
+    final result = await (_db.select(_db.heatmapLimits)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+
+    // Return found limits or Defaults
+    return result ??
+        db.HeatmapLimit(
+            id: id,
+            safeLimit: 500.0,
+            cautionLimit: 2000.0,
+            severeLimit: 5000.0);
+  }
+
+// 2. Save Limits
+  Future<void> saveMonthLimits(
+      String monthId, double safe, double caution, double severe) async {
+    await _db.into(_db.heatmapLimits).insertOnConflictUpdate(
+          db.HeatmapLimitsCompanion.insert(
+            id: monthId,
+            safeLimit: Value(safe),
+            cautionLimit: Value(caution),
+            severeLimit: Value(severe),
+          ),
+        );
+  }
 }

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
+import '../../../core/database/app_database.dart';
 
 // --- CORE IMPORTS ---
 import '../../../core/design/budgetr_colors.dart';
@@ -41,14 +42,14 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
   bool _isLoading = true;
 
   // --- DATA ---
-  List<dynamic> _rawTransactions = []; // Unfiltered
-  List<dynamic> _filteredTransactions = []; // Filtered
-  Map<DateTime, double> _dailySpending = {}; // For Heatmap
-  List<TransactionCategoryModel> _categories = []; // For Filter
+  List<dynamic> _rawTransactions = [];
+  List<dynamic> _filteredTransactions = [];
+  Map<DateTime, double> _dailySpending = {};
+  List<TransactionCategoryModel> _categories = [];
 
   // --- FILTERS ---
-  String _filterSource = 'All'; // Options: 'All', 'Bank', 'Credit'
-  String? _filterCategory; // null = All Categories
+  String _filterSource = 'All';
+  String? _filterCategory;
 
   // --- STATS ---
   double _monthTotal = 0.0;
@@ -56,16 +57,50 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
   int _noSpendDays = 0;
 
   // --- CONFIG ---
-  double _greenLimit = 500.0;
-  double _yellowLimit = 2000.0;
+  double _greenLimit = 500.0; // Safe
+  double _yellowLimit = 1000.0; // Caution
+  double _orangeLimit = 2000.0; // Warning [NEW]
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _loadPreferences();
     _fetchCategories();
+    _loadMonthLimits(_focusedDay); // Load DB limits for current month
     _fetchTransactions();
+  }
+
+// [NEW] Load limits from DB for the specific month
+  Future<void> _loadMonthLimits(DateTime date) async {
+    try {
+      final limits = await _expenseService.getMonthLimits(date);
+      if (mounted) {
+        setState(() {
+          _greenLimit = limits.safeLimit;
+          _yellowLimit = limits.cautionLimit;
+          _orangeLimit = limits.severeLimit;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading limits: $e");
+    }
+  }
+
+  // [UPDATED] Save to DB instead of SharedPreferences
+  Future<void> _saveMonthLimits(
+      double green, double yellow, double orange) async {
+    final monthId =
+        "${_focusedDay.year}${_focusedDay.month.toString().padLeft(2, '0')}";
+
+    await _expenseService.saveMonthLimits(monthId, green, yellow, orange);
+
+    if (mounted) {
+      setState(() {
+        _greenLimit = green;
+        _yellowLimit = yellow;
+        _orangeLimit = orange;
+      });
+    }
   }
 
   Future<void> _loadPreferences() async {
@@ -205,10 +240,20 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
     });
   }
 
+  // [UPDATED] Logic for 3 Limits (4 Colors)
   Color _getColorForSpend(double amount) {
     if (amount == 0) return Colors.transparent;
+
+    // Tier 1: Safe
     if (amount <= _greenLimit) return const Color(0xFF2EC4B6).withOpacity(0.8);
+
+    // Tier 2: Caution
     if (amount <= _yellowLimit) return const Color(0xFFFF9F1C).withOpacity(0.8);
+
+    // Tier 3: Warning [NEW]
+    if (amount <= _orangeLimit) return const Color(0xFFFF5400).withOpacity(0.8);
+
+    // Tier 4: Critical
     return const Color(0xFFE71D36).withOpacity(0.8);
   }
 
@@ -547,6 +592,7 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
                 _focusedDay = focusedDay;
                 _calculateMonthStats(focusedDay);
               });
+              _loadMonthLimits(focusedDay);
             },
             calendarBuilders: CalendarBuilders(
               defaultBuilder: (context, day, focusedDay) => _buildDayCell(day),
@@ -603,13 +649,15 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
 
   Widget _buildLegend() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _legendDot(const Color(0xFF2EC4B6), "< ₹${_greenLimit.toInt()}"),
-          _legendDot(const Color(0xFFFF9F1C), "< ₹${_yellowLimit.toInt()}"),
-          _legendDot(const Color(0xFFE71D36), "> ₹${_yellowLimit.toInt()}"),
+          _legendDot(const Color(0xFF2EC4B6), "< ${_greenLimit.toInt()}"),
+          _legendDot(const Color(0xFFFF9F1C), "< ${_yellowLimit.toInt()}"),
+          _legendDot(
+              const Color(0xFFFF5400), "< ${_orangeLimit.toInt()}"), // New
+          _legendDot(const Color(0xFFE71D36), "> ${_orangeLimit.toInt()}"),
         ],
       ),
     );
@@ -877,11 +925,16 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
   }
 
   // Removed _getCategoryIcon as it is no longer needed
+  // [UPDATED] Settings Sheet with 3 Inputs
   void _showLimitSettingsSheet() {
     final greenCtrl =
         TextEditingController(text: _greenLimit.toInt().toString());
     final yellowCtrl =
         TextEditingController(text: _yellowLimit.toInt().toString());
+    final orangeCtrl =
+        TextEditingController(text: _orangeLimit.toInt().toString()); // New
+
+    final monthName = DateFormat('MMMM yyyy').format(_focusedDay);
 
     showModalBottomSheet(
       context: context,
@@ -902,7 +955,7 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.palette_rounded, color: Color(0xFF00B4D8)),
+                const Icon(Icons.tune, color: Color(0xFF00B4D8)),
                 const SizedBox(width: 8),
                 const Text(
                   "Heatmap Sensitivity",
@@ -914,16 +967,29 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              "Adjust the spending thresholds to customize your calendar colors.",
-              style: TextStyle(color: Colors.white54, fontSize: 12),
+            Text(
+              "Configuring limits for $monthName only.",
+              style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic),
             ),
             const SizedBox(height: 24),
+
+            // Limit 1
             _buildLimitInput(
                 "Safe Limit (Green)", greenCtrl, const Color(0xFF2EC4B6)),
             const SizedBox(height: 16),
+
+            // Limit 2
             _buildLimitInput(
-                "Caution Limit (Orange)", yellowCtrl, const Color(0xFFFF9F1C)),
+                "Caution Limit (Yellow)", yellowCtrl, const Color(0xFFFF9F1C)),
+            const SizedBox(height: 16),
+
+            // Limit 3 [NEW]
+            _buildLimitInput(
+                "Warning Limit (Orange)", orangeCtrl, const Color(0xFFFF5400)),
+
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -933,15 +999,23 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
                   backgroundColor: const Color(0xFF00B4D8),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
                 ),
                 onPressed: () {
                   final g = double.tryParse(greenCtrl.text) ?? 500;
                   final y = double.tryParse(yellowCtrl.text) ?? 2000;
-                  _savePreferences(g, y);
-                  Navigator.pop(context);
+                  final o = double.tryParse(orangeCtrl.text) ?? 5000;
+
+                  // Simple validation to ensure logical order
+                  if (g < y && y < o) {
+                    _saveMonthLimits(g, y, o);
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text(
+                            "Limits must be in ascending order: Green < Yellow < Orange")));
+                  }
                 },
-                child: const Text("Save Configuration",
+                child: const Text("Save for this Month",
                     style: TextStyle(
                         color: Colors.white, fontWeight: FontWeight.bold)),
               ),

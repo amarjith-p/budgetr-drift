@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -192,6 +193,7 @@ class _NetWorthCardState extends State<_NetWorthCard> {
                       [
                         _item("Loans", s.loans),
                         _item("Credit Cards", s.creditCardOutstanding),
+                        _item("Credit Lines", s.creditLineOutstanding),
                         _item("Other Debts", s.otherDebts),
                       ],
                       notes: s.liabilityNotes),
@@ -200,11 +202,18 @@ class _NetWorthCardState extends State<_NetWorthCard> {
 
                   // 3. Cashflow
                   _buildSection("CASHFLOW (MONTHLY)", null, Colors.blueAccent, [
-                    _item("Budget Income", s.budgetedIncome),
-                    _item("Budget Expense", s.budgetedExpense),
+                    _item("Total Income", s.totalIncome),
+                    _item("Total Expense", s.totalExpense),
+                    _item("Budgeted Income", s.budgetedIncome),
+                    _item("Budgeted Expense", s.budgetedExpense),
                     _item("Non-Calc Income", s.nonCalcIncome),
                     _item("Non-Calc Exp", s.nonCalcExpense),
                     _item("Out of Bucket", s.outOfBucketExpense),
+                  ]),
+                  const SizedBox(height: 2),
+                  _buildSection("TOTAL CASHFLOW", null, Colors.blueAccent, [
+                    _item("Budgeted Cashflow", s.budgetedCashflow),
+                    _item("Net Cashflow", s.netCashflow),
                   ]),
 
                   const SizedBox(height: 16),
@@ -226,13 +235,27 @@ class _NetWorthCardState extends State<_NetWorthCard> {
                       ),
                       const SizedBox(width: 8),
                       TextButton.icon(
-                        icon: const Icon(Icons.delete,
-                            size: 16, color: BudgetrColors.error),
-                        label: const Text("Delete",
-                            style: TextStyle(color: BudgetrColors.error)),
-                        onPressed: () =>
-                            GetIt.I<NetWorthService>().deleteSplit(s.id),
-                      ),
+                          icon: const Icon(Icons.delete,
+                              size: 16, color: BudgetrColors.error),
+                          label: const Text("Delete",
+                              style: TextStyle(color: BudgetrColors.error)),
+                          onPressed: () => showStatusSheet(
+                                context: context,
+                                title: "Delete Split?",
+                                message:
+                                    "Are you sure you want to delete this split? This action cannot be undone.",
+                                icon: Icons.delete,
+                                color: BudgetrColors.error,
+                                cancelButtonText: "Cancel",
+                                onCancel: () {},
+                                buttonText: "Delete",
+                                onDismiss: () async {
+                                  await GetIt.I<NetWorthService>()
+                                      .deleteSplit(s.id);
+                                },
+                              )
+                          // GetIt.I<NetWorthService>().deleteSplit(s.id),
+                          ),
                     ],
                   )
                 ],
@@ -271,7 +294,7 @@ class _NetWorthCardState extends State<_NetWorthCard> {
                   style: TextStyle(
                       color: color, fontWeight: FontWeight.bold, fontSize: 11)),
               if (total != null)
-                Text("₹${NumberFormat.compact().format(total)}",
+                Text("₹${NumberFormat('#,##0.##').format(total)}",
                     style: TextStyle(
                         color: color,
                         fontWeight: FontWeight.bold,

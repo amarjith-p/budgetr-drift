@@ -233,10 +233,14 @@ class NetWorthSplits extends Table {
   RealColumn get loans => real().withDefault(const Constant(0.0))();
   RealColumn get creditCardOutstanding =>
       real().withDefault(const Constant(0.0))();
+  RealColumn get creditLineOutstanding =>
+      real().withDefault(const Constant(0.0))();
   RealColumn get otherDebts => real().withDefault(const Constant(0.0))();
   TextColumn get liabilityNotes => text().nullable()();
 
   // --- 3. OTHER CASHFLOWS ---
+  RealColumn get totalIncome => real().withDefault(const Constant(0.0))();
+  RealColumn get totalExpense => real().withDefault(const Constant(0.0))();
   RealColumn get budgetedIncome => real().withDefault(const Constant(0.0))();
   RealColumn get budgetedExpense => real().withDefault(const Constant(0.0))();
   RealColumn get nonCalcIncome => real().withDefault(const Constant(0.0))();
@@ -385,6 +389,24 @@ class AssetLogs extends Table {
 
   DateTimeColumn get date => dateTime()();
   TextColumn get notes => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class HeatmapLimits extends Table {
+  // ID Format: "YYYYMM" (e.g., "202402")
+  TextColumn get id => text()();
+
+  // Tier 1: Spending <= this is Safe (Green)
+  RealColumn get safeLimit => real().withDefault(const Constant(500.0))();
+
+  // Tier 2: Spending <= this is Caution (Yellow)
+  RealColumn get cautionLimit => real().withDefault(const Constant(2000.0))();
+
+  // Tier 3: Spending <= this is Warning (Orange) [NEW FIELD]
+  // Anything above this is Critical (Red)
+  RealColumn get severeLimit => real().withDefault(const Constant(5000.0))();
 
   @override
   Set<Column> get primaryKey => {id};

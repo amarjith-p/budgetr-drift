@@ -4674,6 +4674,14 @@ class $NetWorthSplitsTable extends NetWorthSplits
           type: DriftSqlType.double,
           requiredDuringInsert: false,
           defaultValue: const Constant(0.0));
+  static const VerificationMeta _creditLineOutstandingMeta =
+      const VerificationMeta('creditLineOutstanding');
+  @override
+  late final GeneratedColumn<double> creditLineOutstanding =
+      GeneratedColumn<double>('credit_line_outstanding', aliasedName, false,
+          type: DriftSqlType.double,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(0.0));
   static const VerificationMeta _otherDebtsMeta =
       const VerificationMeta('otherDebts');
   @override
@@ -4688,6 +4696,22 @@ class $NetWorthSplitsTable extends NetWorthSplits
   late final GeneratedColumn<String> liabilityNotes = GeneratedColumn<String>(
       'liability_notes', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _totalIncomeMeta =
+      const VerificationMeta('totalIncome');
+  @override
+  late final GeneratedColumn<double> totalIncome = GeneratedColumn<double>(
+      'total_income', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _totalExpenseMeta =
+      const VerificationMeta('totalExpense');
+  @override
+  late final GeneratedColumn<double> totalExpense = GeneratedColumn<double>(
+      'total_expense', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
   static const VerificationMeta _budgetedIncomeMeta =
       const VerificationMeta('budgetedIncome');
   @override
@@ -4743,8 +4767,11 @@ class $NetWorthSplitsTable extends NetWorthSplits
         assetNotes,
         loans,
         creditCardOutstanding,
+        creditLineOutstanding,
         otherDebts,
         liabilityNotes,
+        totalIncome,
+        totalExpense,
         budgetedIncome,
         budgetedExpense,
         nonCalcIncome,
@@ -4830,6 +4857,12 @@ class $NetWorthSplitsTable extends NetWorthSplits
           creditCardOutstanding.isAcceptableOrUnknown(
               data['credit_card_outstanding']!, _creditCardOutstandingMeta));
     }
+    if (data.containsKey('credit_line_outstanding')) {
+      context.handle(
+          _creditLineOutstandingMeta,
+          creditLineOutstanding.isAcceptableOrUnknown(
+              data['credit_line_outstanding']!, _creditLineOutstandingMeta));
+    }
     if (data.containsKey('other_debts')) {
       context.handle(
           _otherDebtsMeta,
@@ -4841,6 +4874,18 @@ class $NetWorthSplitsTable extends NetWorthSplits
           _liabilityNotesMeta,
           liabilityNotes.isAcceptableOrUnknown(
               data['liability_notes']!, _liabilityNotesMeta));
+    }
+    if (data.containsKey('total_income')) {
+      context.handle(
+          _totalIncomeMeta,
+          totalIncome.isAcceptableOrUnknown(
+              data['total_income']!, _totalIncomeMeta));
+    }
+    if (data.containsKey('total_expense')) {
+      context.handle(
+          _totalExpenseMeta,
+          totalExpense.isAcceptableOrUnknown(
+              data['total_expense']!, _totalExpenseMeta));
     }
     if (data.containsKey('budgeted_income')) {
       context.handle(
@@ -4908,10 +4953,17 @@ class $NetWorthSplitsTable extends NetWorthSplits
       creditCardOutstanding: attachedDatabase.typeMapping.read(
           DriftSqlType.double,
           data['${effectivePrefix}credit_card_outstanding'])!,
+      creditLineOutstanding: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}credit_line_outstanding'])!,
       otherDebts: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}other_debts'])!,
       liabilityNotes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}liability_notes']),
+      totalIncome: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}total_income'])!,
+      totalExpense: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}total_expense'])!,
       budgetedIncome: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}budgeted_income'])!,
       budgetedExpense: attachedDatabase.typeMapping.read(
@@ -4945,8 +4997,11 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
   final String? assetNotes;
   final double loans;
   final double creditCardOutstanding;
+  final double creditLineOutstanding;
   final double otherDebts;
   final String? liabilityNotes;
+  final double totalIncome;
+  final double totalExpense;
   final double budgetedIncome;
   final double budgetedExpense;
   final double nonCalcIncome;
@@ -4966,8 +5021,11 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
       this.assetNotes,
       required this.loans,
       required this.creditCardOutstanding,
+      required this.creditLineOutstanding,
       required this.otherDebts,
       this.liabilityNotes,
+      required this.totalIncome,
+      required this.totalExpense,
       required this.budgetedIncome,
       required this.budgetedExpense,
       required this.nonCalcIncome,
@@ -4991,10 +5049,13 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
     }
     map['loans'] = Variable<double>(loans);
     map['credit_card_outstanding'] = Variable<double>(creditCardOutstanding);
+    map['credit_line_outstanding'] = Variable<double>(creditLineOutstanding);
     map['other_debts'] = Variable<double>(otherDebts);
     if (!nullToAbsent || liabilityNotes != null) {
       map['liability_notes'] = Variable<String>(liabilityNotes);
     }
+    map['total_income'] = Variable<double>(totalIncome);
+    map['total_expense'] = Variable<double>(totalExpense);
     map['budgeted_income'] = Variable<double>(budgetedIncome);
     map['budgeted_expense'] = Variable<double>(budgetedExpense);
     map['non_calc_income'] = Variable<double>(nonCalcIncome);
@@ -5020,10 +5081,13 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
           : Value(assetNotes),
       loans: Value(loans),
       creditCardOutstanding: Value(creditCardOutstanding),
+      creditLineOutstanding: Value(creditLineOutstanding),
       otherDebts: Value(otherDebts),
       liabilityNotes: liabilityNotes == null && nullToAbsent
           ? const Value.absent()
           : Value(liabilityNotes),
+      totalIncome: Value(totalIncome),
+      totalExpense: Value(totalExpense),
       budgetedIncome: Value(budgetedIncome),
       budgetedExpense: Value(budgetedExpense),
       nonCalcIncome: Value(nonCalcIncome),
@@ -5050,8 +5114,12 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
       loans: serializer.fromJson<double>(json['loans']),
       creditCardOutstanding:
           serializer.fromJson<double>(json['creditCardOutstanding']),
+      creditLineOutstanding:
+          serializer.fromJson<double>(json['creditLineOutstanding']),
       otherDebts: serializer.fromJson<double>(json['otherDebts']),
       liabilityNotes: serializer.fromJson<String?>(json['liabilityNotes']),
+      totalIncome: serializer.fromJson<double>(json['totalIncome']),
+      totalExpense: serializer.fromJson<double>(json['totalExpense']),
       budgetedIncome: serializer.fromJson<double>(json['budgetedIncome']),
       budgetedExpense: serializer.fromJson<double>(json['budgetedExpense']),
       nonCalcIncome: serializer.fromJson<double>(json['nonCalcIncome']),
@@ -5077,8 +5145,11 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
       'assetNotes': serializer.toJson<String?>(assetNotes),
       'loans': serializer.toJson<double>(loans),
       'creditCardOutstanding': serializer.toJson<double>(creditCardOutstanding),
+      'creditLineOutstanding': serializer.toJson<double>(creditLineOutstanding),
       'otherDebts': serializer.toJson<double>(otherDebts),
       'liabilityNotes': serializer.toJson<String?>(liabilityNotes),
+      'totalIncome': serializer.toJson<double>(totalIncome),
+      'totalExpense': serializer.toJson<double>(totalExpense),
       'budgetedIncome': serializer.toJson<double>(budgetedIncome),
       'budgetedExpense': serializer.toJson<double>(budgetedExpense),
       'nonCalcIncome': serializer.toJson<double>(nonCalcIncome),
@@ -5101,8 +5172,11 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
           Value<String?> assetNotes = const Value.absent(),
           double? loans,
           double? creditCardOutstanding,
+          double? creditLineOutstanding,
           double? otherDebts,
           Value<String?> liabilityNotes = const Value.absent(),
+          double? totalIncome,
+          double? totalExpense,
           double? budgetedIncome,
           double? budgetedExpense,
           double? nonCalcIncome,
@@ -5123,9 +5197,13 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
         loans: loans ?? this.loans,
         creditCardOutstanding:
             creditCardOutstanding ?? this.creditCardOutstanding,
+        creditLineOutstanding:
+            creditLineOutstanding ?? this.creditLineOutstanding,
         otherDebts: otherDebts ?? this.otherDebts,
         liabilityNotes:
             liabilityNotes.present ? liabilityNotes.value : this.liabilityNotes,
+        totalIncome: totalIncome ?? this.totalIncome,
+        totalExpense: totalExpense ?? this.totalExpense,
         budgetedIncome: budgetedIncome ?? this.budgetedIncome,
         budgetedExpense: budgetedExpense ?? this.budgetedExpense,
         nonCalcIncome: nonCalcIncome ?? this.nonCalcIncome,
@@ -5156,11 +5234,19 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
       creditCardOutstanding: data.creditCardOutstanding.present
           ? data.creditCardOutstanding.value
           : this.creditCardOutstanding,
+      creditLineOutstanding: data.creditLineOutstanding.present
+          ? data.creditLineOutstanding.value
+          : this.creditLineOutstanding,
       otherDebts:
           data.otherDebts.present ? data.otherDebts.value : this.otherDebts,
       liabilityNotes: data.liabilityNotes.present
           ? data.liabilityNotes.value
           : this.liabilityNotes,
+      totalIncome:
+          data.totalIncome.present ? data.totalIncome.value : this.totalIncome,
+      totalExpense: data.totalExpense.present
+          ? data.totalExpense.value
+          : this.totalExpense,
       budgetedIncome: data.budgetedIncome.present
           ? data.budgetedIncome.value
           : this.budgetedIncome,
@@ -5195,8 +5281,11 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
           ..write('assetNotes: $assetNotes, ')
           ..write('loans: $loans, ')
           ..write('creditCardOutstanding: $creditCardOutstanding, ')
+          ..write('creditLineOutstanding: $creditLineOutstanding, ')
           ..write('otherDebts: $otherDebts, ')
           ..write('liabilityNotes: $liabilityNotes, ')
+          ..write('totalIncome: $totalIncome, ')
+          ..write('totalExpense: $totalExpense, ')
           ..write('budgetedIncome: $budgetedIncome, ')
           ..write('budgetedExpense: $budgetedExpense, ')
           ..write('nonCalcIncome: $nonCalcIncome, ')
@@ -5207,27 +5296,31 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      date,
-      bankAccounts,
-      cashInHand,
-      mutualFunds,
-      equity,
-      bonds,
-      deposits,
-      realEstate,
-      otherAssets,
-      assetNotes,
-      loans,
-      creditCardOutstanding,
-      otherDebts,
-      liabilityNotes,
-      budgetedIncome,
-      budgetedExpense,
-      nonCalcIncome,
-      nonCalcExpense,
-      outOfBucketExpense);
+  int get hashCode => Object.hashAll([
+        id,
+        date,
+        bankAccounts,
+        cashInHand,
+        mutualFunds,
+        equity,
+        bonds,
+        deposits,
+        realEstate,
+        otherAssets,
+        assetNotes,
+        loans,
+        creditCardOutstanding,
+        creditLineOutstanding,
+        otherDebts,
+        liabilityNotes,
+        totalIncome,
+        totalExpense,
+        budgetedIncome,
+        budgetedExpense,
+        nonCalcIncome,
+        nonCalcExpense,
+        outOfBucketExpense
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5245,8 +5338,11 @@ class NetWorthSplit extends DataClass implements Insertable<NetWorthSplit> {
           other.assetNotes == this.assetNotes &&
           other.loans == this.loans &&
           other.creditCardOutstanding == this.creditCardOutstanding &&
+          other.creditLineOutstanding == this.creditLineOutstanding &&
           other.otherDebts == this.otherDebts &&
           other.liabilityNotes == this.liabilityNotes &&
+          other.totalIncome == this.totalIncome &&
+          other.totalExpense == this.totalExpense &&
           other.budgetedIncome == this.budgetedIncome &&
           other.budgetedExpense == this.budgetedExpense &&
           other.nonCalcIncome == this.nonCalcIncome &&
@@ -5268,8 +5364,11 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
   final Value<String?> assetNotes;
   final Value<double> loans;
   final Value<double> creditCardOutstanding;
+  final Value<double> creditLineOutstanding;
   final Value<double> otherDebts;
   final Value<String?> liabilityNotes;
+  final Value<double> totalIncome;
+  final Value<double> totalExpense;
   final Value<double> budgetedIncome;
   final Value<double> budgetedExpense;
   final Value<double> nonCalcIncome;
@@ -5290,8 +5389,11 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
     this.assetNotes = const Value.absent(),
     this.loans = const Value.absent(),
     this.creditCardOutstanding = const Value.absent(),
+    this.creditLineOutstanding = const Value.absent(),
     this.otherDebts = const Value.absent(),
     this.liabilityNotes = const Value.absent(),
+    this.totalIncome = const Value.absent(),
+    this.totalExpense = const Value.absent(),
     this.budgetedIncome = const Value.absent(),
     this.budgetedExpense = const Value.absent(),
     this.nonCalcIncome = const Value.absent(),
@@ -5313,8 +5415,11 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
     this.assetNotes = const Value.absent(),
     this.loans = const Value.absent(),
     this.creditCardOutstanding = const Value.absent(),
+    this.creditLineOutstanding = const Value.absent(),
     this.otherDebts = const Value.absent(),
     this.liabilityNotes = const Value.absent(),
+    this.totalIncome = const Value.absent(),
+    this.totalExpense = const Value.absent(),
     this.budgetedIncome = const Value.absent(),
     this.budgetedExpense = const Value.absent(),
     this.nonCalcIncome = const Value.absent(),
@@ -5337,8 +5442,11 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
     Expression<String>? assetNotes,
     Expression<double>? loans,
     Expression<double>? creditCardOutstanding,
+    Expression<double>? creditLineOutstanding,
     Expression<double>? otherDebts,
     Expression<String>? liabilityNotes,
+    Expression<double>? totalIncome,
+    Expression<double>? totalExpense,
     Expression<double>? budgetedIncome,
     Expression<double>? budgetedExpense,
     Expression<double>? nonCalcIncome,
@@ -5361,8 +5469,12 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
       if (loans != null) 'loans': loans,
       if (creditCardOutstanding != null)
         'credit_card_outstanding': creditCardOutstanding,
+      if (creditLineOutstanding != null)
+        'credit_line_outstanding': creditLineOutstanding,
       if (otherDebts != null) 'other_debts': otherDebts,
       if (liabilityNotes != null) 'liability_notes': liabilityNotes,
+      if (totalIncome != null) 'total_income': totalIncome,
+      if (totalExpense != null) 'total_expense': totalExpense,
       if (budgetedIncome != null) 'budgeted_income': budgetedIncome,
       if (budgetedExpense != null) 'budgeted_expense': budgetedExpense,
       if (nonCalcIncome != null) 'non_calc_income': nonCalcIncome,
@@ -5387,8 +5499,11 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
       Value<String?>? assetNotes,
       Value<double>? loans,
       Value<double>? creditCardOutstanding,
+      Value<double>? creditLineOutstanding,
       Value<double>? otherDebts,
       Value<String?>? liabilityNotes,
+      Value<double>? totalIncome,
+      Value<double>? totalExpense,
       Value<double>? budgetedIncome,
       Value<double>? budgetedExpense,
       Value<double>? nonCalcIncome,
@@ -5410,8 +5525,12 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
       loans: loans ?? this.loans,
       creditCardOutstanding:
           creditCardOutstanding ?? this.creditCardOutstanding,
+      creditLineOutstanding:
+          creditLineOutstanding ?? this.creditLineOutstanding,
       otherDebts: otherDebts ?? this.otherDebts,
       liabilityNotes: liabilityNotes ?? this.liabilityNotes,
+      totalIncome: totalIncome ?? this.totalIncome,
+      totalExpense: totalExpense ?? this.totalExpense,
       budgetedIncome: budgetedIncome ?? this.budgetedIncome,
       budgetedExpense: budgetedExpense ?? this.budgetedExpense,
       nonCalcIncome: nonCalcIncome ?? this.nonCalcIncome,
@@ -5464,11 +5583,21 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
       map['credit_card_outstanding'] =
           Variable<double>(creditCardOutstanding.value);
     }
+    if (creditLineOutstanding.present) {
+      map['credit_line_outstanding'] =
+          Variable<double>(creditLineOutstanding.value);
+    }
     if (otherDebts.present) {
       map['other_debts'] = Variable<double>(otherDebts.value);
     }
     if (liabilityNotes.present) {
       map['liability_notes'] = Variable<String>(liabilityNotes.value);
+    }
+    if (totalIncome.present) {
+      map['total_income'] = Variable<double>(totalIncome.value);
+    }
+    if (totalExpense.present) {
+      map['total_expense'] = Variable<double>(totalExpense.value);
     }
     if (budgetedIncome.present) {
       map['budgeted_income'] = Variable<double>(budgetedIncome.value);
@@ -5507,8 +5636,11 @@ class NetWorthSplitsCompanion extends UpdateCompanion<NetWorthSplit> {
           ..write('assetNotes: $assetNotes, ')
           ..write('loans: $loans, ')
           ..write('creditCardOutstanding: $creditCardOutstanding, ')
+          ..write('creditLineOutstanding: $creditLineOutstanding, ')
           ..write('otherDebts: $otherDebts, ')
           ..write('liabilityNotes: $liabilityNotes, ')
+          ..write('totalIncome: $totalIncome, ')
+          ..write('totalExpense: $totalExpense, ')
           ..write('budgetedIncome: $budgetedIncome, ')
           ..write('budgetedExpense: $budgetedExpense, ')
           ..write('nonCalcIncome: $nonCalcIncome, ')
@@ -8550,6 +8682,282 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   }
 }
 
+class $HeatmapLimitsTable extends HeatmapLimits
+    with TableInfo<$HeatmapLimitsTable, HeatmapLimit> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HeatmapLimitsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _safeLimitMeta =
+      const VerificationMeta('safeLimit');
+  @override
+  late final GeneratedColumn<double> safeLimit = GeneratedColumn<double>(
+      'safe_limit', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(500.0));
+  static const VerificationMeta _cautionLimitMeta =
+      const VerificationMeta('cautionLimit');
+  @override
+  late final GeneratedColumn<double> cautionLimit = GeneratedColumn<double>(
+      'caution_limit', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(2000.0));
+  static const VerificationMeta _severeLimitMeta =
+      const VerificationMeta('severeLimit');
+  @override
+  late final GeneratedColumn<double> severeLimit = GeneratedColumn<double>(
+      'severe_limit', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(5000.0));
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, safeLimit, cautionLimit, severeLimit];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'heatmap_limits';
+  @override
+  VerificationContext validateIntegrity(Insertable<HeatmapLimit> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('safe_limit')) {
+      context.handle(_safeLimitMeta,
+          safeLimit.isAcceptableOrUnknown(data['safe_limit']!, _safeLimitMeta));
+    }
+    if (data.containsKey('caution_limit')) {
+      context.handle(
+          _cautionLimitMeta,
+          cautionLimit.isAcceptableOrUnknown(
+              data['caution_limit']!, _cautionLimitMeta));
+    }
+    if (data.containsKey('severe_limit')) {
+      context.handle(
+          _severeLimitMeta,
+          severeLimit.isAcceptableOrUnknown(
+              data['severe_limit']!, _severeLimitMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HeatmapLimit map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HeatmapLimit(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      safeLimit: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}safe_limit'])!,
+      cautionLimit: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}caution_limit'])!,
+      severeLimit: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}severe_limit'])!,
+    );
+  }
+
+  @override
+  $HeatmapLimitsTable createAlias(String alias) {
+    return $HeatmapLimitsTable(attachedDatabase, alias);
+  }
+}
+
+class HeatmapLimit extends DataClass implements Insertable<HeatmapLimit> {
+  final String id;
+  final double safeLimit;
+  final double cautionLimit;
+  final double severeLimit;
+  const HeatmapLimit(
+      {required this.id,
+      required this.safeLimit,
+      required this.cautionLimit,
+      required this.severeLimit});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['safe_limit'] = Variable<double>(safeLimit);
+    map['caution_limit'] = Variable<double>(cautionLimit);
+    map['severe_limit'] = Variable<double>(severeLimit);
+    return map;
+  }
+
+  HeatmapLimitsCompanion toCompanion(bool nullToAbsent) {
+    return HeatmapLimitsCompanion(
+      id: Value(id),
+      safeLimit: Value(safeLimit),
+      cautionLimit: Value(cautionLimit),
+      severeLimit: Value(severeLimit),
+    );
+  }
+
+  factory HeatmapLimit.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HeatmapLimit(
+      id: serializer.fromJson<String>(json['id']),
+      safeLimit: serializer.fromJson<double>(json['safeLimit']),
+      cautionLimit: serializer.fromJson<double>(json['cautionLimit']),
+      severeLimit: serializer.fromJson<double>(json['severeLimit']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'safeLimit': serializer.toJson<double>(safeLimit),
+      'cautionLimit': serializer.toJson<double>(cautionLimit),
+      'severeLimit': serializer.toJson<double>(severeLimit),
+    };
+  }
+
+  HeatmapLimit copyWith(
+          {String? id,
+          double? safeLimit,
+          double? cautionLimit,
+          double? severeLimit}) =>
+      HeatmapLimit(
+        id: id ?? this.id,
+        safeLimit: safeLimit ?? this.safeLimit,
+        cautionLimit: cautionLimit ?? this.cautionLimit,
+        severeLimit: severeLimit ?? this.severeLimit,
+      );
+  HeatmapLimit copyWithCompanion(HeatmapLimitsCompanion data) {
+    return HeatmapLimit(
+      id: data.id.present ? data.id.value : this.id,
+      safeLimit: data.safeLimit.present ? data.safeLimit.value : this.safeLimit,
+      cautionLimit: data.cautionLimit.present
+          ? data.cautionLimit.value
+          : this.cautionLimit,
+      severeLimit:
+          data.severeLimit.present ? data.severeLimit.value : this.severeLimit,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HeatmapLimit(')
+          ..write('id: $id, ')
+          ..write('safeLimit: $safeLimit, ')
+          ..write('cautionLimit: $cautionLimit, ')
+          ..write('severeLimit: $severeLimit')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, safeLimit, cautionLimit, severeLimit);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HeatmapLimit &&
+          other.id == this.id &&
+          other.safeLimit == this.safeLimit &&
+          other.cautionLimit == this.cautionLimit &&
+          other.severeLimit == this.severeLimit);
+}
+
+class HeatmapLimitsCompanion extends UpdateCompanion<HeatmapLimit> {
+  final Value<String> id;
+  final Value<double> safeLimit;
+  final Value<double> cautionLimit;
+  final Value<double> severeLimit;
+  final Value<int> rowid;
+  const HeatmapLimitsCompanion({
+    this.id = const Value.absent(),
+    this.safeLimit = const Value.absent(),
+    this.cautionLimit = const Value.absent(),
+    this.severeLimit = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  HeatmapLimitsCompanion.insert({
+    required String id,
+    this.safeLimit = const Value.absent(),
+    this.cautionLimit = const Value.absent(),
+    this.severeLimit = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id);
+  static Insertable<HeatmapLimit> custom({
+    Expression<String>? id,
+    Expression<double>? safeLimit,
+    Expression<double>? cautionLimit,
+    Expression<double>? severeLimit,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (safeLimit != null) 'safe_limit': safeLimit,
+      if (cautionLimit != null) 'caution_limit': cautionLimit,
+      if (severeLimit != null) 'severe_limit': severeLimit,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  HeatmapLimitsCompanion copyWith(
+      {Value<String>? id,
+      Value<double>? safeLimit,
+      Value<double>? cautionLimit,
+      Value<double>? severeLimit,
+      Value<int>? rowid}) {
+    return HeatmapLimitsCompanion(
+      id: id ?? this.id,
+      safeLimit: safeLimit ?? this.safeLimit,
+      cautionLimit: cautionLimit ?? this.cautionLimit,
+      severeLimit: severeLimit ?? this.severeLimit,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (safeLimit.present) {
+      map['safe_limit'] = Variable<double>(safeLimit.value);
+    }
+    if (cautionLimit.present) {
+      map['caution_limit'] = Variable<double>(cautionLimit.value);
+    }
+    if (severeLimit.present) {
+      map['severe_limit'] = Variable<double>(severeLimit.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HeatmapLimitsCompanion(')
+          ..write('id: $id, ')
+          ..write('safeLimit: $safeLimit, ')
+          ..write('cautionLimit: $cautionLimit, ')
+          ..write('severeLimit: $severeLimit, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8577,6 +8985,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AssetLogsTable assetLogs = $AssetLogsTable(this);
   late final $LoansTable loans = $LoansTable(this);
   late final $GoalsTable goals = $GoalsTable(this);
+  late final $HeatmapLimitsTable heatmapLimits = $HeatmapLimitsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8597,7 +9006,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         settings,
         assetLogs,
         loans,
-        goals
+        goals,
+        heatmapLimits
       ];
 }
 
@@ -11160,8 +11570,11 @@ typedef $$NetWorthSplitsTableCreateCompanionBuilder = NetWorthSplitsCompanion
   Value<String?> assetNotes,
   Value<double> loans,
   Value<double> creditCardOutstanding,
+  Value<double> creditLineOutstanding,
   Value<double> otherDebts,
   Value<String?> liabilityNotes,
+  Value<double> totalIncome,
+  Value<double> totalExpense,
   Value<double> budgetedIncome,
   Value<double> budgetedExpense,
   Value<double> nonCalcIncome,
@@ -11184,8 +11597,11 @@ typedef $$NetWorthSplitsTableUpdateCompanionBuilder = NetWorthSplitsCompanion
   Value<String?> assetNotes,
   Value<double> loans,
   Value<double> creditCardOutstanding,
+  Value<double> creditLineOutstanding,
   Value<double> otherDebts,
   Value<String?> liabilityNotes,
+  Value<double> totalIncome,
+  Value<double> totalExpense,
   Value<double> budgetedIncome,
   Value<double> budgetedExpense,
   Value<double> nonCalcIncome,
@@ -11243,12 +11659,22 @@ class $$NetWorthSplitsTableFilterComposer
       column: $table.creditCardOutstanding,
       builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<double> get creditLineOutstanding => $composableBuilder(
+      column: $table.creditLineOutstanding,
+      builder: (column) => ColumnFilters(column));
+
   ColumnFilters<double> get otherDebts => $composableBuilder(
       column: $table.otherDebts, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get liabilityNotes => $composableBuilder(
       column: $table.liabilityNotes,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get totalIncome => $composableBuilder(
+      column: $table.totalIncome, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get totalExpense => $composableBuilder(
+      column: $table.totalExpense, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get budgetedIncome => $composableBuilder(
       column: $table.budgetedIncome,
@@ -11320,11 +11746,22 @@ class $$NetWorthSplitsTableOrderingComposer
       column: $table.creditCardOutstanding,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get creditLineOutstanding => $composableBuilder(
+      column: $table.creditLineOutstanding,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get otherDebts => $composableBuilder(
       column: $table.otherDebts, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get liabilityNotes => $composableBuilder(
       column: $table.liabilityNotes,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get totalIncome => $composableBuilder(
+      column: $table.totalIncome, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get totalExpense => $composableBuilder(
+      column: $table.totalExpense,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get budgetedIncome => $composableBuilder(
@@ -11396,11 +11833,20 @@ class $$NetWorthSplitsTableAnnotationComposer
   GeneratedColumn<double> get creditCardOutstanding => $composableBuilder(
       column: $table.creditCardOutstanding, builder: (column) => column);
 
+  GeneratedColumn<double> get creditLineOutstanding => $composableBuilder(
+      column: $table.creditLineOutstanding, builder: (column) => column);
+
   GeneratedColumn<double> get otherDebts => $composableBuilder(
       column: $table.otherDebts, builder: (column) => column);
 
   GeneratedColumn<String> get liabilityNotes => $composableBuilder(
       column: $table.liabilityNotes, builder: (column) => column);
+
+  GeneratedColumn<double> get totalIncome => $composableBuilder(
+      column: $table.totalIncome, builder: (column) => column);
+
+  GeneratedColumn<double> get totalExpense => $composableBuilder(
+      column: $table.totalExpense, builder: (column) => column);
 
   GeneratedColumn<double> get budgetedIncome => $composableBuilder(
       column: $table.budgetedIncome, builder: (column) => column);
@@ -11458,8 +11904,11 @@ class $$NetWorthSplitsTableTableManager extends RootTableManager<
             Value<String?> assetNotes = const Value.absent(),
             Value<double> loans = const Value.absent(),
             Value<double> creditCardOutstanding = const Value.absent(),
+            Value<double> creditLineOutstanding = const Value.absent(),
             Value<double> otherDebts = const Value.absent(),
             Value<String?> liabilityNotes = const Value.absent(),
+            Value<double> totalIncome = const Value.absent(),
+            Value<double> totalExpense = const Value.absent(),
             Value<double> budgetedIncome = const Value.absent(),
             Value<double> budgetedExpense = const Value.absent(),
             Value<double> nonCalcIncome = const Value.absent(),
@@ -11481,8 +11930,11 @@ class $$NetWorthSplitsTableTableManager extends RootTableManager<
             assetNotes: assetNotes,
             loans: loans,
             creditCardOutstanding: creditCardOutstanding,
+            creditLineOutstanding: creditLineOutstanding,
             otherDebts: otherDebts,
             liabilityNotes: liabilityNotes,
+            totalIncome: totalIncome,
+            totalExpense: totalExpense,
             budgetedIncome: budgetedIncome,
             budgetedExpense: budgetedExpense,
             nonCalcIncome: nonCalcIncome,
@@ -11504,8 +11956,11 @@ class $$NetWorthSplitsTableTableManager extends RootTableManager<
             Value<String?> assetNotes = const Value.absent(),
             Value<double> loans = const Value.absent(),
             Value<double> creditCardOutstanding = const Value.absent(),
+            Value<double> creditLineOutstanding = const Value.absent(),
             Value<double> otherDebts = const Value.absent(),
             Value<String?> liabilityNotes = const Value.absent(),
+            Value<double> totalIncome = const Value.absent(),
+            Value<double> totalExpense = const Value.absent(),
             Value<double> budgetedIncome = const Value.absent(),
             Value<double> budgetedExpense = const Value.absent(),
             Value<double> nonCalcIncome = const Value.absent(),
@@ -11527,8 +11982,11 @@ class $$NetWorthSplitsTableTableManager extends RootTableManager<
             assetNotes: assetNotes,
             loans: loans,
             creditCardOutstanding: creditCardOutstanding,
+            creditLineOutstanding: creditLineOutstanding,
             otherDebts: otherDebts,
             liabilityNotes: liabilityNotes,
+            totalIncome: totalIncome,
+            totalExpense: totalExpense,
             budgetedIncome: budgetedIncome,
             budgetedExpense: budgetedExpense,
             nonCalcIncome: nonCalcIncome,
@@ -13250,6 +13708,165 @@ typedef $$GoalsTableProcessedTableManager = ProcessedTableManager<
     (Goal, BaseReferences<_$AppDatabase, $GoalsTable, Goal>),
     Goal,
     PrefetchHooks Function()>;
+typedef $$HeatmapLimitsTableCreateCompanionBuilder = HeatmapLimitsCompanion
+    Function({
+  required String id,
+  Value<double> safeLimit,
+  Value<double> cautionLimit,
+  Value<double> severeLimit,
+  Value<int> rowid,
+});
+typedef $$HeatmapLimitsTableUpdateCompanionBuilder = HeatmapLimitsCompanion
+    Function({
+  Value<String> id,
+  Value<double> safeLimit,
+  Value<double> cautionLimit,
+  Value<double> severeLimit,
+  Value<int> rowid,
+});
+
+class $$HeatmapLimitsTableFilterComposer
+    extends Composer<_$AppDatabase, $HeatmapLimitsTable> {
+  $$HeatmapLimitsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get safeLimit => $composableBuilder(
+      column: $table.safeLimit, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get cautionLimit => $composableBuilder(
+      column: $table.cautionLimit, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get severeLimit => $composableBuilder(
+      column: $table.severeLimit, builder: (column) => ColumnFilters(column));
+}
+
+class $$HeatmapLimitsTableOrderingComposer
+    extends Composer<_$AppDatabase, $HeatmapLimitsTable> {
+  $$HeatmapLimitsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get safeLimit => $composableBuilder(
+      column: $table.safeLimit, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get cautionLimit => $composableBuilder(
+      column: $table.cautionLimit,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get severeLimit => $composableBuilder(
+      column: $table.severeLimit, builder: (column) => ColumnOrderings(column));
+}
+
+class $$HeatmapLimitsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HeatmapLimitsTable> {
+  $$HeatmapLimitsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get safeLimit =>
+      $composableBuilder(column: $table.safeLimit, builder: (column) => column);
+
+  GeneratedColumn<double> get cautionLimit => $composableBuilder(
+      column: $table.cautionLimit, builder: (column) => column);
+
+  GeneratedColumn<double> get severeLimit => $composableBuilder(
+      column: $table.severeLimit, builder: (column) => column);
+}
+
+class $$HeatmapLimitsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $HeatmapLimitsTable,
+    HeatmapLimit,
+    $$HeatmapLimitsTableFilterComposer,
+    $$HeatmapLimitsTableOrderingComposer,
+    $$HeatmapLimitsTableAnnotationComposer,
+    $$HeatmapLimitsTableCreateCompanionBuilder,
+    $$HeatmapLimitsTableUpdateCompanionBuilder,
+    (
+      HeatmapLimit,
+      BaseReferences<_$AppDatabase, $HeatmapLimitsTable, HeatmapLimit>
+    ),
+    HeatmapLimit,
+    PrefetchHooks Function()> {
+  $$HeatmapLimitsTableTableManager(_$AppDatabase db, $HeatmapLimitsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HeatmapLimitsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HeatmapLimitsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HeatmapLimitsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<double> safeLimit = const Value.absent(),
+            Value<double> cautionLimit = const Value.absent(),
+            Value<double> severeLimit = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              HeatmapLimitsCompanion(
+            id: id,
+            safeLimit: safeLimit,
+            cautionLimit: cautionLimit,
+            severeLimit: severeLimit,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            Value<double> safeLimit = const Value.absent(),
+            Value<double> cautionLimit = const Value.absent(),
+            Value<double> severeLimit = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              HeatmapLimitsCompanion.insert(
+            id: id,
+            safeLimit: safeLimit,
+            cautionLimit: cautionLimit,
+            severeLimit: severeLimit,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$HeatmapLimitsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $HeatmapLimitsTable,
+    HeatmapLimit,
+    $$HeatmapLimitsTableFilterComposer,
+    $$HeatmapLimitsTableOrderingComposer,
+    $$HeatmapLimitsTableAnnotationComposer,
+    $$HeatmapLimitsTableCreateCompanionBuilder,
+    $$HeatmapLimitsTableUpdateCompanionBuilder,
+    (
+      HeatmapLimit,
+      BaseReferences<_$AppDatabase, $HeatmapLimitsTable, HeatmapLimit>
+    ),
+    HeatmapLimit,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -13286,4 +13903,6 @@ class $AppDatabaseManager {
       $$LoansTableTableManager(_db, _db.loans);
   $$GoalsTableTableManager get goals =>
       $$GoalsTableTableManager(_db, _db.goals);
+  $$HeatmapLimitsTableTableManager get heatmapLimits =>
+      $$HeatmapLimitsTableTableManager(_db, _db.heatmapLimits);
 }
