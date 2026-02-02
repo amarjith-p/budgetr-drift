@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Financial Tracker',
+      title: 'BudGetR',
       theme: AppTheme.darkTheme,
       // Wrap the HomeScreen with DatabaseGuard
       home: const HomeScreen(),
