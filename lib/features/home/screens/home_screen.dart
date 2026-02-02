@@ -2,6 +2,7 @@ import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart'; // Added package
+import 'package:rxdart/rxdart.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/services/service_locator.dart';
 
@@ -83,12 +84,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFinancialOverview() {
-    return FutureBuilder(
-      future: Future.wait([
-        expenseService.getTotalBalance(),
-        dashboardService.getMonthlySummary(DateTime.now()),
-      ]),
-      builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+    return StreamBuilder(
+      // Combine the balance stream and the summary stream
+      stream: Rx.combineLatest2(
+        expenseService.watchTotalBalance(),
+        dashboardService.watchMonthlySummary(DateTime.now()),
+        (double balance, MonthlySummary summary) => [balance, summary],
+      ),
+      builder: (context, snapshot) {
         double currentBalance = 0.0;
         double monthlyBudget = 0.0;
         double totalSpent = 0.0;
@@ -98,6 +101,9 @@ class _HomeScreenState extends State<HomeScreen> {
           final summary = snapshot.data![1] as MonthlySummary;
           monthlyBudget = summary.totalBudget;
           totalSpent = summary.totalSpent;
+        } else if (snapshot.hasError) {
+          return Text("Error: ${snapshot.error}",
+              style: const TextStyle(color: Colors.red));
         }
 
         return Container(

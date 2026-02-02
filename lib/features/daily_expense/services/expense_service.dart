@@ -592,12 +592,34 @@ class ExpenseService {
         );
   }
 
+  // Future<double> getTotalBalance() async {
+  //   // 1. Fetch all expense accounts from the database
+  //   final List<db.ExpenseAccount> accounts =
+  //       await _db.select(_db.expenseAccounts).get();
+
+  //   // 2. Sum up the currentBalance of each account
+  //   double total = 0.0;
+  //   for (var account in accounts) {
+  //     total += account.currentBalance;
+  //   }
+  //   return total;
+  // }
+
+  // [NEW] Added for real-time updates on HomeScreen
+  Stream<double> watchTotalBalance() {
+    return _db.select(_db.expenseAccounts).watch().map((accounts) {
+      double total = 0.0;
+      for (var account in accounts) {
+        total += account.currentBalance;
+      }
+      return total;
+    });
+  }
+
   Future<double> getTotalBalance() async {
-    // 1. Fetch all expense accounts from the database
     final List<db.ExpenseAccount> accounts =
         await _db.select(_db.expenseAccounts).get();
 
-    // 2. Sum up the currentBalance of each account
     double total = 0.0;
     for (var account in accounts) {
       total += account.currentBalance;

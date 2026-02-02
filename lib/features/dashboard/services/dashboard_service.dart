@@ -300,6 +300,44 @@ class DashboardService {
 
     return MonthlySummary(totalBudget: totalBudget, totalSpent: totalSpent);
   }
+
+  // [NEW] Combined Stream for real-time Dashboard Summary
+  Stream<MonthlySummary> watchMonthlySummary(DateTime date) {
+    final id = "${date.year}${date.month.toString().padLeft(2, '0')}";
+
+    // 1. Watch the budget/financial record for this month
+    final recordStream = (_db.select(_db.financialRecords)
+          ..where((t) => t.id.equals(id)))
+        .watchSingleOrNull();
+
+    // 2. Watch transactions for this month
+    final txnStream = getMonthlyTransactions(date.year, date.month);
+
+    return Rx.combineLatest2(recordStream, txnStream,
+        (db.FinancialRecord? record, List<DashboardTransaction> txns) {
+      double totalBudget = 0.0;
+      double totalSpent = 0.0;
+
+      // Calculate Budget
+      if (record != null) {
+        final allocations = _decodeMap(record.allocations);
+        allocations.forEach((category, amount) {
+          if (category != 'Income') totalBudget += amount;
+        });
+      }
+
+      // Calculate Spent
+      for (var txn in txns) {
+        if (txn.type == 'Expense' ||
+            (txn.type == 'Transfer Out' &&
+                txn.sourceType == TransactionSourceType.creditCard)) {
+          totalSpent += txn.amount;
+        }
+      }
+
+      return MonthlySummary(totalBudget: totalBudget, totalSpent: totalSpent);
+    });
+  }
 }
 
 class MonthlySummary {
