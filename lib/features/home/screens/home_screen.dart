@@ -1,6 +1,7 @@
 import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:google_fonts/google_fonts.dart'; // Added package
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/services/service_locator.dart';
 
@@ -16,7 +17,7 @@ import '../../custom_entry/screens/custom_entry_dashboard.dart';
 import '../../goals_loans/screens/goals_loans_dashboard.dart';
 import '../../investment/screens/investment_screen.dart';
 import '../../net_worth/screens/net_worth_screen.dart';
-import '../../settings/screens/configuration_menu_screen.dart'; // Added for Settings
+import '../../settings/screens/configuration_menu_screen.dart';
 
 import '../widgets/home_app_bar.dart';
 
@@ -34,7 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E12), // Deeper professional dark
+      backgroundColor: const Color(0xFF0A0E12),
       extendBodyBehindAppBar: true,
       appBar: const HomeAppBar(),
       body: Stack(
@@ -123,10 +124,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
                     child: Text("Total Account Balance",
-                        style: TextStyle(color: Colors.white70, fontSize: 14)),
+                        style: GoogleFonts.robotoSlab(
+                            color: Colors.white70, fontSize: 14)),
                   ),
                   StreamBuilder(
                     stream: Stream.periodic(
@@ -171,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       int hour = now.hour;
                       final String period = hour >= 12 ? 'PM' : 'AM';
                       hour = hour % 12;
-                      if (hour == 0) hour = 12; // Handle midnight/noon
+                      if (hour == 0) hour = 12;
 
                       final timeStr =
                           "${hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} $period";
@@ -180,19 +182,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(dateStr,
-                              style: TextStyle(
+                              style: GoogleFonts.robotoSlab(
                                   color: Colors.white.withOpacity(0.6),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500)),
                           const SizedBox(height: 2),
                           // tabularFigures ensures the width doesn't jump as numbers change
                           Text(timeStr,
-                              style: const TextStyle(
+                              style: GoogleFonts.robotoSlab(
                                   color: Colors.white,
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   fontFeatures: [
-                                    FontFeature.tabularFigures()
+                                    const FontFeature.tabularFigures()
                                   ])),
                         ],
                       );
@@ -201,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               Text("₹ ${currentBalance.toStringAsFixed(2)}",
-                  style: const TextStyle(
+                  style: GoogleFonts.robotoSlab(
                       color: Colors.white,
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
@@ -236,12 +238,13 @@ class _HomeScreenState extends State<HomeScreen> {
             CircleAvatar(radius: 4, backgroundColor: color),
             const SizedBox(width: 8),
             Text(label,
-                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                style: GoogleFonts.robotoSlab(
+                    color: Colors.white54, fontSize: 12)),
           ],
         ),
         const SizedBox(height: 4),
         Text(value,
-            style: const TextStyle(
+            style: GoogleFonts.robotoSlab(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600)),
@@ -315,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             Text(title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: GoogleFonts.robotoSlab(
                     color: Colors.white, fontWeight: FontWeight.w500)),
           ],
         ),
@@ -325,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSectionHeader(String title) {
     return Text(title,
-        style: const TextStyle(
+        style: GoogleFonts.robotoSlab(
             color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold));
   }
 
@@ -398,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Icon(icon,
                 color: iconColor, size: 18), // Icon now uses the passed color
             const SizedBox(width: 8),
-            Text(label, style: const TextStyle(color: Colors.white70)),
+            Text(label, style: GoogleFonts.robotoSlab(color: Colors.white70)),
           ],
         ),
       ),
