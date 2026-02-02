@@ -81,17 +81,17 @@ class ConfigurationMenuScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            _buildMenuCard(
-              context,
-              title: "Budget Buckets",
-              subtitle: "Configure your Budget Rules",
-              icon: Icons.pie_chart_outline,
-              color: const Color(0xFF3A86FF),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
-            ),
+            // _buildMenuCard(
+            //   context,
+            //   title: "Budget Buckets",
+            //   subtitle: "Configure your Budget Rules",
+            //   icon: Icons.pie_chart_outline,
+            //   color: const Color(0xFF3A86FF),
+            //   onTap: () => Navigator.push(
+            //     context,
+            //     MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            //   ),
+            // ),
             const SizedBox(height: 16),
             _buildMenuCard(
               context,

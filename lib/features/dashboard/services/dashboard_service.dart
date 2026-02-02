@@ -268,4 +268,43 @@ class DashboardService {
       return map;
     });
   }
+
+  Future<MonthlySummary> getMonthlySummary(DateTime date) async {
+    double totalBudget = 0.0;
+    double totalSpent = 0.0;
+
+    // 1. Calculate Total Budget from Financial Records
+    final record = await getRecordForMonth(date.year, date.month);
+    if (record != null) {
+      // Sum all category allocations (excluding Income if it's stored there)
+      record.allocations.forEach((category, amount) {
+        if (category != 'Income') {
+          totalBudget += (amount as num).toDouble();
+        }
+      });
+    }
+
+    // 2. Calculate Total Spent from Transactions
+    // We use .first to get the current snapshot of the stream
+    final List<DashboardTransaction> txns =
+        await getMonthlyTransactions(date.year, date.month).first;
+
+    for (var txn in txns) {
+      // Filter for Expenses and Credit Card Outgoings
+      if (txn.type == 'Expense' ||
+          (txn.type == 'Transfer Out' &&
+              txn.sourceType == TransactionSourceType.creditCard)) {
+        totalSpent += txn.amount;
+      }
+    }
+
+    return MonthlySummary(totalBudget: totalBudget, totalSpent: totalSpent);
+  }
+}
+
+class MonthlySummary {
+  final double totalBudget;
+  final double totalSpent;
+
+  MonthlySummary({required this.totalBudget, required this.totalSpent});
 }

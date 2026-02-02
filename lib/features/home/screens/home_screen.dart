@@ -1,162 +1,406 @@
-import 'package:budget/features/goals_loans/screens/goals_loans_dashboard.dart';
+import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
+import 'dart:ui';
+import '../../../core/design/budgetr_colors.dart';
+import '../../../core/services/service_locator.dart';
 
-import '../../custom_entry/screens/custom_entry_dashboard.dart';
+// Services
+import '../../daily_expense/services/expense_service.dart';
+import '../../dashboard/services/dashboard_service.dart';
+
+// Screens
 import '../../dashboard/screens/dashboard_screen.dart';
-import '../../net_worth/screens/net_worth_screen.dart';
-// import '../../settlement/screens/settlement_screen.dart'; // Keep commented if unused
-import '../../credit_tracker/screens/credit_tracker_screen.dart';
-import '../../investment/screens/investment_screen.dart';
-// ADD THIS IMPORT
 import '../../daily_expense/screens/daily_expense_screen.dart';
+import '../../credit_tracker/screens/credit_tracker_screen.dart';
+import '../../custom_entry/screens/custom_entry_dashboard.dart';
+import '../../goals_loans/screens/goals_loans_dashboard.dart';
+import '../../investment/screens/investment_screen.dart';
+import '../../net_worth/screens/net_worth_screen.dart';
+import '../../settings/screens/configuration_menu_screen.dart'; // Added for Settings
 
 import '../widgets/home_app_bar.dart';
-import '../widgets/home_bottom_bar.dart';
-import '../widgets/home_feature_card.dart';
 
-import '../../../core/design/budgetr_colors.dart';
-
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final expenseService = locator<ExpenseService>();
+  final dashboardService = locator<DashboardService>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: BudgetrColors.background,
+      backgroundColor: const Color(0xFF0A0E12), // Deeper professional dark
       extendBodyBehindAppBar: true,
       appBar: const HomeAppBar(),
       body: Stack(
         children: [
-          // --- Ambient Background Glows ---
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    BudgetrColors.accent.withOpacity(0.2),
-                    Colors.transparent,
-                  ],
-                  center: Alignment.center,
-                  radius: 0.6,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: -50,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF00A6FB).withOpacity(0.15),
-                    Colors.transparent,
-                  ],
-                  center: Alignment.center,
-                  radius: 0.6,
-                ),
-              ),
-            ),
-          ),
+          // Background ambient gradients
+          _buildAmbientGlow(
+              Alignment.topRight, BudgetrColors.accent.withOpacity(0.15)),
+          _buildAmbientGlow(
+              Alignment.bottomLeft, const Color(0xFF4361EE).withOpacity(0.1)),
 
-          // --- Main Content ---
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 10),
-                  const SizedBox(height: 20),
+                  // 1. Summary Card (Fixed Height)
+                  _buildFinancialOverview(),
 
-                  // --- Dashboard Grid ---
+                  const SizedBox(height: 25),
+
+                  // 2. Financial Engines (Fills available space)
+                  _buildSectionHeader("Finance Today"),
+                  const SizedBox(height: 15),
                   Expanded(
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.85,
-                      children: [
-                        // 1. Planning (Budgets)
-                        HomeFeatureCard(
-                          title: "Budgets",
-                          subtitle: "Manage Monthly Budgets",
-                          icon: Icons.pie_chart_outline,
-                          color: const Color(0xFF4361EE),
-                          destination: const DashboardScreen(),
-                        ),
-
-                        // 2. Tracking (Daily Expenses) - NEW
-                        HomeFeatureCard(
-                          title: "Daily Expenses",
-                          subtitle: "Track Cash & Bank Spends",
-                          icon: Icons.account_balance_wallet_outlined,
-                          color: const Color(
-                              0xFF00B4D8), // Matching the Cyan theme
-                          destination: const DailyExpenseScreen(),
-                        ),
-
-                        // 3. Debt (Credit Cards)
-                        HomeFeatureCard(
-                          title: "Credit Tracker",
-                          subtitle: "Cards & Repayments",
-                          icon: Icons.credit_card_outlined,
-                          color: const Color(0xFFE63946),
-                          destination: const CreditTrackerScreen(),
-                        ),
-
-                        // 4. Growth (Investments)
-                        HomeFeatureCard(
-                          title: "Investments",
-                          subtitle: "Stocks & Mutual Funds",
-                          icon: Icons.show_chart_rounded,
-                          color: const Color(0xFFFF9F1C),
-                          destination: const InvestmentScreen(),
-                        ),
-
-                        // 5. Status (Net Worth)
-                        HomeFeatureCard(
-                          title: "Net Worth",
-                          subtitle: "Track Your Networth",
-                          icon: Icons.currency_rupee,
-                          color: const Color(0xFF2EC4B6),
-                          destination: const NetWorthScreen(),
-                        ),
-
-                        // 6. Tools (Custom Data)
-                        HomeFeatureCard(
-                          title: "Custom Data Entry",
-                          subtitle: "Personal Data Trackers",
-                          icon: Icons.dashboard_customize_outlined,
-                          color: const Color(0xFFF72585),
-                          destination: const CustomEntryDashboard(),
-                        ),
-                        HomeFeatureCard(
-                          title: "Goals & Loans",
-                          subtitle: "Planned Payments & Debt Management",
-                          icon: Icons.flag_outlined,
-                          color: const Color(0xFF7209B7), // Violet
-                          destination: const GoalsLoansDashboard(),
-                        ),
-                      ],
-                    ),
+                    child: _buildFeatureGrid(context),
                   ),
 
-                  // --- Bottom Settings Bar ---
-                  const HomeBottomBar(),
+                  const SizedBox(height: 25),
+
+                  // 3. Quick Actions (Fixed Height at bottom)
+                  _buildSectionHeader("More Tools"),
+                  const SizedBox(height: 15),
+                  _buildQuickActionList(context),
+
+                  const SizedBox(height: 20), // Bottom Padding
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFinancialOverview() {
+    return FutureBuilder(
+      future: Future.wait([
+        expenseService.getTotalBalance(),
+        dashboardService.getMonthlySummary(DateTime.now()),
+      ]),
+      builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+        double currentBalance = 0.0;
+        double monthlyBudget = 0.0;
+        double totalSpent = 0.0;
+
+        if (snapshot.hasData) {
+          currentBalance = snapshot.data![0] as double;
+          final summary = snapshot.data![1] as MonthlySummary;
+          monthlyBudget = summary.totalBudget;
+          totalSpent = summary.totalSpent;
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.08),
+                Colors.white.withOpacity(0.03),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // --- Header with Day, Date & 12H Live Clock ---
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text("Total Account Balance",
+                        style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  ),
+                  StreamBuilder(
+                    stream: Stream.periodic(
+                        const Duration(seconds: 1), (_) => DateTime.now()),
+                    builder: (context, snapshot) {
+                      final now = DateTime.now();
+
+                      // Date Formatting with Day Name
+                      final months = [
+                        "Jan",
+                        "Feb",
+                        "Mar",
+                        "Apr",
+                        "May",
+                        "Jun",
+                        "Jul",
+                        "Aug",
+                        "Sep",
+                        "Oct",
+                        "Nov",
+                        "Dec"
+                      ];
+                      final weekdays = [
+                        "Mon",
+                        "Tue",
+                        "Wed",
+                        "Thu",
+                        "Fri",
+                        "Sat",
+                        "Sun"
+                      ];
+
+                      final dayName = weekdays[now.weekday - 1];
+                      final monthName = months[now.month - 1];
+                      final dayNum = now.day.toString().padLeft(2, '0');
+
+                      // Result: "Mon, 02 Feb 2026"
+                      final dateStr =
+                          "$dayName, $dayNum $monthName ${now.year}";
+
+                      // 12-Hour Time Formatting
+                      int hour = now.hour;
+                      final String period = hour >= 12 ? 'PM' : 'AM';
+                      hour = hour % 12;
+                      if (hour == 0) hour = 12; // Handle midnight/noon
+
+                      final timeStr =
+                          "${hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} $period";
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(dateStr,
+                              style: TextStyle(
+                                  color: Colors.white.withOpacity(0.6),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 2),
+                          // tabularFigures ensures the width doesn't jump as numbers change
+                          Text(timeStr,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  fontFeatures: [
+                                    FontFeature.tabularFigures()
+                                  ])),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+              Text("₹ ${currentBalance.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1)),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildMiniStat(
+                      "Monthly Budget",
+                      "    ₹ ${monthlyBudget.toStringAsFixed(2)}",
+                      Colors.blueAccent),
+                  _buildMiniStat(
+                      "Spent so far",
+                      "    ₹ ${totalSpent.toStringAsFixed(2)}",
+                      Colors.orangeAccent),
+                ],
+              )
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            CircleAvatar(radius: 4, backgroundColor: color),
+            const SizedBox(width: 8),
+            Text(label,
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  Widget _buildFeatureGrid(BuildContext context) {
+    // LayoutBuilder allows us to calculate the perfect aspect ratio to fit the grid in the Expanded space
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // We want 2 rows and 2 columns
+        // Item Width = (Total Width - CrossAxisSpacing) / 2
+        // Item Height = (Total Height - MainAxisSpacing) / 2
+        double itemWidth = (constraints.maxWidth - 16) / 2;
+        double itemHeight = (constraints.maxHeight - 16) / 2;
+        double childAspectRatio = itemWidth / itemHeight;
+
+        return GridView.count(
+          physics: const NeverScrollableScrollPhysics(), // No scrolling
+          crossAxisCount: 2,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: childAspectRatio,
+          children: [
+            _buildCompactCard(
+                context,
+                "Budget Dashboard",
+                Icons.donut_large_rounded,
+                const Color(0xFF4361EE),
+                const DashboardScreen()),
+            _buildCompactCard(
+                context,
+                "Daily Expense",
+                Icons.account_balance_wallet_rounded,
+                const Color(0xFF00B4D8),
+                const DailyExpenseScreen()),
+            _buildCompactCard(
+                context,
+                "Credit Tracker",
+                Icons.credit_card_rounded,
+                const Color(0xFFE63946),
+                const CreditTrackerScreen()),
+            _buildCompactCard(
+                context,
+                "Custom Entry",
+                Icons.dashboard_customize_rounded,
+                const Color(0xFFFF9F1C),
+                const CustomEntryDashboard()),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactCard(BuildContext context, String title, IconData icon,
+      Color color, Widget page) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+          context, MaterialPageRoute(builder: (context) => page)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 12),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(title,
+        style: const TextStyle(
+            color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold));
+  }
+
+  Widget _buildAmbientGlow(Alignment alignment, Color color) {
+    return Positioned.fill(
+      child: Align(
+        alignment: alignment,
+        child: Container(
+          width: 300,
+          height: 300,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: color, blurRadius: 100, spreadRadius: 50)
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionList(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          // Added specific colors for each action icon
+          _buildActionChip(
+              context,
+              "Goals & Loans",
+              Icons.flag_rounded,
+              const Color.fromARGB(255, 38, 219, 2),
+              const GoalsLoansDashboard()),
+          _buildActionChip(
+              context,
+              "Investment Tracker",
+              Icons.show_chart_rounded,
+              const Color.fromARGB(255, 161, 1, 241),
+              const InvestmentScreen()),
+          _buildActionChip(
+              context,
+              "Net Worth Analysis",
+              Icons.currency_rupee_rounded,
+              const Color.fromARGB(255, 92, 123, 21),
+              const NetWorthScreen()),
+          _buildActionChip(context, "Budget Buckets", Icons.pie_chart_outline,
+              const Color.fromARGB(255, 255, 90, 175), const SettingsScreen()),
+          _buildActionChip(context, "Settings", Icons.settings_rounded,
+              Colors.white70, const ConfigurationMenuScreen()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionChip(BuildContext context, String label, IconData icon,
+      Color iconColor, Widget page) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+          context, MaterialPageRoute(builder: (context) => page)),
+      child: Container(
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.white10),
+          color: Colors.white.withOpacity(0.02),
+        ),
+        child: Row(
+          children: [
+            Icon(icon,
+                color: iconColor, size: 18), // Icon now uses the passed color
+            const SizedBox(width: 8),
+            Text(label, style: const TextStyle(color: Colors.white70)),
+          ],
+        ),
       ),
     );
   }
