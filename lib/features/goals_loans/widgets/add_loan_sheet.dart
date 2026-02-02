@@ -18,16 +18,27 @@ class AddLoanSheet extends StatefulWidget {
 class _AddLoanSheetState extends State<AddLoanSheet> {
   final List<String> _banks = [
     'HDFC Bank',
-    'SBI',
+    'State Bank of India',
     'ICICI Bank',
     'Axis Bank',
-    'Kotak Mahindra',
+    'Kotak Mahindra Bank',
     'Punjab National Bank',
     'Bank of Baroda',
     'IndusInd Bank',
     'Yes Bank',
-    'IDFC First',
-    'Others'
+    'IDFC FIRST Bank',
+    'Canara Bank',
+    'Union Bank of India',
+    'Standard Chartered',
+    'American Express',
+    'Citi Bank',
+    'HSBC',
+    'RBL Bank',
+    'Federal Bank',
+    'IDBI Bank',
+    'UCO Bank',
+    'AU Bank',
+    'Others',
   ];
 
   final _nameCtrl = TextEditingController();
@@ -37,8 +48,9 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
   final _rateCtrl = TextEditingController();
   final _totalPayableCtrl = TextEditingController();
   final _emiCtrl = TextEditingController();
+  String? _validationError;
 
-  String _selectedBank = 'HDFC Bank';
+  String _selectedBank = 'Select Issuer';
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 365));
   DateTime _emiDate = DateTime.now().add(const Duration(days: 30));
@@ -246,6 +258,19 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
               ),
             ),
           ),
+          if (_validationError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Center(
+                child: Text(
+                  _validationError!,
+                  style: const TextStyle(
+                      color: Color(0xFFE71D36),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
           Container(
             padding: EdgeInsets.fromLTRB(
                 24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 24),
@@ -433,14 +458,32 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
   }
 
   void _saveLoan() {
+    setState(() => _validationError = null);
     final totalPayable = double.tryParse(_totalPayableCtrl.text);
     final principal = double.tryParse(_amountCtrl.text);
     final emi = double.tryParse(_emiCtrl.text);
     final rate = double.tryParse(_rateCtrl.text);
 
-    if (_nameCtrl.text.isEmpty || totalPayable == null || totalPayable <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter valid loan details")));
+    if (_nameCtrl.text.isEmpty) {
+      setState(() => _validationError = "Please enter the Loan Name");
+      return;
+    }
+    if (_selectedBank.isEmpty || _selectedBank == 'Select Issuer') {
+      setState(() => _validationError = "Please select loan provider");
+      return;
+    }
+    if (totalPayable == null) {
+      setState(() => _validationError = "Total Payable amount is mandatory");
+      return;
+    }
+    if (totalPayable <= 0) {
+      setState(() =>
+          _validationError = "Total Payable amount must be greater than 0");
+      return;
+    }
+    if (principal == null || principal <= 0) {
+      setState(
+          () => _validationError = "Principal amount must be greater than 0");
       return;
     }
 
@@ -458,7 +501,7 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
       emiAmount: emi,
       nextPaymentDate: _emiDate,
       isClosed: false,
-      notes: "Account: ${_accountNoCtrl.text}",
+      notes: _accountNoCtrl.text,
     );
 
     if (widget.loanToEdit != null) {

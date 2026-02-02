@@ -22,9 +22,10 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
   final _currentValueCtrl = TextEditingController();
   final _targetValueCtrl = TextEditingController();
   final _returnRateCtrl = TextEditingController();
+  String? _validationError;
 
   // State Variables
-  String _investmentType = 'Mutual Fund';
+  String _investmentType = 'Select Type';
   DateTime _startDate = DateTime.now();
   DateTime? _targetDate;
 
@@ -184,7 +185,19 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
               ),
             ),
           ),
-
+          if (_validationError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Center(
+                child: Text(
+                  _validationError!,
+                  style: const TextStyle(
+                      color: Color(0xFFE71D36),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
           // 3. Floating Action Button Container
           Container(
             padding: EdgeInsets.fromLTRB(
@@ -400,15 +413,20 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
   // --- LOGIC ---
 
   void _saveGoal() async {
+    setState(() => _validationError = null);
     final name = _nameCtrl.text.trim();
     final targetVal = double.tryParse(_targetValueCtrl.text.trim());
 
     if (name.isEmpty) {
-      _showError("Please enter a Goal Name");
+      setState(() => _validationError = "Please enter a Goal Name");
+      return;
+    }
+    if (_investmentType.isEmpty || _investmentType == 'Select Type') {
+      setState(() => _validationError = "Please select an Investment Type");
       return;
     }
     if (targetVal == null || targetVal <= 0) {
-      _showError("Please enter a valid Target Value");
+      setState(() => _validationError = "Please enter a valid Target Value");
       return;
     }
 
