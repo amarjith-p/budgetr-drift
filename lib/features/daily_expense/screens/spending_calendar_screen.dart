@@ -54,7 +54,7 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
   // --- STATS ---
   double _monthTotal = 0.0;
   double _monthDailyAvg = 0.0;
-  int _noSpendDays = 0;
+  double _projectedTotal = 0.0;
 
   // --- CONFIG ---
   double _greenLimit = 500.0; // Safe
@@ -211,32 +211,39 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
 
   void _calculateMonthStats(DateTime focusedMonth) {
     double total = 0.0;
-    int spendDays = 0;
-
-    final firstDay = DateTime(focusedMonth.year, focusedMonth.month, 1);
-    final lastDay = DateTime(focusedMonth.year, focusedMonth.month + 1, 0);
-    final daysInMonth = lastDay.day;
 
     _dailySpending.forEach((date, amount) {
       if (date.year == focusedMonth.year &&
           date.month == focusedMonth.month &&
           amount > 0) {
         total += amount;
-        spendDays++;
       }
     });
 
-    int effectiveDays = daysInMonth;
-    if (focusedMonth.year == DateTime.now().year &&
-        focusedMonth.month == DateTime.now().month) {
-      effectiveDays = DateTime.now().day;
+    int effectiveDays = 1;
+    final now = DateTime.now();
+    final isCurrentMonth =
+        focusedMonth.year == now.year && focusedMonth.month == now.month;
+    final totalDaysInMonth =
+        DateTime(focusedMonth.year, focusedMonth.month + 1, 0).day;
+    if (isCurrentMonth) {
+      effectiveDays = now.day; // If today is 10th, divide by 10
+    } else {
+      effectiveDays = totalDaysInMonth; // If past month, divide by 30
     }
+
+    if (effectiveDays == 0) effectiveDays = 1; // Safety check
 
     setState(() {
       _monthTotal = total;
-      _monthDailyAvg = effectiveDays > 0 ? total / effectiveDays : 0.0;
-      _noSpendDays = effectiveDays - spendDays;
-      if (_noSpendDays < 0) _noSpendDays = 0;
+      _monthDailyAvg = total / effectiveDays;
+
+      if (isCurrentMonth) {
+        _projectedTotal = _monthDailyAvg * totalDaysInMonth;
+      } else {
+        // For past months, projection is just the actual total
+        _projectedTotal = total;
+      }
     });
   }
 
@@ -488,19 +495,17 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-              child:
-                  _statItem("Filtered Total", _monthTotal, isCurrency: true)),
+              child: _statItem("Total Spend", _monthTotal, isCurrency: true)),
           _verticalDivider(),
           Expanded(
               child: _statItem("Daily Avg", _monthDailyAvg, isCurrency: true)),
           _verticalDivider(),
           Expanded(
               child: _statItem(
-                  "Active Days",
-                  (_monthTotal > 0 ? (DateTime.now().day - _noSpendDays) : 0)
-                      .toDouble(),
-                  isCurrency: false,
-                  suffix: "")),
+            "Projected",
+            _projectedTotal,
+            isCurrency: true,
+          )),
         ],
       ),
     );

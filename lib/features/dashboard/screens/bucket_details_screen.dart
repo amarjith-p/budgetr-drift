@@ -152,21 +152,21 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
                     .where((t) => t.type == 'Expense' && t.sourceId != '')
                     .toList();
 
-                if (transactions.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.receipt_long_outlined,
-                            size: 64, color: Colors.white.withOpacity(0.1)),
-                        const SizedBox(height: 16),
-                        Text("No transactions found",
-                            style: TextStyle(
-                                color: Colors.white.withOpacity(0.5))),
-                      ],
-                    ),
-                  );
-                }
+                // if (transactions.isEmpty) {
+                //   return Center(
+                //     child: Column(
+                //       mainAxisAlignment: MainAxisAlignment.center,
+                //       children: [
+                //         Icon(Icons.receipt_long_outlined,
+                //             size: 64, color: Colors.white.withOpacity(0.1)),
+                //         const SizedBox(height: 16),
+                //         Text("No transactions found",
+                //             style: TextStyle(
+                //                 color: Colors.white.withOpacity(0.5))),
+                //       ],
+                //     ),
+                //   );
+                // }
 
                 return ListView(
                   padding: const EdgeInsets.all(16),
@@ -177,24 +177,41 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
                       month: widget.month,
                       budgetLimit: _budgetLimit,
                     ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 4, bottom: 12),
-                      child: Text(
-                        "Transactions",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                    if (transactions.isEmpty)
+                      Center(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 32),
+                            Icon(Icons.receipt_long_outlined,
+                                size: 64, color: Colors.white.withOpacity(0.1)),
+                            const SizedBox(height: 16),
+                            Text("No transactions found",
+                                style: TextStyle(
+                                    color: Colors.white.withOpacity(0.5))),
+                          ],
+                        ),
+                      )
+                    else ...[
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 12),
+                        child: Text(
+                          "Transactions",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
-                    ),
-                    ...transactions.map((txn) => BucketTransactionCard(
-                          txn: txn,
-                          accountName: _accountNames[txn.sourceId] ?? "Unknown",
-                          bankName: _bankNames[txn.sourceId] ?? "",
-                          iconData: _categoryIcons[txn.category] ??
-                              Icons.category_outlined,
-                        )),
+                      ...transactions.map((txn) => BucketTransactionCard(
+                            txn: txn,
+                            accountName:
+                                _accountNames[txn.sourceId] ?? "Unknown",
+                            bankName: _bankNames[txn.sourceId] ?? "",
+                            iconData: _categoryIcons[txn.category] ??
+                                Icons.category_outlined,
+                          )),
+                    ]
                   ],
                 );
               },
