@@ -38,6 +38,16 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
     'IDBI Bank',
     'UCO Bank',
     'AU Bank',
+    'ESAF Small Finance Bank',
+    'Bandhan Bank',
+    'South Indian Bank',
+    'DBS Bank',
+    'Punjab & Sind Bank',
+    'Indian Bank',
+    'Bank of India',
+    'Central Bank of India',
+    'Bank of Maharashtra',
+    'Indian Overseas Bank',
     'Others',
   ];
 
