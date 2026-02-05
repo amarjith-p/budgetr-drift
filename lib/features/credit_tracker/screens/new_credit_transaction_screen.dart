@@ -39,7 +39,7 @@ class _NewCreditTransactionScreenState
   final FocusNode _notesNode = FocusNode();
   final LayerLink _layerLink = LayerLink();
 
-  // --- LOGIC STATE (From ModernCreditTxnSheet) ---
+  // --- LOGIC STATE ---
   bool _isLinked = false; // Locks Type & Card if true
   bool _attemptedSave = false;
   bool _isMonthSettled = false; // Closed Budget Check
@@ -127,7 +127,7 @@ class _NewCreditTransactionScreenState
   }
 
   // ===========================================================================
-  // 1. DATA & LOGIC (Ported from ModernCreditTxnSheet)
+  // 1. DATA & LOGIC
   // ===========================================================================
 
   Future<void> _loadData() async {
@@ -171,7 +171,8 @@ class _NewCreditTransactionScreenState
             _isLinked = true;
           }
         } else {
-          if (_cards.isNotEmpty) _selectedCard = _cards.first;
+          // REMOVED DEFAULT SELECTION HERE
+          // _selectedCard remains null so user is forced to choose
         }
       });
 
@@ -235,6 +236,7 @@ class _NewCreditTransactionScreenState
       return;
     }
 
+    // VALIDATION: Card must be selected
     if (_selectedCard == null) {
       _showError("Please select a Credit Card");
       return;
@@ -315,7 +317,7 @@ class _NewCreditTransactionScreenState
   }
 
   // ===========================================================================
-  // 2. UI BUILD (Matches NewExpenseScreen Design)
+  // 2. UI BUILD
   // ===========================================================================
 
   @override
