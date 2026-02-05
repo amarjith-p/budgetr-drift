@@ -21,6 +21,16 @@ class BankConstants {
     'IDBI Bank',
     'UCO Bank',
     'AU Bank',
+    'ESAF Small Finance Bank',
+    'Bandhan Bank',
+    'South Indian Bank',
+    'DBS Bank',
+    'Punjab and Sind Bank',
+    'Indian Bank',
+    'Bank of India',
+    'Central Bank of India',
+    'Bank of Maharashtra',
+    'Indian Overseas Bank',
     'Others',
   ];
 
