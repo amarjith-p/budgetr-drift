@@ -434,22 +434,26 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => ExpenseFilterSheet(
-        allTxns: allTxns,
-        currentType: _selectedType,
-        currentSort: _sortOption,
-        currentDateRange: _dateRange,
-        currentCategories: _selectedCategories,
-        currentBuckets: _selectedBuckets,
-        onApply: (type, sort, range, categories, buckets) {
-          setState(() {
-            _selectedType = type;
-            _sortOption = sort;
-            _dateRange = range;
-            _selectedCategories = categories;
-            _selectedBuckets = buckets;
-          });
-        },
+      builder: (ctx) => SizedBox(
+        // Set the height here (e.g., 75% of screen height)
+        height: MediaQuery.of(context).size.height * 0.90,
+        child: ExpenseFilterSheet(
+          allTxns: allTxns,
+          currentType: _selectedType,
+          currentSort: _sortOption,
+          currentDateRange: _dateRange,
+          currentCategories: _selectedCategories,
+          currentBuckets: _selectedBuckets,
+          onApply: (type, sort, range, categories, buckets) {
+            setState(() {
+              _selectedType = type;
+              _sortOption = sort;
+              _dateRange = range;
+              _selectedCategories = categories;
+              _selectedBuckets = buckets;
+            });
+          },
+        ),
       ),
     );
   }
@@ -474,7 +478,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                       color: Colors.redAccent.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(10),
                       border:
                           Border.all(color: Colors.redAccent.withOpacity(0.3))),
                   child: const Center(
@@ -508,7 +512,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         padding: const EdgeInsets.only(left: 12, right: 4, top: 6, bottom: 6),
         decoration: BoxDecoration(
             color: _accentColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: _accentColor.withOpacity(0.3))),
         child: Row(children: [
           Text(label,

@@ -1,5 +1,6 @@
 import 'package:budget/features/credit_tracker/services/credit_service.dart';
 import 'package:budget/features/daily_expense/models/filter_criteria.dart';
+// import 'package:budget/features/daily_expense/models/filter_criteria.dart';
 import 'package:drift/drift.dart';
 import 'package:get_it/get_it.dart';
 import 'package:uuid/uuid.dart';
@@ -627,9 +628,8 @@ class ExpenseService {
     }
     return total;
   }
-  // ADD THIS METHOD TO ExpenseService CLASS
-// Make sure to import the FilterCriteria model we just created.
 
+// --- UPDATE THIS METHOD in ExpenseService ---
   Stream<List<ExpenseTransactionModel>> getFilteredTransactions(
       FilterCriteria criteria) {
     final query = _db.select(_db.expenseTransactions);
@@ -652,13 +652,13 @@ class ExpenseService {
     }
 
     // 4. Type Filter
-    if (criteria.transactionType != 'All') {
-      query.where((t) => t.type.equals(criteria.transactionType));
+    if (criteria.transactionTypes.isNotEmpty) {
+      query.where((t) => t.type.isIn(criteria.transactionTypes));
     }
 
-    // 5. Search Query (Notes)
-    if (criteria.searchQuery.isNotEmpty) {
-      query.where((t) => t.notes.like('%${criteria.searchQuery}%'));
+    // 5. Bucket Filter [NEW]
+    if (criteria.selectedBuckets.isNotEmpty) {
+      query.where((t) => t.bucket.isIn(criteria.selectedBuckets));
     }
 
     // 6. Sorting

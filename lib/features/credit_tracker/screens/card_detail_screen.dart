@@ -425,7 +425,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.redAccent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
               ),
               child: const Center(
@@ -473,7 +473,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
       padding: const EdgeInsets.only(left: 12, right: 4, top: 6, bottom: 6),
       decoration: BoxDecoration(
           color: _accentColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: _accentColor.withOpacity(0.3))),
       child: Row(children: [
         Text(label,

@@ -1,7 +1,7 @@
 import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'package:google_fonts/google_fonts.dart'; // Added package
+import 'package:google_fonts/google_fonts.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/services/service_locator.dart';
@@ -9,6 +9,10 @@ import '../../../core/services/service_locator.dart';
 // Services
 import '../../daily_expense/services/expense_service.dart';
 import '../../dashboard/services/dashboard_service.dart';
+
+// Models
+import '../../dashboard/models/dashboard_transaction.dart';
+import '../../../core/models/financial_record_model.dart';
 
 // Screens
 import '../../dashboard/screens/dashboard_screen.dart';
@@ -33,6 +37,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final expenseService = locator<ExpenseService>();
   final dashboardService = locator<DashboardService>();
 
+  // Budget Mode State
+  bool _isBudgetMode = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,12 +61,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 10),
-                  // 1. Summary Card (Fixed Height)
+                  // 1. Summary Card
                   _buildFinancialOverview(),
 
                   const SizedBox(height: 25),
 
-                  // 2. Financial Engines (Fills available space)
+                  // 2. Financial Engines
                   _buildSectionHeader("Finance Today"),
                   const SizedBox(height: 15),
                   Expanded(
@@ -68,12 +75,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 25),
 
-                  // 3. Quick Actions (Fixed Height at bottom)
+                  // 3. Quick Actions
                   _buildSectionHeader("More Tools"),
                   const SizedBox(height: 15),
                   _buildQuickActionList(context),
 
-                  const SizedBox(height: 20), // Bottom Padding
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -84,12 +91,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFinancialOverview() {
+    final now = DateTime.now();
+
     return StreamBuilder(
-      // Combine the balance stream and the summary stream
-      stream: Rx.combineLatest2(
+      stream: Rx.combineLatest3(
         expenseService.watchTotalBalance(),
-        dashboardService.watchMonthlySummary(DateTime.now()),
-        (double balance, MonthlySummary summary) => [balance, summary],
+        dashboardService.getMonthlyTransactions(now.year, now.month),
+        dashboardService.getFinancialRecords(),
+        (double balance, List<DashboardTransaction> txns,
+                List<FinancialRecord> records) =>
+            [balance, txns, records],
       ),
       builder: (context, snapshot) {
         double currentBalance = 0.0;
@@ -98,12 +109,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
         if (snapshot.hasData) {
           currentBalance = snapshot.data![0] as double;
-          final summary = snapshot.data![1] as MonthlySummary;
-          monthlyBudget = summary.totalBudget;
-          totalSpent = summary.totalSpent;
-        } else if (snapshot.hasError) {
-          return Text("Error: ${snapshot.error}",
-              style: const TextStyle(color: Colors.red));
+          final txns = snapshot.data![1] as List<DashboardTransaction>;
+          final records = snapshot.data![2] as List<FinancialRecord>;
+
+          // 1. Find Current Month Budget
+          final recordId = "${now.year}${now.month.toString().padLeft(2, '0')}";
+          final currentRecord = records.firstWhere(
+            (r) => r.id == recordId,
+            orElse: () => FinancialRecord(
+                id: '',
+                year: now.year,
+                month: now.month,
+                salary: 0,
+                extraIncome: 0,
+                emi: 0,
+                effectiveIncome: 0,
+                allocations: {},
+                allocationPercentages: {},
+                bucketOrder: [],
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now()),
+          );
+
+          // Sum Allocations (excluding Income)
+          currentRecord.allocations.forEach((key, value) {
+            if (key != 'Income') monthlyBudget += value;
+          });
+
+          // 2. Calculate Total Spent with Filtering
+          for (var txn in txns) {
+            bool exclude = false;
+
+            if (_isBudgetMode) {
+              if (txn.bucket == 'Out of Bucket') exclude = true;
+              if (txn.category == 'Non-Calculated Expense') exclude = true;
+            }
+
+            if (!exclude) {
+              if (txn.type == 'Expense' ||
+                  (txn.type == 'Transfer Out' &&
+                      txn.sourceType == TransactionSourceType.creditCard)) {
+                totalSpent += txn.amount;
+              }
+            }
+          }
         }
 
         return Container(
@@ -125,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // --- Header with Day, Date & 12H Live Clock ---
+              // --- Header Row ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,8 +190,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         const Duration(seconds: 1), (_) => DateTime.now()),
                     builder: (context, snapshot) {
                       final now = DateTime.now();
-
-                      // Date Formatting with Day Name
                       final months = [
                         "Jan",
                         "Feb",
@@ -166,21 +213,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         "Sat",
                         "Sun"
                       ];
-
                       final dayName = weekdays[now.weekday - 1];
                       final monthName = months[now.month - 1];
                       final dayNum = now.day.toString().padLeft(2, '0');
-
-                      // Result: "Mon, 02 Feb 2026"
                       final dateStr =
                           "$dayName, $dayNum $monthName ${now.year}";
 
-                      // 12-Hour Time Formatting
                       int hour = now.hour;
                       final String period = hour >= 12 ? 'PM' : 'AM';
                       hour = hour % 12;
                       if (hour == 0) hour = 12;
-
                       final timeStr =
                           "${hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} $period";
 
@@ -193,7 +235,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500)),
                           const SizedBox(height: 2),
-                          // tabularFigures ensures the width doesn't jump as numbers change
                           Text(timeStr,
                               style: GoogleFonts.robotoSlab(
                                   color: Colors.white,
@@ -208,6 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+
               Text("₹ ${currentBalance.toStringAsFixed(2)}",
                   style: GoogleFonts.openSans(
                       color: Colors.white,
@@ -215,6 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1)),
               const SizedBox(height: 20),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -222,10 +265,57 @@ class _HomeScreenState extends State<HomeScreen> {
                       "Monthly Budget",
                       "    ₹ ${monthlyBudget.toStringAsFixed(2)}",
                       Colors.blueAccent),
-                  _buildMiniStat(
-                      "Spent so far",
-                      "    ₹ ${totalSpent.toStringAsFixed(2)}",
-                      Colors.orangeAccent),
+
+                  // Custom Column for Spent so far + Toggle
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                              radius: 4,
+                              backgroundColor: _isBudgetMode
+                                  ? Colors.greenAccent
+                                  : Colors.orangeAccent),
+                          const SizedBox(width: 8),
+                          Text(_isBudgetMode ? "Budget Spent" : "Spent so far",
+                              style: GoogleFonts.robotoSlab(
+                                  color: Colors.white54, fontSize: 12)),
+                          const SizedBox(width: 6),
+                          // Toggle Icon
+                          SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              iconSize: 16,
+                              tooltip: "Budget Mode",
+                              onPressed: () {
+                                setState(() {
+                                  _isBudgetMode = !_isBudgetMode;
+                                });
+                              },
+                              icon: Icon(
+                                _isBudgetMode
+                                    ? Icons.savings_rounded
+                                    : Icons.savings_outlined,
+                                color: _isBudgetMode
+                                    ? const Color(0xFF00B4D8)
+                                    : Colors.white24,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text("    ₹ ${totalSpent.toStringAsFixed(2)}",
+                          style: GoogleFonts.openSans(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ],
               )
             ],
@@ -259,18 +349,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFeatureGrid(BuildContext context) {
-    // LayoutBuilder allows us to calculate the perfect aspect ratio to fit the grid in the Expanded space
     return LayoutBuilder(
       builder: (context, constraints) {
-        // We want 2 rows and 2 columns
-        // Item Width = (Total Width - CrossAxisSpacing) / 2
-        // Item Height = (Total Height - MainAxisSpacing) / 2
         double itemWidth = (constraints.maxWidth - 16) / 2;
         double itemHeight = (constraints.maxHeight - 16) / 2;
         double childAspectRatio = itemWidth / itemHeight;
 
         return GridView.count(
-          physics: const NeverScrollableScrollPhysics(), // No scrolling
+          physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 2,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
@@ -361,7 +447,6 @@ class _HomeScreenState extends State<HomeScreen> {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          // Added specific colors for each action icon
           _buildActionChip(
               context,
               "Goals & Loans",
@@ -404,8 +489,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Row(
           children: [
-            Icon(icon,
-                color: iconColor, size: 18), // Icon now uses the passed color
+            Icon(icon, color: iconColor, size: 18),
             const SizedBox(width: 8),
             Text(label, style: GoogleFonts.robotoSlab(color: Colors.white70)),
           ],

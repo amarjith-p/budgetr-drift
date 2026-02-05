@@ -15,7 +15,7 @@ import '../../../core/widgets/glass_card.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../../../core/services/category_service.dart';
 import '../../../core/models/transaction_category_model.dart';
-import '../../../core/constants/icon_constants.dart'; // [ADDED] For dynamic icons
+import '../../../core/constants/icon_constants.dart';
 
 // --- SERVICE & MODEL IMPORTS ---
 import '../../credit_tracker/models/credit_models.dart';
@@ -51,6 +51,7 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
   // --- FILTERS ---
   String _filterSource = 'All';
   String? _filterCategory;
+  bool _isBudgetMode = false; // [NEW] Budget Mode State
 
   // --- STATS ---
   double _monthTotal = 0.0;
@@ -60,18 +61,17 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
   // --- CONFIG ---
   double _greenLimit = 500.0; // Safe
   double _yellowLimit = 1000.0; // Caution
-  double _orangeLimit = 2000.0; // Warning [NEW]
+  double _orangeLimit = 2000.0; // Warning
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
     _fetchCategories();
-    _loadMonthLimits(_focusedDay); // Load DB limits for current month
+    _loadMonthLimits(_focusedDay);
     _fetchTransactions();
   }
 
-// [NEW] Load limits from DB for the specific month
   Future<void> _loadMonthLimits(DateTime date) async {
     try {
       final limits = await _expenseService.getMonthLimits(date);
@@ -87,7 +87,6 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
     }
   }
 
-  // [UPDATED] Save to DB instead of SharedPreferences
   Future<void> _saveMonthLimits(
       double green, double yellow, double orange) async {
     final monthId =
@@ -104,31 +103,10 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
     }
   }
 
-  Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _greenLimit = prefs.getDouble('calendar_limit_green') ?? 500.0;
-        _yellowLimit = prefs.getDouble('calendar_limit_yellow') ?? 2000.0;
-      });
-    }
-  }
-
-  Future<void> _savePreferences(double green, double yellow) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('calendar_limit_green', green);
-    await prefs.setDouble('calendar_limit_yellow', yellow);
-    setState(() {
-      _greenLimit = green;
-      _yellowLimit = yellow;
-    });
-  }
-
   void _fetchCategories() {
     _categoryService.getCategories().listen((cats) {
       if (mounted) {
         setState(() {
-          // [FIX] Filter to only show EXPENSE categories
           _categories = cats.where((c) => c.type == 'Expense').toList();
         });
       }
@@ -141,12 +119,10 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
       _creditService.getAllTransactions(),
       (List<ExpenseTransactionModel> expenses,
           List<CreditTransactionModel> credits) {
-        // Merge raw data first
         List<dynamic> combined = [];
         combined.addAll(expenses.where((t) => t.type == 'Expense'));
         combined.addAll(credits.where((t) => t.type == 'Expense'));
 
-        // Sort by Date DESC
         combined.sort((a, b) {
           DateTime dateA = a is ExpenseTransactionModel
               ? a.date
@@ -163,7 +139,7 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
       if (mounted) {
         setState(() {
           _rawTransactions = data;
-          _applyFilters(); // Apply current filters to new data
+          _applyFilters();
           _isLoading = false;
         });
       }
@@ -190,7 +166,26 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
       }).toList();
     }
 
-    // 3. Rebuild Heatmap Data
+    // 3. [NEW] Budget Mode Filter
+    if (_isBudgetMode) {
+      temp = temp.where((t) {
+        String bucket = '';
+        String category = '';
+        if (t is ExpenseTransactionModel) {
+          bucket = t.bucket;
+          category = t.category;
+        } else if (t is CreditTransactionModel) {
+          bucket = t.bucket;
+          category = t.category;
+        }
+        // Exclude logic
+        if (bucket == 'Out of Bucket') return false;
+        if (category == 'Non-Calculated Expense') return false;
+        return true;
+      }).toList();
+    }
+
+    // 4. Rebuild Heatmap Data
     final Map<DateTime, double> totals = {};
     for (var txn in temp) {
       double amt = txn is ExpenseTransactionModel
@@ -228,12 +223,12 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
     final totalDaysInMonth =
         DateTime(focusedMonth.year, focusedMonth.month + 1, 0).day;
     if (isCurrentMonth) {
-      effectiveDays = now.day; // If today is 10th, divide by 10
+      effectiveDays = now.day;
     } else {
-      effectiveDays = totalDaysInMonth; // If past month, divide by 30
+      effectiveDays = totalDaysInMonth;
     }
 
-    if (effectiveDays == 0) effectiveDays = 1; // Safety check
+    if (effectiveDays == 0) effectiveDays = 1;
 
     setState(() {
       _monthTotal = total;
@@ -242,30 +237,18 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
       if (isCurrentMonth) {
         _projectedTotal = _monthDailyAvg * totalDaysInMonth;
       } else {
-        // For past months, projection is just the actual total
         _projectedTotal = total;
       }
     });
   }
 
-  // [UPDATED] Logic for 3 Limits (4 Colors)
   Color _getColorForSpend(double amount) {
     if (amount == 0) return Colors.transparent;
-
-    // Tier 1: Safe
     if (amount <= _greenLimit) return const Color(0xFF2EC4B6).withOpacity(0.8);
-
-    // Tier 2: Caution
     if (amount <= _yellowLimit) return const Color(0xFFFF9F1C).withOpacity(0.8);
-
-    // Tier 3: Warning [NEW]
     if (amount <= _orangeLimit) return const Color(0xFFFF5400).withOpacity(0.8);
-
-    // Tier 4: Critical
     return const Color(0xFFE71D36).withOpacity(0.8);
   }
-
-  // --- UI BUILDING ---
 
   @override
   Widget build(BuildContext context) {
@@ -348,7 +331,7 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          // 1. Source Filter
+          // 1. Source Filters
           _filterChip(
               label: "All",
               isSelected: _filterSource == 'All',
@@ -375,7 +358,20 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
 
           _verticalDividerSmall(),
 
-          // 2. View Mode
+          // 2. Budget Mode Toggle [NEW]
+          _filterChip(
+            label: "Budget Mode",
+            icon: Icons.savings_outlined,
+            isSelected: _isBudgetMode,
+            onTap: () => setState(() {
+              _isBudgetMode = !_isBudgetMode;
+              _applyFilters();
+            }),
+          ),
+
+          _verticalDividerSmall(),
+
+          // 3. View Mode
           _filterChip(
               label: _calendarFormat == CalendarFormat.month
                   ? "Month View"
@@ -391,7 +387,7 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
 
           _verticalDividerSmall(),
 
-          // 3. Category Filter
+          // 4. Category Filter
           ActionChip(
             label: Text(_filterCategory ?? "Category: All"),
             avatar:
@@ -661,14 +657,14 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
         children: [
           _legendDot(const Color(0xFF2EC4B6), "< ${_greenLimit.toInt()}"),
           _legendDot(const Color(0xFFFF9F1C), "< ${_yellowLimit.toInt()}"),
-          _legendDot(
-              const Color(0xFFFF5400), "< ${_orangeLimit.toInt()}"), // New
+          _legendDot(const Color(0xFFFF5400), "< ${_orangeLimit.toInt()}"),
           _legendDot(const Color(0xFFE71D36), "> ${_orangeLimit.toInt()}"),
         ],
       ),
     );
   }
 
+  // [RESTORED] The missing helper method
   Widget _legendDot(Color color, String label) {
     return Row(
       children: [
@@ -687,7 +683,6 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
   Widget _buildSelectedDayDetails() {
     if (_selectedDay == null) return const SizedBox.shrink();
 
-    // Use Filtered List
     final dayTxns = _filteredTransactions.where((t) {
       final date = t is ExpenseTransactionModel
           ? t.date
@@ -753,7 +748,6 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
               final txn = dayTxns[index];
               final isCredit = txn is CreditTransactionModel;
 
-              // Helper getters
               final category = isCredit
                   ? (txn as CreditTransactionModel).category
                   : (txn as ExpenseTransactionModel).category;
@@ -764,7 +758,6 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
                   ? (txn as CreditTransactionModel).notes
                   : (txn as ExpenseTransactionModel).notes;
 
-              // [FIX] Get the correct icon dynamically for list items too
               final catModel = _categories.firstWhere((c) => c.name == category,
                   orElse: () => TransactionCategoryModel(
                       id: '',
@@ -794,7 +787,7 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
                       child: Icon(
                         catModel.iconCode != null
                             ? IconConstants.getIconByCode(catModel.iconCode!)
-                            : Icons.category, // Dynamic Icon
+                            : Icons.category,
                         color: isCredit ? Colors.purpleAccent : Colors.white70,
                         size: 18,
                       ),
@@ -902,7 +895,6 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
                   return ListTile(
                     title: Text(cat.name,
                         style: const TextStyle(color: Colors.white)),
-                    // [FIX] Use Dynamic Icon from IconConstants
                     leading: Icon(
                         cat.iconCode != null
                             ? IconConstants.getIconByCode(cat.iconCode!)
@@ -930,15 +922,13 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
     );
   }
 
-  // Removed _getCategoryIcon as it is no longer needed
-  // [UPDATED] Settings Sheet with 3 Inputs
   void _showLimitSettingsSheet() {
     final greenCtrl =
         TextEditingController(text: _greenLimit.toInt().toString());
     final yellowCtrl =
         TextEditingController(text: _yellowLimit.toInt().toString());
     final orangeCtrl =
-        TextEditingController(text: _orangeLimit.toInt().toString()); // New
+        TextEditingController(text: _orangeLimit.toInt().toString());
 
     final monthName = DateFormat('MMMM yyyy').format(_focusedDay);
 
@@ -981,21 +971,14 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
                   fontStyle: FontStyle.italic),
             ),
             const SizedBox(height: 24),
-
-            // Limit 1
             _buildLimitInput(
                 "Safe Limit (Green)", greenCtrl, const Color(0xFF2EC4B6)),
             const SizedBox(height: 16),
-
-            // Limit 2
             _buildLimitInput(
                 "Caution Limit (Yellow)", yellowCtrl, const Color(0xFFFF9F1C)),
             const SizedBox(height: 16),
-
-            // Limit 3 [NEW]
             _buildLimitInput(
                 "Warning Limit (Orange)", orangeCtrl, const Color(0xFFFF5400)),
-
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -1011,7 +994,6 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
                   final y = double.tryParse(yellowCtrl.text) ?? 2000;
                   final o = double.tryParse(orangeCtrl.text) ?? 5000;
 
-                  // Simple validation to ensure logical order
                   if (g < y && y < o) {
                     _saveMonthLimits(g, y, o);
                     Navigator.pop(context);
