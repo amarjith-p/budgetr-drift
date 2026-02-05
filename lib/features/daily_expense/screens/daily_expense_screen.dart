@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/features/daily_expense/screens/new_expense_screen.dart';
 import 'package:budget/features/daily_expense/screens/spending_calendar_screen.dart';
 import 'package:budget/features/daily_expense/widgets/modern_expense_sheet.dart';
 import 'package:flutter/cupertino.dart';
@@ -472,7 +473,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (ctx) => const ModernExpenseSheet(),
+          builder: (ctx) => const NewExpenseScreen(),
         );
       },
       child: Container(

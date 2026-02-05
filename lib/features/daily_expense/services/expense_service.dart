@@ -1,4 +1,5 @@
 import 'package:budget/features/credit_tracker/services/credit_service.dart';
+import 'package:budget/features/daily_expense/models/filter_criteria.dart';
 import 'package:drift/drift.dart';
 import 'package:get_it/get_it.dart';
 import 'package:uuid/uuid.dart';
@@ -625,5 +626,63 @@ class ExpenseService {
       total += account.currentBalance;
     }
     return total;
+  }
+  // ADD THIS METHOD TO ExpenseService CLASS
+// Make sure to import the FilterCriteria model we just created.
+
+  Stream<List<ExpenseTransactionModel>> getFilteredTransactions(
+      FilterCriteria criteria) {
+    final query = _db.select(_db.expenseTransactions);
+
+    // 1. Date Filter
+    if (criteria.startDate != null && criteria.endDate != null) {
+      query.where((t) =>
+          t.date.isBetweenValues(criteria.startDate!, criteria.endDate!));
+    }
+
+    // 2. Amount Filter
+    if (criteria.amountRange != null) {
+      query.where((t) => t.amount.isBetweenValues(
+          criteria.amountRange!.start, criteria.amountRange!.end));
+    }
+
+    // 3. Category Filter
+    if (criteria.selectedCategories.isNotEmpty) {
+      query.where((t) => t.category.isIn(criteria.selectedCategories));
+    }
+
+    // 4. Type Filter
+    if (criteria.transactionType != 'All') {
+      query.where((t) => t.type.equals(criteria.transactionType));
+    }
+
+    // 5. Search Query (Notes)
+    if (criteria.searchQuery.isNotEmpty) {
+      query.where((t) => t.notes.like('%${criteria.searchQuery}%'));
+    }
+
+    // 6. Sorting
+    switch (criteria.sortOption) {
+      case SortOption.newest:
+        query.orderBy(
+            [(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)]);
+        break;
+      case SortOption.oldest:
+        query.orderBy(
+            [(t) => OrderingTerm(expression: t.date, mode: OrderingMode.asc)]);
+        break;
+      case SortOption.highestAmount:
+        query.orderBy([
+          (t) => OrderingTerm(expression: t.amount, mode: OrderingMode.desc)
+        ]);
+        break;
+      case SortOption.lowestAmount:
+        query.orderBy([
+          (t) => OrderingTerm(expression: t.amount, mode: OrderingMode.asc)
+        ]);
+        break;
+    }
+
+    return query.watch().map((rows) => rows.map(_mapTransaction).toList());
   }
 }

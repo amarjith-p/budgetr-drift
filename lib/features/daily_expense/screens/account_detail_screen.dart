@@ -1,6 +1,7 @@
 // lib/features/daily_expense/screens/account_detail_screen.dart
 
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
+import 'package:budget/features/daily_expense/screens/new_expense_screen.dart';
 import 'package:budget/features/daily_expense/widgets/modern_expense_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -165,7 +166,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                 context: context,
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
-                builder: (context) => ModernExpenseSheet(
+                builder: (context) => NewExpenseScreen(
                   preSelectedAccount: widget.account,
                 ),
               );
@@ -330,7 +331,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (c) => ModernExpenseSheet(txnToEdit: txn),
+      builder: (c) => NewExpenseScreen(txnToEdit: txn),
     );
   }
 

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/features/daily_expense/screens/new_expense_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -327,7 +328,7 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (ctx) => ModernExpenseSheet(initialDate: _selectedDay),
+            builder: (ctx) => NewExpenseScreen(initialDate: _selectedDay),
           );
         },
         backgroundColor: const Color(0xFF00B4D8),
