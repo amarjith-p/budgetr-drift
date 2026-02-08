@@ -1152,14 +1152,14 @@ class $ExpenseAccountsTable extends ExpenseAccounts
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('Bank'));
-  static const VerificationMeta _currentBalanceMeta =
-      const VerificationMeta('currentBalance');
   @override
-  late final GeneratedColumn<double> currentBalance = GeneratedColumn<double>(
-      'current_balance', aliasedName, false,
-      type: DriftSqlType.double,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0.0));
+  late final GeneratedColumnWithTypeConverter<double, double> currentBalance =
+      GeneratedColumn<double>('current_balance', aliasedName, false,
+              type: DriftSqlType.double,
+              requiredDuringInsert: false,
+              defaultValue: const Constant(0.0))
+          .withConverter<double>(
+              $ExpenseAccountsTable.$convertercurrentBalance);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1252,12 +1252,6 @@ class $ExpenseAccountsTable extends ExpenseAccounts
       context.handle(
           _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
     }
-    if (data.containsKey('current_balance')) {
-      context.handle(
-          _currentBalanceMeta,
-          currentBalance.isAcceptableOrUnknown(
-              data['current_balance']!, _currentBalanceMeta));
-    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1309,8 +1303,9 @@ class $ExpenseAccountsTable extends ExpenseAccounts
           .read(DriftSqlType.string, data['${effectivePrefix}bank_name'])!,
       type: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
-      currentBalance: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}current_balance'])!,
+      currentBalance: $ExpenseAccountsTable.$convertercurrentBalance.fromSql(
+          attachedDatabase.typeMapping.read(
+              DriftSqlType.double, data['${effectivePrefix}current_balance'])!),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       accountType: attachedDatabase.typeMapping
@@ -1330,6 +1325,9 @@ class $ExpenseAccountsTable extends ExpenseAccounts
   $ExpenseAccountsTable createAlias(String alias) {
     return $ExpenseAccountsTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<double, double> $convertercurrentBalance =
+      const TwoDecimalConverter();
 }
 
 class ExpenseAccount extends DataClass implements Insertable<ExpenseAccount> {
@@ -1363,7 +1361,10 @@ class ExpenseAccount extends DataClass implements Insertable<ExpenseAccount> {
     map['name'] = Variable<String>(name);
     map['bank_name'] = Variable<String>(bankName);
     map['type'] = Variable<String>(type);
-    map['current_balance'] = Variable<double>(currentBalance);
+    {
+      map['current_balance'] = Variable<double>(
+          $ExpenseAccountsTable.$convertercurrentBalance.toSql(currentBalance));
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['account_type'] = Variable<String>(accountType);
     map['account_number'] = Variable<String>(accountNumber);
@@ -1641,7 +1642,9 @@ class ExpenseAccountsCompanion extends UpdateCompanion<ExpenseAccount> {
       map['type'] = Variable<String>(type.value);
     }
     if (currentBalance.present) {
-      map['current_balance'] = Variable<double>(currentBalance.value);
+      map['current_balance'] = Variable<double>($ExpenseAccountsTable
+          .$convertercurrentBalance
+          .toSql(currentBalance.value));
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -2394,14 +2397,13 @@ class $CreditCardsTable extends CreditCards
   late final GeneratedColumn<double> creditLimit = GeneratedColumn<double>(
       'credit_limit', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
-  static const VerificationMeta _currentBalanceMeta =
-      const VerificationMeta('currentBalance');
   @override
-  late final GeneratedColumn<double> currentBalance = GeneratedColumn<double>(
-      'current_balance', aliasedName, false,
-      type: DriftSqlType.double,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0.0));
+  late final GeneratedColumnWithTypeConverter<double, double> currentBalance =
+      GeneratedColumn<double>('current_balance', aliasedName, false,
+              type: DriftSqlType.double,
+              requiredDuringInsert: false,
+              defaultValue: const Constant(0.0))
+          .withConverter<double>($CreditCardsTable.$convertercurrentBalance);
   static const VerificationMeta _billDateMeta =
       const VerificationMeta('billDate');
   @override
@@ -2499,12 +2501,6 @@ class $CreditCardsTable extends CreditCards
     } else if (isInserting) {
       context.missing(_creditLimitMeta);
     }
-    if (data.containsKey('current_balance')) {
-      context.handle(
-          _currentBalanceMeta,
-          currentBalance.isAcceptableOrUnknown(
-              data['current_balance']!, _currentBalanceMeta));
-    }
     if (data.containsKey('bill_date')) {
       context.handle(_billDateMeta,
           billDate.isAcceptableOrUnknown(data['bill_date']!, _billDateMeta));
@@ -2558,8 +2554,9 @@ class $CreditCardsTable extends CreditCards
           DriftSqlType.string, data['${effectivePrefix}last_four_digits'])!,
       creditLimit: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}credit_limit'])!,
-      currentBalance: attachedDatabase.typeMapping.read(
-          DriftSqlType.double, data['${effectivePrefix}current_balance'])!,
+      currentBalance: $CreditCardsTable.$convertercurrentBalance.fromSql(
+          attachedDatabase.typeMapping.read(
+              DriftSqlType.double, data['${effectivePrefix}current_balance'])!),
       billDate: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}bill_date'])!,
       dueDate: attachedDatabase.typeMapping
@@ -2579,6 +2576,9 @@ class $CreditCardsTable extends CreditCards
   $CreditCardsTable createAlias(String alias) {
     return $CreditCardsTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<double, double> $convertercurrentBalance =
+      const TwoDecimalConverter();
 }
 
 class CreditCard extends DataClass implements Insertable<CreditCard> {
@@ -2615,7 +2615,10 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
     map['bank_name'] = Variable<String>(bankName);
     map['last_four_digits'] = Variable<String>(lastFourDigits);
     map['credit_limit'] = Variable<double>(creditLimit);
-    map['current_balance'] = Variable<double>(currentBalance);
+    {
+      map['current_balance'] = Variable<double>(
+          $CreditCardsTable.$convertercurrentBalance.toSql(currentBalance));
+    }
     map['bill_date'] = Variable<int>(billDate);
     map['due_date'] = Variable<int>(dueDate);
     map['color'] = Variable<int>(color);
@@ -2913,7 +2916,9 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
       map['credit_limit'] = Variable<double>(creditLimit.value);
     }
     if (currentBalance.present) {
-      map['current_balance'] = Variable<double>(currentBalance.value);
+      map['current_balance'] = Variable<double>($CreditCardsTable
+          .$convertercurrentBalance
+          .toSql(currentBalance.value));
     }
     if (billDate.present) {
       map['bill_date'] = Variable<int>(billDate.value);
@@ -9613,9 +9618,10 @@ class $$ExpenseAccountsTableFilterComposer
   ColumnFilters<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get currentBalance => $composableBuilder(
-      column: $table.currentBalance,
-      builder: (column) => ColumnFilters(column));
+  ColumnWithTypeConverterFilters<double, double, double> get currentBalance =>
+      $composableBuilder(
+          column: $table.currentBalance,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -9727,8 +9733,9 @@ class $$ExpenseAccountsTableAnnotationComposer
   GeneratedColumn<String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
 
-  GeneratedColumn<double> get currentBalance => $composableBuilder(
-      column: $table.currentBalance, builder: (column) => column);
+  GeneratedColumnWithTypeConverter<double, double> get currentBalance =>
+      $composableBuilder(
+          column: $table.currentBalance, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -10387,9 +10394,10 @@ class $$CreditCardsTableFilterComposer
   ColumnFilters<double> get creditLimit => $composableBuilder(
       column: $table.creditLimit, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get currentBalance => $composableBuilder(
-      column: $table.currentBalance,
-      builder: (column) => ColumnFilters(column));
+  ColumnWithTypeConverterFilters<double, double, double> get currentBalance =>
+      $composableBuilder(
+          column: $table.currentBalance,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 
   ColumnFilters<int> get billDate => $composableBuilder(
       column: $table.billDate, builder: (column) => ColumnFilters(column));
@@ -10503,8 +10511,9 @@ class $$CreditCardsTableAnnotationComposer
   GeneratedColumn<double> get creditLimit => $composableBuilder(
       column: $table.creditLimit, builder: (column) => column);
 
-  GeneratedColumn<double> get currentBalance => $composableBuilder(
-      column: $table.currentBalance, builder: (column) => column);
+  GeneratedColumnWithTypeConverter<double, double> get currentBalance =>
+      $composableBuilder(
+          column: $table.currentBalance, builder: (column) => column);
 
   GeneratedColumn<int> get billDate =>
       $composableBuilder(column: $table.billDate, builder: (column) => column);

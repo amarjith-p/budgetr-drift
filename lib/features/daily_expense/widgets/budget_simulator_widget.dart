@@ -113,6 +113,8 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
       }
     }
 
+    final double balanceLeft = simulatedAllocation - simulatedSpend;
+
     final range = _getDateRange();
     final now = DateTime.now();
     final totalDaysInMonth =
@@ -386,6 +388,24 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
                                     fontSize: 11)),
                           ],
                         ),
+                        // --- NEW: BALANCE LEFT DISPLAY ---
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Balance Left",
+                                style: TextStyle(
+                                    color: Colors.white.withOpacity(0.5),
+                                    fontSize: 11)),
+                            Text(currencyFmt.format(balanceLeft),
+                                style: TextStyle(
+                                    color:
+                                        balanceLeft >= 0 ? goodColor : badColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12)),
+                          ],
+                        ),
+                        // ---------------------------------
                         const SizedBox(height: 24),
                       ] else
                         Container(

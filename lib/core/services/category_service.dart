@@ -159,11 +159,11 @@ class CategoryService {
       'icon': Icons.category.codePoint,
     },
     'Other': {
-      'subs': ['Missing', 'Uncategorized'],
+      'subs': ['Missing', 'Uncategorized', 'Account Adjustments'],
       'icon': Icons.help_outline.codePoint,
     },
     'Non-Calculated Expense': {
-      'subs': [],
+      'subs': ['Untracked', 'Missing Money', 'Account Adjustments'],
       'icon': Icons.money_off.codePoint,
     },
   };
@@ -212,11 +212,11 @@ class CategoryService {
       'icon': Icons.sell.codePoint,
     },
     'Other': {
-      'subs': ['Miscellaneous', 'Uncategorized'],
+      'subs': ['Miscellaneous', 'Uncategorized', 'Account Adjustments'],
       'icon': Icons.help_outline.codePoint,
     },
     'Non-Calculated Income': {
-      'subs': [],
+      'subs': ['Untracked', 'Account Adjustments'],
       'icon': Icons.money_off.codePoint,
     },
     'Repayment': {

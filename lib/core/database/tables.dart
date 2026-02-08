@@ -1,5 +1,22 @@
 import 'package:drift/drift.dart';
 
+// --- TYPE CONVERTERS ---
+
+/// Enforces 2 decimal places for double values (e.g., Currency)
+class TwoDecimalConverter extends TypeConverter<double, double> {
+  const TwoDecimalConverter();
+
+  @override
+  double fromSql(double fromDb) {
+    return double.parse(fromDb.toStringAsFixed(2));
+  }
+
+  @override
+  double toSql(double value) {
+    return double.parse(value.toStringAsFixed(2));
+  }
+}
+
 // --- 1. BUDGET & SETTLEMENTS ---
 class FinancialRecords extends Table {
   TextColumn get id => text()(); // Format: "YYYYMM"
@@ -61,7 +78,11 @@ class ExpenseAccounts extends Table {
   TextColumn get type =>
       text().withDefault(const Constant('Bank'))(); // 'Bank', 'Cash', etc.
 
-  RealColumn get currentBalance => real().withDefault(const Constant(0.0))();
+  // FIXED: Applied TwoDecimalConverter to enforce 2 decimal precision
+  RealColumn get currentBalance => real()
+      .withDefault(const Constant(0.0))
+      .map(const TwoDecimalConverter())();
+
   DateTimeColumn get createdAt => dateTime()();
 
   // Missing fields from Model
@@ -115,7 +136,9 @@ class CreditCards extends Table {
       text().withDefault(const Constant(''))(); // Found in Model
 
   RealColumn get creditLimit => real()();
-  RealColumn get currentBalance => real().withDefault(const Constant(0.0))();
+  RealColumn get currentBalance => real()
+      .withDefault(const Constant(0.0))
+      .map(const TwoDecimalConverter())();
 
   IntColumn get billDate => integer()();
   IntColumn get dueDate => integer()(); // Found in Model
