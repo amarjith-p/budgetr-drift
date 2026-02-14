@@ -216,4 +216,20 @@ class CustomEntryService {
   Future<void> deleteCustomRecord(String id) async {
     await (_db.delete(_db.customRecords)..where((t) => t.id.equals(id))).go();
   }
+
+  Stream<CustomTemplate?> watchCustomTemplate(String id) {
+    return (_db.select(_db.customTemplates)..where((t) => t.id.equals(id)))
+        .watchSingleOrNull()
+        .map((row) {
+      if (row == null) return null;
+      return CustomTemplate(
+        id: row.id,
+        name: row.name,
+        createdAt: row.createdAt,
+        fields: _decodeFields(row.fields),
+        xAxisField: row.xAxisField,
+        yAxisField: row.yAxisField,
+      );
+    });
+  }
 }

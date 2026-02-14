@@ -120,11 +120,13 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bgColor,
+      // [FIX] This ensures the layout resizes when the keyboard opens
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          _isEditing ? 'Edit Tracker' : 'Design New Tracker',
+          _isEditing ? 'Edit Sheet' : 'Design New Sheet',
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -140,7 +142,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
               padding: const EdgeInsets.all(20.0),
               child: _buildStyledTextField(
                 initialValue: _screenName,
-                label: 'Tracker Name',
+                label: 'Sheet Name',
                 icon: Icons.title,
                 onSaved: (val) => _screenName = val!,
               ),
@@ -148,7 +150,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
             Expanded(
               child: ReorderableListView.builder(
                 padding: const EdgeInsets.only(
-                  bottom: 100,
+                  bottom:
+                      20, // Reduced bottom padding as buttons are now separate
                   left: 16,
                   right: 16,
                 ),
@@ -174,45 +177,73 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
                 },
               ),
             ),
+            // [FIX] Bottom Control Bar - moved into the Column to ride up with keyboard
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                  color: _bgColor,
+                  border: Border(
+                      top: BorderSide(color: Colors.white.withOpacity(0.1))),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, -4),
+                    )
+                  ]),
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  children: [
+                    // Add Field Button (Replaces FAB)
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: _addField,
+                        icon: const Icon(Icons.add_circle_outline,
+                            color: Colors.white),
+                        label: const Text("Add Field",
+                            style: TextStyle(color: Colors.white)),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                  color: Colors.white.withOpacity(0.4))),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Save Button
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: _save,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _accentColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            _isEditing ? 'Update Tracker' : 'Save Tracker',
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'template_editor_fab',
-        backgroundColor: _accentColor,
-        foregroundColor: BudgetrColors.inputFill,
-        onPressed: _addField,
-        label: const Text(
-          'Add Field',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        icon: const Icon(Icons.add_circle_outline),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: _bgColor,
-          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
-        ),
-        child: SizedBox(
-          height: 54,
-          child: ElevatedButton(
-            onPressed: _save,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _accentColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 0,
-            ),
-            child: Text(
-              _isEditing ? 'Update Tracker' : 'Save Tracker',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
-      ),
+      // [FIX] Removed FAB and BottomNavigationBar to prevent overlapping/hiding
     );
   }
 
