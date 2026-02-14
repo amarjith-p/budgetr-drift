@@ -1,12 +1,18 @@
+import 'dart:ui'; // Required for ImageFilter
+import 'package:budget/core/design/budgetr_colors.dart';
+import 'package:budget/core/widgets/glass_card.dart';
 import 'package:budget/core/widgets/modern_loader.dart';
-import 'package:budget/features/custom_entry/services/custom_entry_service.dart';
+import 'package:budget/core/widgets/status_bottom_sheet.dart';
+import 'package:budget/features/custom_entry/screens/template_editor_screen.dart';
+import 'package:budget/features/custom_entry/widgets/custom_data_page.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get_it/get_it.dart';
+import 'package:intl/intl.dart';
 import '../../../core/models/custom_data_models.dart';
-import 'template_editor_screen.dart';
-import '../widgets/custom_data_page.dart';
-import '../widgets/dashboard/empty_tracker_state.dart';
+import '../services/custom_entry_service.dart';
 
 class CustomEntryDashboard extends StatefulWidget {
   const CustomEntryDashboard({super.key});
@@ -15,250 +21,550 @@ class CustomEntryDashboard extends StatefulWidget {
   State<CustomEntryDashboard> createState() => _CustomEntryDashboardState();
 }
 
-class _CustomEntryDashboardState extends State<CustomEntryDashboard>
-    with TickerProviderStateMixin {
-  // Theme Constants
-  final Color _bgColor = const Color(0xff0D1B2A);
-  final Color _accentColor = const Color(0xFF3A86FF);
-
-  late Stream<List<CustomTemplate>> _templatesStream;
-  TabController? _tabController;
-  String? _activeTemplateId;
-
-  @override
-  void initState() {
-    super.initState();
-    _templatesStream = GetIt.I<CustomEntryService>().getCustomTemplates();
-  }
-
-  @override
-  void dispose() {
-    _tabController?.dispose();
-    super.dispose();
-  }
+class _CustomEntryDashboardState extends State<CustomEntryDashboard> {
+  final CustomEntryService _service = GetIt.I<CustomEntryService>();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<CustomTemplate>>(
-      stream: _templatesStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            backgroundColor: _bgColor,
-            body: const Center(child: ModernLoader()),
-          );
-        }
+    const Color bgColor = Color(0xff0D1B2A);
 
-        var templates = snapshot.data ?? [];
-
-        // Stable Sorting
-        templates = List.from(templates);
-        templates.sort((a, b) {
-          int res = a.createdAt.compareTo(b.createdAt);
-          if (res == 0) return a.name.compareTo(b.name);
-          return res;
-        });
-
-        if (templates.isEmpty) {
-          return EmptyTrackerState(
-            accentColor: _accentColor,
-            bgColor: _bgColor,
-          );
-        }
-
-        // Sync Active ID
-        int initialIndex = 0;
-        if (_activeTemplateId != null) {
-          final foundIndex = templates.indexWhere(
-            (t) => t.id == _activeTemplateId,
-          );
-          if (foundIndex != -1) {
-            initialIndex = foundIndex;
-          } else if (templates.isNotEmpty) {
-            _activeTemplateId = templates.first.id;
-          }
-        } else {
-          _activeTemplateId = templates.first.id;
-        }
-
-        // Manage Controller
-        bool recreateController = _tabController == null ||
-            _tabController!.length != templates.length;
-
-        if (recreateController) {
-          _tabController?.dispose();
-          _tabController = TabController(
-            length: templates.length,
-            vsync: this,
-            initialIndex: initialIndex,
-          );
-
-          _tabController!.addListener(() {
-            if (!_tabController!.indexIsChanging &&
-                _tabController!.index < templates.length) {
-              _activeTemplateId = templates[_tabController!.index].id;
-            }
-          });
-        } else {
-          if (_tabController!.index != initialIndex) {
-            _tabController!.animateTo(initialIndex, duration: Duration.zero);
-          }
-        }
-
-        return Scaffold(
-          backgroundColor: _bgColor,
-          extendBodyBehindAppBar: false,
-          appBar: AppBar(
-            backgroundColor: _bgColor,
-            elevation: 0,
-            centerTitle: true,
-            systemOverlayStyle: SystemUiOverlayStyle.light,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: const Text(
-              'Custom Trackers',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-            actions: [
-              IconButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (c) => const TemplateEditorScreen(),
-                  ),
-                ),
-                tooltip: 'Create New Tracker',
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.add, size: 20, color: Colors.white),
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(80),
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: Stack(
+        children: [
+          // Background Elements (FIXED)
+          Positioned(
+            top: -100,
+            right: -100,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
               child: Container(
-                height: 55,
-                margin: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                width: 300,
+                height: 300,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1B263B),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  physics: const BouncingScrollPhysics(),
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white54,
-                  labelStyle: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                  padding: const EdgeInsets.all(4),
-                  indicator: BoxDecoration(
-                    color: _accentColor,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _accentColor.withOpacity(0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  tabs: templates.map((t) {
-                    return Tab(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.dataset_outlined, size: 16),
-                            const SizedBox(width: 8),
-                            Text(t.name.toUpperCase()),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF3A86FF).withOpacity(0.1),
+                  backgroundBlendMode: BlendMode.plus,
                 ),
               ),
             ),
           ),
-          body: Stack(
-            children: [
-              _buildAmbientGlow(_accentColor),
-              TabBarView(
-                controller: _tabController,
-                physics: const BouncingScrollPhysics(),
-                children: templates.map((t) {
-                  return CustomDataPage(key: ValueKey(t.id), template: t);
-                }).toList(),
-              ),
-            ],
+
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                _buildSearchBar(),
+                Expanded(
+                  child: StreamBuilder<List<CustomTemplate>>(
+                    stream: _service.getCustomTemplates(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: ModernLoader());
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return _buildEmptyState();
+                      }
+
+                      // Filter logic
+                      final allTemplates = snapshot.data!;
+                      final templates = _searchQuery.isEmpty
+                          ? allTemplates
+                          : allTemplates
+                              .where((t) => t.name
+                                  .toLowerCase()
+                                  .contains(_searchQuery.toLowerCase()))
+                              .toList();
+
+                      return MasonryGridView.count(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        itemCount:
+                            templates.length + 1, // +1 for "Add New" card
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            return _buildAddNewCard();
+                          }
+                          return _TrackerCard(
+                            template: templates[index - 1],
+                            onTap: () => _openTracker(templates[index - 1]),
+                            onEdit: () => _editTracker(templates[index - 1]),
+                            onDelete: () =>
+                                _deleteTracker(templates[index - 1]),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  Widget _buildAmbientGlow(Color accentColor) {
-    return Stack(
-      children: [
-        Positioned(
-          top: -100,
-          left: -100,
-          child: Container(
-            width: 300,
-            height: 300,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [accentColor.withOpacity(0.15), Colors.transparent],
-                center: Alignment.center,
-                radius: 0.6,
-              ),
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "CUSTOM SHEETS",
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
             ),
           ),
+          const SizedBox(height: 4),
+          const Text(
+            "Dashboard",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
-        Positioned(
-          bottom: -50,
-          right: -50,
-          child: Container(
-            width: 300,
-            height: 300,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  const Color(0xFFF72585).withOpacity(0.1),
-                  Colors.transparent,
+        child: TextField(
+          controller: _searchController,
+          style: const TextStyle(color: Colors.white),
+          onChanged: (val) => setState(() => _searchQuery = val),
+          decoration: InputDecoration(
+            hintText: "Search your sheets...",
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+            prefixIcon: Icon(CupertinoIcons.search,
+                color: Colors.white.withOpacity(0.3)),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white54),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = "");
+                    },
+                  )
+                : null,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddNewCard() {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TemplateEditorScreen()),
+        );
+      },
+      child: Container(
+        height: 160,
+        decoration: BoxDecoration(
+          color: const Color(0xFF3A86FF).withOpacity(0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: const Color(0xFF3A86FF).withOpacity(0.3), width: 1),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: Color.fromARGB(255, 106, 155, 235),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add_to_photos_outlined,
+                  color: Colors.white, size: 28),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              "Create New",
+              style: TextStyle(
+                color: Color(0xFF3A86FF),
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.dashboard_customize_outlined,
+              size: 64, color: Colors.white.withOpacity(0.2)),
+          const SizedBox(height: 16),
+          Text(
+            "No Sheets Yet",
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TemplateEditorScreen()),
+              );
+            },
+            icon: const Icon(Icons.add),
+            label: const Text("Create First Sheet"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3A86FF),
+              foregroundColor: Colors.white,
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _openTracker(CustomTemplate template) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            title: Text(template.name,
+                style: const TextStyle(color: Colors.white)),
+            backgroundColor: const Color(0xff0D1B2A),
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: CustomDataPage(template: template),
+        ),
+      ),
+    );
+  }
+
+  void _editTracker(CustomTemplate template) {
+    if (template.name == "Investment Portfolio") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("System templates cannot be edited directly.")),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => TemplateEditorScreen(templateToEdit: template)),
+    );
+  }
+
+  Future<void> _deleteTracker(CustomTemplate template) async {
+    if (template.name == "Investment Portfolio") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("System templates cannot be deleted.")),
+      );
+      return;
+    }
+
+    // final confirm = await showDialog<bool>(
+    //   context: context,
+    //   builder: (ctx) => AlertDialog(
+    //     backgroundColor: const Color(0xFF1B263B),
+    //     title: const Text("Delete Tracker?",
+    //         style: TextStyle(color: Colors.white)),
+    //     content: Text(
+    //       "Are you sure you want to delete '${template.name}'? All recorded data will be lost.",
+    //       style: const TextStyle(color: Colors.white70),
+    //     ),
+    //     actions: [
+    //       TextButton(
+    //         onPressed: () => Navigator.pop(ctx, false),
+    //         child: const Text("Cancel"),
+    //       ),
+    //       TextButton(
+    //         onPressed: () => Navigator.pop(ctx, true),
+    //         child: const Text("Delete", style: TextStyle(color: Colors.red)),
+    //       ),
+    //     ],
+    //   ),
+    // );
+
+    // if (confirm == true) {
+    //   await _service.deleteCustomTemplate(template.id);
+    // }
+
+    showStatusSheet(
+      context: context,
+      title: "Delete Sheet?",
+      message:
+          "Are you sure you want to delete '${template.name}'?\nThis will permanently delete the sheet structure and all its entered data.",
+      icon: Icons.delete_sweep_sharp,
+      color: Colors.redAccent,
+      cancelButtonText: "Cancel",
+      onCancel: () {},
+      buttonText: "Delete",
+      onDismiss: () async {
+        await _service.deleteCustomTemplate(template.id);
+      },
+    );
+  }
+}
+
+class _TrackerCard extends StatelessWidget {
+  final CustomTemplate template;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _TrackerCard({
+    required this.template,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final int hash = template.name.codeUnits.reduce((a, b) => a + b);
+
+    // FIX: Changed List<Color> to List<List<Color>>
+    final List<List<Color>> gradients = [
+      [const Color(0xFF4361EE), const Color(0xFF4CC9F0)], // Blue
+      [const Color(0xFFF72585), const Color(0xFF7209B7)], // Pink/Purple
+      [const Color(0xFFFF9F1C), const Color(0xFFFFBF69)], // Orange
+      [const Color(0xFF2EC4B6), const Color(0xFFCBF3F0)], // Teal
+      [const Color(0xFF8E2DE2), const Color(0xFF4A00E0)], // Electric Violet
+      [const Color(0xFF11998E), const Color(0xFF38EF7D)], // Emerald Green
+      [const Color(0xFFFF5F6D), const Color(0xFFFFC371)], // Sunset Peach
+      [const Color(0xFF2193B0), const Color(0xFF6DD5ED)], // Cool Sky
+      [const Color(0xFF7028E4), const Color(0xFFE5B2CA)], // Deep Orchid
+      [const Color(0xFF00B4DB), const Color(0xFF0083B0)], // Deep Blue Sea
+    ];
+
+    // Select color pair
+    final colorPair = gradients[hash % gradients.length];
+    final bool isSystem = template.name == "Investment Portfolio";
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      onLongPress: () {
+        HapticFeedback.mediumImpact();
+        _showOptions(context);
+      },
+      child: Container(
+        height: (hash % 2 == 0) ? 180 : 210,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            colors: [
+              colorPair[0].withOpacity(0.2),
+              colorPair[1].withOpacity(0.1),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(color: colorPair[0].withOpacity(0.3), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Decorative Circle
+            Positioned(
+              right: -20,
+              top: -20,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colorPair[0].withOpacity(0.15),
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Top Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.black26,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          isSystem
+                              ? Icons.show_chart
+                              : Icons.table_chart_outlined,
+                          color: colorPair[1],
+                          size: 20,
+                        ),
+                      ),
+                      if (isSystem)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4)),
+                          child: const Text(
+                            "SYS",
+                            style: TextStyle(
+                                fontSize: 8,
+                                color: Colors.amber,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        )
+                    ],
+                  ),
+
+                  // Middle Section: Stats
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        template.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FutureBuilder<int>(
+                        future: GetIt.I<CustomEntryService>()
+                            .getRecordCount(template.id),
+                        builder: (context, snapshot) {
+                          final count = snapshot.data ?? 0;
+                          return Text(
+                            "$count Records",
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.5),
+                              fontSize: 12,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  // Bottom Section
+                  Row(
+                    children: [
+                      Icon(Icons.access_time,
+                          size: 12, color: Colors.white.withOpacity(0.3)),
+                      const SizedBox(width: 4),
+                      Text(
+                        DateFormat('MMM d,yyyy').format(template.createdAt),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.3),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  )
                 ],
-                center: Alignment.center,
-                radius: 0.6,
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  void _showOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1B263B),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+          border: Border.all(color: Colors.white10),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit, color: Colors.white),
+              title: const Text("Edit Structure",
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                onEdit();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.redAccent),
+              title: const Text("Delete Sheet",
+                  style: TextStyle(color: Colors.redAccent)),
+              onTap: () {
+                Navigator.pop(ctx);
+                onDelete();
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

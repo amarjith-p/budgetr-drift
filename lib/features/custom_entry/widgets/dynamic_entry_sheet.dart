@@ -533,14 +533,21 @@ class _DynamicEntrySheetState extends State<DynamicEntrySheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  _isEditing ? 'Edit Entry' : 'New ${widget.template.name}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                // [FIX] Expanded prevents the text from pushing the button off-screen
+                Expanded(
+                  child: Text(
+                    _isEditing ? 'Edit Entry' : 'New ${widget.template.name}',
+                    maxLines: 1, // Ensure it stays on one line
+                    overflow: TextOverflow.ellipsis, // Add "..." if too long
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
+                const SizedBox(
+                    width: 16), // Add some spacing between text and button
                 if (!_isEditing)
                   TextButton(
                     onPressed: _reset,
