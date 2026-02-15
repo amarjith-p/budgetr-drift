@@ -4,12 +4,12 @@ import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import '../../../core/constants/icon_constants.dart';
 import '../../../core/models/transaction_category_model.dart';
-import '../../../core/models/financial_record_model.dart'; // [NEW] Required for Bucket List
+import '../../../core/models/financial_record_model.dart';
 import '../../../core/services/category_service.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
-import '../../dashboard/services/dashboard_service.dart'; // [NEW] Required to fetch Budget/Buckets
+import '../../dashboard/services/dashboard_service.dart';
 import '../widgets/transaction_item.dart';
 import '../../credit_tracker/models/credit_models.dart';
 import '../../credit_tracker/services/credit_service.dart';
@@ -27,8 +27,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
   final ExpenseService _service = GetIt.I<ExpenseService>();
   final CreditService _creditService = GetIt.I<CreditService>();
   final CategoryService _categoryService = GetIt.I<CategoryService>();
-  final DashboardService _dashboardService =
-      GetIt.I<DashboardService>(); // [NEW]
+  final DashboardService _dashboardService = GetIt.I<DashboardService>();
 
   String _selectedRange = 'This Month';
   DateTimeRange? _customDateRange;
@@ -37,8 +36,51 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
   bool _showIncome = false;
   bool _viewByBucket = false;
 
+  // Sorting State: false = Amount (High to Low), true = Health (Over Budget first)
+  bool _sortByHealth = false;
+
   static const String kGroupBanks = 'group_banks';
   static const String kGroupCredits = 'group_credits';
+
+  // --- Date Helpers ---
+
+  // Helper: Get list of YYYYMM strings for the selected range to fetch Budget Records
+  List<String> _getAffectedMonthIds() {
+    final now = DateTime.now();
+    DateTime start, end;
+
+    if (_selectedRange == 'Custom Range' && _customDateRange != null) {
+      start = _customDateRange!.start;
+      end = _customDateRange!.end;
+    } else if (_selectedRange == 'Last Month') {
+      start = DateTime(now.year, now.month - 1, 1);
+      end = DateTime(now.year, now.month, 0);
+    } else if (_selectedRange == 'This Year') {
+      start = DateTime(now.year, 1, 1);
+      end = DateTime(now.year, 12, 31);
+    } else if (_selectedRange == 'Last Year') {
+      start = DateTime(now.year - 1, 1, 1);
+      end = DateTime(now.year - 1, 12, 31);
+    } else if (_selectedRange == 'All Time') {
+      return []; // No budget limits for All Time
+    } else {
+      // Default: This Month
+      start = DateTime(now.year, now.month, 1);
+      end = DateTime(now.year, now.month + 1, 0);
+    }
+
+    final ids = <String>{};
+    // Normalize to the 1st of the month to avoid infinite loops and day skipping
+    DateTime current = DateTime(start.year, start.month, 1);
+    final loopEnd = DateTime(end.year, end.month, 1);
+
+    while (current.isBefore(loopEnd) || current.isAtSameMomentAs(loopEnd)) {
+      ids.add("${current.year}${current.month.toString().padLeft(2, '0')}");
+      // Move to next month safely
+      current = DateTime(current.year, current.month + 1, 1);
+    }
+    return ids.toList();
+  }
 
   // --- Filter Logic ---
   bool _matchesDateFilter(DateTime date,
@@ -61,6 +103,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         return true;
       case 'Custom Range':
         if (custom == null) return true;
+        // Inclusive comparison for custom range (start of day to end of day)
         return date
                 .isAfter(custom.start.subtract(const Duration(seconds: 1))) &&
             date.isBefore(custom.end.add(const Duration(days: 1)));
@@ -69,7 +112,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     }
   }
 
-  // Helper: Calculate Previous Period Date Range
+  // Helper: Calculate Previous Period Date Range for Trends
   ({String type, DateTimeRange? custom}) _getPreviousPeriod() {
     final now = DateTime.now();
     switch (_selectedRange) {
@@ -88,7 +131,9 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         if (_customDateRange == null) return (type: 'All Time', custom: null);
         final duration = _customDateRange!.duration;
         final currentStart = _customDateRange!.start;
+        // Previous End is 1 day before Current Start
         final prevEnd = currentStart.subtract(const Duration(days: 1));
+        // Previous Start is derived from duration
         final prevStart = prevEnd.subtract(duration);
         return (
           type: 'Custom Range',
@@ -99,7 +144,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     }
   }
 
-  // Helper: Get Report Label
+  // Helper: Get Explicit Date Label for Report Header (e.g. "01 Feb 2024 - 29 Feb 2024")
   String _getReportDateLabel(List<dynamic> transactions) {
     final now = DateTime.now();
     final fmt = DateFormat('dd MMM yyyy');
@@ -148,23 +193,25 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       default:
         return _selectedRange;
     }
-
     return "${fmt.format(start)} - ${fmt.format(end)}";
   }
 
-  // --- Breakdown Generator (Updated to fill missing buckets) ---
+  // --- Breakdown Generator (Reusable for UI and Export) ---
   List<CategoryBreakdownItem> _generateBreakdown({
     required List<dynamic> allTxns,
     required bool forIncome,
     required Map<String, IconData> iconMap,
-    List<String>? definedBuckets, // [NEW] Master list of buckets
+    List<String>? definedBuckets,
+    Map<String, double>? bucketLimits,
   }) {
     // 1. Filter by Income/Expense
     final targetTxns = allTxns.where((t) {
       final bool isCredit = t is CreditTransactionModel;
       final String type = isCredit ? t.type : t.type;
 
+      // Credit Card Payments (Income type in Credit model) are usually excluded from income aggregation
       if (type == 'Income' && isCredit) return false;
+
       if (forIncome) return type == 'Income';
       return type == 'Expense';
     }).toList();
@@ -185,7 +232,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
 
     final List<CategoryBreakdownItem> result = [];
 
-    // 3. Process Existing Groups
+    // 3. Process Existing Transactions Groups
     groupedByMain.forEach((mainName, txns) {
       final catTotal = txns.fold(0.0, (sum, t) {
         final amt = (t is ExpenseTransactionModel)
@@ -194,6 +241,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         return sum + amt;
       });
 
+      // Sub-Grouping
       final groupedBySub = groupBy(txns, (t) {
         if (_viewByBucket) {
           return (t is ExpenseTransactionModel)
@@ -216,6 +264,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
           return sum + amt;
         });
 
+        // Sort sub-transactions by Date Descending
         subTxns.sort((a, b) {
           final dateA = (a is ExpenseTransactionModel)
               ? a.date
@@ -232,6 +281,12 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
 
       subItems.sort((a, b) => b.amount.compareTo(a.amount));
 
+      // Attach Limit if available
+      double? limit;
+      if (_viewByBucket && bucketLimits != null) {
+        limit = bucketLimits[mainName];
+      }
+
       result.add(CategoryBreakdownItem(
         name: mainName,
         totalAmount: catTotal,
@@ -239,28 +294,53 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         icon: _viewByBucket
             ? Icons.all_inbox_rounded
             : (iconMap[mainName] ?? Icons.category_outlined),
-        trendPercentage: null,
+        trendPercentage: null, // Trend is calculated in UI layer only
+        budgetLimit: limit,
       ));
     });
 
-    // 4. [NEW] Fill in Missing Buckets (Only if View By Bucket)
-    // We only do this for Expenses usually, but logic applies generally if buckets are defined
+    // 4. Fill Missing Buckets (For Expense View only)
     if (_viewByBucket && definedBuckets != null && !forIncome) {
       for (var bucket in definedBuckets) {
-        // If this bucket is NOT already in the result list, add it as zero
         if (!result.any((item) => item.name == bucket)) {
+          double? limit = bucketLimits?[bucket];
           result.add(CategoryBreakdownItem(
             name: bucket,
             totalAmount: 0.0,
-            subcategories: [], // No subcategories
+            subcategories: [],
             icon: Icons.all_inbox_rounded,
             trendPercentage: null,
+            budgetLimit: limit,
           ));
         }
       }
     }
 
-    result.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
+    // 5. Sorting Logic
+    if (_sortByHealth && !forIncome && bucketLimits != null) {
+      // Sort by 'Over Budget' severity first, then by 'Percent Used', then Amount
+      result.sort((a, b) {
+        final limitA = a.budgetLimit ?? 0;
+        final limitB = b.budgetLimit ?? 0;
+
+        final diffA = a.totalAmount - limitA;
+        final diffB = b.totalAmount - limitB;
+
+        // If one is over budget and other isn't, prioritize the over-budget one
+        if (diffA > 0 && diffB <= 0) return -1;
+        if (diffB > 0 && diffA <= 0) return 1;
+
+        // If both over budget, show highest overage first
+        if (diffA > 0 && diffB > 0) return diffB.compareTo(diffA);
+
+        // Fallback to total amount
+        return b.totalAmount.compareTo(a.totalAmount);
+      });
+    } else {
+      // Default: Sort by Amount Descending
+      result.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
+    }
+
     return result;
   }
 
@@ -302,28 +382,18 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFmt =
-        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
+    final currencyFmt = NumberFormat.currency(
+        locale: 'en_IN',
+        symbol: '₹',
+        decimalDigits: 0); // Cleaner look without decimals
     final String? fetchId = (_selectedAccountId == kGroupBanks ||
             _selectedAccountId == kGroupCredits)
         ? null
         : _selectedAccountId;
 
-    // Determine target Month/Year to fetch Bucket Structure
-    int targetYear = DateTime.now().year;
-    int targetMonth = DateTime.now().month;
+    // 1. Identify Months for Budget Aggregation
+    final List<String> monthIds = _getAffectedMonthIds();
 
-    if (_selectedRange == 'Last Month') {
-      final last = DateTime(targetYear, targetMonth - 1);
-      targetYear = last.year;
-      targetMonth = last.month;
-    } else if (_selectedRange == 'Custom Range' && _customDateRange != null) {
-      targetYear = _customDateRange!.start.year;
-      targetMonth = _customDateRange!.start.month;
-    }
-    // For 'All Time' or 'This Year', we default to Current Month's structure as the "Master List"
-
-    // 1. Fetch Categories
     return StreamBuilder<List<TransactionCategoryModel>>(
       stream: _categoryService.getCategories(),
       builder: (context, catSnapshot) {
@@ -359,13 +429,26 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                       }
                     }
 
-                    // 4. [NEW] Fetch Bucket Structure (Budget Record)
-                    return FutureBuilder<FinancialRecord?>(
-                        future: _dashboardService.getRecordForMonth(
-                            targetYear, targetMonth),
-                        builder: (context, recordSnapshot) {
-                          final List<String> definedBuckets =
-                              recordSnapshot.data?.bucketOrder ?? [];
+                    // 4. Fetch ALL Financial Records needed for the selected range to Aggregate Budget
+                    return StreamBuilder<List<FinancialRecord>>(
+                        stream: _dashboardService.getFinancialRecords(),
+                        builder: (context, recordsSnapshot) {
+                          // Aggregate Limits & Buckets
+                          final Map<String, double> aggregatedLimits = {};
+                          final Set<String> definedBuckets = {};
+
+                          if (recordsSnapshot.hasData) {
+                            for (var record in recordsSnapshot.data!) {
+                              if (monthIds.contains(record.id)) {
+                                definedBuckets.addAll(record.bucketOrder);
+                                record.allocations.forEach((bucket, amount) {
+                                  aggregatedLimits[bucket] =
+                                      (aggregatedLimits[bucket] ?? 0.0) +
+                                          amount;
+                                });
+                              }
+                            }
+                          }
 
                           // 5. Fetch Expense Transactions
                           return StreamBuilder<List<ExpenseTransactionModel>>(
@@ -389,6 +472,8 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                   final credits = creditSnapshot.data ?? [];
 
                                   // --- Data Preparation Logic ---
+
+                                  // 1. Filter by Account ID (Raw list needed for Trend Calc)
                                   final List<dynamic> rawFilteredByAccount = [];
                                   if (_selectedAccountId != kGroupCredits) {
                                     rawFilteredByAccount
@@ -411,14 +496,14 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                     }));
                                   }
 
-                                  // Filter by Date
+                                  // 2. Filter by Date (Current View)
                                   final List<dynamic> currentPeriodTxns =
                                       rawFilteredByAccount
                                           .where(
                                               (t) => _matchesDateFilter(t.date))
                                           .toList();
 
-                                  // Calculate Totals
+                                  // 3. Calculate Totals
                                   double totalIncome = 0;
                                   double totalExpense = 0;
 
@@ -440,21 +525,22 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                   final currentTotal =
                                       _showIncome ? totalIncome : totalExpense;
 
-                                  // Generate Breakdown (UI)
-                                  // [NEW] Pass 'definedBuckets' to fill zero-spending buckets
+                                  // 4. Generate Breakdown for UI
                                   final uiBreakdownItems = _generateBreakdown(
                                     allTxns: currentPeriodTxns,
                                     forIncome: _showIncome,
                                     iconMap: iconMap,
-                                    definedBuckets: definedBuckets,
+                                    definedBuckets: definedBuckets.toList(),
+                                    bucketLimits: aggregatedLimits,
                                   );
 
+                                  // 5. Build UI
                                   return ListView(
                                     padding: const EdgeInsets.fromLTRB(
                                         20, 20, 20, 120),
                                     physics: const BouncingScrollPhysics(),
                                     children: [
-                                      // --- Filters ---
+                                      // --- Top Row: Filters + Export Button ---
                                       Row(
                                         children: [
                                           Expanded(
@@ -465,94 +551,29 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                           _buildTimeFilter(),
                                           const SizedBox(width: 8),
                                           // Export Button
-                                          Container(
-                                            height: 36,
-                                            width: 36,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF00B4D8)
-                                                  .withOpacity(0.2),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                              border: Border.all(
-                                                  color: const Color(0xFF00B4D8)
-                                                      .withOpacity(0.3)),
-                                            ),
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                  Icons.download_rounded,
-                                                  color: Color(0xFF00B4D8),
-                                                  size: 18),
-                                              padding: EdgeInsets.zero,
-                                              onPressed: () {
-                                                // Generate Separate Lists for Report
-                                                // [NEW] Pass definedBuckets here too if you want them in export,
-                                                // but usually exports are cleaner with only active data.
-                                                // Given "We need to show all buckets", let's pass it for export too.
-                                                final incomeList =
-                                                    _generateBreakdown(
-                                                  allTxns: currentPeriodTxns,
-                                                  forIncome: true,
-                                                  iconMap: iconMap,
-                                                  definedBuckets:
-                                                      definedBuckets,
-                                                );
-                                                final expenseList =
-                                                    _generateBreakdown(
-                                                  allTxns: currentPeriodTxns,
-                                                  forIncome: false,
-                                                  iconMap: iconMap,
-                                                  definedBuckets:
-                                                      definedBuckets,
-                                                );
-
-                                                final reportLabel =
-                                                    _getReportDateLabel(
-                                                        currentPeriodTxns);
-
-                                                String accountFilterName =
-                                                    "All Accounts";
-                                                if (_selectedAccountId !=
-                                                    null) {
-                                                  if (_selectedAccountId ==
-                                                      kGroupBanks)
-                                                    accountFilterName =
-                                                        "All Bank Accounts";
-                                                  else if (_selectedAccountId ==
-                                                      kGroupCredits)
-                                                    accountFilterName =
-                                                        "All Credit Cards";
-                                                  else {
-                                                    accountFilterName =
-                                                        accountNameMap[
-                                                                _selectedAccountId] ??
-                                                            "Unknown Account";
-                                                  }
-                                                }
-
-                                                showModalBottomSheet(
-                                                  context: context,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  builder: (context) =>
-                                                      CategoryExportSheet(
-                                                    incomeItems: incomeList,
-                                                    expenseItems: expenseList,
-                                                    dateRangeName: reportLabel,
-                                                    filterAccountName:
-                                                        accountFilterName,
-                                                    accountNameMap:
-                                                        accountNameMap,
-                                                    totalIncome: totalIncome,
-                                                    totalExpense: totalExpense,
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
+                                          _buildExportButton(
+                                              currentPeriodTxns,
+                                              iconMap,
+                                              aggregatedLimits,
+                                              accountNameMap,
+                                              totalIncome,
+                                              totalExpense,
+                                              definedBuckets.toList()),
                                         ],
                                       ),
                                       const SizedBox(height: 12),
-                                      _buildViewToggle(),
+
+                                      // --- View Toggle + Sort Toggle ---
+                                      Row(
+                                        children: [
+                                          Expanded(child: _buildViewToggle()),
+                                          if (_viewByBucket &&
+                                              !_showIncome) ...[
+                                            const SizedBox(width: 12),
+                                            _buildSortToggle(),
+                                          ]
+                                        ],
+                                      ),
                                       const SizedBox(height: 20),
 
                                       // --- Summary Cards ---
@@ -639,6 +660,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                         )
                                       else
                                         ...uiBreakdownItems.map((item) {
+                                          // [UI-Only] Recalculate Trends Here
                                           double? trend;
                                           final prevPeriod =
                                               _getPreviousPeriod();
@@ -698,14 +720,22 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                             }
                                           }
 
+                                          // Only pass Budget Limit if viewing Expenses by Bucket
+                                          final showLimit =
+                                              _viewByBucket && !_showIncome;
+
+                                          // Wrap in display item to include trend
                                           final displayItem =
                                               CategoryBreakdownItem(
-                                                  name: item.name,
-                                                  totalAmount: item.totalAmount,
-                                                  subcategories:
-                                                      item.subcategories,
-                                                  icon: item.icon,
-                                                  trendPercentage: trend);
+                                            name: item.name,
+                                            totalAmount: item.totalAmount,
+                                            subcategories: item.subcategories,
+                                            icon: item.icon,
+                                            trendPercentage: trend,
+                                            budgetLimit: showLimit
+                                                ? item.budgetLimit
+                                                : null,
+                                          );
 
                                           return _buildCategoryTile(
                                               displayItem,
@@ -726,7 +756,67 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     );
   }
 
-  // --- Widgets (Preserved) ---
+  // --- Widgets ---
+
+  Widget _buildExportButton(
+      List<dynamic> txns,
+      Map<String, IconData> iconMap,
+      Map<String, double> limits,
+      Map<String, String> accountNameMap,
+      double income,
+      double expense,
+      List<String> definedBuckets) {
+    return Container(
+      height: 36,
+      width: 36,
+      decoration: BoxDecoration(
+          color: const Color(0xFF00B4D8).withOpacity(0.2),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: const Color(0xFF00B4D8).withOpacity(0.3))),
+      child: IconButton(
+        icon: const Icon(Icons.download_rounded,
+            color: Color(0xFF00B4D8), size: 18),
+        padding: EdgeInsets.zero,
+        onPressed: () {
+          // Pass definedBuckets to include zero-spend buckets in export
+          final incomeList = _generateBreakdown(
+              allTxns: txns,
+              forIncome: true,
+              iconMap: iconMap,
+              bucketLimits: limits);
+          final expenseList = _generateBreakdown(
+              allTxns: txns,
+              forIncome: false,
+              iconMap: iconMap,
+              bucketLimits: limits,
+              definedBuckets: definedBuckets);
+
+          final reportLabel = _getReportDateLabel(txns);
+          String accountFilterName = "All Accounts";
+          if (_selectedAccountId != null) {
+            accountFilterName = accountNameMap[_selectedAccountId] ??
+                (_selectedAccountId == kGroupBanks
+                    ? "All Banks"
+                    : "All Credit Cards");
+          }
+
+          showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.transparent,
+            builder: (context) => CategoryExportSheet(
+              incomeItems: incomeList,
+              expenseItems: expenseList,
+              dateRangeName: reportLabel,
+              filterAccountName: accountFilterName,
+              accountNameMap: accountNameMap,
+              totalIncome: income,
+              totalExpense: expense,
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildViewToggle() {
     return Container(
@@ -798,6 +888,31 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSortToggle() {
+    return GestureDetector(
+      onTap: () => setState(() => _sortByHealth = !_sortByHealth),
+      child: Container(
+        height: 40,
+        width: 40,
+        decoration: BoxDecoration(
+          color: _sortByHealth
+              ? Colors.redAccent.withOpacity(0.2)
+              : const Color(0xFF151D29),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+              color: _sortByHealth
+                  ? Colors.redAccent.withOpacity(0.5)
+                  : Colors.white.withOpacity(0.05)),
+        ),
+        child: Icon(
+          _sortByHealth ? Icons.warning_rounded : Icons.sort_rounded,
+          color: _sortByHealth ? Colors.redAccent : Colors.white54,
+          size: 20,
+        ),
       ),
     );
   }
@@ -1021,10 +1136,41 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
 
   Widget _buildCategoryTile(CategoryBreakdownItem item, double totalAmount,
       NumberFormat fmt, Map<String, String> accountNameMap) {
-    final double percentage =
-        totalAmount > 0 ? (item.totalAmount / totalAmount) : 0.0;
-    final Color color =
-        _showIncome ? const Color(0xFF00E676) : const Color(0xFFFF4D6D);
+    // [UPDATED] Smart Progress Bar Logic for Budget View
+    double percentage;
+    Color color;
+    String statusLabel = "";
+
+    // Check if item has a budget limit (means we are in Expense Bucket View)
+    if (item.budgetLimit != null && item.budgetLimit! > 0) {
+      // Logic: Usage Percentage of Budget
+      percentage = item.totalAmount / item.budgetLimit!;
+
+      final remaining = item.budgetLimit! - item.totalAmount;
+      if (remaining >= 0) {
+        statusLabel = "Left: ${fmt.format(remaining)}";
+        if (percentage < 0.75) {
+          color = const Color(0xFF00E676); // Green (Safe)
+        } else if (percentage < 1.0) {
+          color = Colors.orangeAccent; // Warning
+        } else {
+          color = Colors.redAccent; // Exact match or rounding edge
+        }
+      } else {
+        statusLabel = "Over: ${fmt.format(remaining.abs())}";
+        color = const Color(0xFFFF4D6D); // Red (Overspent)
+      }
+    } else {
+      // Fallback Logic: Share of Total (Category View or Income or No Limit)
+      percentage = totalAmount > 0 ? (item.totalAmount / totalAmount) : 0.0;
+      color = _showIncome
+          ? const Color(0xFF00E676)
+          : const Color(0xFF00B4D8); // Blue for standard expense share
+      statusLabel = "${(percentage * 100).toStringAsFixed(1)}% of total";
+    }
+
+    // Cap visual progress at 100% so it doesn't overflow
+    final double visualProgress = percentage > 1.0 ? 1.0 : percentage;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1092,13 +1238,27 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                fmt.format(item.totalAmount),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    fmt.format(item.totalAmount),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // Display Limit if exists (e.g. "/ ₹5,000")
+                  if (item.budgetLimit != null && item.budgetLimit! > 0)
+                    Text(
+                      "/ ${fmt.format(item.budgetLimit)}",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.3),
+                        fontSize: 10,
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
@@ -1109,7 +1269,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(2),
                 child: LinearProgressIndicator(
-                  value: percentage,
+                  value: visualProgress,
                   backgroundColor: Colors.white.withOpacity(0.05),
                   valueColor: AlwaysStoppedAnimation(color),
                   minHeight: 4,
@@ -1117,9 +1277,11 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                "${(percentage * 100).toStringAsFixed(1)}% of total",
+                statusLabel,
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.4), fontSize: 10),
+                    color: color.withOpacity(0.8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -1210,6 +1372,7 @@ class CategoryBreakdownItem {
   final List<SubCategoryItem> subcategories;
   final IconData icon;
   final double? trendPercentage;
+  final double? budgetLimit; // Monthly Budget Limit for this Bucket
 
   CategoryBreakdownItem({
     required this.name,
@@ -1217,6 +1380,7 @@ class CategoryBreakdownItem {
     required this.subcategories,
     required this.icon,
     this.trendPercentage,
+    this.budgetLimit,
   });
 }
 
