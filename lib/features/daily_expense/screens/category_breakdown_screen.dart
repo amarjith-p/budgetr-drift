@@ -36,15 +36,22 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
   bool _showIncome = false;
   bool _viewByBucket = false;
 
-  // Sorting: false = Amount (High to Low), true = Health (Over Budget first)
   bool _sortByHealth = false;
+
+  // Search State
+  bool _isSearchActive = false;
+  final TextEditingController _searchController = TextEditingController();
 
   static const String kGroupBanks = 'group_banks';
   static const String kGroupCredits = 'group_credits';
 
-  // --- Date & Budget Helpers ---
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
-  // Helper: Get list of YYYYMM strings for the selected range to fetch Budget Records
+  // --- Date Helpers ---
   List<String> _getAffectedMonthIds() {
     final now = DateTime.now();
     DateTime start, end;
@@ -62,27 +69,23 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       start = DateTime(now.year - 1, 1, 1);
       end = DateTime(now.year - 1, 12, 31);
     } else if (_selectedRange == 'All Time') {
-      return []; // No budget limits aggregation for All Time
+      return [];
     } else {
-      // Default: This Month
       start = DateTime(now.year, now.month, 1);
       end = DateTime(now.year, now.month + 1, 0);
     }
 
     final ids = <String>{};
-    // Normalize to the 1st of the month to avoid infinite loops
     DateTime current = DateTime(start.year, start.month, 1);
     final loopEnd = DateTime(end.year, end.month, 1);
 
     while (current.isBefore(loopEnd) || current.isAtSameMomentAs(loopEnd)) {
       ids.add("${current.year}${current.month.toString().padLeft(2, '0')}");
-      // Move to next month safely
       current = DateTime(current.year, current.month + 1, 1);
     }
     return ids.toList();
   }
 
-  // --- Filter Logic ---
   bool _matchesDateFilter(DateTime date,
       {DateTimeRange? customRangeOverride, String? rangeTypeOverride}) {
     final now = DateTime.now();
@@ -103,7 +106,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         return true;
       case 'Custom Range':
         if (custom == null) return true;
-        // Inclusive comparison for custom range
         return date
                 .isAfter(custom.start.subtract(const Duration(seconds: 1))) &&
             date.isBefore(custom.end.add(const Duration(days: 1)));
@@ -112,7 +114,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     }
   }
 
-  // Helper: Calculate Previous Period Date Range for Trends
   ({String type, DateTimeRange? custom}) _getPreviousPeriod() {
     final now = DateTime.now();
     switch (_selectedRange) {
@@ -142,7 +143,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     }
   }
 
-  // Helper: Get Explicit Date Label for Report (e.g., "01 Feb 2024 - 28 Feb 2024")
   String _getReportDateLabel(List<dynamic> transactions) {
     final now = DateTime.now();
     final fmt = DateFormat('dd MMM yyyy');
@@ -202,19 +202,14 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     List<String>? definedBuckets,
     Map<String, double>? bucketLimits,
   }) {
-    // 1. Filter by Income/Expense
     final targetTxns = allTxns.where((t) {
       final bool isCredit = t is CreditTransactionModel;
       final String type = isCredit ? t.type : t.type;
-
-      // Credit Card Payments (Income type in Credit model) are usually excluded from income aggregation
       if (type == 'Income' && isCredit) return false;
-
       if (forIncome) return type == 'Income';
       return type == 'Expense';
     }).toList();
 
-    // 2. Grouping (Category vs Bucket)
     final groupedByMain = groupBy(targetTxns, (t) {
       if (_viewByBucket) {
         final bucket = (t is ExpenseTransactionModel)
@@ -230,7 +225,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
 
     final List<CategoryBreakdownItem> result = [];
 
-    // 3. Process Transactions
     groupedByMain.forEach((mainName, txns) {
       final catTotal = txns.fold(0.0, (sum, t) {
         final amt = (t is ExpenseTransactionModel)
@@ -239,7 +233,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         return sum + amt;
       });
 
-      // Sub-Grouping
       final groupedBySub = groupBy(txns, (t) {
         if (_viewByBucket) {
           return (t is ExpenseTransactionModel)
@@ -274,7 +267,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       });
       subItems.sort((a, b) => b.amount.compareTo(a.amount));
 
-      // Attach Limit (if Bucket View)
       double? limit;
       if (_viewByBucket && bucketLimits != null) {
         limit = bucketLimits[mainName];
@@ -287,12 +279,11 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         icon: _viewByBucket
             ? Icons.all_inbox_rounded
             : (iconMap[mainName] ?? Icons.category_outlined),
-        trendPercentage: null, // Trend is calculated in UI layer only
+        trendPercentage: null,
         budgetLimit: limit,
       ));
     });
 
-    // 4. Fill Missing Buckets (Expense View Only)
     if (_viewByBucket && definedBuckets != null && !forIncome) {
       for (var bucket in definedBuckets) {
         if (!result.any((item) => item.name == bucket)) {
@@ -309,25 +300,18 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       }
     }
 
-    // 5. Sorting Logic
     if (_sortByHealth && !forIncome && bucketLimits != null) {
       result.sort((a, b) {
         final limitA = a.budgetLimit ?? 0;
         final limitB = b.budgetLimit ?? 0;
-
         final diffA = a.totalAmount - limitA;
         final diffB = b.totalAmount - limitB;
-
-        // Prioritize over-budget items
         if (diffA > 0 && diffB <= 0) return -1;
         if (diffB > 0 && diffA <= 0) return 1;
         if (diffA > 0 && diffB > 0) return diffB.compareTo(diffA);
-
-        // Fallback to total amount
         return b.totalAmount.compareTo(a.totalAmount);
       });
     } else {
-      // Default: Sort by Amount Descending
       result.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
     }
     return result;
@@ -399,7 +383,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                         accountNameMap[card.id] =
                             "${card.name} (${card.bankName})";
 
-                    // 4. Fetch Financial Records to Aggregate Budget
                     return StreamBuilder<List<FinancialRecord>>(
                         stream: _dashboardService.getFinancialRecords(),
                         builder: (context, recordsSnapshot) {
@@ -419,7 +402,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                             }
                           }
 
-                          // 5. Fetch Transactions
                           return StreamBuilder<List<ExpenseTransactionModel>>(
                             stream:
                                 _service.getTransactions(accountId: fetchId),
@@ -465,9 +447,56 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                               (t) => _matchesDateFilter(t.date))
                                           .toList();
 
+                                  // Search Filtering Logic
+                                  List<dynamic> displayedTxns =
+                                      currentPeriodTxns;
+                                  if (_searchController.text.isNotEmpty) {
+                                    final query =
+                                        _searchController.text.toLowerCase();
+                                    displayedTxns =
+                                        currentPeriodTxns.where((t) {
+                                      final category = (t
+                                                  is ExpenseTransactionModel
+                                              ? t.category
+                                              : (t as CreditTransactionModel)
+                                                  .category)
+                                          .toLowerCase();
+                                      final subCategory = (t
+                                                  is ExpenseTransactionModel
+                                              ? t.subCategory
+                                              : (t as CreditTransactionModel)
+                                                  .subCategory)
+                                          .toLowerCase();
+                                      final notes = (t
+                                                  is ExpenseTransactionModel
+                                              ? t.notes
+                                              : (t as CreditTransactionModel)
+                                                  .notes)
+                                          .toLowerCase();
+                                      final bucket = (t
+                                                  is ExpenseTransactionModel
+                                              ? t.bucket
+                                              : (t as CreditTransactionModel)
+                                                  .bucket)
+                                          .toLowerCase();
+                                      final amount = (t
+                                                  is ExpenseTransactionModel
+                                              ? t.amount
+                                              : (t as CreditTransactionModel)
+                                                  .amount)
+                                          .toString();
+
+                                      return category.contains(query) ||
+                                          subCategory.contains(query) ||
+                                          notes.contains(query) ||
+                                          bucket.contains(query) ||
+                                          amount.contains(query);
+                                    }).toList();
+                                  }
+
                                   double totalIncome = 0;
                                   double totalExpense = 0;
-                                  for (var t in currentPeriodTxns) {
+                                  for (var t in displayedTxns) {
                                     final bool isCredit =
                                         t is CreditTransactionModel;
                                     final String type =
@@ -482,12 +511,14 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                   final currentTotal =
                                       _showIncome ? totalIncome : totalExpense;
 
-                                  // Generate Breakdown
                                   final uiBreakdownItems = _generateBreakdown(
-                                    allTxns: currentPeriodTxns,
+                                    allTxns: displayedTxns,
                                     forIncome: _showIncome,
                                     iconMap: iconMap,
-                                    definedBuckets: definedBuckets.toList(),
+                                    definedBuckets: _searchController
+                                            .text.isEmpty
+                                        ? definedBuckets.toList()
+                                        : null, // Disable empty bucket fill if searching
                                     bucketLimits: aggregatedLimits,
                                   );
 
@@ -496,29 +527,39 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                         20, 20, 20, 120),
                                     physics: const BouncingScrollPhysics(),
                                     children: [
-                                      // --- Filters & Actions ---
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                              child: _buildAccountFilter(
-                                                  accountListSnap.data ?? [],
-                                                  cardListSnap.data ?? [])),
-                                          const SizedBox(width: 8),
-                                          _buildTimeFilter(),
-                                          const SizedBox(width: 8),
-                                          _buildExportButton(
-                                              currentPeriodTxns,
-                                              iconMap,
-                                              aggregatedLimits,
-                                              accountNameMap,
-                                              totalIncome,
-                                              totalExpense,
-                                              definedBuckets.toList()),
-                                        ],
-                                      ),
+                                      // Top Row: Search or Filters
+                                      _isSearchActive
+                                          ? _buildSearchBar()
+                                          : Row(
+                                              children: [
+                                                Expanded(
+                                                    child: _buildAccountFilter(
+                                                        accountListSnap.data ??
+                                                            [],
+                                                        cardListSnap.data ??
+                                                            [])),
+                                                const SizedBox(width: 8),
+                                                _buildTimeFilter(),
+                                                const SizedBox(width: 8),
+                                                _buildSearchButton(),
+                                                const SizedBox(width: 8),
+                                                _buildExportButton(
+                                                    displayedTxns, // [FIXED] Pass only 7 args: filtered list first
+                                                    iconMap,
+                                                    aggregatedLimits,
+                                                    accountNameMap,
+                                                    totalIncome,
+                                                    totalExpense,
+                                                    _searchController
+                                                            .text.isEmpty
+                                                        ? definedBuckets
+                                                            .toList()
+                                                        : []),
+                                              ],
+                                            ),
                                       const SizedBox(height: 12),
 
-                                      // --- Toggles ---
+                                      // Toggles
                                       Row(
                                         children: [
                                           Expanded(child: _buildViewToggle()),
@@ -531,7 +572,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                       ),
                                       const SizedBox(height: 20),
 
-                                      // --- Summary Cards ---
+                                      // Summary Cards
                                       Row(
                                         children: [
                                           Expanded(
@@ -561,7 +602,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                       ),
                                       const SizedBox(height: 30),
 
-                                      // --- List Header ---
+                                      // List Header
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
@@ -578,7 +619,8 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                               letterSpacing: 1.2,
                                             ),
                                           ),
-                                          if (_selectedRange != 'All Time')
+                                          if (_selectedRange != 'All Time' &&
+                                              _searchController.text.isEmpty)
                                             Text(
                                               "vs Prev. Period",
                                               style: TextStyle(
@@ -598,13 +640,13 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                           child: Center(
                                             child: Column(
                                               children: [
-                                                Icon(Icons.analytics_outlined,
+                                                Icon(Icons.search_off_rounded,
                                                     size: 48,
                                                     color: Colors.white
                                                         .withOpacity(0.1)),
                                                 const SizedBox(height: 16),
                                                 Text(
-                                                  "No records found for this period",
+                                                  "No records found",
                                                   style: TextStyle(
                                                       color: Colors.white
                                                           .withOpacity(0.3)),
@@ -617,58 +659,60 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                         ...uiBreakdownItems.map((item) {
                                           // Trends
                                           double? trend;
-                                          final prevPeriod =
-                                              _getPreviousPeriod();
-                                          if (_selectedRange != 'All Time') {
-                                            double prevTotal = 0;
-                                            for (var t
-                                                in rawFilteredByAccount) {
-                                              if (!_matchesDateFilter(t.date,
-                                                  customRangeOverride:
-                                                      prevPeriod.custom,
-                                                  rangeTypeOverride: prevPeriod
-                                                      .type)) continue;
-                                              final isCredit =
-                                                  t is CreditTransactionModel;
-                                              final type =
-                                                  isCredit ? t.type : t.type;
-                                              if (_showIncome &&
-                                                  type != 'Income') continue;
-                                              if (!_showIncome &&
-                                                  type != 'Expense') continue;
-
-                                              String tGroup;
-                                              if (_viewByBucket) {
-                                                final b = (t
-                                                        is ExpenseTransactionModel)
-                                                    ? t.bucket
-                                                    : (t as CreditTransactionModel)
-                                                        .bucket;
-                                                tGroup =
-                                                    b.isEmpty ? 'General' : b;
-                                              } else {
-                                                tGroup = (t
-                                                        is ExpenseTransactionModel)
-                                                    ? t.category
-                                                    : (t as CreditTransactionModel)
-                                                        .category;
+                                          if (_searchController.text.isEmpty) {
+                                            final prevPeriod =
+                                                _getPreviousPeriod();
+                                            if (_selectedRange != 'All Time') {
+                                              double prevTotal = 0;
+                                              for (var t
+                                                  in rawFilteredByAccount) {
+                                                if (!_matchesDateFilter(t.date,
+                                                    customRangeOverride:
+                                                        prevPeriod.custom,
+                                                    rangeTypeOverride:
+                                                        prevPeriod.type))
+                                                  continue;
+                                                final isCredit =
+                                                    t is CreditTransactionModel;
+                                                final type =
+                                                    isCredit ? t.type : t.type;
+                                                if (_showIncome &&
+                                                    type != 'Income') continue;
+                                                if (!_showIncome &&
+                                                    type != 'Expense') continue;
+                                                String tGroup;
+                                                if (_viewByBucket) {
+                                                  final b = (t
+                                                          is ExpenseTransactionModel)
+                                                      ? t.bucket
+                                                      : (t as CreditTransactionModel)
+                                                          .bucket;
+                                                  tGroup =
+                                                      b.isEmpty ? 'General' : b;
+                                                } else {
+                                                  tGroup = (t
+                                                          is ExpenseTransactionModel)
+                                                      ? t.category
+                                                      : (t as CreditTransactionModel)
+                                                          .category;
+                                                }
+                                                if (tGroup == item.name) {
+                                                  prevTotal += (t
+                                                          is ExpenseTransactionModel)
+                                                      ? t.amount
+                                                      : (t as CreditTransactionModel)
+                                                          .amount;
+                                                }
                                               }
-                                              if (tGroup == item.name) {
-                                                prevTotal += (t
-                                                        is ExpenseTransactionModel)
-                                                    ? t.amount
-                                                    : (t as CreditTransactionModel)
-                                                        .amount;
-                                              }
+                                              if (prevTotal > 0)
+                                                trend = ((item.totalAmount -
+                                                            prevTotal) /
+                                                        prevTotal) *
+                                                    100;
+                                              else if (prevTotal == 0 &&
+                                                  item.totalAmount > 0)
+                                                trend = 100;
                                             }
-                                            if (prevTotal > 0)
-                                              trend = ((item.totalAmount -
-                                                          prevTotal) /
-                                                      prevTotal) *
-                                                  100;
-                                            else if (prevTotal == 0 &&
-                                                item.totalAmount > 0)
-                                              trend = 100;
                                           }
 
                                           final showLimit =
@@ -705,6 +749,69 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
   }
 
   // --- Widgets ---
+
+  Widget _buildSearchButton() {
+    return Container(
+      height: 36,
+      width: 36,
+      decoration: BoxDecoration(
+          color: const Color(0xFF00B4D8).withOpacity(0.2),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: const Color(0xFF00B4D8).withOpacity(0.3))),
+      child: IconButton(
+        icon: const Icon(Icons.search_rounded,
+            color: Color(0xFF00B4D8), size: 18),
+        padding: EdgeInsets.zero,
+        onPressed: () {
+          setState(() {
+            _isSearchActive = true;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: const Color(0xFF151D29),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 12),
+          const Icon(Icons.search_rounded, color: Colors.white54, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: const InputDecoration(
+                hintText: "Search categories, notes...",
+                hintStyle: TextStyle(color: Colors.white38, fontSize: 13),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              onChanged: (val) => setState(() {}),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.white54, size: 18),
+            padding: EdgeInsets.zero,
+            onPressed: () {
+              setState(() {
+                _searchController.clear();
+                _isSearchActive = false;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildExportButton(
       List<dynamic> txns,
@@ -751,14 +858,14 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
             context: context,
             backgroundColor: Colors.transparent,
             builder: (context) => CategoryExportSheet(
-              incomeItems: incomeList, expenseItems: expenseList,
+              incomeItems: incomeList,
+              expenseItems: expenseList,
               dateRangeName: reportLabel,
               filterAccountName: accountFilterName,
               accountNameMap: accountNameMap,
-              totalIncome: income, totalExpense: expense,
-              groupingType: _viewByBucket
-                  ? "Bucket"
-                  : "Category", // [SAFE EXPORT] Pass grouping type for filename
+              totalIncome: income,
+              totalExpense: expense,
+              groupingType: _viewByBucket ? "Bucket" : "Category",
             ),
           );
         },
@@ -766,8 +873,8 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     );
   }
 
-  // ... (Widgets: _buildViewToggle, _buildSortToggle, _buildAccountFilter, _buildTimeFilter, _buildSummaryCard, _buildCategoryTile, _ReadOnlyItems)
-  // These implementations remain strictly preserved as per previous versions
+  // ... (Widgets _buildViewToggle, _buildSortToggle, _buildAccountFilter, _buildTimeFilter, _buildSummaryCard, _buildCategoryTile, _ReadOnlyItems)
+  // These remain strictly preserved as per previous versions. I am listing them here for completeness.
 
   Widget _buildViewToggle() {
     return Container(
