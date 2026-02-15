@@ -36,13 +36,13 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
   bool _showIncome = false;
   bool _viewByBucket = false;
 
-  // Sorting State: false = Amount (High to Low), true = Health (Over Budget first)
+  // Sorting: false = Amount (High to Low), true = Health (Over Budget first)
   bool _sortByHealth = false;
 
   static const String kGroupBanks = 'group_banks';
   static const String kGroupCredits = 'group_credits';
 
-  // --- Date Helpers ---
+  // --- Date & Budget Helpers ---
 
   // Helper: Get list of YYYYMM strings for the selected range to fetch Budget Records
   List<String> _getAffectedMonthIds() {
@@ -62,7 +62,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       start = DateTime(now.year - 1, 1, 1);
       end = DateTime(now.year - 1, 12, 31);
     } else if (_selectedRange == 'All Time') {
-      return []; // No budget limits for All Time
+      return []; // No budget limits aggregation for All Time
     } else {
       // Default: This Month
       start = DateTime(now.year, now.month, 1);
@@ -70,7 +70,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     }
 
     final ids = <String>{};
-    // Normalize to the 1st of the month to avoid infinite loops and day skipping
+    // Normalize to the 1st of the month to avoid infinite loops
     DateTime current = DateTime(start.year, start.month, 1);
     final loopEnd = DateTime(end.year, end.month, 1);
 
@@ -103,7 +103,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         return true;
       case 'Custom Range':
         if (custom == null) return true;
-        // Inclusive comparison for custom range (start of day to end of day)
+        // Inclusive comparison for custom range
         return date
                 .isAfter(custom.start.subtract(const Duration(seconds: 1))) &&
             date.isBefore(custom.end.add(const Duration(days: 1)));
@@ -131,9 +131,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         if (_customDateRange == null) return (type: 'All Time', custom: null);
         final duration = _customDateRange!.duration;
         final currentStart = _customDateRange!.start;
-        // Previous End is 1 day before Current Start
         final prevEnd = currentStart.subtract(const Duration(days: 1));
-        // Previous Start is derived from duration
         final prevStart = prevEnd.subtract(duration);
         return (
           type: 'Custom Range',
@@ -144,7 +142,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     }
   }
 
-  // Helper: Get Explicit Date Label for Report Header (e.g. "01 Feb 2024 - 29 Feb 2024")
+  // Helper: Get Explicit Date Label for Report (e.g., "01 Feb 2024 - 28 Feb 2024")
   String _getReportDateLabel(List<dynamic> transactions) {
     final now = DateTime.now();
     final fmt = DateFormat('dd MMM yyyy');
@@ -196,7 +194,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     return "${fmt.format(start)} - ${fmt.format(end)}";
   }
 
-  // --- Breakdown Generator (Reusable for UI and Export) ---
+  // --- Breakdown Generator ---
   List<CategoryBreakdownItem> _generateBreakdown({
     required List<dynamic> allTxns,
     required bool forIncome,
@@ -216,7 +214,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       return type == 'Expense';
     }).toList();
 
-    // 2. Grouping
+    // 2. Grouping (Category vs Bucket)
     final groupedByMain = groupBy(targetTxns, (t) {
       if (_viewByBucket) {
         final bucket = (t is ExpenseTransactionModel)
@@ -232,7 +230,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
 
     final List<CategoryBreakdownItem> result = [];
 
-    // 3. Process Existing Transactions Groups
+    // 3. Process Transactions
     groupedByMain.forEach((mainName, txns) {
       final catTotal = txns.fold(0.0, (sum, t) {
         final amt = (t is ExpenseTransactionModel)
@@ -255,7 +253,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       });
 
       final List<SubCategoryItem> subItems = [];
-
       groupedBySub.forEach((subName, subTxns) {
         final subTotal = subTxns.fold(0.0, (sum, t) {
           final amt = (t is ExpenseTransactionModel)
@@ -263,8 +260,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
               : (t as CreditTransactionModel).amount;
           return sum + amt;
         });
-
-        // Sort sub-transactions by Date Descending
         subTxns.sort((a, b) {
           final dateA = (a is ExpenseTransactionModel)
               ? a.date
@@ -274,14 +269,12 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
               : (b as CreditTransactionModel).date;
           return dateB.compareTo(dateA);
         });
-
         subItems.add(SubCategoryItem(
             name: subName, amount: subTotal, transactions: subTxns));
       });
-
       subItems.sort((a, b) => b.amount.compareTo(a.amount));
 
-      // Attach Limit if available
+      // Attach Limit (if Bucket View)
       double? limit;
       if (_viewByBucket && bucketLimits != null) {
         limit = bucketLimits[mainName];
@@ -299,7 +292,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       ));
     });
 
-    // 4. Fill Missing Buckets (For Expense View only)
+    // 4. Fill Missing Buckets (Expense View Only)
     if (_viewByBucket && definedBuckets != null && !forIncome) {
       for (var bucket in definedBuckets) {
         if (!result.any((item) => item.name == bucket)) {
@@ -318,7 +311,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
 
     // 5. Sorting Logic
     if (_sortByHealth && !forIncome && bucketLimits != null) {
-      // Sort by 'Over Budget' severity first, then by 'Percent Used', then Amount
       result.sort((a, b) {
         final limitA = a.budgetLimit ?? 0;
         final limitB = b.budgetLimit ?? 0;
@@ -326,11 +318,9 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         final diffA = a.totalAmount - limitA;
         final diffB = b.totalAmount - limitB;
 
-        // If one is over budget and other isn't, prioritize the over-budget one
+        // Prioritize over-budget items
         if (diffA > 0 && diffB <= 0) return -1;
         if (diffB > 0 && diffA <= 0) return 1;
-
-        // If both over budget, show highest overage first
         if (diffA > 0 && diffB > 0) return diffB.compareTo(diffA);
 
         // Fallback to total amount
@@ -340,7 +330,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       // Default: Sort by Amount Descending
       result.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
     }
-
     return result;
   }
 
@@ -350,48 +339,37 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
           start: DateTime.now().subtract(const Duration(days: 7)),
           end: DateTime.now(),
         );
-
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       initialDateRange: initialRange,
-      builder: (context, child) {
-        return Theme(
+      builder: (context, child) => Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF00B4D8),
-              onPrimary: Colors.white,
-              surface: Color(0xFF1B263B),
-              onSurface: Colors.white,
-            ),
+                primary: Color(0xFF00B4D8),
+                onPrimary: Colors.white,
+                surface: Color(0xFF1B263B),
+                onSurface: Colors.white),
             dialogBackgroundColor: const Color(0xFF151D29),
           ),
-          child: child!,
-        );
-      },
+          child: child!),
     );
-
-    if (picked != null) {
+    if (picked != null)
       setState(() {
         _customDateRange = picked;
         _selectedRange = 'Custom Range';
       });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final currencyFmt = NumberFormat.currency(
-        locale: 'en_IN',
-        symbol: '₹',
-        decimalDigits: 0); // Cleaner look without decimals
+    final currencyFmt =
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
     final String? fetchId = (_selectedAccountId == kGroupBanks ||
             _selectedAccountId == kGroupCredits)
         ? null
         : _selectedAccountId;
-
-    // 1. Identify Months for Budget Aggregation
     final List<String> monthIds = _getAffectedMonthIds();
 
     return StreamBuilder<List<TransactionCategoryModel>>(
@@ -400,40 +378,31 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         final Map<String, IconData> iconMap = {};
         if (catSnapshot.hasData) {
           for (var c in catSnapshot.data!) {
-            if (c.iconCode != null) {
+            if (c.iconCode != null)
               iconMap[c.name] = IconConstants.getIconByCode(c.iconCode!);
-            }
           }
         }
 
-        // 2. Fetch Accounts
         return StreamBuilder<List<ExpenseAccountModel>>(
             stream: _service.getAccounts(),
             builder: (context, accountListSnap) {
-              // 3. Fetch Credit Cards
               return StreamBuilder<List<CreditCardModel>>(
                   stream: _creditService.getCreditCards(),
                   builder: (context, cardListSnap) {
                     final Map<String, String> accountNameMap = {};
-
-                    if (accountListSnap.hasData) {
-                      for (var acc in accountListSnap.data!) {
+                    if (accountListSnap.hasData)
+                      for (var acc in accountListSnap.data!)
                         accountNameMap[acc.id] =
                             "${acc.name} (${acc.bankName})";
-                      }
-                    }
-                    if (cardListSnap.hasData) {
-                      for (var card in cardListSnap.data!) {
+                    if (cardListSnap.hasData)
+                      for (var card in cardListSnap.data!)
                         accountNameMap[card.id] =
                             "${card.name} (${card.bankName})";
-                      }
-                    }
 
-                    // 4. Fetch ALL Financial Records needed for the selected range to Aggregate Budget
+                    // 4. Fetch Financial Records to Aggregate Budget
                     return StreamBuilder<List<FinancialRecord>>(
                         stream: _dashboardService.getFinancialRecords(),
                         builder: (context, recordsSnapshot) {
-                          // Aggregate Limits & Buckets
                           final Map<String, double> aggregatedLimits = {};
                           final Set<String> definedBuckets = {};
 
@@ -450,12 +419,11 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                             }
                           }
 
-                          // 5. Fetch Expense Transactions
+                          // 5. Fetch Transactions
                           return StreamBuilder<List<ExpenseTransactionModel>>(
                             stream:
                                 _service.getTransactions(accountId: fetchId),
                             builder: (context, expenseSnapshot) {
-                              // 6. Fetch Credit Transactions
                               return StreamBuilder<
                                   List<CreditTransactionModel>>(
                                 stream: fetchId == null
@@ -464,49 +432,41 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                         .getTransactionsForCard(fetchId),
                                 builder: (context, creditSnapshot) {
                                   if (!expenseSnapshot.hasData &&
-                                      !creditSnapshot.hasData) {
+                                      !creditSnapshot.hasData)
                                     return const Center(child: ModernLoader());
-                                  }
 
                                   final expenses = expenseSnapshot.data ?? [];
                                   final credits = creditSnapshot.data ?? [];
 
-                                  // --- Data Preparation Logic ---
-
-                                  // 1. Filter by Account ID (Raw list needed for Trend Calc)
                                   final List<dynamic> rawFilteredByAccount = [];
                                   if (_selectedAccountId != kGroupCredits) {
-                                    rawFilteredByAccount
-                                        .addAll(expenses.where((t) {
-                                      if (_selectedAccountId != null &&
-                                          _selectedAccountId != kGroupBanks &&
-                                          t.accountId != _selectedAccountId)
-                                        return false;
-                                      return true;
-                                    }));
+                                    rawFilteredByAccount.addAll(expenses.where(
+                                        (t) => (_selectedAccountId != null &&
+                                                _selectedAccountId !=
+                                                    kGroupBanks &&
+                                                t.accountId !=
+                                                    _selectedAccountId)
+                                            ? false
+                                            : true));
                                   }
                                   if (_selectedAccountId != kGroupBanks) {
-                                    rawFilteredByAccount
-                                        .addAll(credits.where((t) {
-                                      if (_selectedAccountId != null &&
-                                          _selectedAccountId != kGroupCredits &&
-                                          t.cardId != _selectedAccountId)
-                                        return false;
-                                      return true;
-                                    }));
+                                    rawFilteredByAccount.addAll(credits.where(
+                                        (t) => (_selectedAccountId != null &&
+                                                _selectedAccountId !=
+                                                    kGroupCredits &&
+                                                t.cardId != _selectedAccountId)
+                                            ? false
+                                            : true));
                                   }
 
-                                  // 2. Filter by Date (Current View)
                                   final List<dynamic> currentPeriodTxns =
                                       rawFilteredByAccount
                                           .where(
                                               (t) => _matchesDateFilter(t.date))
                                           .toList();
 
-                                  // 3. Calculate Totals
                                   double totalIncome = 0;
                                   double totalExpense = 0;
-
                                   for (var t in currentPeriodTxns) {
                                     final bool isCredit =
                                         t is CreditTransactionModel;
@@ -514,18 +474,15 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                         isCredit ? t.type : t.type;
                                     final double amount =
                                         isCredit ? t.amount : t.amount;
-
-                                    if (type == 'Income') {
-                                      if (!isCredit) totalIncome += amount;
-                                    } else if (type == 'Expense') {
+                                    if (type == 'Income' && !isCredit)
+                                      totalIncome += amount;
+                                    else if (type == 'Expense')
                                       totalExpense += amount;
-                                    }
                                   }
-
                                   final currentTotal =
                                       _showIncome ? totalIncome : totalExpense;
 
-                                  // 4. Generate Breakdown for UI
+                                  // Generate Breakdown
                                   final uiBreakdownItems = _generateBreakdown(
                                     allTxns: currentPeriodTxns,
                                     forIncome: _showIncome,
@@ -534,13 +491,12 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                     bucketLimits: aggregatedLimits,
                                   );
 
-                                  // 5. Build UI
                                   return ListView(
                                     padding: const EdgeInsets.fromLTRB(
                                         20, 20, 20, 120),
                                     physics: const BouncingScrollPhysics(),
                                     children: [
-                                      // --- Top Row: Filters + Export Button ---
+                                      // --- Filters & Actions ---
                                       Row(
                                         children: [
                                           Expanded(
@@ -550,7 +506,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                           const SizedBox(width: 8),
                                           _buildTimeFilter(),
                                           const SizedBox(width: 8),
-                                          // Export Button
                                           _buildExportButton(
                                               currentPeriodTxns,
                                               iconMap,
@@ -563,7 +518,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                       ),
                                       const SizedBox(height: 12),
 
-                                      // --- View Toggle + Sort Toggle ---
+                                      // --- Toggles ---
                                       Row(
                                         children: [
                                           Expanded(child: _buildViewToggle()),
@@ -660,11 +615,10 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                         )
                                       else
                                         ...uiBreakdownItems.map((item) {
-                                          // [UI-Only] Recalculate Trends Here
+                                          // Trends
                                           double? trend;
                                           final prevPeriod =
                                               _getPreviousPeriod();
-
                                           if (_selectedRange != 'All Time') {
                                             double prevTotal = 0;
                                             for (var t
@@ -674,7 +628,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                                       prevPeriod.custom,
                                                   rangeTypeOverride: prevPeriod
                                                       .type)) continue;
-
                                               final isCredit =
                                                   t is CreditTransactionModel;
                                               final type =
@@ -708,23 +661,18 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                                         .amount;
                                               }
                                             }
-
-                                            if (prevTotal > 0) {
+                                            if (prevTotal > 0)
                                               trend = ((item.totalAmount -
                                                           prevTotal) /
                                                       prevTotal) *
                                                   100;
-                                            } else if (prevTotal == 0 &&
-                                                item.totalAmount > 0) {
+                                            else if (prevTotal == 0 &&
+                                                item.totalAmount > 0)
                                               trend = 100;
-                                            }
                                           }
 
-                                          // Only pass Budget Limit if viewing Expenses by Bucket
                                           final showLimit =
                                               _viewByBucket && !_showIncome;
-
-                                          // Wrap in display item to include trend
                                           final displayItem =
                                               CategoryBreakdownItem(
                                             name: item.name,
@@ -778,7 +726,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
             color: Color(0xFF00B4D8), size: 18),
         padding: EdgeInsets.zero,
         onPressed: () {
-          // Pass definedBuckets to include zero-spend buckets in export
           final incomeList = _generateBreakdown(
               allTxns: txns,
               forIncome: true,
@@ -804,13 +751,14 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
             context: context,
             backgroundColor: Colors.transparent,
             builder: (context) => CategoryExportSheet(
-              incomeItems: incomeList,
-              expenseItems: expenseList,
+              incomeItems: incomeList, expenseItems: expenseList,
               dateRangeName: reportLabel,
               filterAccountName: accountFilterName,
               accountNameMap: accountNameMap,
-              totalIncome: income,
-              totalExpense: expense,
+              totalIncome: income, totalExpense: expense,
+              groupingType: _viewByBucket
+                  ? "Bucket"
+                  : "Category", // [SAFE EXPORT] Pass grouping type for filename
             ),
           );
         },
@@ -818,103 +766,87 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     );
   }
 
+  // ... (Widgets: _buildViewToggle, _buildSortToggle, _buildAccountFilter, _buildTimeFilter, _buildSummaryCard, _buildCategoryTile, _ReadOnlyItems)
+  // These implementations remain strictly preserved as per previous versions
+
   Widget _buildViewToggle() {
     return Container(
-      width: double.infinity,
-      height: 40,
-      decoration: BoxDecoration(
-        color: const Color(0xFF151D29),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: [
+        height: 40,
+        decoration: BoxDecoration(
+            color: const Color(0xFF151D29),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withOpacity(0.05))),
+        child: Row(children: [
           Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _viewByBucket = false),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: !_viewByBucket
-                      ? const Color(0xFF00B4D8).withOpacity(0.2)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  border: !_viewByBucket
-                      ? Border.all(
-                          color: const Color(0xFF00B4D8).withOpacity(0.3))
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  "By Category",
-                  style: TextStyle(
-                    color: !_viewByBucket
-                        ? const Color(0xFF00B4D8)
-                        : Colors.white54,
-                    fontWeight:
-                        !_viewByBucket ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-          ),
+              child: GestureDetector(
+                  onTap: () => setState(() => _viewByBucket = false),
+                  child: Container(
+                      decoration: BoxDecoration(
+                          color: !_viewByBucket
+                              ? const Color(0xFF00B4D8).withOpacity(0.2)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: !_viewByBucket
+                              ? Border.all(
+                                  color:
+                                      const Color(0xFF00B4D8).withOpacity(0.3))
+                              : null),
+                      alignment: Alignment.center,
+                      child: Text("By Category",
+                          style: TextStyle(
+                              color: !_viewByBucket
+                                  ? const Color(0xFF00B4D8)
+                                  : Colors.white54,
+                              fontWeight: !_viewByBucket
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              fontSize: 12))))),
           Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _viewByBucket = true),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _viewByBucket
-                      ? const Color(0xFF00B4D8).withOpacity(0.2)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  border: _viewByBucket
-                      ? Border.all(
-                          color: const Color(0xFF00B4D8).withOpacity(0.3))
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  "By Bucket",
-                  style: TextStyle(
-                    color: _viewByBucket
-                        ? const Color(0xFF00B4D8)
-                        : Colors.white54,
-                    fontWeight:
-                        _viewByBucket ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+              child: GestureDetector(
+                  onTap: () => setState(() => _viewByBucket = true),
+                  child: Container(
+                      decoration: BoxDecoration(
+                          color: _viewByBucket
+                              ? const Color(0xFF00B4D8).withOpacity(0.2)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: _viewByBucket
+                              ? Border.all(
+                                  color:
+                                      const Color(0xFF00B4D8).withOpacity(0.3))
+                              : null),
+                      alignment: Alignment.center,
+                      child: Text("By Bucket",
+                          style: TextStyle(
+                              color: _viewByBucket
+                                  ? const Color(0xFF00B4D8)
+                                  : Colors.white54,
+                              fontWeight: _viewByBucket
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              fontSize: 12)))))
+        ]));
   }
 
   Widget _buildSortToggle() {
     return GestureDetector(
-      onTap: () => setState(() => _sortByHealth = !_sortByHealth),
-      child: Container(
-        height: 40,
-        width: 40,
-        decoration: BoxDecoration(
-          color: _sortByHealth
-              ? Colors.redAccent.withOpacity(0.2)
-              : const Color(0xFF151D29),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-              color: _sortByHealth
-                  ? Colors.redAccent.withOpacity(0.5)
-                  : Colors.white.withOpacity(0.05)),
-        ),
-        child: Icon(
-          _sortByHealth ? Icons.warning_rounded : Icons.sort_rounded,
-          color: _sortByHealth ? Colors.redAccent : Colors.white54,
-          size: 20,
-        ),
-      ),
-    );
+        onTap: () => setState(() => _sortByHealth = !_sortByHealth),
+        child: Container(
+            height: 40,
+            width: 40,
+            decoration: BoxDecoration(
+                color: _sortByHealth
+                    ? Colors.redAccent.withOpacity(0.2)
+                    : const Color(0xFF151D29),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: _sortByHealth
+                        ? Colors.redAccent.withOpacity(0.5)
+                        : Colors.white.withOpacity(0.05))),
+            child: Icon(
+                _sortByHealth ? Icons.warning_rounded : Icons.sort_rounded,
+                color: _sortByHealth ? Colors.redAccent : Colors.white54,
+                size: 20)));
   }
 
   Widget _buildAccountFilter(
@@ -926,151 +858,132 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
           cards.any((c) => c.id == _selectedAccountId);
       if (!exists) _selectedAccountId = null;
     }
-
     return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          value: _selectedAccountId,
-          dropdownColor: const Color(0xFF1B263B),
-          icon: const Icon(Icons.account_balance_wallet_outlined,
-              color: Colors.white70, size: 16),
-          style: const TextStyle(
-              color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-          isExpanded: true,
-          hint: const Text(
-            "All Accounts",
-            style: TextStyle(
-                color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-            overflow: TextOverflow.ellipsis,
-          ),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text("All Accounts"),
-            ),
-            if (accounts.isNotEmpty)
-              const DropdownMenuItem<String?>(
-                enabled: false,
-                value: 'header_bank',
-                child: Text("BANK ACCOUNTS",
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+        decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.white.withOpacity(0.1))),
+        child: DropdownButtonHideUnderline(
+            child: DropdownButton<String?>(
+                value: _selectedAccountId,
+                dropdownColor: const Color(0xFF1B263B),
+                icon: const Icon(Icons.account_balance_wallet_outlined,
+                    color: Colors.white70, size: 16),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600),
+                isExpanded: true,
+                hint: const Text("All Accounts",
                     style: TextStyle(
-                        color: Colors.white38,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold)),
-              ),
-            if (accounts.isNotEmpty)
-              const DropdownMenuItem<String?>(
-                value: kGroupBanks,
-                child: Text("All Bank Accounts",
-                    style: TextStyle(fontWeight: FontWeight.w500)),
-              ),
-            ...accounts.map((acc) => DropdownMenuItem(
-                  value: acc.id,
-                  child: Text(
-                    "${acc.name} ( ${acc.bankName} )",
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                )),
-            if (cards.isNotEmpty)
-              const DropdownMenuItem<String?>(
-                enabled: false,
-                value: 'header_credit',
-                child: Text("CREDIT CARDS",
-                    style: TextStyle(
-                        color: Colors.white38,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold)),
-              ),
-            if (cards.isNotEmpty)
-              const DropdownMenuItem<String?>(
-                value: kGroupCredits,
-                child: Text("All Credit Cards",
-                    style: TextStyle(fontWeight: FontWeight.w500)),
-              ),
-            ...cards.map((card) => DropdownMenuItem(
-                  value: card.id,
-                  child: Text(
-                    "${card.name} ( ${card.bankName} )",
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                )),
-          ],
-          onChanged: (val) {
-            setState(() => _selectedAccountId = val);
-          },
-        ),
-      ),
-    );
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis),
+                items: [
+                  const DropdownMenuItem<String?>(
+                      value: null, child: Text("All Accounts")),
+                  if (accounts.isNotEmpty)
+                    const DropdownMenuItem<String?>(
+                        enabled: false,
+                        value: 'header_bank',
+                        child: Text("BANK ACCOUNTS",
+                            style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold))),
+                  if (accounts.isNotEmpty)
+                    const DropdownMenuItem<String?>(
+                        value: kGroupBanks,
+                        child: Text("All Bank Accounts",
+                            style: TextStyle(fontWeight: FontWeight.w500))),
+                  ...accounts.map((acc) => DropdownMenuItem(
+                      value: acc.id,
+                      child: Text("${acc.name} ( ${acc.bankName} )",
+                          overflow: TextOverflow.ellipsis))),
+                  if (cards.isNotEmpty)
+                    const DropdownMenuItem<String?>(
+                        enabled: false,
+                        value: 'header_credit',
+                        child: Text("CREDIT CARDS",
+                            style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold))),
+                  if (cards.isNotEmpty)
+                    const DropdownMenuItem<String?>(
+                        value: kGroupCredits,
+                        child: Text("All Credit Cards",
+                            style: TextStyle(fontWeight: FontWeight.w500))),
+                  ...cards.map((card) => DropdownMenuItem(
+                      value: card.id,
+                      child: Text("${card.name} ( ${card.bankName} )",
+                          overflow: TextOverflow.ellipsis)))
+                ],
+                onChanged: (val) {
+                  setState(() => _selectedAccountId = val);
+                })));
   }
 
   Widget _buildTimeFilter() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedRange,
-          dropdownColor: const Color(0xFF1B263B),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded,
-              color: Colors.white70, size: 18),
-          style: const TextStyle(
-              color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-          isDense: true,
-          items: [
-            'This Month',
-            'Last Month',
-            'This Year',
-            'Last Year',
-            'All Time',
-            'Custom Range',
-          ].map((e) {
-            if (e == 'Custom Range' &&
-                _selectedRange == 'Custom Range' &&
-                _customDateRange != null) {
-              final start =
-                  DateFormat('dd MMM').format(_customDateRange!.start);
-              final end = DateFormat('dd MMM').format(_customDateRange!.end);
-              return DropdownMenuItem(
-                value: e,
-                onTap: () {
-                  WidgetsBinding.instance
-                      .addPostFrameCallback((_) => _pickDateRange());
-                },
-                child: Text("$start - $end"),
-              );
-            }
-            if (e == 'Custom Range') {
-              return DropdownMenuItem(
-                value: e,
-                onTap: () {
-                  WidgetsBinding.instance
-                      .addPostFrameCallback((_) => _pickDateRange());
-                },
-                child: Text(e),
-              );
-            }
-
-            return DropdownMenuItem(value: e, child: Text(e));
-          }).toList(),
-          onChanged: (val) {
-            if (val != null && val != 'Custom Range') {
-              setState(() => _selectedRange = val);
-            }
-          },
-        ),
-      ),
-    );
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.white.withOpacity(0.1))),
+        child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+                value: _selectedRange,
+                dropdownColor: const Color(0xFF1B263B),
+                icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                    color: Colors.white70, size: 18),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600),
+                isDense: true,
+                items: [
+                  'This Month',
+                  'Last Month',
+                  'This Year',
+                  'Last Year',
+                  'All Time',
+                  'Custom Range'
+                ].map((e) {
+                  if (e == 'Custom Range' &&
+                      _selectedRange == 'Custom Range' &&
+                      _customDateRange != null) {
+                    final start =
+                        DateFormat('dd MMM').format(_customDateRange!.start);
+                    final end =
+                        DateFormat('dd MMM').format(_customDateRange!.end);
+                    return DropdownMenuItem(
+                        value: e,
+                        onTap: () {
+                          WidgetsBinding.instance
+                              .addPostFrameCallback((_) => _pickDateRange());
+                        },
+                        child: Text("$start - $end"));
+                  }
+                  if (e == 'Custom Range') {
+                    return DropdownMenuItem(
+                        value: e,
+                        onTap: () {
+                          WidgetsBinding.instance
+                              .addPostFrameCallback((_) => _pickDateRange());
+                        },
+                        child: Text(e));
+                  }
+                  return DropdownMenuItem(value: e, child: Text(e));
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null && val != 'Custom Range') {
+                    setState(() => _selectedRange = val);
+                  }
+                })));
   }
 
   Widget _buildSummaryCard(
@@ -1078,339 +991,258 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       {required bool isActive, required VoidCallback onTap}) {
     final currencyFmt =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
-
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isActive ? color.withOpacity(0.15) : const Color(0xFF151D29),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive ? color.withOpacity(0.5) : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
+        onTap: onTap,
+        child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+                color: isActive
+                    ? color.withOpacity(0.15)
+                    : const Color(0xFF151D29),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color:
+                        isActive ? color.withOpacity(0.5) : Colors.transparent,
+                    width: 1.5)),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
                 Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 16),
-                ),
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                        color: color.withOpacity(0.1), shape: BoxShape.circle),
+                    child: Icon(icon, color: color, size: 16)),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                currencyFmt.format(amount),
-                style: TextStyle(
-                  color: color,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+                Text(title,
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600))
+              ]),
+              const SizedBox(height: 12),
+              FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(currencyFmt.format(amount),
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)))
+            ])));
   }
 
   Widget _buildCategoryTile(CategoryBreakdownItem item, double totalAmount,
       NumberFormat fmt, Map<String, String> accountNameMap) {
-    // [UPDATED] Smart Progress Bar Logic for Budget View
     double percentage;
     Color color;
     String statusLabel = "";
-
-    // Check if item has a budget limit (means we are in Expense Bucket View)
     if (item.budgetLimit != null && item.budgetLimit! > 0) {
-      // Logic: Usage Percentage of Budget
       percentage = item.totalAmount / item.budgetLimit!;
-
       final remaining = item.budgetLimit! - item.totalAmount;
       if (remaining >= 0) {
         statusLabel = "Left: ${fmt.format(remaining)}";
-        if (percentage < 0.75) {
-          color = const Color(0xFF00E676); // Green (Safe)
-        } else if (percentage < 1.0) {
-          color = Colors.orangeAccent; // Warning
-        } else {
-          color = Colors.redAccent; // Exact match or rounding edge
-        }
+        if (percentage < 0.75)
+          color = const Color(0xFF00E676);
+        else if (percentage < 1.0)
+          color = Colors.orangeAccent;
+        else
+          color = Colors.redAccent;
       } else {
         statusLabel = "Over: ${fmt.format(remaining.abs())}";
-        color = const Color(0xFFFF4D6D); // Red (Overspent)
+        color = const Color(0xFFFF4D6D);
       }
     } else {
-      // Fallback Logic: Share of Total (Category View or Income or No Limit)
       percentage = totalAmount > 0 ? (item.totalAmount / totalAmount) : 0.0;
-      color = _showIncome
-          ? const Color(0xFF00E676)
-          : const Color(0xFF00B4D8); // Blue for standard expense share
+      color = _showIncome ? const Color(0xFF00E676) : const Color(0xFF00B4D8);
       statusLabel = "${(percentage * 100).toStringAsFixed(1)}% of total";
     }
-
-    // Cap visual progress at 100% so it doesn't overflow
     final double visualProgress = percentage > 1.0 ? 1.0 : percentage;
-
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF151D29),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          leading: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(item.icon, color: color, size: 20),
-          ),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (item.trendPercentage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Row(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+            color: const Color(0xFF151D29),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withOpacity(0.05))),
+        child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+                tilePadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                        color: color.withOpacity(0.1), shape: BoxShape.circle),
+                    child: Icon(item.icon, color: color, size: 20)),
+                title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                            Text(item.name,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis),
+                            if (item.trendPercentage != null)
+                              Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Row(children: [
+                                    Icon(
+                                        item.trendPercentage! > 0
+                                            ? Icons.arrow_upward_rounded
+                                            : Icons.arrow_downward_rounded,
+                                        size: 10,
+                                        color: item.trendPercentage! > 0
+                                            ? Colors.redAccent
+                                            : Colors.greenAccent),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                        "${item.trendPercentage!.abs().toStringAsFixed(1)}%",
+                                        style: TextStyle(
+                                            color: item.trendPercentage! > 0
+                                                ? Colors.redAccent
+                                                : Colors.greenAccent,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold))
+                                  ]))
+                          ])),
+                      const SizedBox(width: 8),
+                      Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Icon(
-                              item.trendPercentage! > 0
-                                  ? Icons.arrow_upward_rounded
-                                  : Icons.arrow_downward_rounded,
-                              size: 10,
-                              color: item.trendPercentage! > 0
-                                  ? Colors.redAccent
-                                  : Colors.greenAccent,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              "${item.trendPercentage!.abs().toStringAsFixed(1)}%",
-                              style: TextStyle(
-                                  color: item.trendPercentage! > 0
-                                      ? Colors.redAccent
-                                      : Colors.greenAccent,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      )
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                            Text(fmt.format(item.totalAmount),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold)),
+                            if (item.budgetLimit != null &&
+                                item.budgetLimit! > 0)
+                              Text("/ ${fmt.format(item.budgetLimit)}",
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.3),
+                                      fontSize: 10))
+                          ])
+                    ]),
+                subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: LinearProgressIndicator(
+                              value: visualProgress,
+                              backgroundColor: Colors.white.withOpacity(0.05),
+                              valueColor: AlwaysStoppedAnimation(color),
+                              minHeight: 4)),
+                      const SizedBox(height: 4),
+                      Text(statusLabel,
+                          style: TextStyle(
+                              color: color.withOpacity(0.8),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600))
+                    ]),
                 children: [
-                  Text(
-                    fmt.format(item.totalAmount),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  // Display Limit if exists (e.g. "/ ₹5,000")
-                  if (item.budgetLimit != null && item.budgetLimit! > 0)
-                    Text(
-                      "/ ${fmt.format(item.budgetLimit)}",
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.3),
-                        fontSize: 10,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: visualProgress,
-                  backgroundColor: Colors.white.withOpacity(0.05),
-                  valueColor: AlwaysStoppedAnimation(color),
-                  minHeight: 4,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                statusLabel,
-                style: TextStyle(
-                    color: color.withOpacity(0.8),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.2),
-                borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(16)),
-              ),
-              child: Column(
-                children: item.subcategories.map((sub) {
-                  return Theme(
-                    data: Theme.of(context)
-                        .copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-                      tilePadding: const EdgeInsets.only(
-                          left: 24, right: 16, top: 4, bottom: 4),
-                      title: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              sub.name,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
-                                fontSize: 13,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            fmt.format(sub.amount),
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      children: [
-                        ...sub.transactions.map((txn) {
-                          if (txn is ExpenseTransactionModel) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 4),
-                              child: _ReadOnlyExpenseTransactionItem(
-                                key: ValueKey(txn.id),
-                                txn: txn,
-                                iconData: item.icon,
-                                sourceAccountName:
-                                    accountNameMap[txn.accountId],
-                              ),
-                            );
-                          } else if (txn is CreditTransactionModel) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 4),
-                              child: _ReadOnlyCreditTransactionItem(
-                                key: ValueKey(txn.id),
-                                txn: txn,
-                                iconData: item.icon,
-                                cardName: accountNameMap[txn.cardId],
-                              ),
-                            );
-                          }
-                          return const SizedBox();
-                        }),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            )
-          ],
-        ),
-      ),
-    );
+                  Container(
+                      decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.2),
+                          borderRadius: const BorderRadius.vertical(
+                              bottom: Radius.circular(16))),
+                      child: Column(
+                          children: item.subcategories.map((sub) {
+                        return Theme(
+                            data: Theme.of(context)
+                                .copyWith(dividerColor: Colors.transparent),
+                            child: ExpansionTile(
+                                tilePadding: const EdgeInsets.only(
+                                    left: 24, right: 16, top: 4, bottom: 4),
+                                title: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                          child: Text(sub.name,
+                                              style: TextStyle(
+                                                  color: Colors.white
+                                                      .withOpacity(0.7),
+                                                  fontSize: 13),
+                                              overflow: TextOverflow.ellipsis)),
+                                      const SizedBox(width: 8),
+                                      Text(fmt.format(sub.amount),
+                                          style: TextStyle(
+                                              color:
+                                                  Colors.white.withOpacity(0.9),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500))
+                                    ]),
+                                children: [
+                                  ...sub.transactions.map((txn) {
+                                    if (txn is ExpenseTransactionModel) {
+                                      return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 4),
+                                          child:
+                                              _ReadOnlyExpenseTransactionItem(
+                                                  key: ValueKey(txn.id),
+                                                  txn: txn,
+                                                  iconData: item.icon,
+                                                  sourceAccountName:
+                                                      accountNameMap[
+                                                          txn.accountId]));
+                                    } else if (txn is CreditTransactionModel) {
+                                      return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 4),
+                                          child: _ReadOnlyCreditTransactionItem(
+                                              key: ValueKey(txn.id),
+                                              txn: txn,
+                                              iconData: item.icon,
+                                              cardName:
+                                                  accountNameMap[txn.cardId]));
+                                    }
+                                    return const SizedBox();
+                                  })
+                                ]));
+                      }).toList()))
+                ])));
   }
 }
 
-// --- Models ---
 class CategoryBreakdownItem {
   final String name;
   final double totalAmount;
   final List<SubCategoryItem> subcategories;
   final IconData icon;
   final double? trendPercentage;
-  final double? budgetLimit; // Monthly Budget Limit for this Bucket
-
-  CategoryBreakdownItem({
-    required this.name,
-    required this.totalAmount,
-    required this.subcategories,
-    required this.icon,
-    this.trendPercentage,
-    this.budgetLimit,
-  });
+  final double? budgetLimit;
+  CategoryBreakdownItem(
+      {required this.name,
+      required this.totalAmount,
+      required this.subcategories,
+      required this.icon,
+      this.trendPercentage,
+      this.budgetLimit});
 }
 
 class SubCategoryItem {
   final String name;
   final double amount;
   final List<dynamic> transactions;
-
-  SubCategoryItem({
-    required this.name,
-    required this.amount,
-    required this.transactions,
-  });
+  SubCategoryItem(
+      {required this.name, required this.amount, required this.transactions});
 }
 
-// --- Local Widgets ---
-
-// 1. Read-Only Expense Item (Existing)
 class _ReadOnlyExpenseTransactionItem extends StatefulWidget {
   final ExpenseTransactionModel txn;
   final IconData iconData;
   final String? sourceAccountName;
-
-  const _ReadOnlyExpenseTransactionItem({
-    required this.txn,
-    required this.iconData,
-    this.sourceAccountName,
-    super.key,
-  });
-
+  const _ReadOnlyExpenseTransactionItem(
+      {required this.txn,
+      required this.iconData,
+      this.sourceAccountName,
+      super.key});
   @override
   State<_ReadOnlyExpenseTransactionItem> createState() =>
       _ReadOnlyExpenseTransactionItemState();
@@ -1419,7 +1251,6 @@ class _ReadOnlyExpenseTransactionItem extends StatefulWidget {
 class _ReadOnlyExpenseTransactionItemState
     extends State<_ReadOnlyExpenseTransactionItem> {
   bool _isExpanded = false;
-
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
@@ -1431,7 +1262,6 @@ class _ReadOnlyExpenseTransactionItemState
     IconData icon;
     String title;
     String sign;
-
     if (isExpense) {
       amountColor = Colors.redAccent;
       iconColor = const Color(0xFF00B4D8);
@@ -1462,164 +1292,140 @@ class _ReadOnlyExpenseTransactionItemState
       title = widget.txn.category;
       sign = '+';
     }
-
     final bool hasSummary = (isExpense && widget.txn.bucket.isNotEmpty) ||
         widget.txn.notes.isNotEmpty ||
         widget.sourceAccountName != null;
-
     return GestureDetector(
-      onTap: () => setState(() => _isExpanded = !_isExpanded),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: const Color(0xFF1B263B).withOpacity(0.5),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-                color: _isExpanded
-                    ? Colors.white.withOpacity(0.2)
-                    : Colors.white.withOpacity(0.05)),
-            boxShadow: _isExpanded
-                ? [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4))
-                  ]
-                : []),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        onTap: () => setState(() => _isExpanded = !_isExpanded),
+        child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+                color: const Color(0xFF1B263B).withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: _isExpanded
+                        ? Colors.white.withOpacity(0.2)
+                        : Colors.white.withOpacity(0.05)),
+                boxShadow: _isExpanded
+                    ? [
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4))
+                      ]
+                    : []),
+            child: Column(children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 CircleAvatar(
                     backgroundColor: iconColor.withOpacity(0.1),
                     child: Icon(icon, color: iconColor, size: 20)),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15)),
-                      if (widget.sourceAccountName != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4)),
-                            child: Text(
-                              widget.sourceAccountName!,
-                              style: const TextStyle(
-                                  color: Colors.blueAccent,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        )
-                      else if (widget.txn.subCategory.isNotEmpty &&
-                          widget.txn.subCategory != 'General')
-                        Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(widget.txn.subCategory,
-                                style: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
-                                    fontSize: 12))),
-                    ],
-                  ),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15)),
+                        if (widget.sourceAccountName != null)
+                          Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4)),
+                                  child: Text(widget.sourceAccountName!,
+                                      style: const TextStyle(
+                                          color: Colors.blueAccent,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600))))
+                        else if (widget.txn.subCategory.isNotEmpty &&
+                            widget.txn.subCategory != 'General')
+                          Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(widget.txn.subCategory,
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.6),
+                                      fontSize: 12)))
+                      ]),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text("$sign ${currency.format(widget.txn.amount)}",
-                        style: TextStyle(
-                            color: amountColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15)),
-                    const SizedBox(height: 4),
-                    Text(DateFormat('dd MMM').format(widget.txn.date),
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 11)),
-                  ],
-                ),
-              ],
-            ),
-            AnimatedCrossFade(
-              duration: const Duration(milliseconds: 300),
-              firstChild: hasSummary
-                  ? Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.only(top: 8, left: 56),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          if (isExpense && widget.txn.bucket.isNotEmpty)
-                            _buildTag(widget.txn.bucket),
-                          if (widget.txn.notes.isNotEmpty)
-                            Text(
-                              widget.txn.notes,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text("$sign ${currency.format(widget.txn.amount)}",
+                      style: TextStyle(
+                          color: amountColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15)),
+                  const SizedBox(height: 4),
+                  Text(DateFormat('dd MMM').format(widget.txn.date),
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11))
+                ])
+              ]),
+              AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 300),
+                  firstChild: hasSummary
+                      ? Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.only(top: 8, left: 56),
+                          child: Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                if (isExpense && widget.txn.bucket.isNotEmpty)
+                                  _buildTag(widget.txn.bucket),
+                                if (widget.txn.notes.isNotEmpty)
+                                  Text(widget.txn.notes,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                          color: Colors.white.withOpacity(0.4),
+                                          fontSize: 11,
+                                          fontStyle: FontStyle.italic))
+                              ]))
+                      : const SizedBox(width: double.infinity),
+                  secondChild: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        const Divider(color: Colors.white10),
+                        const SizedBox(height: 8),
+                        Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                  DateFormat('EEEE, hh:mm a')
+                                      .format(widget.txn.date),
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontSize: 12)),
+                              if (isExpense && widget.txn.bucket.isNotEmpty)
+                                _buildTag("Bucket: ${widget.txn.bucket}")
+                            ]),
+                        const SizedBox(height: 12),
+                        if (widget.txn.notes.isNotEmpty) ...[
+                          Text("Notes:",
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.4),
-                                fontSize: 11,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                        ],
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-              secondChild: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  const Divider(color: Colors.white10),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        DateFormat('EEEE, hh:mm a').format(widget.txn.date),
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.5), fontSize: 12),
-                      ),
-                      if (isExpense && widget.txn.bucket.isNotEmpty)
-                        _buildTag("Bucket: ${widget.txn.bucket}"),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (widget.txn.notes.isNotEmpty) ...[
-                    Text("Notes:",
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(widget.txn.notes,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13)),
-                  ],
-                ],
-              ),
-              crossFadeState: _isExpanded
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-            ),
-          ],
-        ),
-      ),
-    );
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text(widget.txn.notes,
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 13))
+                        ]
+                      ]),
+                  crossFadeState: _isExpanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst)
+            ])));
   }
 
   Widget _buildTag(String text) => Container(
@@ -1635,19 +1441,12 @@ class _ReadOnlyExpenseTransactionItemState
               fontWeight: FontWeight.w500)));
 }
 
-// 2. Read-Only Credit Item
 class _ReadOnlyCreditTransactionItem extends StatefulWidget {
   final CreditTransactionModel txn;
   final IconData iconData;
   final String? cardName;
-
-  const _ReadOnlyCreditTransactionItem({
-    required this.txn,
-    required this.iconData,
-    this.cardName,
-    super.key,
-  });
-
+  const _ReadOnlyCreditTransactionItem(
+      {required this.txn, required this.iconData, this.cardName, super.key});
   @override
   State<_ReadOnlyCreditTransactionItem> createState() =>
       _ReadOnlyCreditTransactionItemState();
@@ -1656,181 +1455,148 @@ class _ReadOnlyCreditTransactionItem extends StatefulWidget {
 class _ReadOnlyCreditTransactionItemState
     extends State<_ReadOnlyCreditTransactionItem> {
   bool _isExpanded = false;
-
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
-    // Credit Txns are usually expenses unless specified otherwise
     final bool isIncome = widget.txn.type == 'Income';
-
     final Color amountColor = isIncome ? Colors.greenAccent : Colors.redAccent;
-    // Credit often uses Purple/Orange theme, but let's stick to standard or blue for consistency
     final Color iconColor = const Color(0xFF00B4D8);
-
     final String title = widget.txn.category;
     final String sign = isIncome ? '+' : '-';
-
     final bool hasSummary = widget.txn.bucket.isNotEmpty ||
         widget.txn.notes.isNotEmpty ||
         widget.cardName != null;
-
     return GestureDetector(
-      onTap: () => setState(() => _isExpanded = !_isExpanded),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: const Color(0xFF1B263B).withOpacity(0.5),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-                color: _isExpanded
-                    ? Colors.white.withOpacity(0.2)
-                    : Colors.white.withOpacity(0.05)),
-            boxShadow: _isExpanded
-                ? [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4))
-                  ]
-                : []),
-        child: Column(
-          children: [
-            // Top Row (Always Visible)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        onTap: () => setState(() => _isExpanded = !_isExpanded),
+        child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+                color: const Color(0xFF1B263B).withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: _isExpanded
+                        ? Colors.white.withOpacity(0.2)
+                        : Colors.white.withOpacity(0.05)),
+                boxShadow: _isExpanded
+                    ? [
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4))
+                      ]
+                    : []),
+            child: Column(children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 CircleAvatar(
                     backgroundColor: iconColor.withOpacity(0.1),
                     child: Icon(widget.iconData, color: iconColor, size: 20)),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15)),
-                      // Display Card Name Badge
-                      if (widget.cardName != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4)),
-                            child: Text(
-                              widget.cardName!,
-                              style: const TextStyle(
-                                  color: Colors.redAccent,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        )
-                      else if (widget.txn.subCategory.isNotEmpty &&
-                          widget.txn.subCategory != 'General')
-                        Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(widget.txn.subCategory,
-                                style: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
-                                    fontSize: 12))),
-                    ],
-                  ),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15)),
+                        if (widget.cardName != null)
+                          Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4)),
+                                  child: Text(widget.cardName!,
+                                      style: const TextStyle(
+                                          color: Colors.redAccent,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600))))
+                        else if (widget.txn.subCategory.isNotEmpty &&
+                            widget.txn.subCategory != 'General')
+                          Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(widget.txn.subCategory,
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.6),
+                                      fontSize: 12)))
+                      ]),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text("$sign ${currency.format(widget.txn.amount)}",
-                        style: TextStyle(
-                            color: amountColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15)),
-                    const SizedBox(height: 4),
-                    Text(DateFormat('dd MMM').format(widget.txn.date),
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 11)),
-                  ],
-                ),
-              ],
-            ),
-
-            // Animated Body (Summary vs Detailed)
-            AnimatedCrossFade(
-              duration: const Duration(milliseconds: 300),
-              firstChild: hasSummary
-                  ? Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.only(top: 8, left: 56),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          if (widget.txn.bucket.isNotEmpty)
-                            _buildTag(widget.txn.bucket),
-                          if (widget.txn.notes.isNotEmpty)
-                            Text(
-                              widget.txn.notes,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text("$sign ${currency.format(widget.txn.amount)}",
+                      style: TextStyle(
+                          color: amountColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15)),
+                  const SizedBox(height: 4),
+                  Text(DateFormat('dd MMM').format(widget.txn.date),
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11))
+                ])
+              ]),
+              AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 300),
+                  firstChild: hasSummary
+                      ? Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.only(top: 8, left: 56),
+                          child: Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                if (widget.txn.bucket.isNotEmpty)
+                                  _buildTag(widget.txn.bucket),
+                                if (widget.txn.notes.isNotEmpty)
+                                  Text(widget.txn.notes,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                          color: Colors.white.withOpacity(0.4),
+                                          fontSize: 11,
+                                          fontStyle: FontStyle.italic))
+                              ]))
+                      : const SizedBox(width: double.infinity),
+                  secondChild: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        const Divider(color: Colors.white10),
+                        const SizedBox(height: 8),
+                        Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                  DateFormat('EEEE, hh:mm a')
+                                      .format(widget.txn.date),
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontSize: 12)),
+                              if (widget.txn.bucket.isNotEmpty)
+                                _buildTag("Bucket: ${widget.txn.bucket}")
+                            ]),
+                        const SizedBox(height: 12),
+                        if (widget.txn.notes.isNotEmpty) ...[
+                          Text("Notes:",
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.4),
-                                fontSize: 11,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                        ],
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-              secondChild: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  const Divider(color: Colors.white10),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        DateFormat('EEEE, hh:mm a').format(widget.txn.date),
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.5), fontSize: 12),
-                      ),
-                      if (widget.txn.bucket.isNotEmpty)
-                        _buildTag("Bucket: ${widget.txn.bucket}"),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (widget.txn.notes.isNotEmpty) ...[
-                    Text("Notes:",
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(widget.txn.notes,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13)),
-                  ],
-                ],
-              ),
-              crossFadeState: _isExpanded
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-            ),
-          ],
-        ),
-      ),
-    );
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text(widget.txn.notes,
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 13))
+                        ]
+                      ]),
+                  crossFadeState: _isExpanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst)
+            ])));
   }
 
   Widget _buildTag(String text) => Container(
