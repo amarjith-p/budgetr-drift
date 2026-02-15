@@ -9,6 +9,7 @@ import '../../../core/services/service_locator.dart';
 // Services
 import '../../daily_expense/services/expense_service.dart';
 import '../../dashboard/services/dashboard_service.dart';
+import '../../backup_restore/services/backup_service.dart'; // [ADDED] Import
 
 // Models
 import '../../dashboard/models/dashboard_transaction.dart';
@@ -37,8 +38,27 @@ class _HomeScreenState extends State<HomeScreen> {
   final expenseService = locator<ExpenseService>();
   final dashboardService = locator<DashboardService>();
 
+  // [ADDED] Backup Logic
+  final BackupService _backupService = BackupService();
+  bool _needsBackup = false;
+
   // Budget Mode State
   bool _isBudgetMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // [ADDED] Check status
+    _checkBackupStatus();
+  }
+
+  // [ADDED] Logic
+  Future<void> _checkBackupStatus() async {
+    final overdue = await _backupService.isBackupOverdue();
+    if (mounted && overdue != _needsBackup) {
+      setState(() => _needsBackup = overdue);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +81,50 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 10),
+
+                  // [ADDED] Warning Banner - Inserted here
+                  if (_needsBackup)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 15),
+                      child: InkWell(
+                        onTap: () async {
+                          await _backupService.shareBackup();
+                          _checkBackupStatus(); // Refresh after backup
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withOpacity(0.15),
+                            border: Border.all(
+                                color: Colors.redAccent.withOpacity(0.3)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded,
+                                  color: Colors.redAccent, size: 20),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  "Data not saved! Tap to backup now.",
+                                  style: GoogleFonts.robotoSlab(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios,
+                                  color: Colors.white30, size: 12),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  // [END ADDED BANNER]
+
                   // 1. Summary Card
                   _buildFinancialOverview(),
 
@@ -89,6 +153,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  // ... [Keep ALL your other methods (_buildFinancialOverview, _buildMiniStat, etc.) exactly identical] ...
 
   Widget _buildFinancialOverview() {
     final now = DateTime.now();
