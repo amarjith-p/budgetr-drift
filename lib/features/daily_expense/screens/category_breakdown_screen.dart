@@ -28,20 +28,26 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
   final CategoryService _categoryService = GetIt.I<CategoryService>();
 
   String _selectedRange = 'This Month';
-  // State variable to hold the custom date range
   DateTimeRange? _customDateRange;
 
   String? _selectedAccountId;
   bool _showIncome = false;
+
+  // Toggle state for Bucket View
+  bool _viewByBucket = false;
 
   // Constants for group filters
   static const String kGroupBanks = 'group_banks';
   static const String kGroupCredits = 'group_credits';
 
   // Helper: Date Filter
-  bool _matchesDateFilter(DateTime date) {
+  bool _matchesDateFilter(DateTime date,
+      {DateTimeRange? customRangeOverride, String? rangeTypeOverride}) {
     final now = DateTime.now();
-    switch (_selectedRange) {
+    final type = rangeTypeOverride ?? _selectedRange;
+    final custom = customRangeOverride ?? _customDateRange;
+
+    switch (type) {
       case 'This Month':
         return date.year == now.year && date.month == now.month;
       case 'Last Month':
@@ -53,14 +59,58 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         return date.year == now.year - 1;
       case 'All Time':
         return true;
-      // Logic to match transactions against the custom range
       case 'Custom Range':
-        if (_customDateRange == null) return true;
-        return date.isAfter(
-                _customDateRange!.start.subtract(const Duration(seconds: 1))) &&
-            date.isBefore(_customDateRange!.end.add(const Duration(days: 1)));
+        if (custom == null) return true;
+        // Logic to match transactions against the custom range
+        // Note: custom.end is usually midnight of the selected end day.
+        // We add 1 day to end to make it inclusive of the end date.
+        return date
+                .isAfter(custom.start.subtract(const Duration(seconds: 1))) &&
+            date.isBefore(custom.end.add(const Duration(days: 1)));
       default:
         return true;
+    }
+  }
+
+  // [FIXED] Helper: Calculate Previous Period Date Range
+  ({String type, DateTimeRange? custom}) _getPreviousPeriod() {
+    final now = DateTime.now();
+    switch (_selectedRange) {
+      case 'This Month':
+        return (type: 'Last Month', custom: null);
+      case 'Last Month':
+        final prevStart = DateTime(now.year, now.month - 2, 1);
+        final prevEnd = DateTime(now.year, now.month - 1, 0);
+        return (
+          type: 'Custom Range',
+          custom: DateTimeRange(start: prevStart, end: prevEnd)
+        );
+      case 'This Year':
+        return (type: 'Last Year', custom: null);
+      case 'Custom Range':
+        if (_customDateRange == null) return (type: 'All Time', custom: null);
+
+        final duration = _customDateRange!.duration;
+        final currentStart = _customDateRange!.start;
+
+        // [FIX] Calculate previous range relative to the Current Start.
+        // If selected Feb 15 (Start) to Feb 15 (End): Duration is 0.
+        // Prev End = Feb 14. Prev Start = Feb 14.
+
+        // 1. End of previous period is exactly 1 day before the current start
+        // (Assuming daily granularity from DatePicker)
+        final prevEnd = currentStart.subtract(const Duration(days: 1));
+
+        // 2. Start of previous period is calculated by subtracting the duration from the new end
+        final prevStart = prevEnd.subtract(duration);
+
+        return (
+          type: 'Custom Range',
+          custom: DateTimeRange(start: prevStart, end: prevEnd)
+        );
+
+      default:
+        return (type: 'All Time', custom: null);
     }
   }
 
@@ -124,15 +174,14 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
           }
         }
 
-        // 2. Fetch Accounts (For Name Lookup)
+        // 2. Fetch Accounts
         return StreamBuilder<List<ExpenseAccountModel>>(
             stream: _service.getAccounts(),
             builder: (context, accountListSnap) {
-              // 3. Fetch Credit Cards (For Name Lookup)
+              // 3. Fetch Credit Cards
               return StreamBuilder<List<CreditCardModel>>(
                   stream: _creditService.getCreditCards(),
                   builder: (context, cardListSnap) {
-                    // Create Lookup Map: ID -> Name
                     final Map<String, String> accountNameMap = {};
 
                     if (accountListSnap.hasData) {
@@ -166,44 +215,43 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                             final expenses = expenseSnapshot.data ?? [];
                             final credits = creditSnapshot.data ?? [];
 
-                            final List<dynamic> allTxns = [];
-
-                            // --- Filter Logic ---
-
-                            // Add valid expenses (Banks)
+                            // --- PREPARE RAW LISTS FOR TREND CALCULATION ---
+                            final List<dynamic> rawAllTxns = [];
                             if (_selectedAccountId != kGroupCredits) {
-                              allTxns.addAll(expenses.where((t) {
+                              rawAllTxns.addAll(expenses.where((t) {
                                 if (_selectedAccountId != null &&
                                     _selectedAccountId != kGroupBanks &&
                                     t.accountId != _selectedAccountId)
                                   return false;
-                                return _matchesDateFilter(t.date);
+                                return true;
                               }));
                             }
-
-                            // Add valid credits (Cards)
                             if (_selectedAccountId != kGroupBanks) {
-                              allTxns.addAll(credits.where((t) {
+                              rawAllTxns.addAll(credits.where((t) {
                                 if (_selectedAccountId != null &&
                                     _selectedAccountId != kGroupCredits &&
                                     t.cardId != _selectedAccountId)
                                   return false;
-                                return _matchesDateFilter(t.date);
+                                return true;
                               }));
                             }
+
+                            // --- FILTER CURRENT PERIOD ---
+                            final List<dynamic> currentPeriodTxns =
+                                rawAllTxns.where((t) {
+                              return _matchesDateFilter(t.date);
+                            }).toList();
 
                             double totalIncome = 0;
                             double totalExpense = 0;
                             final List<dynamic> targetTxns = [];
 
-                            for (var t in allTxns) {
+                            for (var t in currentPeriodTxns) {
                               final bool isCredit = t is CreditTransactionModel;
-
                               final String type = isCredit ? t.type : t.type;
                               final double amount =
                                   isCredit ? t.amount : t.amount;
 
-                              // Exclude Credit Card Repayments (Income)
                               if (type == 'Income') {
                                 if (!isCredit) {
                                   totalIncome += amount;
@@ -218,17 +266,25 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                             final currentTotal =
                                 _showIncome ? totalIncome : totalExpense;
 
-                            // Group by Category -> Subcategory
-                            final groupedByCategory = groupBy(targetTxns, (t) {
-                              return (t is ExpenseTransactionModel)
-                                  ? t.category
-                                  : (t as CreditTransactionModel).category;
+                            // --- GROUPING LOGIC ---
+                            final groupedByMain = groupBy(targetTxns, (t) {
+                              if (_viewByBucket) {
+                                final bucket = (t is ExpenseTransactionModel)
+                                    ? t.bucket
+                                    : (t as CreditTransactionModel).bucket;
+                                return bucket.isEmpty ? 'General' : bucket;
+                              } else {
+                                return (t is ExpenseTransactionModel)
+                                    ? t.category
+                                    : (t as CreditTransactionModel).category;
+                              }
                             });
 
                             final List<CategoryBreakdownItem> breakdownItems =
                                 [];
+                            final prevPeriod = _getPreviousPeriod();
 
-                            groupedByCategory.forEach((catName, txns) {
+                            groupedByMain.forEach((mainName, txns) {
                               final catTotal = txns.fold(0.0, (sum, t) {
                                 final amt = (t is ExpenseTransactionModel)
                                     ? t.amount
@@ -236,11 +292,18 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                 return sum + amt;
                               });
 
-                              // Group Subcategories
+                              // Sub-Grouping
                               final groupedBySub = groupBy(txns, (t) {
-                                return (t is ExpenseTransactionModel)
-                                    ? t.subCategory
-                                    : (t as CreditTransactionModel).subCategory;
+                                if (_viewByBucket) {
+                                  return (t is ExpenseTransactionModel)
+                                      ? t.category
+                                      : (t as CreditTransactionModel).category;
+                                } else {
+                                  return (t is ExpenseTransactionModel)
+                                      ? t.subCategory
+                                      : (t as CreditTransactionModel)
+                                          .subCategory;
+                                }
                               });
 
                               final List<SubCategoryItem> subItems = [];
@@ -253,7 +316,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                   return sum + amt;
                                 });
 
-                                // Sort transactions by Date Descending
                                 subTxns.sort((a, b) {
                                   final dateA = (a is ExpenseTransactionModel)
                                       ? a.date
@@ -274,12 +336,60 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                               subItems
                                   .sort((a, b) => b.amount.compareTo(a.amount));
 
+                              // --- CALCULATE TREND ---
+                              double? trendPercent;
+                              if (_selectedRange != 'All Time') {
+                                double prevTotal = 0;
+                                for (var t in rawAllTxns) {
+                                  if (!_matchesDateFilter(t.date,
+                                      customRangeOverride: prevPeriod.custom,
+                                      rangeTypeOverride: prevPeriod.type))
+                                    continue;
+
+                                  final isCredit = t is CreditTransactionModel;
+                                  final type = isCredit ? t.type : t.type;
+                                  if (_showIncome && type != 'Income') continue;
+                                  if (!_showIncome && type != 'Expense')
+                                    continue;
+
+                                  String tGroup;
+                                  if (_viewByBucket) {
+                                    final b = (t is ExpenseTransactionModel)
+                                        ? t.bucket
+                                        : (t as CreditTransactionModel).bucket;
+                                    tGroup = b.isEmpty ? 'General' : b;
+                                  } else {
+                                    tGroup = (t is ExpenseTransactionModel)
+                                        ? t.category
+                                        : (t as CreditTransactionModel)
+                                            .category;
+                                  }
+
+                                  if (tGroup == mainName) {
+                                    prevTotal += (t is ExpenseTransactionModel)
+                                        ? t.amount
+                                        : (t as CreditTransactionModel).amount;
+                                  }
+                                }
+
+                                if (prevTotal > 0) {
+                                  trendPercent =
+                                      ((catTotal - prevTotal) / prevTotal) *
+                                          100;
+                                } else if (prevTotal == 0 && catTotal > 0) {
+                                  trendPercent = 100;
+                                }
+                              }
+
                               breakdownItems.add(CategoryBreakdownItem(
-                                name: catName,
+                                name: mainName,
                                 totalAmount: catTotal,
                                 subcategories: subItems,
-                                icon:
-                                    iconMap[catName] ?? Icons.category_outlined,
+                                icon: _viewByBucket
+                                    ? Icons.all_inbox_rounded
+                                    : (iconMap[mainName] ??
+                                        Icons.category_outlined),
+                                trendPercentage: trendPercent,
                               ));
                             });
 
@@ -302,6 +412,10 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                     _buildTimeFilter(),
                                   ],
                                 ),
+                                const SizedBox(height: 12),
+
+                                // --- View Toggle (Bucket vs Category) ---
+                                _buildViewToggle(),
                                 const SizedBox(height: 20),
 
                                 // --- 2. Summary Cards ---
@@ -335,16 +449,31 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                 const SizedBox(height: 30),
 
                                 // --- 3. Breakdown List ---
-                                Text(
-                                  _showIncome
-                                      ? "INCOME SOURCES"
-                                      : "EXPENSE BREAKDOWN",
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.5),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.2,
-                                  ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _showIncome
+                                          ? "INCOME SOURCES"
+                                          : "EXPENSE BREAKDOWN",
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.5),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                    if (_selectedRange != 'All Time')
+                                      Text(
+                                        "vs Prev. Period",
+                                        style: TextStyle(
+                                            color:
+                                                Colors.white.withOpacity(0.3),
+                                            fontSize: 10,
+                                            fontStyle: FontStyle.italic),
+                                      ),
+                                  ],
                                 ),
                                 const SizedBox(height: 16),
 
@@ -387,6 +516,80 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
 
   // --- Widgets ---
 
+  Widget _buildViewToggle() {
+    return Container(
+      width: double.infinity,
+      height: 40,
+      decoration: BoxDecoration(
+        color: const Color(0xFF151D29),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _viewByBucket = false),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: !_viewByBucket
+                      ? const Color(0xFF00B4D8).withOpacity(0.2)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: !_viewByBucket
+                      ? Border.all(
+                          color: const Color(0xFF00B4D8).withOpacity(0.3))
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  "By Category",
+                  style: TextStyle(
+                    color: !_viewByBucket
+                        ? const Color(0xFF00B4D8)
+                        : Colors.white54,
+                    fontWeight:
+                        !_viewByBucket ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _viewByBucket = true),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _viewByBucket
+                      ? const Color(0xFF00B4D8).withOpacity(0.2)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: _viewByBucket
+                      ? Border.all(
+                          color: const Color(0xFF00B4D8).withOpacity(0.3))
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  "By Bucket",
+                  style: TextStyle(
+                    color: _viewByBucket
+                        ? const Color(0xFF00B4D8)
+                        : Colors.white54,
+                    fontWeight:
+                        _viewByBucket ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAccountFilter(
       List<ExpenseAccountModel> accounts, List<CreditCardModel> cards) {
     if (_selectedAccountId != null &&
@@ -425,7 +628,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
               value: null,
               child: Text("All Accounts"),
             ),
-            // --- Bank Section ---
             if (accounts.isNotEmpty)
               const DropdownMenuItem<String?>(
                 enabled: false,
@@ -449,7 +651,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 )),
-            // --- Credit Section ---
             if (cards.isNotEmpty)
               const DropdownMenuItem<String?>(
                 enabled: false,
@@ -507,7 +708,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
             'All Time',
             'Custom Range',
           ].map((e) {
-            // Display dynamic label for custom range
             if (e == 'Custom Range' &&
                 _selectedRange == 'Custom Range' &&
                 _customDateRange != null) {
@@ -636,16 +836,47 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // [FIX] Expanded prevents overflow if name is long
               Expanded(
-                child: Text(
-                  item.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (item.trendPercentage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Row(
+                          children: [
+                            Icon(
+                              item.trendPercentage! > 0
+                                  ? Icons.arrow_upward_rounded
+                                  : Icons.arrow_downward_rounded,
+                              size: 10,
+                              color: item.trendPercentage! > 0
+                                  ? Colors.redAccent
+                                  : Colors.greenAccent,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              "${item.trendPercentage!.abs().toStringAsFixed(1)}%",
+                              style: TextStyle(
+                                  color: item.trendPercentage! > 0
+                                      ? Colors.redAccent
+                                      : Colors.greenAccent,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      )
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
@@ -698,7 +929,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                       title: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // [FIX] Expanded subcategory name to prevent overflow
                           Expanded(
                             child: Text(
                               sub.name,
@@ -767,12 +997,14 @@ class CategoryBreakdownItem {
   final double totalAmount;
   final List<SubCategoryItem> subcategories;
   final IconData icon;
+  final double? trendPercentage;
 
   CategoryBreakdownItem({
     required this.name,
     required this.totalAmount,
     required this.subcategories,
     required this.icon,
+    this.trendPercentage,
   });
 }
 
