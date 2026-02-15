@@ -28,6 +28,9 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
   final CategoryService _categoryService = GetIt.I<CategoryService>();
 
   String _selectedRange = 'This Month';
+  // State variable to hold the custom date range
+  DateTimeRange? _customDateRange;
+
   String? _selectedAccountId;
   bool _showIncome = false;
 
@@ -50,8 +53,51 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         return date.year == now.year - 1;
       case 'All Time':
         return true;
+      // Logic to match transactions against the custom range
+      case 'Custom Range':
+        if (_customDateRange == null) return true;
+        return date.isAfter(
+                _customDateRange!.start.subtract(const Duration(seconds: 1))) &&
+            date.isBefore(_customDateRange!.end.add(const Duration(days: 1)));
       default:
         return true;
+    }
+  }
+
+  // Method to show Date Range Picker
+  Future<void> _pickDateRange() async {
+    final initialRange = _customDateRange ??
+        DateTimeRange(
+          start: DateTime.now().subtract(const Duration(days: 7)),
+          end: DateTime.now(),
+        );
+
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: initialRange,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF00B4D8),
+              onPrimary: Colors.white,
+              surface: Color(0xFF1B263B),
+              onSurface: Colors.white,
+            ),
+            dialogBackgroundColor: const Color(0xFF151D29),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _customDateRange = picked;
+        _selectedRange = 'Custom Range';
+      });
     }
   }
 
@@ -458,10 +504,42 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
             'Last Month',
             'This Year',
             'Last Year',
-            'All Time'
-          ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            'All Time',
+            'Custom Range',
+          ].map((e) {
+            // Display dynamic label for custom range
+            if (e == 'Custom Range' &&
+                _selectedRange == 'Custom Range' &&
+                _customDateRange != null) {
+              final start =
+                  DateFormat('dd MMM').format(_customDateRange!.start);
+              final end = DateFormat('dd MMM').format(_customDateRange!.end);
+              return DropdownMenuItem(
+                value: e,
+                onTap: () {
+                  WidgetsBinding.instance
+                      .addPostFrameCallback((_) => _pickDateRange());
+                },
+                child: Text("$start - $end"),
+              );
+            }
+            if (e == 'Custom Range') {
+              return DropdownMenuItem(
+                value: e,
+                onTap: () {
+                  WidgetsBinding.instance
+                      .addPostFrameCallback((_) => _pickDateRange());
+                },
+                child: Text(e),
+              );
+            }
+
+            return DropdownMenuItem(value: e, child: Text(e));
+          }).toList(),
           onChanged: (val) {
-            if (val != null) setState(() => _selectedRange = val);
+            if (val != null && val != 'Custom Range') {
+              setState(() => _selectedRange = val);
+            }
           },
         ),
       ),
@@ -558,14 +636,19 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                item.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+              // [FIX] Expanded prevents overflow if name is long
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 fmt.format(item.totalAmount),
                 style: const TextStyle(
@@ -615,13 +698,18 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                       title: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            sub.name,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
-                              fontSize: 13,
+                          // [FIX] Expanded subcategory name to prevent overflow
+                          Expanded(
+                            child: Text(
+                              sub.name,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 8),
                           Text(
                             fmt.format(sub.amount),
                             style: TextStyle(
@@ -650,7 +738,6 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                             return Padding(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 4),
-                              // [UPDATED] Use the new animated widget for Credit Txns
                               child: _ReadOnlyCreditTransactionItem(
                                 key: ValueKey(txn.id),
                                 txn: txn,
@@ -940,7 +1027,7 @@ class _ReadOnlyExpenseTransactionItemState
               fontWeight: FontWeight.w500)));
 }
 
-// 2. [NEW] Read-Only Credit Item (Animated & Expanded)
+// 2. Read-Only Credit Item
 class _ReadOnlyCreditTransactionItem extends StatefulWidget {
   final CreditTransactionModel txn;
   final IconData iconData;
