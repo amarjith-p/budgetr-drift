@@ -604,18 +604,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Icons.flag_rounded,
               const Color.fromARGB(255, 38, 219, 2),
               const GoalsLoansDashboard()),
-          _buildActionChip(
-              context,
-              "Investment Tracker",
-              Icons.show_chart_rounded,
-              const Color.fromARGB(255, 161, 1, 241),
-              const InvestmentScreen()),
-          _buildActionChip(
-              context,
-              "Net Worth Analysis",
-              Icons.currency_rupee_rounded,
-              const Color.fromARGB(255, 92, 123, 21),
-              const NetWorthScreen()),
+          _buildActionChip(context, "Investments", Icons.show_chart_rounded,
+              const Color.fromARGB(255, 161, 1, 241), const InvestmentScreen()),
+          _buildActionChip(context, "Net Worth", Icons.currency_rupee_rounded,
+              const Color.fromARGB(255, 92, 123, 21), const NetWorthScreen()),
           _buildActionChip(context, "Budget Buckets", Icons.pie_chart_outline,
               const Color.fromARGB(255, 255, 90, 175), const SettingsScreen()),
           _buildActionChip(
