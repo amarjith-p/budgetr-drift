@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/features/daily_expense/screens/new_expense_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -281,7 +282,7 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: ModernLoader())
+          ? const Center(child: FuturisticLoader(size: 80, label: "LOADING..."))
           : Column(
               children: [
                 SizedBox(

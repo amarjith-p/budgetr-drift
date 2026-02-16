@@ -1,4 +1,5 @@
 import 'package:budget/features/settings/screens/settings_screen.dart';
+import 'package:budget/features/settlement/screens/settlement_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
@@ -617,6 +618,12 @@ class _HomeScreenState extends State<HomeScreen> {
               const NetWorthScreen()),
           _buildActionChip(context, "Budget Buckets", Icons.pie_chart_outline,
               const Color.fromARGB(255, 255, 90, 175), const SettingsScreen()),
+          _buildActionChip(
+              context,
+              "Settlements",
+              Icons.analytics_outlined,
+              const Color.fromARGB(255, 121, 48, 248),
+              const SettlementScreen()),
           _buildActionChip(context, "Settings", Icons.settings_rounded,
               Colors.white70, const ConfigurationMenuScreen()),
         ],

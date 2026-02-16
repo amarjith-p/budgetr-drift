@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For HapticFeedback
@@ -155,7 +156,9 @@ class _UnifiedSpendingChartState extends State<UnifiedSpendingChart> {
                       : _creditService.getTransactionsForCard(fetchId),
                   builder: (context, creditSnapshot) {
                     if (!expenseSnapshot.hasData && !creditSnapshot.hasData) {
-                      return const Center(child: ModernLoader());
+                      return const Center(
+                          child: FuturisticLoader(
+                              size: 80, label: "ANALYZING DATA..."));
                     }
 
                     final expenses = expenseSnapshot.data ?? [];

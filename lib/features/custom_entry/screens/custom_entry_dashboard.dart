@@ -1,5 +1,6 @@
 import 'dart:ui'; // Required for ImageFilter
 import 'package:budget/core/design/budgetr_colors.dart';
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/glass_card.dart';
 import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
@@ -63,7 +64,9 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard> {
                     stream: _service.getCustomTemplates(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: ModernLoader());
+                        return const Center(
+                            child: FuturisticLoader(
+                                size: 80, label: "LOADING..."));
                       }
 
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {

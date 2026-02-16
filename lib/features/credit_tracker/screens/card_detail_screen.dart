@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/credit_tracker/widgets/modern_credit_txn_sheet.dart';
 import 'package:budget/features/credit_tracker/screens/new_credit_transaction_screen.dart';
@@ -145,7 +146,9 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
             stream: _transactionStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: ModernLoader());
+                return const Center(
+                    child: FuturisticLoader(
+                        size: 80, label: "LOADING TRANSACTIONS..."));
               }
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return _buildEmptyState("No transactions found.");

@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -247,7 +248,8 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
       builder: (context, snapshot) {
         // [FIX] Handle Loading State Explicitly
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: ModernLoader());
+          return const Center(
+              child: FuturisticLoader(size: 80, label: "LOADING GOALS..."));
         }
 
         // [FIX] Handle Error State (Stops infinite spinner on DB error)
@@ -287,7 +289,8 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
       builder: (context, snapshot) {
         // [FIX] Handle Loading State Explicitly
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: ModernLoader());
+          return const Center(
+              child: FuturisticLoader(size: 80, label: "LOADING LOANS..."));
         }
 
         // [FIX] Handle Error State (Stops infinite spinner on DB error)

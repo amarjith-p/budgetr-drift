@@ -1,4 +1,5 @@
 import 'package:budget/core/design/budgetr_colors.dart';
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/custom_entry/services/custom_export_service.dart';
@@ -505,7 +506,8 @@ class _CustomDataPageState extends State<CustomDataPage>
         if (templateSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Color(0xff0D1B2A),
-            body: Center(child: ModernLoader()),
+            body:
+                Center(child: FuturisticLoader(size: 80, label: "LOADING...")),
           );
         }
 
@@ -611,7 +613,8 @@ class _CustomDataPageState extends State<CustomDataPage>
                 builder: (context) {
                   if (recordSnapshot.connectionState ==
                       ConnectionState.waiting) {
-                    return const Center(child: ModernLoader());
+                    return const Center(
+                        child: FuturisticLoader(size: 80, label: "LOADING..."));
                   }
 
                   if (recordSnapshot.hasError) {

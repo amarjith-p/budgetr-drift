@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -133,7 +134,9 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                     builder: (context, txnSnapshot) {
                       if (txnSnapshot.connectionState ==
                           ConnectionState.waiting) {
-                        return const Center(child: ModernLoader());
+                        return const Center(
+                            child: FuturisticLoader(
+                                size: 80, label: "LOADING TRANSACTIONS..."));
                       }
 
                       final transactions = txnSnapshot.data ?? [];

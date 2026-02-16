@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -277,7 +278,9 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
 
   @override
   Widget build(BuildContext context) {
-    if (_config == null) return const Center(child: ModernLoader());
+    if (_config == null)
+      return const Center(
+          child: FuturisticLoader(size: 80, label: "LOADING..."));
 
     return Container(
       padding: EdgeInsets.only(

@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -415,7 +416,10 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                 builder: (context, creditSnapshot) {
                                   if (!expenseSnapshot.hasData &&
                                       !creditSnapshot.hasData)
-                                    return const Center(child: ModernLoader());
+                                    return const Center(
+                                        child: FuturisticLoader(
+                                            size: 80,
+                                            label: "LOADING TRANSACTIONS..."));
 
                                   final expenses = expenseSnapshot.data ?? [];
                                   final credits = creditSnapshot.data ?? [];

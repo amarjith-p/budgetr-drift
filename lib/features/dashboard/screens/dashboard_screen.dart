@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/settlement/screens/settlement_screen.dart';
@@ -165,7 +166,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     showDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder: (c) => const Center(child: ModernLoader()),
+                      builder: (c) => const Center(
+                          child:
+                              FuturisticLoader(size: 80, label: "LOADING...")),
                     );
 
                     // 2. Fetch Aggregated Spending
@@ -468,7 +471,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               stream: _dashboardService.getFinancialRecords(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: ModernLoader());
+                  return const Center(
+                      child: FuturisticLoader(size: 80, label: "LOADING..."));
                 }
 
                 final records = snapshot.data ?? [];

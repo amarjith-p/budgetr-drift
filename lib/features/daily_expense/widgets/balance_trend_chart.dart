@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -78,7 +79,10 @@ class _BalanceTrendChartState extends State<BalanceTrendChart> {
           builder: (context, txnSnapshot) {
             if (!accSnapshot.hasData || !txnSnapshot.hasData) {
               return const SizedBox(
-                  height: 200, child: Center(child: ModernLoader()));
+                  height: 200,
+                  child: Center(
+                      child: FuturisticLoader(
+                          size: 80, label: "ANALYZING DATA...")));
             }
 
             final allTxns = txnSnapshot.data!;

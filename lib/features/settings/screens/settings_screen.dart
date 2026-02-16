@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
@@ -422,7 +423,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: ModernLoader())
+          ? const Center(child: FuturisticLoader(size: 80, label: "LOADING..."))
           : Column(
               children: [
                 if (!_isEditing)

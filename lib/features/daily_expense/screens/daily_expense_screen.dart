@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/features/daily_expense/screens/new_expense_screen.dart';
 import 'package:budget/features/daily_expense/screens/spending_calendar_screen.dart';
 import 'package:budget/features/daily_expense/widgets/modern_expense_sheet.dart';
@@ -19,6 +20,7 @@ import 'expense_analytics_screen.dart';
 import 'category_breakdown_screen.dart';
 import '../widgets/cash_flow_card.dart';
 import '../widgets/balance_trend_chart.dart';
+import '../../home/screens/home_screen.dart'; // [ADDED] For Navigation
 
 class DailyExpenseScreen extends StatefulWidget {
   const DailyExpenseScreen({super.key});
@@ -46,26 +48,44 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     }
   }
 
+  // [NEW] Logic to handle Back Press
+  void _handlePopInvoked(bool didPop) {
+    if (didPop) return;
+
+    // Check if we can pop normally (e.g. opened from Home)
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      // If we can't pop (Quick Launch), manually go to Home
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color bgColor = Color(0xff0D1B2A);
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      // 1. extendBody allows content to scroll behind the frosted bar
-      extendBody: true,
-      appBar: _buildAppBar(bgColor),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildOriginalHomeContent(), // 0: Overview
-          const AllTransactionsScreen(), // 1: Transactions
-          const ExpenseAnalyticsScreen(), // 2: Analytics
-          const CategoryBreakdownScreen(), // 3: Breakdown
-        ],
+    // [CHANGED] Wrap Scaffold in PopScope
+    return PopScope(
+      canPop: false, // We handle the pop manually
+      onPopInvoked: _handlePopInvoked,
+      child: Scaffold(
+        backgroundColor: bgColor,
+        extendBody: true,
+        appBar: _buildAppBar(bgColor),
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildOriginalHomeContent(), // 0: Overview
+            const AllTransactionsScreen(), // 1: Transactions
+            const ExpenseAnalyticsScreen(), // 2: Analytics
+            const CategoryBreakdownScreen(), // 3: Breakdown
+          ],
+        ),
+        bottomNavigationBar: _buildFullWidthAnimatedBar(context),
       ),
-      // 2. Full-Width Animated Navigation
-      bottomNavigationBar: _buildFullWidthAnimatedBar(context),
     );
   }
 
@@ -80,6 +100,13 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: true,
+
+      // [NEW] Leading Icon that calls our smart pop logic
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+        onPressed: () => _handlePopInvoked(false),
+      ),
+
       title: Padding(
         padding: const EdgeInsets.only(left: 8.0),
         child: Text(
@@ -98,7 +125,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
         ),
       ),
       actions: [
-        // Add this widget to your actions[] list
         GestureDetector(
           onTap: () {
             Navigator.push(
@@ -108,24 +134,22 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
           },
           child: Container(
             margin: const EdgeInsets.only(right: 16),
-            width: 44, // Slightly wider to fit the text comfortably
-            height: 44, // Slightly taller for better touch target
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08), // Subtle glass effect
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.white.withOpacity(0.15)),
             ),
             child: Column(
               children: [
-                // --- RED HEADER WITH LABEL ---
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 3),
                   decoration: const BoxDecoration(
-                    color: Color(0xFFE71D36), // Red Accent
-                    borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(
-                            9)), // Match outer radius minus border
+                    color: Color(0xFFE71D36),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(9)),
                   ),
                   alignment: Alignment.center,
                   child: const Text(
@@ -133,13 +157,11 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 7, // Small, crisp text
+                      fontSize: 7,
                       letterSpacing: 0.5,
                     ),
                   ),
                 ),
-
-                // --- DATE NUMBER ---
                 Expanded(
                   child: Center(
                     child: Text(
@@ -160,6 +182,8 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
       ],
     );
   }
+
+  // ... [ALL OTHER METHODS REMAIN EXACTLY AS THEY WERE] ...
 
   Widget _buildOriginalHomeContent() {
     return Stack(
@@ -197,7 +221,8 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
       stream: _accountsStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: ModernLoader());
+          return const Center(
+              child: FuturisticLoader(size: 80, label: "LOADING ACCOUNTS..."));
         }
 
         final accounts = snapshot.data ?? [];
@@ -216,7 +241,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
         row2Items.add("ALL_ACCOUNTS_CARD");
 
         return SingleChildScrollView(
-          // Increased bottom padding to clear the full-width bar
           padding: const EdgeInsets.only(bottom: 110),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,14 +393,11 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  // --- NEW: Full-Width Animated Bottom Bar ---
   Widget _buildFullWidthAnimatedBar(BuildContext context) {
-    // Access safe area for home indicator
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Container(
       width: double.infinity,
-      // Fixed height + safe area padding
       height: 70 + bottomPadding,
       decoration: BoxDecoration(
         color: const Color(0xFF101825).withOpacity(0.90),
@@ -395,7 +416,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Padding(
-            // Add padding to avoid the home swipe bar
             padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding + 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -404,10 +424,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                 _buildAnimatedNavItem(0, CupertinoIcons.house_fill, "Home"),
                 _buildAnimatedNavItem(
                     1, CupertinoIcons.list_bullet, "Transactions"),
-
-                // Integrated Action Button
                 _buildCenterFab(),
-
                 _buildAnimatedNavItem(
                     2, Icons.donut_large_outlined, "Analytics"),
                 _buildAnimatedNavItem(3, CupertinoIcons.layers_alt, "Insights"),
@@ -419,7 +436,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  // PRESERVED: The Expanding Pill Animation you liked
   Widget _buildAnimatedNavItem(int index, IconData icon, String label) {
     final bool isSelected = _currentIndex == index;
 
@@ -464,7 +480,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  // Central Add Button
   Widget _buildCenterFab() {
     return GestureDetector(
       onTap: () {

@@ -26,6 +26,7 @@ class _BiometricGateState extends State<BiometricGate>
     with WidgetsBindingObserver {
   bool _isLocked = false;
   bool _isAuthenticating = false;
+  bool _isRedirectMaskVisible = false;
 
   @override
   void initState() {
@@ -61,45 +62,62 @@ class _BiometricGateState extends State<BiometricGate>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // [CRITICAL CHECK]
-    // If we are doing an Internal Auth (like toggling settings), ignore lifecycle completely.
     if (BiometricService.instance.isInternalAuth) return;
 
-    // 1. Handle Locking (If Security Enabled)
-    if (BiometricService.instance.enabledNotifier.value) {
-      if (!_isAuthenticating) {
-        if (state == AppLifecycleState.paused ||
-            state == AppLifecycleState.inactive) {
-          if (!_isLocked) {
-            setState(() => _isLocked = true);
+    if (state == AppLifecycleState.resumed) {
+      // 1. SECURITY CHECK
+      if (BiometricService.instance.enabledNotifier.value) {
+        if (_isLocked) _authenticate();
+      }
+      // 2. QUICK LAUNCH CHECK (If Security Off)
+      else {
+        // [FIX] Synchronous Check! No Await!
+        // We read the cached value from memory.
+        try {
+          final settings = GetIt.I<SettingsService>();
+          if (settings.cachedLaunchDailyExpense) {
+            _executeRedirect();
           }
-        } else if (state == AppLifecycleState.resumed && _isLocked) {
-          _authenticate();
+        } catch (_) {}
+      }
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      // PREPARE MASK for next resume
+      // If we know we are going to redirect next time, turn on mask NOW if possible
+      // or just lock if security is on.
+      if (BiometricService.instance.enabledNotifier.value) {
+        if (!_isLocked && !_isAuthenticating) {
+          setState(() => _isLocked = true);
         }
+      } else {
+        // If security off, but quick launch ON, we prepare mask?
+        // Actually, setting mask here might show a black screen while minimizing.
+        // Better to set it instantly on resume.
       }
     }
+  }
 
-    // 2. Handle "Quick Launch" Redirect (If Security Disabled)
-    // We only want to do this if coming from a REAL background state, not a dialog.
-    if (state == AppLifecycleState.resumed &&
-        !BiometricService.instance.enabledNotifier.value) {
-      _handleQuickLaunchRedirect();
-    }
+  void _executeRedirect() {
+    // [FIX] Set mask synchronously before async navigation starts
+    setState(() => _isRedirectMaskVisible = true);
+
+    _handleQuickLaunchRedirect().whenComplete(() {
+      // Add small delay to let navigation finish painting
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) setState(() => _isRedirectMaskVisible = false);
+      });
+    });
   }
 
   Future<void> _authenticate() async {
     if (_isAuthenticating || !mounted) return;
-
     _isAuthenticating = true;
-
     final success = await BiometricService.instance.authenticate();
-
     _isAuthenticating = false;
 
     if (mounted) {
       if (success) {
         setState(() => _isLocked = false);
-        // Security Success -> Now Redirect
         _handleQuickLaunchRedirect();
       } else {
         if (_isLocked) _exitApp();
@@ -110,22 +128,18 @@ class _BiometricGateState extends State<BiometricGate>
   Future<void> _handleQuickLaunchRedirect() async {
     try {
       if (widget.navigatorKey == null) return;
-
-      // Double check internal auth just to be safe
       if (BiometricService.instance.isInternalAuth) return;
 
       final settings = GetIt.I<SettingsService>();
-      final bool launchDaily = await settings.getLaunchToDailyExpense();
+      // Use cached value if available, else await (startup case)
+      final bool launchDaily = settings.cachedLaunchDailyExpense;
 
       if (launchDaily) {
         final nav = widget.navigatorKey!.currentState;
         if (nav != null) {
           nav.pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (route) => false,
-          );
-          nav.push(
             MaterialPageRoute(builder: (_) => const DailyExpenseScreen()),
+            (route) => false,
           );
         }
       }
@@ -147,6 +161,13 @@ class _BiometricGateState extends State<BiometricGate>
     return Stack(
       children: [
         widget.child,
+
+        // [FIX] Redirect Mask - Opaque color matches your theme
+        if (_isRedirectMaskVisible)
+          Positioned.fill(
+            child: Container(color: const Color(0xff0D1B2A)),
+          ),
+
         if (_isLocked)
           Positioned.fill(
             child: BackdropFilter(

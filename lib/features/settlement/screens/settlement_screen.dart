@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -268,7 +269,9 @@ class _SettlementScreenState extends State<SettlementScreen> {
 
   Widget _buildContentArea() {
     if (_isLoading) {
-      return const Center(child: ModernLoader());
+      return const Center(
+          child:
+              FuturisticLoader(size: 80, label: "LOADING SETTLEMENT DATA..."));
     }
     if (_settlementData == null) {
       return Center(

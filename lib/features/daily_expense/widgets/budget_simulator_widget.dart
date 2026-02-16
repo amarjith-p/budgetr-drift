@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -96,7 +97,10 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading)
-      return const SizedBox(height: 250, child: Center(child: ModernLoader()));
+      return const SizedBox(
+          height: 250,
+          child: Center(
+              child: FuturisticLoader(size: 80, label: "ANALYZING DATA...")));
 
     final currencyFmt =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);

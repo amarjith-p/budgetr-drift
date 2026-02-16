@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import '../../../core/models/transaction_category_model.dart';
@@ -119,7 +120,9 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen>
           showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (ctx) => const Center(child: ModernLoader()),
+            builder: (ctx) => const Center(
+                child: FuturisticLoader(
+                    size: 80, label: "RESETTING CATEGORIES...")),
           );
         }
 
@@ -211,7 +214,9 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen>
                   stream: _categoriesStream,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: ModernLoader());
+                      return const Center(
+                          child: FuturisticLoader(
+                              size: 80, label: "LOADING CATEGORIES..."));
                     }
                     if (!snapshot.hasData || snapshot.data!.isEmpty) {
                       return _buildEmptyState();

@@ -6,8 +6,8 @@ import 'features/daily_expense/screens/daily_expense_screen.dart';
 import 'core/services/service_locator.dart';
 import 'features/settings/services/settings_service.dart';
 import 'core/widgets/biometric_gate.dart';
+import 'core/widgets/futuristic_loader.dart'; // [NEW]
 
-// [NEW] Global Key to control navigation from anywhere
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
@@ -24,16 +24,11 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'BudGetR',
       theme: AppTheme.darkTheme,
-
-      // [NEW] Pass the key to MaterialApp
       navigatorKey: navigatorKey,
-
-      // Pass the key to BiometricGate so it can perform redirects
       builder: (context, child) => BiometricGate(
         navigatorKey: navigatorKey,
         child: child ?? const SizedBox.shrink(),
       ),
-
       home: const AppStartupScreen(),
     );
   }
@@ -56,12 +51,11 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
   Future<void> _initializeApp() async {
     try {
       await ServiceLocator.init();
-      // Small delay for smooth splash
-      await Future.delayed(const Duration(milliseconds: 500));
 
       bool launchDailyExpense = false;
       try {
         final settingsService = GetIt.I<SettingsService>();
+        // [FIX] This call now also populates the cache for BiometricGate!
         launchDailyExpense = await settingsService.getLaunchToDailyExpense();
       } catch (e) {
         debugPrint("Settings fetch error: $e");
@@ -69,14 +63,15 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
 
       if (!mounted) return;
 
-      // Initial Navigation Logic
+      // Add a tiny delay to let the Futuristic Loader spin for at least 1 cycle
+      // (Looks intentional instead of a glitch)
+      await Future.delayed(const Duration(milliseconds: 1500));
+
       if (launchDailyExpense) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const DailyExpenseScreen()),
           (route) => false,
         );
-        Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const DailyExpenseScreen()));
       } else {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -93,10 +88,20 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // [FIX] Showing the Futuristic Loader
     return const Scaffold(
       backgroundColor: Color(0xff0D1B2A),
       body: Center(
-        child: CircularProgressIndicator(color: Color(0xFF00B4D8)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Your Custom Loader
+            FuturisticLoader(
+              size: 80,
+              label: "INITIALIZING CORE...",
+            ),
+          ],
+        ),
       ),
     );
   }

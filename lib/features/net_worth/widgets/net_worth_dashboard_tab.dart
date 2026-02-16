@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -92,7 +93,9 @@ class _NetWorthDashboardTabState extends State<NetWorthDashboardTab> {
       stream: _netWorthService.getNetWorthRecords(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: ModernLoader());
+          return const Center(
+              child: FuturisticLoader(
+                  size: 80, label: "LOADING NET WORTH DATA..."));
         }
 
         final records = snapshot.data ?? [];

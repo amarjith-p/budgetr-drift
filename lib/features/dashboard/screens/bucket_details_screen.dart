@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -135,7 +136,7 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _isLoadingLimit
-          ? const Center(child: ModernLoader())
+          ? const Center(child: FuturisticLoader(size: 80, label: "LOADING..."))
           : StreamBuilder<List<DashboardTransaction>>(
               stream: _dashboardService.getBucketTransactions(
                 widget.year,
@@ -144,7 +145,9 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
               ),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: ModernLoader());
+                  return const Center(
+                      child: FuturisticLoader(
+                          size: 80, label: "LOADING TRANSACTIONS..."));
                 }
 
                 var transactions = snapshot.data ?? [];

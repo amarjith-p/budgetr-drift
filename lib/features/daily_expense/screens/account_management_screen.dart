@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -70,7 +71,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       body: Stack(
         children: [
           if (!_hasLoaded)
-            const Center(child: ModernLoader())
+            const Center(child: FuturisticLoader(size: 80, label: "LOADING..."))
           else if (_accounts.isEmpty)
             _buildEmptyState()
           else

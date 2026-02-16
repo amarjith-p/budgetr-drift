@@ -1,5 +1,6 @@
 // lib/features/daily_expense/screens/account_detail_screen.dart
 
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/daily_expense/screens/new_expense_screen.dart';
 import 'package:budget/features/daily_expense/widgets/modern_expense_sheet.dart';
@@ -247,7 +248,9 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const Center(child: ModernLoader());
+                          return const Center(
+                              child: FuturisticLoader(
+                                  size: 80, label: "LOADING TRANSACTIONS..."));
                         }
                         if (snapshot.hasError) {
                           return Center(

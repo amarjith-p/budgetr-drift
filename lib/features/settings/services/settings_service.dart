@@ -5,6 +5,8 @@ import '../../../core/models/percentage_config_model.dart';
 
 class SettingsService {
   final db.AppDatabase _db = db.AppDatabase.instance;
+  static bool? _cachedLaunchDailyExpense;
+  bool get cachedLaunchDailyExpense => _cachedLaunchDailyExpense ?? false;
 
   Future<PercentageConfig> getPercentageConfig() async {
     final row = await (_db.select(_db.settings)
@@ -53,22 +55,28 @@ class SettingsService {
   // --- [NEW] Startup Preference Logic ---
 
   Future<bool> getLaunchToDailyExpense() async {
+    // If we have a cache, return it (Fast Path)
+    if (_cachedLaunchDailyExpense != null) return _cachedLaunchDailyExpense!;
+
     final row = await (_db.select(_db.settings)
           ..where((t) => t.key.equals('launch_daily_expense')))
         .getSingleOrNull();
 
-    if (row != null) {
-      return row.value == 'true';
-    }
-    return false; // Default to Home Screen
+    // Update Cache
+    _cachedLaunchDailyExpense = (row?.value == 'true');
+    return _cachedLaunchDailyExpense!;
   }
 
   Future<void> setLaunchToDailyExpense(bool value) async {
+    // Update DB
     await _db
         .into(_db.settings)
         .insertOnConflictUpdate(db.SettingsCompanion.insert(
           key: 'launch_daily_expense',
           value: value.toString(),
         ));
+
+    // Update Cache
+    _cachedLaunchDailyExpense = value;
   }
 }
