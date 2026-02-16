@@ -46,7 +46,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
               style: GoogleFonts.robotoSlab(
                 fontSize: 24,
                 letterSpacing: 3.2, // Tighter, more cohesive spacing
-                color: Color(0xFF00B4D8),
+                color: Color.fromARGB(255, 255, 255, 255),
               ),
               children: [
                 TextSpan(
@@ -58,15 +58,15 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                   text: 'Get',
                   style: TextStyle(
                     fontWeight: FontWeight.w800, // Emphasize the action "Get"
-                    color: Color(
-                        0xFFFFD700), // Use your app's accent color (Cyan/Blue)
+                    color: Color.fromARGB(255, 255, 255,
+                        255), // Use your app's accent color (Cyan/Blue)
                   ),
                 ),
                 TextSpan(
                   text: 'R',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFFFD700), // Anchor the end
+                    color: Color.fromARGB(255, 255, 255, 255), // Anchor the end
                   ),
                 ),
               ],

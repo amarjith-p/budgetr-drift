@@ -50,4 +50,25 @@ class SettingsService {
 
     return count > 0;
   }
+  // --- [NEW] Startup Preference Logic ---
+
+  Future<bool> getLaunchToDailyExpense() async {
+    final row = await (_db.select(_db.settings)
+          ..where((t) => t.key.equals('launch_daily_expense')))
+        .getSingleOrNull();
+
+    if (row != null) {
+      return row.value == 'true';
+    }
+    return false; // Default to Home Screen
+  }
+
+  Future<void> setLaunchToDailyExpense(bool value) async {
+    await _db
+        .into(_db.settings)
+        .insertOnConflictUpdate(db.SettingsCompanion.insert(
+          key: 'launch_daily_expense',
+          value: value.toString(),
+        ));
+  }
 }

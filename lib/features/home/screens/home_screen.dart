@@ -1,5 +1,6 @@
 import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rxdart/rxdart.dart';
@@ -47,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Budget Mode State
   bool _isBudgetMode = false;
+  DateTime? _lastBackPressTime;
 
   @override
   void initState() {
@@ -63,98 +65,153 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+// [ADDED] Handle Back Press Logic
+  void _handlePopInvoked(bool didPop) {
+    if (didPop) return; // If system already handled it, do nothing.
+
+    final now = DateTime.now();
+    final backButtonHasNotBeenPressedOrSnackBarHasClosed =
+        _lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2);
+
+    if (backButtonHasNotBeenPressedOrSnackBarHasClosed) {
+      _lastBackPressTime = now;
+      ScaffoldMessenger.of(context).clearSnackBars(); // Clear old ones
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          // 1. Set background to white so the dark text is visible
+          backgroundColor: Colors.white,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          duration: const Duration(seconds: 2),
+
+          // 2. Use a Row to place Icon next to Text
+          content: Row(
+            children: [
+              // Warning Icon
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Color(0xFFFF9F1C), // Matches your text color
+                size: 24,
+              ),
+              const SizedBox(width: 8), // Spacing
+
+              // Text
+              Expanded(
+                child: Text(
+                  "Press back again to exit",
+                  style: GoogleFonts.robotoSlab(
+                    color: const Color(0xFF1B263B),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      SystemNavigator.pop(); // Close the App
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0E12),
-      extendBodyBehindAppBar: true,
-      appBar: const HomeAppBar(),
-      body: Stack(
-        children: [
-          // Background ambient gradients
-          _buildAmbientGlow(
-              Alignment.topRight, BudgetrColors.accent.withOpacity(0.15)),
-          _buildAmbientGlow(
-              Alignment.bottomLeft, const Color(0xFF4361EE).withOpacity(0.1)),
+    return PopScope(
+        canPop: false,
+        onPopInvoked: _handlePopInvoked,
+        child: Scaffold(
+          backgroundColor: const Color(0xFF0A0E12),
+          extendBodyBehindAppBar: true,
+          appBar: const HomeAppBar(),
+          body: Stack(
+            children: [
+              // Background ambient gradients
+              _buildAmbientGlow(
+                  Alignment.topRight, BudgetrColors.accent.withOpacity(0.15)),
+              _buildAmbientGlow(Alignment.bottomLeft,
+                  const Color(0xFF4361EE).withOpacity(0.1)),
 
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 10),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
 
-                  // [ADDED] Warning Banner - Inserted here
-                  if (_needsBackup)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 15),
-                      child: InkWell(
-                        onTap: () async {
-                          await _backupService.shareBackup();
-                          _checkBackupStatus(); // Refresh after backup
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 10, horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent.withOpacity(0.15),
-                            border: Border.all(
-                                color: Colors.redAccent.withOpacity(0.3)),
+                      // [ADDED] Warning Banner - Inserted here
+                      if (_needsBackup)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 15),
+                          child: InkWell(
+                            onTap: () async {
+                              await _backupService.shareBackup();
+                              _checkBackupStatus(); // Refresh after backup
+                            },
                             borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.warning_amber_rounded,
-                                  color: Colors.redAccent, size: 20),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  "Quick check: Time to Backup your data!. Tap to Backup Now.",
-                                  style: GoogleFonts.robotoSlab(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 10, horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withOpacity(0.15),
+                                border: Border.all(
+                                    color: Colors.redAccent.withOpacity(0.3)),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              const Icon(Icons.arrow_forward_ios,
-                                  color: Colors.white30, size: 12),
-                            ],
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded,
+                                      color: Colors.redAccent, size: 20),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      "Quick check: Time to Backup your data!. Tap to Backup Now.",
+                                      style: GoogleFonts.robotoSlab(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                  const Icon(Icons.arrow_forward_ios,
+                                      color: Colors.white30, size: 12),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
+                      // [END ADDED BANNER]
+
+                      // 1. Summary Card
+                      _buildFinancialOverview(),
+
+                      const SizedBox(height: 25),
+
+                      // 2. Financial Engines
+                      _buildSectionHeader("Finance Today"),
+                      const SizedBox(height: 15),
+                      Expanded(
+                        child: _buildFeatureGrid(context),
                       ),
-                    ),
-                  // [END ADDED BANNER]
 
-                  // 1. Summary Card
-                  _buildFinancialOverview(),
+                      const SizedBox(height: 25),
 
-                  const SizedBox(height: 25),
+                      // 3. Quick Actions
+                      _buildSectionHeader("More Tools"),
+                      const SizedBox(height: 15),
+                      _buildQuickActionList(context),
 
-                  // 2. Financial Engines
-                  _buildSectionHeader("Finance Today"),
-                  const SizedBox(height: 15),
-                  Expanded(
-                    child: _buildFeatureGrid(context),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-
-                  const SizedBox(height: 25),
-
-                  // 3. Quick Actions
-                  _buildSectionHeader("More Tools"),
-                  const SizedBox(height: 15),
-                  _buildQuickActionList(context),
-
-                  const SizedBox(height: 20),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    );
+        ));
   }
 
   // ... [Keep ALL your other methods (_buildFinancialOverview, _buildMiniStat, etc.) exactly identical] ...
