@@ -49,7 +49,14 @@ class CategoryExportSheet extends StatelessWidget {
         );
 
         if (directory != null) {
-          outputFile = p.join(directory, defaultFileName);
+          final String dateFolderName =
+              DateFormat('dd-MM-yyyy').format(DateTime.now());
+          final String folderPath = p.join(directory, dateFolderName);
+          final Directory dateDir = Directory(folderPath);
+          if (!await dateDir.exists()) {
+            await dateDir.create(recursive: true);
+          }
+          outputFile = p.join(folderPath, defaultFileName);
         }
       } else {
         // Desktop Fallback
@@ -329,7 +336,7 @@ class CategoryExportSheet extends StatelessWidget {
     try {
       final pdf = pw.Document();
       final currency = NumberFormat.currency(
-          locale: 'en_IN', symbol: 'Rs. ', decimalDigits: 0);
+          locale: 'en_IN', symbol: 'Rs. ', decimalDigits: 2);
       final font = await rootBundle.load("assets/fonts/Roboto-Regular.ttf");
       final ttf = pw.Font.ttf(font);
 

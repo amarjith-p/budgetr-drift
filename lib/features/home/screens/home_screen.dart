@@ -38,6 +38,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final expenseService = locator<ExpenseService>();
   final dashboardService = locator<DashboardService>();
 
+  // State for balance visibility
+  bool _isBalanceVisible = false;
+
   // [ADDED] Backup Logic
   final BackupService _backupService = BackupService();
   bool _needsBackup = false;
@@ -108,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  "Data not saved! Tap to backup now.",
+                                  "Quick check: Time to Backup your data!. Tap to Backup Now.",
                                   style: GoogleFonts.robotoSlab(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -247,9 +250,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text("Total Account Balance",
-                        style: GoogleFonts.robotoSlab(
-                            color: Colors.white70, fontSize: 14)),
+                    child: Row(
+                      children: [
+                        Text("Total Account Balance",
+                            style: GoogleFonts.robotoSlab(
+                                color: Colors.white70, fontSize: 14)),
+                        const SizedBox(width: 8),
+                        // [UPDATED] Visibility Toggle Icon
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isBalanceVisible = !_isBalanceVisible;
+                            });
+                          },
+                          child: Icon(
+                            _isBalanceVisible
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: Colors.white54,
+                            size: 16,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   StreamBuilder(
                     stream: Stream.periodic(
@@ -316,10 +339,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
 
-              Text("₹ ${currentBalance.toStringAsFixed(2)}",
+              // [UPDATED] Masked Total Balance Logic
+              Text(
+                  _isBalanceVisible
+                      ? "₹ ${currentBalance.toStringAsFixed(2)}"
+                      : "₹ ${"*" * currentBalance.toStringAsFixed(2).length}",
                   style: GoogleFonts.openSans(
                       color: Colors.white,
-                      fontSize: 26,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1)),
               const SizedBox(height: 20),

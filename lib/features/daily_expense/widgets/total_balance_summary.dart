@@ -110,7 +110,7 @@ class _TotalBalanceSummaryState extends State<TotalBalanceSummary> {
               ),
             ),
             secondChild: Text(
-              "₹ ••••••••",
+              "₹ ${"*" * totalBalance.toStringAsFixed(2).length}",
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
                 fontSize: 36,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   const HomeAppBar({super.key});
@@ -40,23 +41,45 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           const SizedBox(width: 12),
           // App Title
-          const Text(
-            'BudGetR',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.5,
-              fontSize: 22,
+          RichText(
+            text: TextSpan(
+              style: GoogleFonts.robotoSlab(
+                fontSize: 24,
+                letterSpacing: 3.2, // Tighter, more cohesive spacing
+                color: Color(0xFF00B4D8),
+              ),
+              children: [
+                TextSpan(
+                  text: 'Bud',
+                  style:
+                      TextStyle(fontWeight: FontWeight.w800), // Lighter start
+                ),
+                TextSpan(
+                  text: 'Get',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800, // Emphasize the action "Get"
+                    color: Color(
+                        0xFFFFD700), // Use your app's accent color (Cyan/Blue)
+                  ),
+                ),
+                TextSpan(
+                  text: 'R',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFFFD700), // Anchor the end
+                  ),
+                ),
+              ],
             ),
-          ),
+          )
         ],
       ),
-      actions: [
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.notifications_outlined, color: Colors.white70),
-        ),
-      ],
+      // actions: [
+      // IconButton(
+      //   onPressed: () {},
+      //   icon: const Icon(Icons.notifications_outlined, color: Colors.white70),
+      // ),
+      // ],
     );
   }
 }

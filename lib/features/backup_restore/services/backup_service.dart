@@ -127,7 +127,7 @@ class BackupService {
     await prefs.setString(_prefLastBackupKey, DateTime.now().toIso8601String());
   }
 
-  // [ADDED] Check if > 24 hours
+  // [ADDED] Check if > 12 hours
   Future<bool> isBackupOverdue() async {
     final prefs = await SharedPreferences.getInstance();
     final lastStr = prefs.getString(_prefLastBackupKey);
@@ -135,6 +135,6 @@ class BackupService {
 
     final lastBackup = DateTime.parse(lastStr);
     final diff = DateTime.now().difference(lastBackup);
-    return diff.inHours > 24;
+    return diff.inHours > 12;
   }
 }

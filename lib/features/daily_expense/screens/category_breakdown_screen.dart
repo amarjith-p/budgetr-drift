@@ -349,7 +349,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
   @override
   Widget build(BuildContext context) {
     final currencyFmt =
-        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
     final String? fetchId = (_selectedAccountId == kGroupBanks ||
             _selectedAccountId == kGroupCredits)
         ? null
@@ -1161,7 +1161,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     } else {
       percentage = totalAmount > 0 ? (item.totalAmount / totalAmount) : 0.0;
       color = _showIncome ? const Color(0xFF00E676) : const Color(0xFF00B4D8);
-      statusLabel = "${(percentage * 100).toStringAsFixed(1)}% of total";
+      statusLabel = "${(percentage * 100).toStringAsFixed(2)}% of total";
     }
     final double visualProgress = percentage > 1.0 ? 1.0 : percentage;
     return Container(
@@ -1207,7 +1207,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                             : Colors.greenAccent),
                                     const SizedBox(width: 2),
                                     Text(
-                                        "${item.trendPercentage!.abs().toStringAsFixed(1)}%",
+                                        "${item.trendPercentage!.abs().toStringAsFixed(2)}%",
                                         style: TextStyle(
                                             color: item.trendPercentage! > 0
                                                 ? Colors.redAccent
