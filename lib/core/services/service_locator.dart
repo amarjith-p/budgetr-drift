@@ -1,5 +1,6 @@
 import 'package:budget/features/database_viewer/services/database_viewer_service.dart';
 import 'package:budget/features/goals_loans/services/goal_loan_service.dart';
+import 'package:budget/features/notifications/services/notification_service.dart';
 import 'package:get_it/get_it.dart';
 
 // Import all your Drift Services
@@ -39,5 +40,7 @@ class ServiceLocator {
     locator.registerLazySingleton<DatabaseViewerService>(
         () => DatabaseViewerService());
     locator.registerLazySingleton<GoalLoanService>(() => GoalLoanService());
+    GetIt.I.registerLazySingleton<NotificationService>(
+        () => NotificationService());
   }
 }

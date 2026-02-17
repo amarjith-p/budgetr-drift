@@ -1,3 +1,4 @@
+import 'package:budget/features/notifications/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'core/theme/app_theme.dart';
@@ -57,6 +58,11 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
   Future<void> _initializeApp() async {
     try {
       await ServiceLocator.init();
+      try {
+        await GetIt.I<NotificationService>().runStartupChecks();
+      } catch (e) {
+        debugPrint("Notification Check Failed: $e");
+      }
 
       bool launchDailyExpense = false;
       try {

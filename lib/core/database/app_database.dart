@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'tables.dart'; // Ensure this file contains all the table classes I shared previously
+import '../../features/notifications/database/notification_tables.dart';
 
 part 'app_database.g.dart';
 
@@ -32,6 +33,7 @@ part 'app_database.g.dart';
   Loans,
   Goals,
   HeatmapLimits,
+  AppNotifications,
 ])
 class AppDatabase extends _$AppDatabase {
   static final AppDatabase _instance = AppDatabase._internal();
@@ -40,7 +42,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
@@ -48,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        if (from < 4) {
+        if (from < 5) {
           // If upgrading, we recreate the table to ensure new columns exist
           // Warning: This clears existing split data. Ideally, use addColumn for each new field.
           // For development speed, we drop and recreate.
@@ -58,6 +60,7 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(assetLogs);
           await m.createTable(loans);
           await m.createTable(goals);
+          await m.createTable(appNotifications);
         }
       },
     );

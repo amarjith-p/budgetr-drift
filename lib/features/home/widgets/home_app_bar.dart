@@ -1,3 +1,4 @@
+import 'package:budget/features/notifications/widgets/notification_bell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -74,12 +75,13 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           )
         ],
       ),
-      // actions: [
-      // IconButton(
-      //   onPressed: () {},
-      //   icon: const Icon(Icons.notifications_outlined, color: Colors.white70),
-      // ),
-      // ],
+      actions: [
+        // IconButton(
+        //   onPressed: () {},
+        //   icon: const Icon(Icons.notifications_outlined, color: Colors.white70),
+        // ),
+        const NotificationBell(),
+      ],
     );
   }
 }
