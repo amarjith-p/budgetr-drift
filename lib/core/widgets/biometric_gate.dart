@@ -50,6 +50,10 @@ class _BiometricGateState extends State<BiometricGate>
     if (!isEnabled && _isLocked) {
       if (mounted) setState(() => _isLocked = false);
     }
+    // If user turns ON security, lock immediately (optional, but safer)
+    if (isEnabled && !_isLocked) {
+      if (mounted) setState(() => _isLocked = true);
+    }
   }
 
   Future<void> _checkInitialStatus() async {

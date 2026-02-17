@@ -6,12 +6,17 @@ import 'features/daily_expense/screens/daily_expense_screen.dart';
 import 'core/services/service_locator.dart';
 import 'features/settings/services/settings_service.dart';
 import 'core/widgets/biometric_gate.dart';
-import 'core/widgets/futuristic_loader.dart'; // [NEW]
+import 'core/widgets/futuristic_loader.dart';
+import 'core/services/biometric_service.dart'; // Import this
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // [FIX] Initialize BiometricService BEFORE the app starts
+  await BiometricService.instance.init();
+
   runApp(const MyApp());
 }
 
@@ -25,6 +30,7 @@ class MyApp extends StatelessWidget {
       title: 'BudGetR',
       theme: AppTheme.darkTheme,
       navigatorKey: navigatorKey,
+      // The Gate will now see the correct 'enabledNotifier' value immediately
       builder: (context, child) => BiometricGate(
         navigatorKey: navigatorKey,
         child: child ?? const SizedBox.shrink(),

@@ -1,41 +1,40 @@
+// lib/core/services/biometric_service.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:local_auth_android/local_auth_android.dart';
-// import 'package:local_auth_ios/local_auth_ios.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BiometricService {
   static final BiometricService _instance = BiometricService._internal();
   static BiometricService get instance => _instance;
-  BiometricService._internal() {
-    _init();
-  }
+
+  // REMOVED: _init() call from constructor
+  BiometricService._internal();
 
   final LocalAuthentication _auth = LocalAuthentication();
   static const String _prefKey = 'is_biometric_enabled';
 
   final ValueNotifier<bool> enabledNotifier = ValueNotifier<bool>(false);
 
-  // [NEW] Flag to track internal authentication events
   bool _isInternalAuth = false;
   bool get isInternalAuth => _isInternalAuth;
+
+  // NEW: Public init method to be awaited in main
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    enabledNotifier.value = prefs.getBool(_prefKey) ?? false;
+  }
 
   void markInternalAuth() {
     _isInternalAuth = true;
   }
 
   void unmarkInternalAuth() {
-    // Small delay ensures the lifecycle event 'resumed' is ignored
-    // before we clear the flag.
     Future.delayed(const Duration(milliseconds: 500), () {
       _isInternalAuth = false;
     });
-  }
-
-  Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    enabledNotifier.value = prefs.getBool(_prefKey) ?? false;
   }
 
   Future<bool> get isEnabled async {
@@ -62,9 +61,6 @@ class BiometricService {
             signInTitle: 'Unlock BudGetR',
             cancelButton: 'Cancel',
           ),
-          // IOSAuthMessages(
-          //   cancelButton: 'Cancel',
-          // ),
         ],
       );
     } on PlatformException catch (e) {
