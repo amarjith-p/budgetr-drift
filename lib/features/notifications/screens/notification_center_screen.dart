@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
-// NAVIGATION IMPORTS (Add these if you want direct navigation)
-// import '../../credit_tracker/screens/card_detail_screen.dart';
-// import '../../dashboard/screens/dashboard_screen.dart';
-
 import '../services/notification_service.dart';
 import '../../../core/database/app_database.dart';
 
@@ -126,17 +122,12 @@ class _NotificationTile extends StatelessWidget {
 
     return GestureDetector(
       onTap: () async {
-        // 1. Mark as read
         GetIt.I<NotificationService>().markAsRead(item.id);
 
-        // 2. Navigation Logic (Optional - Expand as needed)
-        debugPrint(
-            "Tapped Notification Type: ${item.type}, Payload: ${item.payload}");
-        // Example:
-        // if (item.type == 'bucket_overflow' || item.type == 'global_overrun') {
-        //   Navigator.pop(context); // Close notification screen
-        //   // Navigate to Dashboard...
-        // }
+        // Navigation Logic based on payload (Optional expansion)
+        if (item.payload == 'backup') {
+          // Navigator.push(context, MaterialPageRoute(builder: (_) => const BackupScreen()));
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -227,6 +218,22 @@ class _NotificationTile extends StatelessWidget {
 
   IconData _getIcon(String type) {
     switch (type) {
+      // Backup [NEW]
+      case 'backup_overdue':
+        return Icons.cloud_off_rounded;
+      case 'restore_success':
+        return Icons.cloud_done_rounded;
+
+      // Daily Expense
+      case 'negative_balance':
+        return Icons.money_off_csred_rounded;
+      case 'low_balance':
+        return Icons.account_balance_wallet_outlined;
+      case 'forgot_log':
+        return Icons.history_toggle_off_rounded;
+      case 'daily_spike':
+        return Icons.whatshot_rounded;
+
       // Credit
       case 'limit_exceeded':
         return Icons.warning_amber_rounded;
@@ -237,17 +244,17 @@ class _NotificationTile extends StatelessWidget {
       case 'statement':
         return Icons.receipt_long_rounded;
 
-      // Dashboard / Budget (NEW)
+      // Dashboard
       case 'budget_not_set':
-        return Icons.account_balance_wallet_outlined;
+        return Icons.pie_chart_outline;
       case 'budget_closure_pending':
         return Icons.lock_clock_outlined;
       case 'bucket_overflow':
         return Icons.error_outline_rounded;
       case 'budget_approaching':
-        return Icons.pie_chart_outline_rounded;
+        return Icons.analytics_outlined;
       case 'global_overrun':
-        return Icons.money_off_csred_rounded;
+        return Icons.money_off_rounded;
 
       default:
         return Icons.notifications;
@@ -256,20 +263,28 @@ class _NotificationTile extends StatelessWidget {
 
   Color _getIconColor(String type) {
     switch (type) {
-      // Critical Red
+      // Critical / Success
       case 'limit_exceeded':
       case 'global_overrun':
       case 'bucket_overflow':
+      case 'negative_balance':
+      case 'daily_spike':
         return Colors.redAccent;
 
-      // Warning Orange/Yellow
+      case 'restore_success': // [NEW]
+        return Colors.greenAccent;
+
+      // Warning
       case 'high_util':
       case 'due_date':
       case 'budget_approaching':
       case 'budget_closure_pending':
+      case 'low_balance':
+      case 'forgot_log':
+      case 'backup_overdue': // [NEW]
         return Colors.orangeAccent;
 
-      // Info Blue/Green
+      // Info
       case 'statement':
       case 'budget_not_set':
         return Colors.blueAccent;
