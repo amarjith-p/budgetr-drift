@@ -123,11 +123,6 @@ class _NotificationTile extends StatelessWidget {
     return GestureDetector(
       onTap: () async {
         GetIt.I<NotificationService>().markAsRead(item.id);
-
-        // Navigation Logic based on payload (Optional expansion)
-        if (item.payload == 'backup') {
-          // Navigator.push(context, MaterialPageRoute(builder: (_) => const BackupScreen()));
-        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -218,7 +213,25 @@ class _NotificationTile extends StatelessWidget {
 
   IconData _getIcon(String type) {
     switch (type) {
-      // Backup [NEW]
+      // Goals & Loans [NEW]
+      case 'goal_achieved':
+        return Icons.emoji_events_rounded;
+      case 'goal_deadline':
+        return Icons.timer_outlined;
+      case 'loan_overdue':
+        return Icons.warning_rounded;
+      case 'loan_due':
+        return Icons.calendar_month_rounded;
+
+      // Investment
+      case 'inv_stale':
+        return Icons.access_time_filled_rounded;
+      case 'inv_milestone':
+        return Icons.emoji_events_rounded;
+      case 'inv_volatility':
+        return Icons.show_chart_rounded;
+
+      // Backup
       case 'backup_overdue':
         return Icons.cloud_off_rounded;
       case 'restore_success':
@@ -269,9 +282,13 @@ class _NotificationTile extends StatelessWidget {
       case 'bucket_overflow':
       case 'negative_balance':
       case 'daily_spike':
+      case 'inv_volatility':
+      case 'loan_overdue': // [NEW]
         return Colors.redAccent;
 
-      case 'restore_success': // [NEW]
+      case 'restore_success':
+      case 'inv_milestone':
+      case 'goal_achieved': // [NEW]
         return Colors.greenAccent;
 
       // Warning
@@ -281,7 +298,10 @@ class _NotificationTile extends StatelessWidget {
       case 'budget_closure_pending':
       case 'low_balance':
       case 'forgot_log':
-      case 'backup_overdue': // [NEW]
+      case 'backup_overdue':
+      case 'inv_stale':
+      case 'goal_deadline': // [NEW]
+      case 'loan_due': // [NEW]
         return Colors.orangeAccent;
 
       // Info

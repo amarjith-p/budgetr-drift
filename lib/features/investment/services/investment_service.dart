@@ -2,12 +2,14 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
-import 'package:get_it/get_it.dart'; // Required for Locator
+import 'package:get_it/get_it.dart';
 import '../../../../core/database/app_database.dart' as db;
-import '../../custom_entry/services/custom_entry_service.dart'; // Required for Saving
-import '../../../core/models/custom_data_models.dart'; // Required for Record Model
+import '../../custom_entry/services/custom_entry_service.dart';
+import '../../../core/models/custom_data_models.dart';
 import '../models/investment_model.dart';
 import '../models/search_result_model.dart';
+// [NEW] Import Notification Service for the Hook
+import '../../notifications/services/notification_service.dart';
 
 class InvestmentService {
   final db.AppDatabase _db = db.AppDatabase.instance;
@@ -123,15 +125,10 @@ class InvestmentService {
         .toList();
   }
 
-  // --- NEW: AUTO TRACKER LOGIC (MASTER SHEET) ---
   Future<void> triggerBucketAutoTracker() async {
     final customEntryService = GetIt.I<CustomEntryService>();
-
-    // 1. Ensure the Master Template exists
     final templateId =
         await customEntryService.ensureInvestmentTemplateExists();
-
-    // 2. Get All Buckets
     final buckets = await getUniqueBuckets();
 
     for (var bucket in buckets) {
@@ -162,14 +159,13 @@ class InvestmentService {
         returnsPercent = (totalGain / totalInvested) * 100;
       }
 
-      // 3. Save Record into Master Sheet, Tagged by Bucket
       final record = CustomRecord(
         id: _uuid.v4(),
         templateId: templateId,
         createdAt: DateTime.now(),
         data: {
           'Date': DateTime.now(),
-          'Bucket Name': bucket, // <-- Column for Separation
+          'Bucket Name': bucket,
           'Invested': totalInvested,
           'Current Value': totalCurrent,
           'Day Gain': totalDayGain,
@@ -201,6 +197,17 @@ class InvestmentService {
           lastUpdated: Value(DateTime.now()),
         ));
       }
+    }
+
+    // [HOOK] Trigger Notifications after price update
+    // We use GetIt lazy access to avoid circular dependency in constructors
+    try {
+      if (GetIt.I.isRegistered<NotificationService>()) {
+        await GetIt.I<NotificationService>()
+            .checkInvestmentVolatilityAndMilestones();
+      }
+    } catch (e) {
+      print("Notification Hook Error: $e");
     }
   }
 

@@ -14,6 +14,8 @@ import '../../credit_tracker/models/credit_models.dart';
 import '../../dashboard/services/dashboard_service.dart';
 import '../../daily_expense/services/expense_service.dart';
 import '../../backup_restore/services/backup_service.dart';
+import '../../investment/services/investment_service.dart';
+import '../../goals_loans/services/goal_loan_service.dart';
 
 class NotificationService {
   final AppDatabase _db = AppDatabase.instance;
@@ -21,6 +23,7 @@ class NotificationService {
 
   // --- CONFIGURATION ---
   static const double kLowBalanceThreshold = 1000.0;
+  static const double kVolatilityThreshold = 0.03; // 3%
 
   // --- CRUD OPERATIONS ---
 
@@ -59,20 +62,15 @@ class NotificationService {
 
   Future<void> clearAll() async {
     await _db.delete(_db.appNotifications).go();
-
-    // Optional: Clear history keys if you want a hard reset
-    // final prefs = await SharedPreferences.getInstance();
-    // await prefs.clear();
   }
 
-  // --- INTERNAL HELPER: Add Notification ---
+  // --- INTERNAL HELPER ---
   Future<void> _createNotification({
     required String type,
     required String title,
     required String message,
     String? payload,
   }) async {
-    // 1. Database Dedup (Double check to avoid immediate UI duplicates)
     final exists = await (_db.select(_db.appNotifications)
           ..where((t) {
             final basicCheck = t.type.equals(type) & t.isRead.equals(false);
@@ -85,7 +83,6 @@ class NotificationService {
 
     if (exists != null) return;
 
-    // 2. Insert
     await _db
         .into(_db.appNotifications)
         .insert(AppNotificationsCompanion.insert(
@@ -99,23 +96,17 @@ class NotificationService {
         ));
   }
 
-  // --- FREQUENCY CONTROL ENGINE ---
-
-  /// Checks if we should notify based on frequency rules.
-  /// [key] should be unique per event type + resource ID + time period.
+  // --- FREQUENCY CONTROL ---
   Future<bool> _shouldNotify(String key) async {
     final prefs = await SharedPreferences.getInstance();
-    // If key exists, it means we already notified for this period.
     return !prefs.containsKey(key);
   }
 
-  /// Marks a notification as "Sent" for the specific period.
   Future<void> _markNotified(String key) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, true);
   }
 
-  /// Helper to generate Time-Based Keys
   String _getDailyKey(String type, String id) {
     final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
     return 'notif_${type}_${id}_$dateStr';
@@ -134,6 +125,8 @@ class NotificationService {
       await _runBudgetChecks();
       await _runDailyExpenseChecks();
       await _runBackupChecks();
+      await _runInvestmentStartupChecks();
+      await _runGoalLoanChecks();
     } catch (e) {
       debugPrint("Notification Check Error: $e");
     }
@@ -147,7 +140,6 @@ class NotificationService {
       final today = DateTime.now();
 
       for (var card in cards) {
-        // 1. Statement Generated (Monthly)
         if (card.billDate == today.day) {
           final key = _getMonthlyKey('statement', card.id);
           if (await _shouldNotify(key)) {
@@ -161,9 +153,7 @@ class NotificationService {
           }
         }
 
-        // 2. Due Date (Daily Reminders when close)
         int daysUntilDue = card.dueDate - today.day;
-        // Logic: Notify on Day 3, Day 1, and Day 0
         bool isDueDay = (card.dueDate == today.day) || (daysUntilDue == 3);
 
         if (isDueDay) {
@@ -185,10 +175,8 @@ class NotificationService {
           }
         }
 
-        // 3. Utilization (Daily Check)
         if (card.creditLimit > 0) {
           final utilization = (card.currentBalance / card.creditLimit) * 100;
-
           if (card.currentBalance > card.creditLimit) {
             final key = _getDailyKey('limit_exceeded', card.id);
             if (await _shouldNotify(key)) {
@@ -224,7 +212,6 @@ class NotificationService {
       final dashboardService = GetIt.I<DashboardService>();
       final now = DateTime.now();
 
-      // 1. Budget Not Set (Monthly)
       final currentRecord =
           await dashboardService.getRecordForMonth(now.year, now.month);
       if (currentRecord == null) {
@@ -240,10 +227,9 @@ class NotificationService {
             await _markNotified(key);
           }
         }
-        return; // Exit if no budget
+        return;
       }
 
-      // 2. Closure Pending (Monthly - for previous month)
       final prevMonthDate = DateTime(now.year, now.month - 1);
       final prevRecord = await dashboardService.getRecordForMonth(
           prevMonthDate.year, prevMonthDate.month);
@@ -268,13 +254,11 @@ class NotificationService {
         }
       }
 
-      // 3. Spending Health (Daily)
       final spendingMap = await dashboardService
           .getMonthlyBucketSpending(now.year, now.month)
           .first;
       double totalSpent = 0;
 
-      // We use a loop with async capability
       for (var entry in currentRecord.allocations.entries) {
         final bucketName = entry.key;
         final allocated = entry.value;
@@ -332,7 +316,6 @@ class NotificationService {
       final accounts = await _db.select(_db.expenseAccounts).get();
 
       for (var acc in accounts) {
-        // 1. Negative Balance (Daily)
         if (acc.currentBalance < 0) {
           final key = _getDailyKey('negative_balance', acc.id);
           if (await _shouldNotify(key)) {
@@ -345,9 +328,7 @@ class NotificationService {
             );
             await _markNotified(key);
           }
-        }
-        // 2. Low Balance (Daily)
-        else if (acc.currentBalance < kLowBalanceThreshold) {
+        } else if (acc.currentBalance < kLowBalanceThreshold) {
           final key = _getDailyKey('low_balance', acc.id);
           if (await _shouldNotify(key)) {
             await _createNotification(
@@ -362,8 +343,6 @@ class NotificationService {
         }
       }
 
-      // 3. Forgot to Log (Daily)
-      // Key is tied to Yesterday's Date to ensure we only ask once about yesterday
       final now = DateTime.now();
       final yesterday = now.subtract(const Duration(days: 1));
       final yesterdayStr = DateFormat('yyyyMMdd').format(yesterday);
@@ -392,7 +371,6 @@ class NotificationService {
         }
       }
 
-      // 4. Heatmap Spike (Daily)
       final expenseService = GetIt.I<ExpenseService>();
       final heatmapLimit = await expenseService.getMonthLimits(now);
 
@@ -432,11 +410,8 @@ class NotificationService {
   Future<void> _runBackupChecks() async {
     try {
       final backupService = BackupService();
-
-      // 1. Restore Success (Instant / Once)
       final wasRestored = await backupService.checkAndResetRestoreFlag();
       if (wasRestored) {
-        // No freq check needed, the flag resets itself
         await _createNotification(
           type: 'restore_success',
           title: 'Restore Complete',
@@ -445,7 +420,6 @@ class NotificationService {
         );
       }
 
-      // 2. Overdue (Daily)
       if (!wasRestored && await backupService.isBackupOverdue()) {
         final key = _getDailyKey('backup_overdue', 'global');
         if (await _shouldNotify(key)) {
@@ -460,6 +434,183 @@ class NotificationService {
       }
     } catch (e) {
       debugPrint("Backup Check Error: $e");
+    }
+  }
+
+  // --- SUB-ENGINE 5: Investment Checks (Startup) ---
+  Future<void> _runInvestmentStartupChecks() async {
+    try {
+      final invService = GetIt.I<InvestmentService>();
+      final investments = await invService.getInvestments().first;
+
+      if (investments.isEmpty) return;
+
+      final lastUpdated = investments.first.lastUpdated;
+      final daysSinceUpdate = DateTime.now().difference(lastUpdated).inDays;
+
+      if (daysSinceUpdate >= 3) {
+        final key = _getDailyKey('inv_stale_data', 'global');
+        if (await _shouldNotify(key)) {
+          await _createNotification(
+            type: 'inv_stale',
+            title: 'Outdated Prices',
+            message:
+                'Portfolio prices haven\'t been updated in $daysSinceUpdate days.',
+            payload: 'investment',
+          );
+          await _markNotified(key);
+        }
+      }
+    } catch (e) {
+      debugPrint("Inv Startup Error: $e");
+    }
+  }
+
+  // --- SUB-ENGINE 6: Goals & Loans Checks [FIXED] ---
+  Future<void> _runGoalLoanChecks() async {
+    try {
+      final glService = GetIt.I<GoalLoanService>();
+      final now = DateTime.now();
+
+      // 1. Goals
+      final goals = await glService.getActiveGoals().first;
+      for (var goal in goals) {
+        // [FIX] Use currentAmount instead of savedAmount
+        // Achievement Check
+        if (!goal.isCompleted && goal.currentAmount >= goal.targetAmount) {
+          final key = 'notif_goal_achieved_${goal.id}';
+          if (await _shouldNotify(key)) {
+            await _createNotification(
+              type: 'goal_achieved',
+              title: 'Goal Achieved! 🎉',
+              // [FIX] Use name instead of title
+              message:
+                  'Congratulations! You have reached your goal: ${goal.name}.',
+              payload: goal.id,
+            );
+            await _markNotified(key);
+          }
+        }
+
+        // Deadline Approaching
+        if (!goal.isCompleted && goal.currentAmount < goal.targetAmount) {
+          // [FIX] Check for null deadline
+          if (goal.deadline != null) {
+            final daysLeft = goal.deadline!.difference(now).inDays;
+
+            if (daysLeft == 7 || daysLeft == 1) {
+              final key = 'notif_goal_deadline_${goal.id}_$daysLeft';
+              if (await _shouldNotify(key)) {
+                await _createNotification(
+                  type: 'goal_deadline',
+                  title: 'Goal Deadline Approaching',
+                  message: '${goal.name} is due in $daysLeft days.',
+                  payload: goal.id,
+                );
+                await _markNotified(key);
+              }
+            }
+          }
+        }
+      }
+
+      // 2. Loans
+      final loans = await glService.getActiveLoans().first;
+      for (var loan in loans) {
+        // [FIX] Use remaining getter logic
+        if (loan.remaining <= 0) continue;
+
+        // [FIX] Check for null dueDate
+        if (loan.dueDate != null) {
+          final daysUntilDue = loan.dueDate!.difference(now).inDays;
+
+          if (daysUntilDue < 0) {
+            final key = _getDailyKey('loan_overdue', loan.id);
+            if (await _shouldNotify(key)) {
+              await _createNotification(
+                type: 'loan_overdue',
+                title: 'Loan Overdue Alert',
+                message: 'The repayment for ${loan.title} is overdue!',
+                payload: loan.id,
+              );
+              await _markNotified(key);
+            }
+          } else if (daysUntilDue == 3 || daysUntilDue == 1) {
+            final key = 'notif_loan_due_${loan.id}_$daysUntilDue';
+            if (await _shouldNotify(key)) {
+              await _createNotification(
+                type: 'loan_due',
+                title: 'Loan Repayment Reminder',
+                message: '${loan.title} is due in $daysUntilDue days.',
+                payload: loan.id,
+              );
+              await _markNotified(key);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Goal/Loan Check Error: $e");
+    }
+  }
+
+  // --- REAL-TIME HOOK ---
+  Future<void> checkInvestmentVolatilityAndMilestones() async {
+    try {
+      final invService = GetIt.I<InvestmentService>();
+      final investments = await invService.getInvestments().first;
+
+      if (investments.isEmpty) return;
+
+      double totalCurrent = 0;
+      double totalPrev = 0;
+
+      for (var inv in investments) {
+        totalCurrent += (inv.quantity * inv.currentPrice);
+        totalPrev += (inv.quantity * inv.previousClose);
+
+        final retPercent = inv.returnPercentage;
+        if (retPercent >= 50) {
+          int milestone = 0;
+          if (retPercent >= 100)
+            milestone = 100;
+          else if (retPercent >= 50) milestone = 50;
+
+          final key = 'notif_milestone_${inv.symbol}_$milestone';
+          if (await _shouldNotify(key)) {
+            await _createNotification(
+              type: 'inv_milestone',
+              title: 'Milestone Alert: ${inv.symbol}',
+              message: '${inv.name} has crossed +$milestone% returns!',
+              payload: 'investment',
+            );
+            await _markNotified(key);
+          }
+        }
+      }
+
+      if (totalPrev > 0) {
+        final changePercent = (totalCurrent - totalPrev) / totalPrev;
+        final absChange = changePercent.abs();
+
+        if (absChange >= kVolatilityThreshold) {
+          final key = _getDailyKey('inv_volatility', 'portfolio');
+          if (await _shouldNotify(key)) {
+            final direction = changePercent > 0 ? "up" : "down";
+            final percentStr = (absChange * 100).toStringAsFixed(1);
+
+            await _createNotification(
+              type: 'inv_volatility',
+              title: 'Market Alert',
+              message: 'Your portfolio is $direction by $percentStr% today.',
+              payload: 'investment',
+            );
+            await _markNotified(key);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Inv Hook Error: $e");
     }
   }
 }
