@@ -130,16 +130,16 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 4. Sync & Clone
-              _buildMenuCard(
-                context,
-                title: "Sync & Clone",
-                subtitle: "Transfer data to another device",
-                icon: Icons.phonelink_ring_rounded,
-                color: const Color(0xFF4CC9F0),
-                onTap: () => _showSyncModal(context),
-              ),
-              const SizedBox(height: 16),
+              // // 4. Sync & Clone
+              // _buildMenuCard(
+              //   context,
+              //   title: "Sync & Clone",
+              //   subtitle: "Transfer data to another device",
+              //   icon: Icons.phonelink_ring_rounded,
+              //   color: const Color(0xFF4CC9F0),
+              //   onTap: () => _showSyncModal(context),
+              // ),
+              // const SizedBox(height: 16),
 
               // 5. Database Viewer (Protected)
               _buildMenuCard(
