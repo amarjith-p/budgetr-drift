@@ -14,15 +14,15 @@ import '../../features/backup_restore/services/backup_service.dart';
 import '../../features/database_viewer/services/database_viewer_service.dart';
 import '../../features/goals_loans/services/goal_loan_service.dart';
 import '../../features/notifications/services/notification_service.dart';
-// [NEW] Real-Time Notification Manager Import
 import '../../features/notifications/services/real_time_notification_manager.dart';
+// [NEW] System Service Import
+import '../../features/notifications/services/system_notification_service.dart';
 
 final locator = GetIt.instance;
 
 class ServiceLocator {
   static Future<void> init() async {
     // 1. Core Services
-    // Initialize CategoryService explicitly to handle database seeding
     final categoryService = CategoryService();
     locator.registerSingleton<CategoryService>(categoryService);
     await categoryService.init();
@@ -44,15 +44,19 @@ class ServiceLocator {
     locator.registerLazySingleton<GoalLoanService>(() => GoalLoanService());
 
     // 3. Notification Services
+
+    // [NEW] Register System Notification Service & Init
+    final systemNotifService = SystemNotificationService();
+    await systemNotifService.init(); // Must init before use
+    locator.registerSingleton<SystemNotificationService>(systemNotifService);
+
     locator.registerLazySingleton<NotificationService>(
         () => NotificationService());
 
-    // [NEW] Register RealTimeNotificationManager
     locator.registerLazySingleton<RealTimeNotificationManager>(
         () => RealTimeNotificationManager());
 
-    // [NEW] Kickstart the Real-Time Listeners immediately
-    // This ensures the app starts watching the database for changes right away.
+    // Kickstart Listeners
     locator<RealTimeNotificationManager>().init();
   }
 }

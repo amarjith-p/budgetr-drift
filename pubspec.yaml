@@ -39,7 +39,7 @@ dependencies:
   http: ^1.2.0
   collection: ^1.18.0
   flutter_local_notifications: ^18.0.1
-  timezone: ^0.9.4
+  timezone: ^0.10.0
   flutter_timezone: ^3.0.1
   shared_preferences: ^2.2.3
   drift: ^2.14.0

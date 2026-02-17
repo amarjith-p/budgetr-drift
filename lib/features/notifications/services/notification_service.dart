@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../core/database/app_database.dart';
 import '../database/notification_tables.dart';
 
-// Module Imports
+// Feature Imports
 import '../../credit_tracker/services/credit_service.dart';
 import '../../credit_tracker/models/credit_models.dart';
 import '../../dashboard/services/dashboard_service.dart';
@@ -16,14 +16,20 @@ import '../../daily_expense/services/expense_service.dart';
 import '../../backup_restore/services/backup_service.dart';
 import '../../investment/services/investment_service.dart';
 import '../../goals_loans/services/goal_loan_service.dart';
+// [NEW] System Notification Import
+import 'system_notification_service.dart';
 
 class NotificationService {
   final AppDatabase _db = AppDatabase.instance;
   final _uuid = const Uuid();
 
+  // Lazy access to System Service to ensure it's registered
+  SystemNotificationService get _systemService =>
+      GetIt.I<SystemNotificationService>();
+
   // --- CONFIGURATION ---
   static const double kLowBalanceThreshold = 1000.0;
-  static const double kVolatilityThreshold = 0.03; // 3%
+  static const double kVolatilityThreshold = 0.03;
 
   // --- CRUD OPERATIONS ---
 
@@ -64,7 +70,7 @@ class NotificationService {
     await _db.delete(_db.appNotifications).go();
   }
 
-  // --- INTERNAL HELPER ---
+  // --- INTERNAL HELPER: Add Notification & Trigger System Alert ---
   Future<void> _createNotification({
     required String type,
     required String title,
@@ -83,6 +89,7 @@ class NotificationService {
 
     if (exists != null) return;
 
+    // 1. Save to Database (In-App History)
     await _db
         .into(_db.appNotifications)
         .insert(AppNotificationsCompanion.insert(
@@ -94,6 +101,16 @@ class NotificationService {
           isRead: const Value(false),
           createdAt: DateTime.now(),
         ));
+
+    // 2. Trigger System Notification (Push)
+    // We generate a unique integer ID from the type/time to allow cancelling/updating
+    final sysId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    try {
+      await _systemService.showInstantNotification(
+          id: sysId, title: title, body: message, payload: payload);
+    } catch (e) {
+      debugPrint("System Notification Error: $e");
+    }
   }
 
   // --- FREQUENCY CONTROL ---
@@ -117,22 +134,77 @@ class NotificationService {
     return 'notif_${type}_${id}_$dateStr';
   }
 
-  // --- MASTER ENGINE ---
+  // --- MASTER ENGINE: Run All Startup Checks ---
 
   Future<void> runStartupChecks() async {
     try {
+      // Immediate Checks
       await checkCreditHealth();
       await checkBudgetHealth();
       await checkDailyExpenseHealth();
       await checkBackupStatus();
       await checkInvestmentHealth();
       await checkGoalLoanStatus();
+
+      // [NEW] Future Scheduling (For Force Closed State)
+      await scheduleFutureNotifications();
     } catch (e) {
       debugPrint("Notification Check Error: $e");
     }
   }
 
-  // --- PUBLIC CHECKS (Called by RealTimeNotificationManager) ---
+  // --- [NEW] FORCE CLOSE HANDLER: Schedule Future Events ---
+  Future<void> scheduleFutureNotifications() async {
+    try {
+      // 1. Schedule Loan Reminders
+      final loans = await GetIt.I<GoalLoanService>().getActiveLoans().first;
+      for (var loan in loans) {
+        if (loan.remaining <= 0 || loan.dueDate == null) continue;
+
+        final due = loan.dueDate!;
+        if (due.isAfter(DateTime.now())) {
+          // Schedule for 9:00 AM on Due Date
+          final scheduleTime = DateTime(due.year, due.month, due.day, 9, 0);
+
+          // Generate a stable ID based on Loan ID hash
+          final notifId = loan.id.hashCode;
+
+          await _systemService.scheduleNotification(
+              id: notifId,
+              title: 'Loan Repayment Due',
+              body: 'Your loan ${loan.title} is due today.',
+              scheduledDate: scheduleTime,
+              payload: loan.id);
+        }
+      }
+
+      // 2. Schedule Goal Deadlines
+      final goals = await GetIt.I<GoalLoanService>().getActiveGoals().first;
+      for (var goal in goals) {
+        if (!goal.isCompleted && goal.deadline != null) {
+          final dead = goal.deadline!;
+          if (dead.isAfter(DateTime.now())) {
+            final scheduleTime =
+                DateTime(dead.year, dead.month, dead.day, 9, 0);
+            final notifId = goal.id.hashCode;
+
+            await _systemService.scheduleNotification(
+                id: notifId,
+                title: 'Goal Deadline Reached',
+                body: 'Time is up for your goal: ${goal.name}.',
+                scheduledDate: scheduleTime,
+                payload: goal.id);
+          }
+        }
+      }
+
+      // 3. Schedule Credit Card Bill Dates (Optional - Logic similar to above)
+    } catch (e) {
+      debugPrint("Scheduling Error: $e");
+    }
+  }
+
+  // --- PUBLIC CHECKS (Standard Logic) ---
 
   // 1. Credit Checks
   Future<void> checkCreditHealth() async {
@@ -474,7 +546,6 @@ class NotificationService {
       final glService = GetIt.I<GoalLoanService>();
       final now = DateTime.now();
 
-      // Goals
       final goals = await glService.getActiveGoals().first;
       for (var goal in goals) {
         if (!goal.isCompleted && goal.currentAmount >= goal.targetAmount) {
@@ -510,7 +581,6 @@ class NotificationService {
         }
       }
 
-      // Loans
       final loans = await glService.getActiveLoans().first;
       for (var loan in loans) {
         if (loan.remaining <= 0) continue;
