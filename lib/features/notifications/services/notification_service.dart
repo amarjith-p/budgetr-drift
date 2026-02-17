@@ -121,19 +121,21 @@ class NotificationService {
 
   Future<void> runStartupChecks() async {
     try {
-      await _runCreditChecks();
-      await _runBudgetChecks();
-      await _runDailyExpenseChecks();
-      await _runBackupChecks();
-      await _runInvestmentStartupChecks();
-      await _runGoalLoanChecks();
+      await checkCreditHealth();
+      await checkBudgetHealth();
+      await checkDailyExpenseHealth();
+      await checkBackupStatus();
+      await checkInvestmentHealth();
+      await checkGoalLoanStatus();
     } catch (e) {
       debugPrint("Notification Check Error: $e");
     }
   }
 
-  // --- SUB-ENGINE 1: Credit Checks ---
-  Future<void> _runCreditChecks() async {
+  // --- PUBLIC CHECKS (Called by RealTimeNotificationManager) ---
+
+  // 1. Credit Checks
+  Future<void> checkCreditHealth() async {
     try {
       final creditService = GetIt.I<CreditService>();
       final cards = await creditService.getCreditCards().first;
@@ -206,8 +208,8 @@ class NotificationService {
     } catch (_) {}
   }
 
-  // --- SUB-ENGINE 2: Budget Checks ---
-  Future<void> _runBudgetChecks() async {
+  // 2. Budget Checks
+  Future<void> checkBudgetHealth() async {
     try {
       final dashboardService = GetIt.I<DashboardService>();
       final now = DateTime.now();
@@ -310,8 +312,8 @@ class NotificationService {
     } catch (_) {}
   }
 
-  // --- SUB-ENGINE 3: Daily Expense Checks ---
-  Future<void> _runDailyExpenseChecks() async {
+  // 3. Daily Expense Checks
+  Future<void> checkDailyExpenseHealth() async {
     try {
       final accounts = await _db.select(_db.expenseAccounts).get();
 
@@ -406,8 +408,8 @@ class NotificationService {
     }
   }
 
-  // --- SUB-ENGINE 4: Backup Checks ---
-  Future<void> _runBackupChecks() async {
+  // 4. Backup Checks
+  Future<void> checkBackupStatus() async {
     try {
       final backupService = BackupService();
       final wasRestored = await backupService.checkAndResetRestoreFlag();
@@ -437,8 +439,8 @@ class NotificationService {
     }
   }
 
-  // --- SUB-ENGINE 5: Investment Checks (Startup) ---
-  Future<void> _runInvestmentStartupChecks() async {
+  // 5. Investment Checks
+  Future<void> checkInvestmentHealth() async {
     try {
       final invService = GetIt.I<InvestmentService>();
       final investments = await invService.getInvestments().first;
@@ -466,24 +468,21 @@ class NotificationService {
     }
   }
 
-  // --- SUB-ENGINE 6: Goals & Loans Checks [FIXED] ---
-  Future<void> _runGoalLoanChecks() async {
+  // 6. Goals & Loans Checks
+  Future<void> checkGoalLoanStatus() async {
     try {
       final glService = GetIt.I<GoalLoanService>();
       final now = DateTime.now();
 
-      // 1. Goals
+      // Goals
       final goals = await glService.getActiveGoals().first;
       for (var goal in goals) {
-        // [FIX] Use currentAmount instead of savedAmount
-        // Achievement Check
         if (!goal.isCompleted && goal.currentAmount >= goal.targetAmount) {
           final key = 'notif_goal_achieved_${goal.id}';
           if (await _shouldNotify(key)) {
             await _createNotification(
               type: 'goal_achieved',
               title: 'Goal Achieved! 🎉',
-              // [FIX] Use name instead of title
               message:
                   'Congratulations! You have reached your goal: ${goal.name}.',
               payload: goal.id,
@@ -492,12 +491,9 @@ class NotificationService {
           }
         }
 
-        // Deadline Approaching
         if (!goal.isCompleted && goal.currentAmount < goal.targetAmount) {
-          // [FIX] Check for null deadline
           if (goal.deadline != null) {
             final daysLeft = goal.deadline!.difference(now).inDays;
-
             if (daysLeft == 7 || daysLeft == 1) {
               final key = 'notif_goal_deadline_${goal.id}_$daysLeft';
               if (await _shouldNotify(key)) {
@@ -514,13 +510,11 @@ class NotificationService {
         }
       }
 
-      // 2. Loans
+      // Loans
       final loans = await glService.getActiveLoans().first;
       for (var loan in loans) {
-        // [FIX] Use remaining getter logic
         if (loan.remaining <= 0) continue;
 
-        // [FIX] Check for null dueDate
         if (loan.dueDate != null) {
           final daysUntilDue = loan.dueDate!.difference(now).inDays;
 
@@ -554,7 +548,7 @@ class NotificationService {
     }
   }
 
-  // --- REAL-TIME HOOK ---
+  // --- REAL-TIME HOOK (Investment) ---
   Future<void> checkInvestmentVolatilityAndMilestones() async {
     try {
       final invService = GetIt.I<InvestmentService>();
