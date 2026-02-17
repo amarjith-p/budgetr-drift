@@ -1,4 +1,4 @@
-// [FIX] Added material import for 'Color' class
+import 'dart:io'; // [NEW] Needed for Platform checks
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -10,7 +10,7 @@ class SystemNotificationService {
 
   bool _isInitialized = false;
 
-  // Initialize the plugin
+  // Initialize the plugin & Request Permissions
   Future<void> init() async {
     if (_isInitialized) return;
 
@@ -21,11 +21,13 @@ class SystemNotificationService {
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
     // iOS Settings
+    // Note: We set these to false initially so we can request permissions
+    // deliberately in the next step
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
-      requestSoundPermission: true,
-      requestBadgePermission: true,
-      requestAlertPermission: true,
+      requestSoundPermission: false,
+      requestBadgePermission: false,
+      requestAlertPermission: false,
     );
 
     const InitializationSettings initSettings = InitializationSettings(
@@ -41,7 +43,40 @@ class SystemNotificationService {
       },
     );
 
+    // [NEW] Request Permissions Immediately on Launch
+    await _requestPermissions();
+
     _isInitialized = true;
+  }
+
+  /// Handles Platform-specific permission requests
+  Future<void> _requestPermissions() async {
+    if (Platform.isAndroid) {
+      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+          _notificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+
+      if (androidImplementation != null) {
+        // 1. Request Notification Permission (Android 13+)
+        await androidImplementation.requestNotificationsPermission();
+
+        // 2. Request Exact Alarms Permission (Android 12+)
+        // Crucial for 'zonedSchedule' to work reliably for Future events
+        await androidImplementation.requestExactAlarmsPermission();
+      }
+    } else if (Platform.isIOS) {
+      // final DarwinFlutterLocalNotificationsPlugin? iOSImplementation =
+      //     _notificationsPlugin.resolvePlatformSpecificImplementation<
+      //         DarwinFlutterLocalNotificationsPlugin>();
+
+      // if (iOSImplementation != null) {
+      //   await iOSImplementation.requestPermissions(
+      //     alert: true,
+      //     badge: true,
+      //     sound: true,
+      //   );
+      // }
+    }
   }
 
   /// Show an instant notification (Mirroring In-App)
@@ -58,7 +93,7 @@ class SystemNotificationService {
       channelDescription: 'Critical alerts for budget and spending',
       importance: Importance.max,
       priority: Priority.high,
-      color: Color(0xFF0D1B2A), // [FIX] Now valid with material import
+      color: Color(0xFF0D1B2A),
     );
 
     const NotificationDetails details = NotificationDetails(
@@ -98,7 +133,7 @@ class SystemNotificationService {
           channelDescription: 'Reminders for bills and loans',
           importance: Importance.high,
           priority: Priority.high,
-          color: Color(0xFF0D1B2A), // Theme color
+          color: Color(0xFF0D1B2A),
         ),
         iOS: DarwinNotificationDetails(),
       ),
