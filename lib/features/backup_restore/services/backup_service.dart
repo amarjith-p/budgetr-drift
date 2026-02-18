@@ -121,6 +121,14 @@ class BackupService {
     await prefs.setString(_prefLastBackupKey, DateTime.now().toIso8601String());
   }
 
+// [ADD THIS NEW METHOD]
+  Future<DateTime?> getLastBackupTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastStr = prefs.getString(_prefLastBackupKey);
+    if (lastStr == null) return null;
+    return DateTime.tryParse(lastStr);
+  }
+
   Future<bool> isBackupOverdue() async {
     final prefs = await SharedPreferences.getInstance();
     final lastStr = prefs.getString(_prefLastBackupKey);

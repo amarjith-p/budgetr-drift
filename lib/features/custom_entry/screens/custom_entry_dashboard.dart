@@ -294,14 +294,71 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            title: Text(template.name,
-                style: const TextStyle(color: Colors.white)),
-            backgroundColor: const Color(0xff0D1B2A),
-            iconTheme: const IconThemeData(color: Colors.white),
+        builder: (ctx) => Scaffold(
+          backgroundColor: const Color(0xff0D1B2A),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // --- Modern Header for Tracker Page ---
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Row(
+                    children: [
+                      // Back Button
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: GlassCard(
+                          borderRadius: 12,
+                          padding: const EdgeInsets.all(10),
+                          margin: EdgeInsets.zero,
+                          color: Colors.white.withOpacity(0.05),
+                          child: const Icon(Icons.arrow_back_rounded,
+                              color: Colors.white70, size: 20),
+                        ),
+                      ),
+
+                      const SizedBox(width: 16),
+
+                      // Title Section
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              "BUDGETR SHEET",
+                              style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 2.0,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              template.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // --- Page Content ---
+                Expanded(
+                  child: CustomDataPage(template: template),
+                ),
+              ],
+            ),
           ),
-          body: CustomDataPage(template: template),
         ),
       ),
     );

@@ -24,6 +24,21 @@ class _BackupScreenState extends State<BackupScreen> {
   final BackupService _backupService = GetIt.I<BackupService>();
   bool _isLoading = false;
   DateTime? _lastBackupTime;
+  @override
+  void initState() {
+    super.initState();
+    _loadBackupStatus();
+  }
+
+  // [ADD THIS METHOD]
+  Future<void> _loadBackupStatus() async {
+    final lastTime = await _backupService.getLastBackupTime();
+    if (mounted && lastTime != null) {
+      setState(() {
+        _lastBackupTime = lastTime;
+      });
+    }
+  }
 
   // ==========================================
   // ORIGINAL LOGIC (STRICTLY PRESERVED)
