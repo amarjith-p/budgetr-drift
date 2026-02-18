@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
 import 'package:budget/features/daily_expense/screens/daily_expense_screen.dart';
-import 'package:budget/features/home/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -28,6 +27,11 @@ class _BiometricGateState extends State<BiometricGate>
   bool _isAuthenticating = false;
   bool _isRedirectMaskVisible = false;
 
+  // [NEW] Privacy & Grace Period Controls
+  bool _isPrivacyMaskVisible = false;
+  DateTime? _lastPausedAt;
+  static const int _lockGracePeriodSeconds = 3;
+
   @override
   void initState() {
     super.initState();
@@ -50,7 +54,7 @@ class _BiometricGateState extends State<BiometricGate>
     if (!isEnabled && _isLocked) {
       if (mounted) setState(() => _isLocked = false);
     }
-    // If user turns ON security, lock immediately (optional, but safer)
+    // If user turns ON security, lock immediately
     if (isEnabled && !_isLocked) {
       if (mounted) setState(() => _isLocked = true);
     }
@@ -68,45 +72,71 @@ class _BiometricGateState extends State<BiometricGate>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (BiometricService.instance.isInternalAuth) return;
 
+    final isSecurityEnabled = BiometricService.instance.enabledNotifier.value;
+
     if (state == AppLifecycleState.resumed) {
-      // 1. SECURITY CHECK
-      if (BiometricService.instance.enabledNotifier.value) {
-        if (_isLocked) _authenticate();
-      }
-      // 2. QUICK LAUNCH CHECK (If Security Off)
-      else {
-        // [FIX] Synchronous Check! No Await!
-        // We read the cached value from memory.
-        try {
-          final settings = GetIt.I<SettingsService>();
-          if (settings.cachedLaunchDailyExpense) {
-            _executeRedirect();
+      // 1. HANDLE RESUME
+      if (isSecurityEnabled) {
+        bool shouldLock = false;
+
+        // Check Grace Period
+        if (_lastPausedAt != null) {
+          final diff = DateTime.now().difference(_lastPausedAt!);
+          if (diff.inSeconds >= _lockGracePeriodSeconds) {
+            shouldLock = true;
           }
-        } catch (_) {}
-      }
-    } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      // PREPARE MASK for next resume
-      // If we know we are going to redirect next time, turn on mask NOW if possible
-      // or just lock if security is on.
-      if (BiometricService.instance.enabledNotifier.value) {
-        if (!_isLocked && !_isAuthenticating) {
-          setState(() => _isLocked = true);
+        }
+
+        // Clear timestamp
+        _lastPausedAt = null;
+
+        if (shouldLock || _isLocked) {
+          // Enforce Lock (if grace period expired OR already locked)
+          setState(() {
+            _isLocked = true;
+            _isPrivacyMaskVisible = false; // Lock screen UI takes over
+          });
+          _authenticate();
+        } else {
+          // Grace Period Active: Lift privacy mask, don't lock
+          setState(() {
+            _isPrivacyMaskVisible = false;
+          });
         }
       } else {
-        // If security off, but quick launch ON, we prepare mask?
-        // Actually, setting mask here might show a black screen while minimizing.
-        // Better to set it instantly on resume.
+        // 2. SECURITY OFF - Quick Launch Check
+        setState(() => _isPrivacyMaskVisible = false);
+        _runQuickLaunchCheck();
+      }
+    } else if (state == AppLifecycleState.inactive) {
+      // 3. TRANSIENT INTERRUPTION (Notification Shade, etc.)
+      // ACTION: Show Privacy Blur, BUT DO NOT LOCK
+      if (isSecurityEnabled && !_isLocked) {
+        setState(() => _isPrivacyMaskVisible = true);
+      }
+    } else if (state == AppLifecycleState.paused) {
+      // 4. BACKGROUNDING (Home, App Switcher)
+      // ACTION: Record Time, Keep Privacy Blur
+      _lastPausedAt = DateTime.now();
+      if (isSecurityEnabled && !_isLocked) {
+        setState(() => _isPrivacyMaskVisible = true);
       }
     }
   }
 
+  void _runQuickLaunchCheck() {
+    try {
+      final settings = GetIt.I<SettingsService>();
+      if (settings.cachedLaunchDailyExpense) {
+        _executeRedirect();
+      }
+    } catch (_) {}
+  }
+
   void _executeRedirect() {
-    // [FIX] Set mask synchronously before async navigation starts
     setState(() => _isRedirectMaskVisible = true);
 
     _handleQuickLaunchRedirect().whenComplete(() {
-      // Add small delay to let navigation finish painting
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) setState(() => _isRedirectMaskVisible = false);
       });
@@ -124,7 +154,8 @@ class _BiometricGateState extends State<BiometricGate>
         setState(() => _isLocked = false);
         _handleQuickLaunchRedirect();
       } else {
-        if (_isLocked) _exitApp();
+        // If authentication failed/cancelled, stay locked
+        // User can tap "Unlock" button to retry
       }
     }
   }
@@ -135,7 +166,6 @@ class _BiometricGateState extends State<BiometricGate>
       if (BiometricService.instance.isInternalAuth) return;
 
       final settings = GetIt.I<SettingsService>();
-      // Use cached value if available, else await (startup case)
       final bool launchDaily = settings.cachedLaunchDailyExpense;
 
       if (launchDaily) {
@@ -152,14 +182,6 @@ class _BiometricGateState extends State<BiometricGate>
     }
   }
 
-  void _exitApp() {
-    if (Platform.isAndroid) {
-      SystemNavigator.pop();
-    } else if (Platform.isIOS) {
-      exit(0);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -172,6 +194,18 @@ class _BiometricGateState extends State<BiometricGate>
             child: Container(color: const Color(0xff0D1B2A)),
           ),
 
+        // [NEW] Privacy Mask (Blur Only, No Lock UI)
+        // Shows when app is Inactive (Notification shade) or Paused (App Switcher)
+        // This ensures data is hidden, but user can return quickly without auth
+        if (_isPrivacyMaskVisible && !_isLocked)
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+
+        // [EXISTING] Lock Screen (Blur + Buttons)
         if (_isLocked)
           Positioned.fill(
             child: BackdropFilter(
