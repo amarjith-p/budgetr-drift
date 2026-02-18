@@ -19,7 +19,7 @@ class JumpToDateSheet extends StatelessWidget {
     final Color accentColor = const Color(0xFF3A86FF);
 
     final years = List.generate(
-      20,
+      85,
       (index) => DateTime.now().year - 10 + index,
     );
     final months = List.generate(12, (index) => index + 1);
@@ -55,7 +55,7 @@ class JumpToDateSheet extends StatelessWidget {
               const SizedBox(height: 24),
 
               const Text(
-                "Jump to Date",
+                "Jump to Month",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,

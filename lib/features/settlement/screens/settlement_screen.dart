@@ -1,4 +1,5 @@
 import 'package:budget/core/widgets/futuristic_loader.dart';
+import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -107,13 +108,29 @@ class _SettlementScreenState extends State<SettlementScreen> {
       _isLoading = true;
       _settlementData = null;
     });
+
     final recordId =
         '$_selectedYear${_selectedMonth.toString().padLeft(2, '0')}';
     final settlement = await _settlementService.getSettlementById(recordId);
-    setState(() {
-      _settlementData = settlement;
-      _isLoading = false;
-    });
+
+    if (mounted) {
+      setState(() {
+        _settlementData = settlement;
+        _isLoading = false;
+      });
+
+      // [NEW] Notification if no data found
+      if (settlement == null) {
+        showStatusSheet(
+          context: context,
+          title: "No Data Found",
+          message:
+              "Kindly wait for Settlement or Input Settlement Details\n for ${DateFormat.yMMMM().format(DateTime(_selectedYear!, _selectedMonth!))} to view Analysis.",
+          icon: Icons.warning_amber_rounded,
+          color: Colors.orangeAccent,
+        );
+      }
+    }
   }
 
   @override

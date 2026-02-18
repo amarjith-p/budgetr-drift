@@ -13,6 +13,8 @@ import '../../../core/models/financial_record_model.dart';
 import '../../../core/models/percentage_config_model.dart';
 import '../services/dashboard_service.dart';
 import '../../settings/services/settings_service.dart';
+// [SECURITY UPDATE] Import SettlementService
+import '../../settlement/services/settlement_service.dart';
 
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
@@ -31,6 +33,9 @@ class AddRecordSheet extends StatefulWidget {
 class _AddRecordSheetState extends State<AddRecordSheet> {
   final _dashboardService = DashboardService();
   final _settingsService = SettingsService();
+  // [SECURITY UPDATE] Initialize Settlement Service
+  final _settlementService = SettlementService();
+
   final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
   final ScrollController _scrollController = ScrollController();
   final LocalAuthentication _auth = LocalAuthentication();
@@ -203,11 +208,35 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
     final idString =
         '$_selectedYear${_selectedMonth.toString().padLeft(2, '0')}';
 
+    // [SECURITY UPDATE] Check if the budget is already Closed/Settled
+    try {
+      final isSettled = await _settlementService.isMonthSettled(
+          _selectedYear!, _selectedMonth!);
+
+      if (isSettled) {
+        if (mounted) {
+          showStatusSheet(
+            context: context,
+            title: "Budget Closed",
+            message:
+                "This budget has been finalized and locked. You cannot edit or overwrite a closed budget.",
+            icon: Icons.lock_outline_rounded,
+            color: Colors.redAccent,
+          );
+        }
+        return; // HALT EXECUTION
+      }
+    } catch (e) {
+      // Handle error cleanly or proceed with caution
+    }
+
     try {
       final existing = await _dashboardService.getRecordForMonth(
           _selectedYear!, _selectedMonth!);
 
-      if (existing != null && !_isEditing) {
+      // [SECURITY UPDATE] Authentication Logic
+      // Requirement: Check auth if ANY budget exists (whether editing or overwriting)
+      if (existing != null) {
         bool authenticated = false;
         try {
           authenticated = await _auth.authenticate(

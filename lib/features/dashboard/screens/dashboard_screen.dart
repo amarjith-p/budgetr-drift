@@ -1,5 +1,7 @@
+// lib/features/dashboard/screens/dashboard_screen.dart
+
+import 'dart:async';
 import 'package:budget/core/widgets/futuristic_loader.dart';
-import 'package:budget/core/widgets/glass_card.dart';
 import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/settlement/screens/settlement_screen.dart';
@@ -18,6 +20,7 @@ import '../widgets/jump_to_date_sheet.dart';
 import '../widgets/budget_closure_sheet.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
+import '../../../core/widgets/modern_app_bar.dart'; // [NEW IMPORT]
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -34,15 +37,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final int _initialIndex = 12 * 50;
   late final PageController _pageController;
 
+  // Streams & State
+  late Stream<List<FinancialRecord>> _recordsStream;
   DateTime _currentDate = DateTime.now();
   bool _isMonthSettled = false;
+  bool _showSwipeHint = true;
   final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _initialIndex);
+    // Initialize stream here to prevent reloading on setState (Fixes Blinking)
+    _recordsStream = _dashboardService.getFinancialRecords();
     _checkSettlementStatus();
+
+    // Auto-hide the swipe hint after 4 seconds
+    Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _showSwipeHint = false);
+    });
   }
 
   @override
@@ -66,10 +79,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _onPageChanged(int index) {
     final now = DateTime.now();
     final diff = index - _initialIndex;
-    setState(() {
-      _currentDate = DateTime(now.year, now.month + diff);
-    });
-    _checkSettlementStatus();
+    final newDate = DateTime(now.year, now.month + diff);
+
+    // Only trigger setState if the month actually changed to avoid unnecessary rebuilds
+    if (newDate.month != _currentDate.month ||
+        newDate.year != _currentDate.year) {
+      setState(() {
+        _currentDate = newDate;
+        if (_showSwipeHint) _showSwipeHint = false; // Hide hint on first swipe
+      });
+      _checkSettlementStatus();
+    }
   }
 
   void _handleDateJump(int selectedYear, int selectedMonth) {
@@ -322,309 +342,318 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Current date formatted for the subtitle
+    final dateString = DateFormat('MMMM yyyy').format(_currentDate);
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
-      // Deep Slate Background
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // 1. Modern App Bar (Replaces default AppBar)
-            _buildModernAppBar(),
+            Column(
+              children: [
+                // 1. MODERN APP BAR (Replaced Custom Row)
+                ModernAppBar(
+                  title: "Budget Insights",
+                  subtitle: dateString,
+                  trailingIcon: Icons.calendar_month_rounded,
+                  onTrailingPressed: _showJumpToDateSheet,
+                ),
 
-            // 2. Month Selector
-            Container(
-              height: 60,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: _onPageChanged,
-                itemBuilder: (context, index) {
-                  final now = DateTime.now();
-                  final diff = index - _initialIndex;
-                  final date = DateTime(now.year, now.month + diff);
+                // 2. FULL PAGE SWIPER
+                Expanded(
+                  child: StreamBuilder<List<FinancialRecord>>(
+                    stream: _recordsStream, // Use initialized stream
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                            child: FuturisticLoader(
+                                size: 80, label: "LOADING..."));
+                      }
 
-                  return Center(
-                    child: GestureDetector(
-                      onTap: _showJumpToDateSheet,
+                      final records = snapshot.data ?? [];
+
+                      return PageView.builder(
+                        controller: _pageController,
+                        onPageChanged: _onPageChanged,
+                        // Physics ensures smooth snapping like a carousel
+                        physics: const BouncingScrollPhysics(),
+                        itemBuilder: (context, index) {
+                          // Calculate date for this specific page index
+                          final now = DateTime.now();
+                          final diff = index - _initialIndex;
+                          final pageDate = DateTime(now.year, now.month + diff);
+
+                          // Find record for this page
+                          final currentRecord = records.firstWhere(
+                            (r) =>
+                                r.year == pageDate.year &&
+                                r.month == pageDate.month,
+                            orElse: () => FinancialRecord(
+                              id: '',
+                              salary: 0,
+                              extraIncome: 0,
+                              emi: 0,
+                              year: pageDate.year,
+                              month: pageDate.month,
+                              effectiveIncome: 0,
+                              allocations: {},
+                              allocationPercentages: {},
+                              bucketOrder: [],
+                              createdAt: DateTime.timestamp(),
+                              updatedAt: DateTime.timestamp(),
+                            ),
+                          );
+
+                          final hasData = currentRecord.id.isNotEmpty;
+
+                          // Pass data to a pure display widget to keep logic clean
+                          return _buildPageContent(
+                              pageDate, currentRecord, hasData);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            // 3. SWIPE HINT (User Notification)
+            if (_showSwipeHint)
+              Positioned(
+                bottom: 100,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: IgnorePointer(
+                    child: AnimatedOpacity(
+                      opacity: _showSwipeHint ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 500),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 10,
-                        ),
+                            horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white24, width: 0.5),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              (date.year == _currentDate.year &&
-                                      date.month == _currentDate.month &&
-                                      _isMonthSettled)
-                                  ? Icons.lock_outline
-                                  : Icons.calendar_month,
-                              color: (date.year == _currentDate.year &&
-                                      date.month == _currentDate.month &&
-                                      _isMonthSettled)
-                                  ? Colors.orangeAccent
-                                  : Colors.white70,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 12),
+                            const Icon(Icons.arrow_back_ios_rounded,
+                                size: 12, color: Colors.white70),
+                            const SizedBox(width: 8),
                             Text(
-                              DateFormat('MMMM yyyy').format(date),
-                              style: const TextStyle(
+                              "Swipe for Other Months",
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Icon(
-                              Icons.arrow_drop_down,
-                              color: BudgetrColors.accent,
-                              size: 20,
-                            ),
+                            const Icon(Icons.arrow_forward_ios_rounded,
+                                size: 12, color: Colors.white70),
                           ],
                         ),
                       ),
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
-            ),
-
-            // 3. Main Content
-            Expanded(
-              child: StreamBuilder<List<FinancialRecord>>(
-                stream: _dashboardService.getFinancialRecords(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                        child: FuturisticLoader(size: 80, label: "LOADING..."));
-                  }
-
-                  final records = snapshot.data ?? [];
-                  final currentRecord = records.firstWhere(
-                    (r) =>
-                        r.year == _currentDate.year &&
-                        r.month == _currentDate.month,
-                    orElse: () => FinancialRecord(
-                      id: '',
-                      salary: 0,
-                      extraIncome: 0,
-                      emi: 0,
-                      year: _currentDate.year,
-                      month: _currentDate.month,
-                      effectiveIncome: 0,
-                      allocations: {},
-                      allocationPercentages: {},
-                      bucketOrder: [],
-                      createdAt: DateTime.timestamp(),
-                      updatedAt: DateTime.timestamp(),
-                    ),
-                  );
-
-                  final hasData = currentRecord.id.isNotEmpty;
-
-                  return StreamBuilder<Map<String, double>>(
-                    stream: _dashboardService.getMonthlyBucketSpending(
-                      _currentDate.year,
-                      _currentDate.month,
-                    ),
-                    builder: (context, spendingSnapshot) {
-                      final spendingMap = spendingSnapshot.data ?? {};
-
-                      return Stack(
-                        children: [
-                          SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                            child: Column(
-                              children: [
-                                // Closed Budget Indicator
-                                if (_isMonthSettled)
-                                  Container(
-                                    width: double.infinity,
-                                    margin: const EdgeInsets.only(bottom: 16),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                      horizontal: 16,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          Colors.orangeAccent.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.orangeAccent
-                                            .withOpacity(0.3),
-                                      ),
-                                    ),
-                                    child: const Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.lock,
-                                          color: Colors.orangeAccent,
-                                          size: 18,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          "Budget Closed & Locked",
-                                          style: TextStyle(
-                                            color: Colors.orangeAccent,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                if (hasData) ...[
-                                  DashboardSummaryCard(
-                                    record: currentRecord,
-                                    currencyFormat: _currencyFormat,
-                                    onOptionsTap: () =>
-                                        _showRecordOptions(currentRecord),
-                                    onCardTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              MonthlySpendingScreen(
-                                            record: currentRecord,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(height: 24),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      "Budget Allocations",
-                                      style: BudgetrStyles.h3.copyWith(
-                                        color: Colors.white70,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  BudgetAllocationsList(
-                                    record: currentRecord,
-                                    currencyFormat: _currencyFormat,
-                                    spendingMap: spendingMap,
-                                  ),
-                                ] else
-                                  _buildEmptyState(),
-                              ],
-                            ),
-                          ),
-
-                          // FAB
-                          Positioned(
-                            bottom: 20,
-                            left: 0,
-                            right: 0,
-                            child: Center(
-                              child: GestureDetector(
-                                onTap: () {
-                                  if (_isMonthSettled) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          "This budget is closed and cannot be edited.",
-                                        ),
-                                        backgroundColor: Colors.orangeAccent,
-                                      ),
-                                    );
-                                  } else if (hasData) {
-                                    _showAddRecordSheet(currentRecord);
-                                  } else {
-                                    _showAddRecordSheet(null);
-                                  }
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 16,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _isMonthSettled
-                                        ? Colors.grey[800]
-                                        : null,
-                                    gradient: _isMonthSettled
-                                        ? null
-                                        : BudgetrColors.primaryGradient,
-                                    borderRadius: BorderRadius.circular(30),
-                                    boxShadow: _isMonthSettled
-                                        ? []
-                                        : BudgetrStyles.glowBoxShadow(
-                                            BudgetrColors.accent,
-                                          ),
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.2),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        _isMonthSettled
-                                            ? Icons.lock_outline
-                                            : (hasData
-                                                ? Icons.edit_outlined
-                                                : Icons.add_rounded),
-                                        color: _isMonthSettled
-                                            ? Colors.white54
-                                            : Colors.white,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        _isMonthSettled
-                                            ? "Closed Budget"
-                                            : (hasData
-                                                ? "Edit Budget"
-                                                : "Create Budget"),
-                                        style: TextStyle(
-                                          color: _isMonthSettled
-                                              ? Colors.white54
-                                              : Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  // --- PAGE CONTENT BUILDER ---
+  Widget _buildPageContent(
+      DateTime pageDate, FinancialRecord currentRecord, bool hasData) {
+    // We determine if THIS specific page is closed/settled based on the global state
+    // matched with the page's date.
+    // Note: Ideally, each page should fetch its own settlement status, but for
+    // simplicity and consistency with your old code, we rely on the primary
+    // _currentDate check for the FAB interactions.
+    // However, for the UI *inside* the list (the Banner), we display it if
+    // this page is the one currently selected AND settled.
+
+    final isPageFocused = pageDate.year == _currentDate.year &&
+        pageDate.month == _currentDate.month;
+
+    return StreamBuilder<Map<String, double>>(
+      stream: _dashboardService.getMonthlyBucketSpending(
+        pageDate.year,
+        pageDate.month,
+      ),
+      builder: (context, spendingSnapshot) {
+        final spendingMap = spendingSnapshot.data ?? {};
+
+        return Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+              child: Column(
+                children: [
+                  // Closed Budget Indicator (Only show if this is the active page & settled)
+                  if (_isMonthSettled && isPageFocused)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orangeAccent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.orangeAccent.withOpacity(0.3),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.lock,
+                            color: Colors.orangeAccent,
+                            size: 18,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            "Budget Closed & Locked",
+                            style: TextStyle(
+                              color: Colors.orangeAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  if (hasData) ...[
+                    DashboardSummaryCard(
+                      record: currentRecord,
+                      currencyFormat: _currencyFormat,
+                      onOptionsTap: () => _showRecordOptions(currentRecord),
+                      onCardTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MonthlySpendingScreen(
+                              record: currentRecord,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Budget Allocations",
+                        style: BudgetrStyles.h3.copyWith(
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    BudgetAllocationsList(
+                      record: currentRecord,
+                      currencyFormat: _currencyFormat,
+                      spendingMap: spendingMap,
+                    ),
+                  ] else
+                    _buildEmptyState(pageDate),
+                ],
+              ),
+            ),
+
+            // FAB
+            // We show the FAB *only* if this page matches the currently selected date.
+            // This prevents FABs from "sliding" in from the side.
+            if (isPageFocused)
+              Positioned(
+                bottom: 20,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_isMonthSettled) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "This budget is closed and cannot be edited.",
+                            ),
+                            backgroundColor: Colors.orangeAccent,
+                          ),
+                        );
+                      } else if (hasData) {
+                        _showAddRecordSheet(currentRecord);
+                      } else {
+                        _showAddRecordSheet(null);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _isMonthSettled ? Colors.grey[800] : null,
+                        gradient: _isMonthSettled
+                            ? null
+                            : BudgetrColors.primaryGradient,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: _isMonthSettled
+                            ? []
+                            : BudgetrStyles.glowBoxShadow(
+                                BudgetrColors.accent,
+                              ),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _isMonthSettled
+                                ? Icons.lock_outline
+                                : (hasData
+                                    ? Icons.edit_outlined
+                                    : Icons.add_rounded),
+                            color:
+                                _isMonthSettled ? Colors.white54 : Colors.white,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            _isMonthSettled
+                                ? "Closed Budget"
+                                : (hasData ? "Edit Budget" : "Create Budget"),
+                            style: TextStyle(
+                              color: _isMonthSettled
+                                  ? Colors.white54
+                                  : Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState(DateTime date) {
     return Padding(
       padding: const EdgeInsets.only(top: 60),
       child: Center(
@@ -646,69 +675,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text("No Budget Found", style: BudgetrStyles.h2),
             const SizedBox(height: 8),
             Text(
-              "Tap 'Create Budget' to plan\nfor ${DateFormat('MMMM').format(_currentDate)}.",
+              "Tap 'Create Budget' to plan\nfor ${DateFormat('MMMM').format(date)}.",
               textAlign: TextAlign.center,
               style: BudgetrStyles.body.copyWith(color: Colors.white54),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildModernAppBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          // Back Button (Glass)
-          GestureDetector(
-            onTap: () => Navigator.maybePop(context),
-            child: GlassCard(
-              borderRadius: 12,
-              padding: const EdgeInsets.all(10),
-              margin: EdgeInsets.zero,
-              color: Colors.white.withOpacity(0.05),
-              child: const Icon(Icons.arrow_back_rounded,
-                  color: Colors.white70, size: 20),
-            ),
-          ),
-
-          const SizedBox(width: 16),
-
-          // Title
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("MONTHLY",
-                    style: TextStyle(
-                        color: Colors.white38,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 2.0)),
-                SizedBox(height: 2),
-                Text("Budget Insights",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.5)),
-              ],
-            ),
-          ),
-
-          // Action Button (Glass) - You can add actions here later
-          // GlassCard(
-          //   borderRadius: 12,
-          //   padding: const EdgeInsets.all(10),
-          //   margin: EdgeInsets.zero,
-          //   color: Colors.white.withOpacity(0.05),
-          //   child: const Icon(Icons.more_horiz_rounded,
-          //       color: Colors.white70, size: 20),
-          // ),
-        ],
       ),
     );
   }
