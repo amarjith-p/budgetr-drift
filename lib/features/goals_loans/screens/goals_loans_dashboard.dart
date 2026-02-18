@@ -1,10 +1,10 @@
+import 'dart:ui'; // Required for ImageFilter
 import 'package:budget/core/widgets/futuristic_loader.dart';
-import 'package:budget/core/widgets/modern_loader.dart';
+import 'package:budget/core/widgets/glass_card.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/design/budgetr_colors.dart';
-import '../../../core/design/budgetr_styles.dart';
 import '../services/goal_loan_service.dart';
 import '../models/goal_loan_models.dart';
 import 'goal_detail_screen.dart';
@@ -23,19 +23,27 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
     with TickerProviderStateMixin {
   // State
   int _selectedIndex = 0; // 0 = Goals, 1 = Loans
+  bool _showHistory = false; // Toggle for Active vs History
 
   // Animation
   bool _isFabExpanded = false;
   late AnimationController _fabAnimController;
   late Animation<double> _fabAnimation;
+  late Animation<double> _rotateAnimation;
 
   @override
   void initState() {
     super.initState();
     _fabAnimController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 200));
+        vsync: this, duration: const Duration(milliseconds: 300));
+
+    // Bounce effect for menu items
     _fabAnimation =
-        CurvedAnimation(parent: _fabAnimController, curve: Curves.easeOut);
+        CurvedAnimation(parent: _fabAnimController, curve: Curves.easeOutBack);
+
+    // Smooth rotation for main FAB
+    _rotateAnimation =
+        CurvedAnimation(parent: _fabAnimController, curve: Curves.easeInOut);
   }
 
   @override
@@ -76,25 +84,43 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A), // Deep Slate Background
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                // 1. Header
-                _buildHeader(),
-
-                // 2. Segmented Switcher
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  child: _buildSegmentedToggle(),
+      body: Stack(
+        children: [
+          // Background Gradient Element
+          Positioned(
+            top: -100,
+            right: -100,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: (_selectedIndex == 0
+                          ? BudgetrColors.accent
+                          : BudgetrColors.error)
+                      .withOpacity(0.2),
                 ),
+              ),
+            ),
+          ),
+
+          SafeArea(
+            child: Column(
+              children: [
+                // 1. Updated App Bar
+                _buildModernAppBar(),
+
+                // 2. Updated Toggle Pills
+                _buildControlsArea(),
 
                 // 3. Content Area
                 Expanded(
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 400),
+                    switchInCurve: Curves.easeOutBack,
+                    switchOutCurve: Curves.easeIn,
                     child: _selectedIndex == 0
                         ? _buildGoalsView()
                         : _buildLoansView(),
@@ -102,135 +128,177 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
                 ),
               ],
             ),
+          ),
 
-            // Dimmer Overlay
-            if (_isFabExpanded)
-              GestureDetector(
+          // --- BLURRED DIMMER OVERLAY ---
+          if (_isFabExpanded)
+            Positioned.fill(
+              child: GestureDetector(
                 onTap: _toggleFab,
-                child: Container(
-                  color: Colors.black.withOpacity(0.6),
-                  width: double.infinity,
-                  height: double.infinity,
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                  child: Container(
+                    color: Colors.black.withOpacity(0.4),
+                  ),
                 ),
               ),
-
-            // FAB Menu
-            Positioned(
-              bottom: 24,
-              right: 24,
-              child: _buildFabMenu(),
             ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  // --- 1. HEADER ---
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("",
-                  style: TextStyle(
-                      color: Colors.white38,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.bold)),
-              SizedBox(height: 4),
-              Text("Financial Goals & Loans",
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold)),
-            ],
+          // --- MODERN FAB MENU ---
+          Positioned(
+            bottom: 24,
+            right: 24,
+            child: _buildFabMenu(),
           ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.flag_circle_rounded, color: Colors.white70),
-          )
         ],
       ),
     );
   }
 
-  // --- 2. SEGMENTED TOGGLE ---
-  Widget _buildSegmentedToggle() {
+  // --- 1. MODERN APP BAR ---
+  Widget _buildModernAppBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Back Button (Glass)
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Title
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("PORTFOLIO",
+                    style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 2.0)),
+                SizedBox(height: 2),
+                Text("Goals & Loans",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5)),
+              ],
+            ),
+          ),
+
+          // Action Button (Glass)
+          GlassCard(
+            borderRadius: 12,
+            padding: const EdgeInsets.all(10),
+            margin: EdgeInsets.zero,
+            color: Colors.white.withOpacity(0.05),
+            child: const Icon(Icons.more_horiz_rounded,
+                color: Colors.white70, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- 2. CONTROLS AREA ---
+  Widget _buildControlsArea() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: _buildMainToggle(),
+        ),
+        const SizedBox(height: 16),
+        // Active/History Filter
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _selectedIndex == 0 ? "Goal Progress" : "Debt Overview",
+                style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600),
+              ),
+              _buildHistoryFilter(),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  // Neon Pill Toggle
+  Widget _buildMainToggle() {
     return Container(
-      height: 40,
+      height: 56,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(10),
+        color: const Color(0xFF020617), // Very dark slate
+        borderRadius: BorderRadius.circular(100),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.white.withOpacity(0.02),
+              blurRadius: 2,
+              spreadRadius: 0,
+              offset: const Offset(0, 1)),
+        ],
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth / 2;
           return Stack(
             children: [
+              // The Glowing Slider
               AnimatedAlign(
                 alignment: _selectedIndex == 0
                     ? Alignment.centerLeft
                     : Alignment.centerRight,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutBack,
                 child: Container(
                   width: width,
+                  height: double.infinity,
                   decoration: BoxDecoration(
-                      color: _selectedIndex == 0
-                          ? BudgetrColors.accent
-                          : BudgetrColors.error,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1))
-                      ]),
+                    color: _selectedIndex == 0
+                        ? BudgetrColors.accent
+                        : BudgetrColors.error,
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_selectedIndex == 0
+                                ? BudgetrColors.accent
+                                : BudgetrColors.error)
+                            .withOpacity(0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+              // Text Labels
               Row(
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _selectedIndex = 0),
-                      behavior: HitTestBehavior.opaque,
-                      child: Center(
-                        child: Text("GOALS",
-                            style: TextStyle(
-                                color: _selectedIndex == 0
-                                    ? Colors.white
-                                    : Colors.white54,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11)),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _selectedIndex = 1),
-                      behavior: HitTestBehavior.opaque,
-                      child: Center(
-                        child: Text("LOANS",
-                            style: TextStyle(
-                                color: _selectedIndex == 1
-                                    ? Colors.white
-                                    : Colors.white54,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11)),
-                      ),
-                    ),
-                  ),
+                  _buildToggleText("GOALS", 0),
+                  _buildToggleText("LOANS", 1),
                 ],
               ),
             ],
@@ -240,19 +308,82 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
     );
   }
 
-  // --- 3. VIEWS (UPDATED FOR PROGRESS BAR FIX) ---
+  Widget _buildToggleText(String label, int index) {
+    final isSelected = _selectedIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedIndex = index),
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 200),
+          style: TextStyle(
+            fontFamily: 'Roboto',
+            color: isSelected ? Colors.white : Colors.white54,
+            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+            fontSize: 13,
+            letterSpacing: 1.0,
+          ),
+          child: Center(child: Text(label)),
+        ),
+      ),
+    );
+  }
+
+  // Refined History Filter
+  Widget _buildHistoryFilter() {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildFilterChip("Active", !_showHistory),
+          _buildFilterChip("History", _showHistory),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected) {
+    return GestureDetector(
+      onTap: () {
+        if (!isSelected) setState(() => _showHistory = !_showHistory);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color:
+              isSelected ? Colors.white.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white38,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- 3. VIEWS ---
 
   Widget _buildGoalsView() {
     return StreamBuilder<List<GoalModel>>(
-      stream: GetIt.I<GoalLoanService>().getActiveGoals(),
+      stream: GetIt.I<GoalLoanService>().getGoals(showHistory: _showHistory),
       builder: (context, snapshot) {
-        // [FIX] Handle Loading State Explicitly
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
               child: FuturisticLoader(size: 80, label: "LOADING GOALS..."));
         }
 
-        // [FIX] Handle Error State (Stops infinite spinner on DB error)
         if (snapshot.hasError) {
           return const Center(
               child: Text("Unable to load goals",
@@ -262,13 +393,19 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
         final goals = snapshot.data ?? [];
 
         if (goals.isEmpty) {
-          return _buildEmptyState("No active goals", Icons.flag_outlined);
+          return _buildEmptyState(
+            _showHistory ? "No completed goals yet" : "No active goals",
+            _showHistory ? Icons.emoji_events_outlined : Icons.flag_outlined,
+            _showHistory
+                ? "Keep pushing! You'll get there."
+                : "Create a goal to start tracking.",
+          );
         }
 
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
           itemCount: goals.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          separatorBuilder: (_, __) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
             final goal = goals[index];
             return _GoalCard(
@@ -285,15 +422,13 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
 
   Widget _buildLoansView() {
     return StreamBuilder<List<LoanModel>>(
-      stream: GetIt.I<GoalLoanService>().getActiveLoans(),
+      stream: GetIt.I<GoalLoanService>().getLoans(showHistory: _showHistory),
       builder: (context, snapshot) {
-        // [FIX] Handle Loading State Explicitly
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
               child: FuturisticLoader(size: 80, label: "LOADING LOANS..."));
         }
 
-        // [FIX] Handle Error State (Stops infinite spinner on DB error)
         if (snapshot.hasError) {
           return const Center(
               child: Text("Unable to load loans",
@@ -303,9 +438,18 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
         final loans = snapshot.data ?? [];
 
         if (loans.isEmpty) {
-          return _buildEmptyState("Debt free", Icons.check_circle_outline);
+          return _buildEmptyState(
+            _showHistory ? "No closed loans" : "Debt free",
+            _showHistory
+                ? Icons.check_circle_outline
+                : Icons.thumb_up_alt_outlined,
+            _showHistory
+                ? "Your financial victories will appear here."
+                : "Great job! You have no active debts.",
+          );
         }
 
+        // Calculations
         final totalBorrowed =
             loans.fold(0.0, (sum, item) => sum + item.principalAmount);
         final totalOutstanding =
@@ -313,19 +457,24 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
 
         return Column(
           children: [
-            // Loan Summary Card
-            _buildSummaryHeader(
-                item1Label: "Total Loan Amount",
-                item1Value: totalBorrowed,
-                item2Label: "Total Due Payable",
-                item2Value: totalOutstanding,
-                item2Color: BudgetrColors.error),
+            // Loan Summary Card (Only show if Active to stay relevant)
+            if (!_showHistory)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: _buildSummaryHeader(
+                    item1Label: "TOTAL PRINCIPAL",
+                    item1Value: totalBorrowed,
+                    item2Label: "OUTSTANDING",
+                    item2Value: totalOutstanding,
+                    item2Color: BudgetrColors.error),
+              ),
 
             Expanded(
               child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                 itemCount: loans.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, __) => const SizedBox(height: 16),
                 itemBuilder: (context, index) {
                   final loan = loans[index];
                   return _LoanCard(
@@ -350,33 +499,27 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
     required double item2Value,
     Color? item2Color,
   }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 4,
-                offset: const Offset(0, 2))
-          ]),
-      child: Row(
-        children: [
-          Expanded(child: _buildDashboardStat(item1Label, item1Value)),
-          Container(width: 1, height: 24, color: Colors.white10),
-          Expanded(
-              child: _buildDashboardStat(item2Label, item2Value,
-                  valueColor: item2Color)),
-        ],
+    return GlassCard(
+      borderRadius: 16,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Expanded(
+                child:
+                    _buildDashboardStat(item1Label, item1Value, isMain: false)),
+            Container(width: 1, height: 40, color: Colors.white10),
+            Expanded(
+                child: _buildDashboardStat(item2Label, item2Value,
+                    valueColor: item2Color, isMain: true)),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildDashboardStat(String label, double value, {Color? valueColor}) {
-    // 2 Decimal Formatting for Summary
+  Widget _buildDashboardStat(String label, double value,
+      {Color? valueColor, bool isMain = false}) {
     final fmt = NumberFormat('#,##0.00');
     final displayValue = value > 9999999
         ? NumberFormat.compact().format(value)
@@ -387,54 +530,104 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
         Text(label,
             style: const TextStyle(
                 color: Colors.white38,
-                fontSize: 10,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 2),
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.0)),
+        const SizedBox(height: 6),
         Text("₹$displayValue",
             style: TextStyle(
                 color: valueColor ?? Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16)),
+                fontWeight: isMain ? FontWeight.w900 : FontWeight.bold,
+                fontSize: isMain ? 18 : 16)),
       ],
     );
   }
 
-  Widget _buildEmptyState(String text, IconData icon) {
+  Widget _buildEmptyState(String title, IconData icon, String subtitle) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 48, color: Colors.white.withOpacity(0.1)),
-          const SizedBox(height: 16),
-          Text(text,
-              style: const TextStyle(color: Colors.white24, fontSize: 14)),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.02),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.05))),
+            child: Icon(icon, size: 48, color: Colors.white.withOpacity(0.1)),
+          ),
+          const SizedBox(height: 20),
+          Text(title,
+              style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(subtitle,
+              style: const TextStyle(color: Colors.white24, fontSize: 12)),
         ],
       ),
     );
   }
+
+  // --- MODERN FAB IMPLEMENTATION ---
 
   Widget _buildFabMenu() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildFabOption("New Loan", Icons.credit_score, BudgetrColors.error,
-            () => _showAddSheet(1)),
-        const SizedBox(height: 16),
-        _buildFabOption("New Goal", Icons.flag_outlined, BudgetrColors.success,
-            () => _showAddSheet(0)),
-        const SizedBox(height: 16),
-        FloatingActionButton(
-          onPressed: _toggleFab,
-          backgroundColor: Colors.white,
-          mini: true,
-          child: AnimatedIcon(
-            icon: AnimatedIcons.menu_close,
-            progress: _fabAnimController,
-            color: Colors.black,
-          ),
+        // Option 1: Loan (Red)
+        _buildFabOption(
+          "New Loan",
+          Icons.credit_score_rounded,
+          BudgetrColors.error,
+          () => _showAddSheet(1),
         ),
+        const SizedBox(height: 16),
+
+        // Option 2: Goal (Cyan/Accent)
+        _buildFabOption(
+          "New Goal",
+          Icons.flag_circle_rounded,
+          BudgetrColors.accent,
+          () => _showAddSheet(0),
+        ),
+        const SizedBox(height: 24),
+
+        // Main Toggle Button
+        _buildMainFab(),
       ],
+    );
+  }
+
+  Widget _buildMainFab() {
+    return GestureDetector(
+      onTap: _toggleFab,
+      child: RotationTransition(
+        turns: _rotateAnimation
+            .drive(Tween(begin: 0.0, end: 0.125)), // 45 deg rotation
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [BudgetrColors.accent, Colors.blue.shade600],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: BudgetrColors.accent.withOpacity(0.5),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+        ),
+      ),
     );
   }
 
@@ -448,37 +641,43 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                  boxShadow: const [
-                    BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 4,
-                        offset: Offset(0, 2))
-                  ]),
-              child: Text(label,
-                  style: const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11)),
+            // Glass Label
+            GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: EdgeInsets.zero,
+              borderRadius: 12,
+              color: Colors.black.withOpacity(0.6),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              child: Text(
+                label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12),
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 16),
+
+            // Neon Icon Button
             Container(
-              width: 40,
-              height: 40,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  boxShadow: const [
-                    BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 4,
-                        offset: Offset(0, 2))
-                  ]),
-              child: Icon(icon, color: Colors.white, size: 18),
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [color, color.withOpacity(0.7)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: Colors.white, size: 22),
             ),
           ],
         ),
@@ -487,7 +686,7 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
   }
 }
 
-// --- MODERN CARDS ---
+// --- PROFESSIONAL CARDS (Preserved) ---
 
 class _GoalCard extends StatelessWidget {
   final GoalModel goal;
@@ -496,92 +695,136 @@ class _GoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Color(goal.color);
+    final isHistory = goal.isCompleted;
+    // Use Gold for History, otherwise Goal Color
+    final color = isHistory ? const Color(0xFFFFD700) : Color(goal.color);
     final remaining = goal.targetAmount - goal.currentAmount;
     final currencyFmt = NumberFormat('#,##0.00');
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+      child: GlassCard(
+        borderRadius: 20,
+        // Subtle gold tint if history, else standard dark glass
+        color: isHistory
+            ? const Color(0xFFFFD700).withOpacity(0.05)
+            : const Color(0xFF1E293B).withOpacity(0.6),
+        border: Border.all(
+          color: isHistory
+              ? const Color(0xFFFFD700).withOpacity(0.2)
+              : Colors.white.withOpacity(0.05),
         ),
-        child: Row(
+        padding: const EdgeInsets.all(20),
+        child: Column(
           children: [
-            // Left: Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Icon + Name
-                  Row(
-                    children: [
-                      Icon(Icons.flag_circle_sharp, color: color, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          goal.name,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Key Metrics
-                  _buildMetricRow(
-                      "Current", currencyFmt.format(goal.currentAmount), color),
-                  const SizedBox(height: 4),
-                  _buildMetricRow("Target",
-                      currencyFmt.format(goal.targetAmount), Colors.white54),
-                  const SizedBox(height: 4),
-                  _buildMetricRow("Remaining", currencyFmt.format(remaining),
-                      Colors.white38),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Right: Donut Chart
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Row(
               children: [
-                SizedBox(
-                  width: 60,
-                  height: 60,
-                  child: Stack(
+                // Icon Box
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: color.withOpacity(0.2)),
+                  ),
+                  child: Icon(
+                      isHistory
+                          ? Icons.emoji_events_rounded
+                          : Icons.flag_circle_rounded,
+                      color: color,
+                      size: 24),
+                ),
+                const SizedBox(width: 16),
+
+                // Title & Subtitle
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Center(
-                        child: SizedBox(
-                          width: 60,
-                          height: 60,
-                          child: CircularProgressIndicator(
-                            value: goal.progress,
-                            backgroundColor: Colors.white10,
-                            color: color,
-                            strokeWidth: 6,
-                            strokeCap: StrokeCap.round,
-                          ),
-                        ),
+                      Text(
+                        goal.name.toUpperCase(),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                            decoration:
+                                isHistory ? TextDecoration.lineThrough : null,
+                            decorationColor: Colors.white38),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      Center(
-                        child: Text("${(goal.progress * 100).toInt()}%",
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold)),
-                      )
+                      const SizedBox(height: 4),
+                      Text(
+                        isHistory
+                            ? "GOAL ACHIEVED"
+                            : "TARGET: ₹${NumberFormat.compact().format(goal.targetAmount)}",
+                        style: TextStyle(
+                            color: isHistory ? color : Colors.white54,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600),
+                      ),
                     ],
                   ),
                 ),
+
+                // Percentage Badge (if active)
+                if (!isHistory)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20)),
+                    child: Text("${(goal.progress * 100).toInt()}%",
+                        style: TextStyle(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold)),
+                  ),
+
+                // Check Badge (if history)
+                if (isHistory)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: color.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: color.withOpacity(0.3))),
+                    child: Text("COMPLETED",
+                        style: TextStyle(
+                            color: color,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Progress Bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: goal.progress,
+                minHeight: 6,
+                backgroundColor: Colors.white.withOpacity(0.05),
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Footer Metrics
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildMiniMetric("SAVED",
+                    currencyFmt.format(goal.currentAmount), Colors.white),
+                if (!isHistory)
+                  _buildMiniMetric(
+                      "REMAINING",
+                      currencyFmt.format(remaining < 0 ? 0 : remaining),
+                      Colors.white54),
               ],
             )
           ],
@@ -590,17 +833,19 @@ class _GoalCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricRow(String label, String value, Color valueColor) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+  Widget _buildMiniMetric(String label, String value, Color valueColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-            width: 60,
-            child: Text(label,
-                style: const TextStyle(color: Colors.white38, fontSize: 10))),
-        Text("₹ $value",
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white24,
+                fontSize: 9,
+                fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
+        Text("₹$value",
             style: TextStyle(
-                color: valueColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                color: valueColor, fontWeight: FontWeight.bold, fontSize: 13)),
       ],
     );
   }
@@ -613,117 +858,158 @@ class _LoanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isClosed = loan.isClosed;
+    // Use Gold for History (Freedom!), Error Red for Active Debt
+    final color = isClosed ? const Color(0xFFFFD700) : BudgetrColors.error;
     final progress =
         (loan.totalAmount == 0) ? 0.0 : (loan.paidAmount / loan.totalAmount);
     final currencyFmt = NumberFormat('#,##0.00');
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+      child: GlassCard(
+        borderRadius: 20,
+        color: isClosed
+            ? const Color(0xFFFFD700).withOpacity(0.05)
+            : const Color(0xFF1E293B).withOpacity(0.6),
+        border: Border.all(
+          color: isClosed
+              ? const Color(0xFFFFD700).withOpacity(0.2)
+              : Colors.white.withOpacity(0.05),
         ),
-        child: Row(
+        padding: const EdgeInsets.all(20),
+        child: Column(
           children: [
-            // Left: Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Icon + Name
-                  Row(
+            Row(
+              children: [
+                // Icon Box
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: color.withOpacity(0.2)),
+                  ),
+                  child: Icon(
+                      isClosed
+                          ? Icons.lock_open_rounded
+                          : Icons.credit_card_off_rounded,
+                      color: color,
+                      size: 20),
+                ),
+                const SizedBox(width: 16),
+
+                // Title & Subtitle
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.credit_score_sharp,
-                          color: BudgetrColors.error, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          loan.title,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      Text(
+                        loan.title.toUpperCase(),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                            decoration:
+                                isClosed ? TextDecoration.lineThrough : null,
+                            decorationColor: Colors.white38),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isClosed ? "LOAN CLOSED" : loan.provider.toUpperCase(),
+                        style: TextStyle(
+                            color: isClosed ? color : Colors.white54,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                ),
 
-                  // Key Metrics
-                  _buildMetricRow("Remaining",
-                      currencyFmt.format(loan.remaining), BudgetrColors.error),
-                  const SizedBox(height: 4),
-                  _buildMetricRow("Payable",
-                      currencyFmt.format(loan.totalAmount), Colors.white54),
-                  const SizedBox(height: 4),
-                  // EMI Row with date
-                  Row(
-                    children: [
-                      SizedBox(
-                          width: 60,
-                          child: const Text("EMI",
-                              style: TextStyle(
-                                  color: Colors.white38, fontSize: 10))),
-                      Text("₹ ${currencyFmt.format(loan.emiAmount ?? 0)}",
-                          style: const TextStyle(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12)),
-                      if (loan.nextPaymentDate != null)
+                // EMI Badge
+                if (!isClosed)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.white12)),
+                    child: Column(
+                      children: [
+                        const Text("EMI",
+                            style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold)),
                         Text(
-                            "  (${DateFormat('dd/MMM').format(loan.nextPaymentDate!)})",
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 10)),
-                    ],
-                  )
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Right: Donut Chart
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 60,
-                  height: 60,
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: SizedBox(
-                          width: 60,
-                          height: 60,
-                          child: CircularProgressIndicator(
-                            value: progress,
-                            backgroundColor: Colors.white10,
-                            color: BudgetrColors.error,
-                            strokeWidth: 6,
-                            strokeCap: StrokeCap.round,
-                          ),
-                        ),
-                      ),
-                      Center(
-                        child: Text("${(progress * 100).toInt()}%",
+                            "₹${NumberFormat.compact().format(loan.emiAmount ?? 0)}",
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold)),
-                      )
-                    ],
+                      ],
+                    ),
+                  ),
+
+                if (isClosed)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: color.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: color.withOpacity(0.3))),
+                    child: Text("PAID OFF",
+                        style: TextStyle(
+                            color: color,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Progress Bar
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress > 1 ? 1 : progress,
+                      minHeight: 6,
+                      backgroundColor: Colors.white.withOpacity(0.05),
+                      valueColor: AlwaysStoppedAnimation(color),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 6),
-                const Text("PAID",
+                const SizedBox(width: 12),
+                Text("${(progress * 100).toInt()}%",
                     style: TextStyle(
-                        color: Colors.white38,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold)),
+                        color: color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold))
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Footer Metrics
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildMiniMetric("TOTAL PAID",
+                    currencyFmt.format(loan.paidAmount), Colors.white),
+                if (!isClosed)
+                  _buildMiniMetric(
+                      "OUTSTANDING",
+                      currencyFmt
+                          .format(loan.remaining < 0 ? 0 : loan.remaining),
+                      BudgetrColors.error),
               ],
             )
           ],
@@ -732,17 +1018,19 @@ class _LoanCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricRow(String label, String value, Color valueColor) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+  Widget _buildMiniMetric(String label, String value, Color valueColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-            width: 60,
-            child: Text(label,
-                style: const TextStyle(color: Colors.white38, fontSize: 10))),
-        Text("₹ $value",
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white24,
+                fontSize: 9,
+                fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
+        Text("₹$value",
             style: TextStyle(
-                color: valueColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                color: valueColor, fontWeight: FontWeight.bold, fontSize: 13)),
       ],
     );
   }
