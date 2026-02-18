@@ -8,7 +8,7 @@ class GoalLoanService {
   final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
 
-  // ... (Keep existing Mappers _mapGoal, _mapLoan, _mapLog) ...
+  // --- MAPPERS ---
   GoalModel _mapGoal(db.Goal row) {
     return GoalModel(
       id: row.id,
@@ -60,21 +60,28 @@ class GoalLoanService {
 
   // --- GOALS ---
 
-  // [NEW] Watch a single goal for real-time updates
-  Stream<GoalModel> watchGoal(String id) {
-    return (_db.select(_db.goals)..where((t) => t.id.equals(id)))
-        .watchSingle()
-        .map(_mapGoal);
+  // [EXISTING] Preserved for backward compatibility
+  Stream<List<GoalModel>> getActiveGoals() {
+    return getGoals(showHistory: false);
   }
 
-  Stream<List<GoalModel>> getActiveGoals() {
+  // [NEW] Flexible Stream for Active OR History
+  Stream<List<GoalModel>> getGoals({required bool showHistory}) {
     return (_db.select(_db.goals)
-          ..where((t) => t.isCompleted.equals(false))
+          ..where((t) => t.isCompleted.equals(showHistory))
           ..orderBy([
+            // For History, show most recently updated/completed first?
+            // For now keeping priority for consistency
             (t) => OrderingTerm(expression: t.priority, mode: OrderingMode.asc)
           ]))
         .watch()
         .map((rows) => rows.map(_mapGoal).toList());
+  }
+
+  Stream<GoalModel> watchGoal(String id) {
+    return (_db.select(_db.goals)..where((t) => t.id.equals(id)))
+        .watchSingle()
+        .map(_mapGoal);
   }
 
   Future<void> createGoal(GoalModel goal) async {
@@ -113,7 +120,6 @@ class GoalLoanService {
     });
   }
 
-  // [NEW] Update Goal Metadata
   Future<void> updateGoal(GoalModel goal) async {
     await (_db.update(_db.goals)..where((t) => t.id.equals(goal.id)))
         .write(db.GoalsCompanion(
@@ -126,7 +132,6 @@ class GoalLoanService {
       investmentType: Value(goal.investmentType),
       identificationNumber: Value(goal.identificationNumber),
       expectedReturn: Value(goal.expectedReturn),
-      // currentAmount is NOT updated here to avoid breaking ledger sync
     ));
   }
 
@@ -215,10 +220,17 @@ class GoalLoanService {
     });
   }
 
-  // ... (Loans and Log methods remain same) ...
+  // --- LOANS ---
+
+  // [EXISTING] Preserved for backward compatibility
   Stream<List<LoanModel>> getActiveLoans() {
+    return getLoans(showHistory: false);
+  }
+
+  // [NEW] Flexible Stream for Active OR History
+  Stream<List<LoanModel>> getLoans({required bool showHistory}) {
     return (_db.select(_db.loans)
-          ..where((t) => t.isClosed.equals(false))
+          ..where((t) => t.isClosed.equals(showHistory))
           ..orderBy([
             (t) => OrderingTerm(expression: t.dueDate, mode: OrderingMode.asc)
           ]))
@@ -226,7 +238,6 @@ class GoalLoanService {
         .map((rows) => rows.map(_mapLoan).toList());
   }
 
-// [NEW] Watch single loan
   Stream<LoanModel> watchLoan(String id) {
     return (_db.select(_db.loans)..where((t) => t.id.equals(id)))
         .watchSingle()
@@ -251,14 +262,11 @@ class GoalLoanService {
         ));
   }
 
-  // [NEW] Update Loan Metadata
   Future<void> updateLoan(LoanModel loan) async {
     await (_db.update(_db.loans)..where((t) => t.id.equals(loan.id)))
         .write(db.LoansCompanion(
       title: Value(loan.title),
       provider: Value(loan.provider),
-      // We allow updating financials but use caution.
-      // If principal changes, total amount should be recalculated by UI and passed here.
       principalAmount: Value(loan.principalAmount),
       totalAmount: Value(loan.totalAmount),
       interestRate: Value(loan.interestRate),

@@ -197,10 +197,10 @@ class _BackupScreenState extends State<BackupScreen> {
                             "DEVICE SYNC", Icons.devices_rounded),
                         const SizedBox(height: 16),
                         _buildSyncSection(),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 20),
                         const Center(
                           child: Text(
-                            "BudGetR Data Engine v1.0",
+                            "BudGetR Data Engine by Amarjith",
                             style:
                                 TextStyle(color: Colors.white24, fontSize: 12),
                           ),

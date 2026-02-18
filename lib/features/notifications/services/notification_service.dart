@@ -16,7 +16,6 @@ import '../../daily_expense/services/expense_service.dart';
 import '../../backup_restore/services/backup_service.dart';
 import '../../investment/services/investment_service.dart';
 import '../../goals_loans/services/goal_loan_service.dart';
-// [NEW] System Notification Import
 import 'system_notification_service.dart';
 
 class NotificationService {
@@ -144,20 +143,22 @@ class NotificationService {
       await checkDailyExpenseHealth();
       await checkBackupStatus();
       await checkInvestmentHealth();
-      await checkGoalLoanStatus();
+      await checkGoalLoanStatus(); // [UPDATED]
 
-      // [NEW] Future Scheduling (For Force Closed State)
+      // Future Scheduling (For Force Closed State)
       await scheduleFutureNotifications();
     } catch (e) {
       debugPrint("Notification Check Error: $e");
     }
   }
 
-  // --- [NEW] FORCE CLOSE HANDLER: Schedule Future Events ---
+  // --- FUTURE EVENTS SCHEDULER ---
   Future<void> scheduleFutureNotifications() async {
     try {
       // 1. Schedule Loan Reminders
-      final loans = await GetIt.I<GoalLoanService>().getActiveLoans().first;
+      // Ensure we only look at active loans for future reminders
+      final loans =
+          await GetIt.I<GoalLoanService>().getLoans(showHistory: false).first;
       for (var loan in loans) {
         if (loan.remaining <= 0 || loan.dueDate == null) continue;
 
@@ -179,7 +180,8 @@ class NotificationService {
       }
 
       // 2. Schedule Goal Deadlines
-      final goals = await GetIt.I<GoalLoanService>().getActiveGoals().first;
+      final goals =
+          await GetIt.I<GoalLoanService>().getGoals(showHistory: false).first;
       for (var goal in goals) {
         if (!goal.isCompleted && goal.deadline != null) {
           final dead = goal.deadline!;
@@ -197,8 +199,6 @@ class NotificationService {
           }
         }
       }
-
-      // 3. Schedule Credit Card Bill Dates (Optional - Logic similar to above)
     } catch (e) {
       debugPrint("Scheduling Error: $e");
     }
@@ -540,49 +540,53 @@ class NotificationService {
     }
   }
 
-  // 6. Goals & Loans Checks
+  // 6. Goals & Loans Checks (UPDATED LOGIC)
   Future<void> checkGoalLoanStatus() async {
     try {
       final glService = GetIt.I<GoalLoanService>();
       final now = DateTime.now();
 
-      final goals = await glService.getActiveGoals().first;
-      for (var goal in goals) {
-        if (!goal.isCompleted && goal.currentAmount >= goal.targetAmount) {
-          final key = 'notif_goal_achieved_${goal.id}';
-          if (await _shouldNotify(key)) {
-            await _createNotification(
-              type: 'goal_achieved',
-              title: 'Goal Achieved! 🎉',
-              message:
-                  'Congratulations! You have reached your goal: ${goal.name}.',
-              payload: goal.id,
-            );
-            await _markNotified(key);
-          }
-        }
-
-        if (!goal.isCompleted && goal.currentAmount < goal.targetAmount) {
-          if (goal.deadline != null) {
-            final daysLeft = goal.deadline!.difference(now).inDays;
-            if (daysLeft == 7 || daysLeft == 1) {
-              final key = 'notif_goal_deadline_${goal.id}_$daysLeft';
-              if (await _shouldNotify(key)) {
-                await _createNotification(
-                  type: 'goal_deadline',
-                  title: 'Goal Deadline Approaching',
-                  message: '${goal.name} is due in $daysLeft days.',
-                  payload: goal.id,
-                );
-                await _markNotified(key);
-              }
+      // --- A. ACTIVE GOALS (Deadlines) ---
+      final activeGoals = await glService.getGoals(showHistory: false).first;
+      for (var goal in activeGoals) {
+        if (!goal.isCompleted && goal.deadline != null) {
+          final daysLeft = goal.deadline!.difference(now).inDays;
+          if (daysLeft == 7 || daysLeft == 1) {
+            final key = 'notif_goal_deadline_${goal.id}_$daysLeft';
+            if (await _shouldNotify(key)) {
+              await _createNotification(
+                type: 'goal_deadline',
+                title: 'Goal Deadline Approaching',
+                message: '${goal.name} is due in $daysLeft days.',
+                payload: goal.id,
+              );
+              await _markNotified(key);
             }
           }
         }
       }
 
-      final loans = await glService.getActiveLoans().first;
-      for (var loan in loans) {
+      // --- B. COMPLETED GOALS (Achievements) ---
+      // We check the history list to find completed items
+      final completedGoals = await glService.getGoals(showHistory: true).first;
+      for (var goal in completedGoals) {
+        final key = 'notif_goal_achieved_${goal.id}';
+        // Only notify if we haven't celebrated this specific goal yet
+        if (await _shouldNotify(key)) {
+          await _createNotification(
+            type: 'goal_achieved',
+            title: 'Goal Achieved! 🎉',
+            message:
+                'Congratulations! You have reached your goal: ${goal.name}.',
+            payload: goal.id,
+          );
+          await _markNotified(key);
+        }
+      }
+
+      // --- C. ACTIVE LOANS (Due Dates) ---
+      final activeLoans = await glService.getLoans(showHistory: false).first;
+      for (var loan in activeLoans) {
         if (loan.remaining <= 0) continue;
 
         if (loan.dueDate != null) {
@@ -611,6 +615,22 @@ class NotificationService {
               await _markNotified(key);
             }
           }
+        }
+      }
+
+      // --- D. CLOSED LOANS (Freedom!) ---
+      final closedLoans = await glService.getLoans(showHistory: true).first;
+      for (var loan in closedLoans) {
+        final key = 'notif_loan_closed_${loan.id}';
+        if (await _shouldNotify(key)) {
+          await _createNotification(
+            type: 'loan_closed',
+            title: 'Loan Paid Off! 🔓',
+            message:
+                'Fantastic! You have successfully closed your loan: ${loan.title}.',
+            payload: loan.id,
+          );
+          await _markNotified(key);
         }
       }
     } catch (e) {
