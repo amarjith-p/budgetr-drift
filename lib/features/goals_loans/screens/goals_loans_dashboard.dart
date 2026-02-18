@@ -182,14 +182,14 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("PORTFOLIO",
+                Text("SAVE & BORROW",
                     style: TextStyle(
                         color: Colors.white38,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 2.0)),
                 SizedBox(height: 2),
-                Text("Goals & Loans",
+                Text("Goals & Loans Tracker",
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,

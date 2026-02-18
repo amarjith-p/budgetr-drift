@@ -5,6 +5,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:flutter/services.dart';
 import '../../../core/models/percentage_config_model.dart';
 import '../services/settings_service.dart';
+import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -53,7 +54,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _categories = config.categories;
 
         // --- CREATE DEEP COPY ---
-        // Creates fresh instances to ensure _initialCategories is not affected by UI edits
         _initialCategories = config.categories
             .map(
               (c) => CategoryConfig(
@@ -72,31 +72,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Checks if Name, Percentage, or Order has changed.
-  /// Ignores 'Note' and tiny floating-point differences.
   bool _hasSignificantChanges() {
-    // 1. Check Length (Order/Add/Remove)
     if (_categories.length != _initialCategories.length) {
       return true;
     }
 
-    // 2. Check each item
     for (int i = 0; i < _categories.length; i++) {
       final current = _categories[i];
       final initial = _initialCategories[i];
 
-      // Check Name (Trimmed to avoid accidental space changes)
       if (current.name.trim() != initial.name.trim()) {
         return true;
       }
 
-      // Check Percentage with Epsilon (tolerance for 15.0 vs 15.00001)
-      // This prevents false flags from floating point math
       if ((current.percentage - initial.percentage).abs() > 0.01) {
         return true;
       }
-
-      // We explicitly IGNORE changes to 'note' here
     }
 
     return false;
@@ -155,18 +146,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _saveSettings() async {
     if (_formKey.currentState!.validate()) {
-      // --- CRITICAL CHANGE ---
-      // We check for changes BEFORE calling .save().
-      // relying on 'onChanged' to have kept _categories up to date.
-      // calling .save() might re-parse "15" as 15.0 (losing precision)
-      // which would trigger a false warning if we checked after.
       bool isSignificantChange = _hasSignificantChanges();
 
-      // Now we save to ensure any final formatting (like trimming) is applied
       _formKey.currentState!.save();
       _calculateTotal();
 
-      // 1. Validate Total is 100%
       if ((_currentTotal - 100.0).abs() > 0.1) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -183,14 +167,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      // 2. Logic Branch based on Significant Changes
       if (!isSignificantChange) {
-        // If only notes changed (or nothing changed), save immediately without warning
         await _performSave();
         return;
       }
 
-      // 3. Significant changes detected -> Check for existing budget
       bool hasBudget = false;
       try {
         hasBudget = await _settingsService.hasCurrentMonthBudget();
@@ -203,13 +184,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (shouldProceed == true) {
           await _performSave();
         } else {
-          // User clicked "Cancel" -> Abort Edit Mode & Revert Changes
           if (mounted) {
             setState(() {
               _isEditing = false;
-
-              // Reset _categories to the clean _initialCategories state
-              // We map a new list to ensure deep copy
               _categories = _initialCategories
                   .map(
                     (c) => CategoryConfig(
@@ -225,7 +202,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           }
         }
       } else {
-        // No budget exists, safe to save
         await _performSave();
       }
     }
@@ -351,8 +327,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         PercentageConfig(categories: _categories),
       );
 
-      // Update _initialCategories to match the new state
-      // This prevents the warning from popping up again if they save twice
       if (mounted) {
         setState(() {
           _initialCategories = _categories
@@ -393,98 +367,85 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       backgroundColor: _bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'Configurations',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          if (!_isEditing)
-            IconButton(
-              icon: const Icon(Icons.lock_outline),
-              onPressed: _authenticate,
-              tooltip: 'Unlock to Edit',
-            )
-          else ...[
-            IconButton(
-              icon: const Icon(Icons.add_circle_outline),
-              onPressed: _addCategory,
-              tooltip: 'Add Bucket',
-            ),
-            IconButton(
-              icon: const Icon(Icons.lock_open, color: Colors.orangeAccent),
-              onPressed: () => setState(() => _isEditing = false),
-              tooltip: 'Lock Editing',
-            ),
-          ],
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: FuturisticLoader(size: 80, label: "LOADING..."))
-          : Column(
-              children: [
-                if (!_isEditing)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.1),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.info_outline,
-                            color: Colors.white54,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Text(
-                              "View Only Mode. Tap the lock to edit allocations.",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
+      // [FIX] Removed standard AppBar
+      // Switched to SafeArea > Column layout for Modern Header
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 1. MODERN HEADER
+            _buildModernHeader(),
+
+            // 2. MAIN CONTENT
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: FuturisticLoader(size: 80, label: "LOADING..."))
+                  : Column(
+                      children: [
+                        if (!_isEditing)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.info_outline,
+                                    color: Colors.white54,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Expanded(
+                                    child: Text(
+                                      "View Only Mode. Tap the lock to edit allocations.",
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        Expanded(
+                          child: Form(
+                            key: _formKey,
+                            child: ReorderableListView.builder(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                              itemCount: _categories.length,
+                              buildDefaultDragHandles: _isEditing,
+                              onReorder: (oldIndex, newIndex) {
+                                if (!_isEditing) return;
+                                setState(() {
+                                  if (oldIndex < newIndex) newIndex -= 1;
+                                  final item = _categories.removeAt(oldIndex);
+                                  _categories.insert(newIndex, item);
+                                });
+                              },
+                              itemBuilder: (context, index) {
+                                return _buildProfessionalRow(index);
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                Expanded(
-                  child: Form(
-                    key: _formKey,
-                    child: ReorderableListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                      itemCount: _categories.length,
-                      buildDefaultDragHandles: _isEditing,
-                      onReorder: (oldIndex, newIndex) {
-                        if (!_isEditing) return;
-                        setState(() {
-                          if (oldIndex < newIndex) newIndex -= 1;
-                          final item = _categories.removeAt(oldIndex);
-                          _categories.insert(newIndex, item);
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        return _buildProfessionalRow(index);
-                      },
-                    ),
-                  ),
-                ),
-              ],
             ),
+          ],
+        ),
+      ),
       bottomNavigationBar: _isEditing
           ? Container(
               padding: const EdgeInsets.all(20),
@@ -558,6 +519,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             )
           : null,
+    );
+  }
+
+  // --- NEW: Modern Header Implementation ---
+  Widget _buildModernHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Back Button
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Title Section
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "SETTINGS",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "Budget Configurations",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Action Buttons
+          if (!_isEditing)
+            GestureDetector(
+              onTap: _authenticate,
+              child: GlassCard(
+                borderRadius: 12,
+                padding: const EdgeInsets.all(10),
+                margin: EdgeInsets.zero,
+                color: Colors.white.withOpacity(0.05),
+                child: const Icon(Icons.lock_outline_rounded,
+                    color: Colors.white70, size: 20),
+              ),
+            )
+          else ...[
+            GestureDetector(
+              onTap: _addCategory,
+              child: GlassCard(
+                borderRadius: 12,
+                padding: const EdgeInsets.all(10),
+                margin: EdgeInsets.zero,
+                color: Colors.white.withOpacity(0.05),
+                child: const Icon(Icons.add_rounded,
+                    color: Colors.white70, size: 20),
+              ),
+            ),
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: () => setState(() => _isEditing = false),
+              child: GlassCard(
+                borderRadius: 12,
+                padding: const EdgeInsets.all(10),
+                margin: EdgeInsets.zero,
+                color: Colors.white.withOpacity(0.05),
+                child: const Icon(Icons.lock_open_rounded,
+                    color: Colors.orangeAccent, size: 20),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -678,9 +732,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               onChanged: (val) {
                                 if (val.isNotEmpty &&
                                     double.tryParse(val) != null) {
-                                  _categories[index].percentage = double.parse(
-                                    val,
-                                  );
+                                  _categories[index].percentage =
+                                      double.parse(val);
                                   _calculateTotal();
                                 }
                               },
@@ -721,7 +774,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         hintStyle: TextStyle(
                           color: Colors.white.withOpacity(0.2),
                         ),
-                        icon: Icon(
+                        icon: const Icon(
                           Icons.notes,
                           color: Colors.white24,
                           size: 18,

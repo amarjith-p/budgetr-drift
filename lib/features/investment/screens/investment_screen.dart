@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
+import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
 import '../models/investment_model.dart';
 import '../services/investment_service.dart';
 import '../widgets/add_investment_sheet.dart';
@@ -561,202 +562,179 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xff0D1B2A),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          "Investment Tracker",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          Stack(
-            alignment: Alignment.topRight,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.tune_rounded),
-                onPressed: () async {
-                  final buckets = await _service.getUniqueBuckets();
-                  _showFilterSheet(buckets);
-                },
-              ),
-              if (hasActiveFilter)
-                Positioned(
-                  right: 12,
-                  top: 12,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF9F1C),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _service.refreshAllPrices();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Updating Prices...")),
-              );
-            },
-          ),
-        ],
-      ),
-      body: GestureDetector(
-        onTap: () {
-          FocusScope.of(context).unfocus();
-          _searchFocusNode.unfocus();
-        },
+      // [FIX] Removed AppBar
+      body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: Colors.white.withOpacity(0.5),
-                  ),
-                  // Clear Button logic
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white54),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = "");
-                          },
-                        )
-                      : null,
-                  hintText: "Search portfolio...",
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                ),
-                onChanged: (v) => setState(() => _searchQuery = v),
-              ),
-            ),
+            // 1. MODERN HEADER (Replaces AppBar)
+            _buildModernHeader(hasActiveFilter),
+
+            // 2. MAIN CONTENT
             Expanded(
-              child: StreamBuilder<List<InvestmentRecord>>(
-                stream: _service.getInvestments(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                        child: FuturisticLoader(
-                            size: 80, label: "LOADING INVESTMENTS..."));
-                  }
-
-                  var records = snapshot.data ?? [];
-
-                  // --- 1. FILTER LOGIC ---
-                  if (_searchQuery.isNotEmpty) {
-                    records = records
-                        .where(
-                          (r) => r.name.toLowerCase().contains(
-                                _searchQuery.toLowerCase(),
-                              ),
-                        )
-                        .toList();
-                  }
-                  if (_filterTypes.isNotEmpty) {
-                    records = records
-                        .where((r) => _filterTypes.contains(r.type))
-                        .toList();
-                  }
-                  if (_filterBuckets.isNotEmpty) {
-                    records = records
-                        .where((r) => _filterBuckets.contains(r.bucket))
-                        .toList();
-                  }
-
-                  // --- 2. CALCULATE TOTALS ---
-                  final totalInvested = records.fold(
-                    0.0,
-                    (sum, item) => sum + item.totalInvested,
-                  );
-                  final totalCurrent = records.fold(
-                    0.0,
-                    (sum, item) => sum + item.currentValue,
-                  );
-                  final totalDayGain = records.fold(
-                    0.0,
-                    (sum, item) => sum + item.dayReturn,
-                  );
-
-                  // --- 3. SORT ---
-                  records.sort((a, b) {
-                    switch (_currentSort) {
-                      case SortOption.valueHighLow:
-                        return b.currentValue.compareTo(a.currentValue);
-                      case SortOption.valueLowHigh:
-                        return a.currentValue.compareTo(b.currentValue);
-                      case SortOption.nameAZ:
-                        return a.name.compareTo(b.name);
-                      case SortOption.returnHighLow:
-                        return b.returnPercentage.compareTo(a.returnPercentage);
-                      case SortOption.returnLowHigh:
-                        return a.returnPercentage.compareTo(b.returnPercentage);
-                    }
-                  });
-
-                  return Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: InvestmentSummaryCard(
-                          invested: totalInvested,
-                          current: totalCurrent,
-                          dayGain: totalDayGain,
-                          currencyFormat: _currencyFormat,
-                          records: records,
-                          onRecordData: _handleRecordSnapshot,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: records.isEmpty
-                            ? Center(
-                                child: Text(
-                                  "No Assets Found",
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.5),
-                                  ),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  100,
-                                ),
-                                itemCount: records.length,
-                                itemBuilder: (context, index) {
-                                  final item = records[index];
-                                  return InvestmentListItem(
-                                    key: ValueKey(item.id),
-                                    item: item,
-                                    currencyFormat: _currencyFormat,
-                                    preciseFormat: _preciseFormat,
-                                    onOptions: () => _showOptionsSheet(item),
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
-                  );
+              child: GestureDetector(
+                onTap: () {
+                  FocusScope.of(context).unfocus();
+                  _searchFocusNode.unfocus();
                 },
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: TextField(
+                        controller: _searchController,
+                        focusNode: _searchFocusNode,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                          // Clear Button logic
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear,
+                                      color: Colors.white54),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchQuery = "");
+                                  },
+                                )
+                              : null,
+                          hintText: "Search portfolio...",
+                          hintStyle:
+                              TextStyle(color: Colors.white.withOpacity(0.3)),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.05),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 20),
+                        ),
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                      ),
+                    ),
+                    Expanded(
+                      child: StreamBuilder<List<InvestmentRecord>>(
+                        stream: _service.getInvestments(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                                child: FuturisticLoader(
+                                    size: 80, label: "LOADING INVESTMENTS..."));
+                          }
+
+                          var records = snapshot.data ?? [];
+
+                          // --- 1. FILTER LOGIC ---
+                          if (_searchQuery.isNotEmpty) {
+                            records = records
+                                .where(
+                                  (r) => r.name.toLowerCase().contains(
+                                        _searchQuery.toLowerCase(),
+                                      ),
+                                )
+                                .toList();
+                          }
+                          if (_filterTypes.isNotEmpty) {
+                            records = records
+                                .where((r) => _filterTypes.contains(r.type))
+                                .toList();
+                          }
+                          if (_filterBuckets.isNotEmpty) {
+                            records = records
+                                .where((r) => _filterBuckets.contains(r.bucket))
+                                .toList();
+                          }
+
+                          // --- 2. CALCULATE TOTALS ---
+                          final totalInvested = records.fold(
+                            0.0,
+                            (sum, item) => sum + item.totalInvested,
+                          );
+                          final totalCurrent = records.fold(
+                            0.0,
+                            (sum, item) => sum + item.currentValue,
+                          );
+                          final totalDayGain = records.fold(
+                            0.0,
+                            (sum, item) => sum + item.dayReturn,
+                          );
+
+                          // --- 3. SORT ---
+                          records.sort((a, b) {
+                            switch (_currentSort) {
+                              case SortOption.valueHighLow:
+                                return b.currentValue.compareTo(a.currentValue);
+                              case SortOption.valueLowHigh:
+                                return a.currentValue.compareTo(b.currentValue);
+                              case SortOption.nameAZ:
+                                return a.name.compareTo(b.name);
+                              case SortOption.returnHighLow:
+                                return b.returnPercentage
+                                    .compareTo(a.returnPercentage);
+                              case SortOption.returnLowHigh:
+                                return a.returnPercentage
+                                    .compareTo(b.returnPercentage);
+                            }
+                          });
+
+                          return Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0),
+                                child: InvestmentSummaryCard(
+                                  invested: totalInvested,
+                                  current: totalCurrent,
+                                  dayGain: totalDayGain,
+                                  currencyFormat: _currencyFormat,
+                                  records: records,
+                                  onRecordData: _handleRecordSnapshot,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Expanded(
+                                child: records.isEmpty
+                                    ? Center(
+                                        child: Text(
+                                          "No Assets Found",
+                                          style: TextStyle(
+                                            color:
+                                                Colors.white.withOpacity(0.5),
+                                          ),
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          16,
+                                          0,
+                                          16,
+                                          100,
+                                        ),
+                                        itemCount: records.length,
+                                        itemBuilder: (context, index) {
+                                          final item = records[index];
+                                          return InvestmentListItem(
+                                            key: ValueKey(item.id),
+                                            item: item,
+                                            currencyFormat: _currencyFormat,
+                                            preciseFormat: _preciseFormat,
+                                            onOptions: () =>
+                                                _showOptionsSheet(item),
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -766,6 +744,124 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
         onPressed: () => _showAddSheet(),
         backgroundColor: const Color(0xFF3A86FF),
         child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+
+  // --- NEW: Modern Header Implementation ---
+  Widget _buildModernHeader(bool hasActiveFilter) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Back Button
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Title Section
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "PORTFOLIO",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "Investments Tracker",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Refresh Button (Original Logic)
+          GestureDetector(
+            onTap: () {
+              _service.refreshAllPrices();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Updating Prices...")),
+              );
+            },
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.refresh_rounded,
+                  color: Colors.white70, size: 20),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Filter Button (Original Logic + Badge)
+          GestureDetector(
+            onTap: () async {
+              final buckets = await _service.getUniqueBuckets();
+              _showFilterSheet(buckets);
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                GlassCard(
+                  borderRadius: 12,
+                  padding: const EdgeInsets.all(10),
+                  margin: EdgeInsets.zero,
+                  color: Colors.white.withOpacity(0.05),
+                  child: const Icon(
+                    Icons.tune_rounded,
+                    color: Colors.white70,
+                    size: 20,
+                  ),
+                ),
+                if (hasActiveFilter)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF9F1C),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

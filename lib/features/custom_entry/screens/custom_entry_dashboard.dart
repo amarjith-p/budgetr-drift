@@ -57,8 +57,13 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(),
+                // 1. MODERN HEADER (Replaces _buildHeader)
+                _buildModernHeader(),
+
+                // 2. SEARCH BAR
                 _buildSearchBar(),
+
+                // 3. GRID CONTENT
                 Expanded(
                   child: StreamBuilder<List<CustomTemplate>>(
                     stream: _service.getCustomTemplates(),
@@ -114,35 +119,61 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard> {
     );
   }
 
-  Widget _buildHeader() {
+  // --- NEW: Modern Header Implementation ---
+  Widget _buildModernHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
         children: [
-          Text(
-            "CUSTOM SHEETS",
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
+          // Back Button
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            "Dashboard",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
+
+          const SizedBox(width: 16),
+
+          // Title Section
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "DASHBOARD",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "BudGetR Sheets",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+
+  // --- EXISTING WIDGETS ---
 
   Widget _buildSearchBar() {
     return Padding(
@@ -299,33 +330,6 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard> {
       );
       return;
     }
-
-    // final confirm = await showDialog<bool>(
-    //   context: context,
-    //   builder: (ctx) => AlertDialog(
-    //     backgroundColor: const Color(0xFF1B263B),
-    //     title: const Text("Delete Tracker?",
-    //         style: TextStyle(color: Colors.white)),
-    //     content: Text(
-    //       "Are you sure you want to delete '${template.name}'? All recorded data will be lost.",
-    //       style: const TextStyle(color: Colors.white70),
-    //     ),
-    //     actions: [
-    //       TextButton(
-    //         onPressed: () => Navigator.pop(ctx, false),
-    //         child: const Text("Cancel"),
-    //       ),
-    //       TextButton(
-    //         onPressed: () => Navigator.pop(ctx, true),
-    //         child: const Text("Delete", style: TextStyle(color: Colors.red)),
-    //       ),
-    //     ],
-    //   ),
-    // );
-
-    // if (confirm == true) {
-    //   await _service.deleteCustomTemplate(template.id);
-    // }
 
     showStatusSheet(
       context: context,

@@ -18,6 +18,7 @@ import '../widgets/settlement_table.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
 import '../../../core/design/budgetr_components.dart';
+import '../../../core/widgets/glass_card.dart';
 
 class SettlementScreen extends StatefulWidget {
   const SettlementScreen({super.key});
@@ -115,153 +116,154 @@ class _SettlementScreenState extends State<SettlementScreen> {
     });
   }
 
-  // void _showSettlementInputSheet() {
-  //   showModalBottomSheet(
-  //     context: context,
-  //     isScrollControlled: true,
-  //     useSafeArea: true,
-  //     backgroundColor: Colors.transparent,
-  //     builder: (context) => const SettlementInputSheet(),
-  //   ).then((_) {
-  //     if (_selectedYear != null && _selectedMonth != null) {
-  //       _fetchSettlementData();
-  //     }
-  //   });
-  // }
-
   @override
   Widget build(BuildContext context) {
     return BudgetrScaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text('Settlement Analysis', style: BudgetrStyles.h2),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      // We use a Stack in the body to manually position the FAB at the center bottom
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
+      // [FIX] Removed standard AppBar
+      // Switched to SafeArea > Stack > Column layout for Modern Header
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
               children: [
-                // Date Filter wrapped in Design Token styling
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: BudgetrColors.cardSurface,
-                    borderRadius: BudgetrStyles.radiusM,
-                    border: BudgetrStyles.glassBorder,
-                  ),
-                  child: DateFilterRow(
-                    selectedYear: _selectedYear,
-                    selectedMonth: _selectedMonth,
-                    availableYears: _availableYears,
-                    availableMonths: _availableMonthsForYear,
-                    onYearSelected: _onYearSelected,
-                    onMonthSelected: (val) =>
-                        setState(() => _selectedMonth = val),
-                    showRefresh: false,
-                  ),
-                ),
+                // 1. MODERN HEADER
+                _buildModernHeader(),
 
-                const SizedBox(height: 24),
-
-                // Fetch Button (Explicitly styled to fix fading)
-                Center(
-                  child: GestureDetector(
-                    onTap: _fetchSettlementData,
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 0.7,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        gradient: BudgetrColors.primaryGradient,
-                        borderRadius: BudgetrStyles.radiusM,
-                        boxShadow: BudgetrStyles.glowBoxShadow(
-                          BudgetrColors.accent,
-                        ),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(
-                            Icons.analytics_outlined,
-                            color: Colors.white,
-                            size: 20,
+                // 2. MAIN CONTENT (Wrapped in Expanded to fix layout error)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        // Date Filter wrapped in Design Token styling
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: BudgetrColors.cardSurface,
+                            borderRadius: BudgetrStyles.radiusM,
+                            border: BudgetrStyles.glassBorder,
                           ),
-                          SizedBox(width: 10),
-                          Text(
-                            'FETCH DATA',
-                            style: TextStyle(
-                              color: Colors.white, // Solid White
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
+                          child: DateFilterRow(
+                            selectedYear: _selectedYear,
+                            selectedMonth: _selectedMonth,
+                            availableYears: _availableYears,
+                            availableMonths: _availableMonthsForYear,
+                            onYearSelected: _onYearSelected,
+                            onMonthSelected: (val) =>
+                                setState(() => _selectedMonth = val),
+                            showRefresh: false,
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Fetch Button (Explicitly styled to fix fading)
+                        Center(
+                          child: GestureDetector(
+                            onTap: _fetchSettlementData,
+                            child: Container(
+                              width: MediaQuery.of(context).size.width * 0.7,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              decoration: BoxDecoration(
+                                gradient: BudgetrColors.primaryGradient,
+                                borderRadius: BudgetrStyles.radiusM,
+                                boxShadow: BudgetrStyles.glowBoxShadow(
+                                  BudgetrColors.accent,
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.2),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(
+                                    Icons.analytics_outlined,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'FETCH DATA',
+                                    style: TextStyle(
+                                      color: Colors.white, // Solid White
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Content Area
+                        Expanded(child: _buildContentArea()),
+                      ],
                     ),
                   ),
                 ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                const SizedBox(height: 24),
+  // --- NEW: Modern Header Implementation ---
+  Widget _buildModernHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Back Button
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
+            ),
+          ),
 
-                // Content Area
-                Expanded(child: _buildContentArea()),
+          const SizedBox(width: 16),
+
+          // Title Section
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "MONTHLY",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "Settlement Analysis",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
               ],
             ),
           ),
-
-          // Custom "FAB" hidden safely as per new workflow requirement
-          /*
-          Positioned(
-            bottom: 20,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: _showSettlementInputSheet,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: BudgetrColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: BudgetrStyles.glowBoxShadow(
-                      BudgetrColors.accent,
-                    ),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.edit_note_rounded, color: Colors.white),
-                      SizedBox(width: 12),
-                      Text(
-                        "Update Settlement",
-                        style: TextStyle(
-                          color: Colors.white, // Solid White
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          */
         ],
       ),
     );

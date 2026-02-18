@@ -18,6 +18,7 @@ import '../models/expense_models.dart';
 import '../services/expense_service.dart';
 import '../widgets/transaction_item.dart';
 import '../widgets/expense_filter_sheet.dart';
+import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
 
 class AccountDetailScreen extends StatefulWidget {
   final ExpenseAccountModel account;
@@ -175,157 +176,244 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
             backgroundColor: _accentColor,
             child: const Icon(Icons.add, color: Colors.white),
           ),
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            titleSpacing: 0,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // [FIX] Removed standard AppBar
+          // Switched to SafeArea > Column layout for Modern Header
+          body: SafeArea(
+            child: Column(
               children: [
-                Text(
-                  widget.account.name,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                Text(
-                  widget.account.bankName,
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                // 1. MODERN HEADER
+                _buildModernHeader(isPoolAccount),
+
+                // 2. MAIN CONTENT
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Column(
+                        children: [
+                          if (_hasActiveFilters) _buildActiveFiltersList(),
+                          Expanded(
+                            child: StreamBuilder<List<ExpenseTransactionModel>>(
+                              stream: _transactionStream,
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                      child: FuturisticLoader(
+                                          size: 80,
+                                          label: "LOADING TRANSACTIONS..."));
+                                }
+                                if (snapshot.hasError) {
+                                  return Center(
+                                      child: Text("Error: ${snapshot.error}",
+                                          style: const TextStyle(
+                                              color: Colors.red)));
+                                }
+                                if (!snapshot.hasData ||
+                                    snapshot.data!.isEmpty) {
+                                  return isPoolAccount
+                                      ? _buildEmptyState(
+                                          "All caught up! No unsynced entries.")
+                                      : _buildEmptyState(
+                                          "No transactions found.");
+                                }
+
+                                final filteredList =
+                                    _applyFilters(snapshot.data!);
+                                if (filteredList.isEmpty) {
+                                  return _buildEmptyState(
+                                      "No transactions match your filters.");
+                                }
+
+                                final grouped = groupBy(filteredList,
+                                    (ExpenseTransactionModel t) {
+                                  return DateFormat('MMMM yyyy').format(t.date);
+                                });
+
+                                return ListView.builder(
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: grouped.length,
+                                  itemBuilder: (context, index) {
+                                    final month = grouped.keys.elementAt(index);
+                                    final txns = grouped[month]!;
+
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12),
+                                          child: Text(
+                                            month,
+                                            style: const TextStyle(
+                                                color: Colors.white54,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 1),
+                                          ),
+                                        ),
+                                        ...txns
+                                            .map((t) => TransactionItem(
+                                                  txn: t,
+                                                  iconData: categoryIconMap[
+                                                          t.category] ??
+                                                      Icons.category_outlined,
+                                                  onEdit: () =>
+                                                      _handleEdit(context, t),
+                                                  onDelete: () =>
+                                                      _handleDeleteTransaction(
+                                                          context, t),
+                                                ))
+                                            .toList(),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_isLoading)
+                        Container(
+                            color: Colors.black54,
+                            child: const Center(child: ModernLoader(size: 60))),
+                    ],
+                  ),
                 ),
               ],
             ),
-            iconTheme: const IconThemeData(color: Colors.white),
-            actions: [
-              StreamBuilder<List<ExpenseTransactionModel>>(
-                stream: _transactionStream,
-                builder: (context, snapshot) {
-                  final hasData = snapshot.hasData && snapshot.data!.isNotEmpty;
-                  final txns = snapshot.data ?? [];
-                  return Row(
-                    children: [
-                      if (isPoolAccount)
-                        IconButton(
-                          onPressed: hasData ? () => _handleSync(txns) : null,
-                          icon: const Icon(Icons.sync_rounded,
-                              color: Colors.cyanAccent),
-                          tooltip: "Sync to Credit Tracker",
-                        ),
-                      Stack(
-                        alignment: Alignment.topRight,
-                        children: [
-                          IconButton(
-                            onPressed: hasData
-                                ? () =>
-                                    _openFilterSheet(context, snapshot.data!)
-                                : null,
-                            icon: const Icon(Icons.filter_list_rounded),
-                            tooltip: "Filter Transactions",
-                          ),
-                          if (_hasActiveFilters)
-                            Container(
-                              margin: const EdgeInsets.all(10),
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                  color: Colors.redAccent,
-                                  shape: BoxShape.circle),
-                            ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          body: Stack(
-            children: [
-              Column(
-                children: [
-                  if (_hasActiveFilters) _buildActiveFiltersList(),
-                  Expanded(
-                    child: StreamBuilder<List<ExpenseTransactionModel>>(
-                      stream: _transactionStream,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: FuturisticLoader(
-                                  size: 80, label: "LOADING TRANSACTIONS..."));
-                        }
-                        if (snapshot.hasError) {
-                          return Center(
-                              child: Text("Error: ${snapshot.error}",
-                                  style: const TextStyle(color: Colors.red)));
-                        }
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return isPoolAccount
-                              ? _buildEmptyState(
-                                  "All caught up! No unsynced entries.")
-                              : _buildEmptyState("No transactions found.");
-                        }
-
-                        final filteredList = _applyFilters(snapshot.data!);
-                        if (filteredList.isEmpty) {
-                          return _buildEmptyState(
-                              "No transactions match your filters.");
-                        }
-
-                        final grouped =
-                            groupBy(filteredList, (ExpenseTransactionModel t) {
-                          return DateFormat('MMMM yyyy').format(t.date);
-                        });
-
-                        return ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: grouped.length,
-                          itemBuilder: (context, index) {
-                            final month = grouped.keys.elementAt(index);
-                            final txns = grouped[month]!;
-
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
-                                  child: Text(
-                                    month,
-                                    style: const TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1),
-                                  ),
-                                ),
-                                ...txns
-                                    .map((t) => TransactionItem(
-                                          txn: t,
-                                          iconData:
-                                              categoryIconMap[t.category] ??
-                                                  Icons.category_outlined,
-                                          onEdit: () => _handleEdit(context, t),
-                                          onDelete: () =>
-                                              _handleDeleteTransaction(
-                                                  context, t),
-                                        ))
-                                    .toList(),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              if (_isLoading)
-                Container(
-                    color: Colors.black54,
-                    child: const Center(child: ModernLoader(size: 60))),
-            ],
           ),
         );
       },
+    );
+  }
+
+  // --- NEW: Modern Header Implementation ---
+  Widget _buildModernHeader(bool isPoolAccount) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Back Button
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Title Section
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.account.bankName.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  widget.account.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Action Buttons (Sync + Filter)
+          StreamBuilder<List<ExpenseTransactionModel>>(
+            stream: _transactionStream,
+            builder: (context, snapshot) {
+              final hasData = snapshot.hasData && snapshot.data!.isNotEmpty;
+              final txns = snapshot.data ?? [];
+
+              return Row(
+                children: [
+                  if (isPoolAccount)
+                    GestureDetector(
+                      onTap: hasData ? () => _handleSync(txns) : null,
+                      child: GlassCard(
+                        borderRadius: 12,
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(right: 8),
+                        color: hasData
+                            ? Colors.cyanAccent.withOpacity(0.1)
+                            : Colors.white.withOpacity(0.02),
+                        child: Icon(
+                          Icons.sync_rounded,
+                          color: hasData ? Colors.cyanAccent : Colors.white24,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  GestureDetector(
+                    onTap: hasData
+                        ? () => _openFilterSheet(context, snapshot.data!)
+                        : null,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        GlassCard(
+                          borderRadius: 12,
+                          padding: const EdgeInsets.all(10),
+                          margin: EdgeInsets.zero,
+                          color: hasData
+                              ? Colors.white.withOpacity(0.05)
+                              : Colors.white.withOpacity(0.02),
+                          child: Icon(
+                            Icons.filter_list_rounded,
+                            color: hasData ? Colors.white70 : Colors.white24,
+                            size: 20,
+                          ),
+                        ),
+                        if (_hasActiveFilters)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.redAccent,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
+                                  )
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 

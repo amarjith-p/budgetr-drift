@@ -323,7 +323,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Deep Slate Background
+      backgroundColor: const Color(0xFF0F172A),
+      // Deep Slate Background
       body: SafeArea(
         child: Column(
           children: [
@@ -688,7 +689,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         fontWeight: FontWeight.w800,
                         letterSpacing: 2.0)),
                 SizedBox(height: 2),
-                Text("Budget Dashboard",
+                Text("Budget Insights",
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
