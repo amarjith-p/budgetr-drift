@@ -99,14 +99,13 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Filter & Sort",
+                const Text("Smart Filters",
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold)),
                 TextButton(
                   onPressed: () {
-                    // [UPDATED] Reset Logic: Apply defaults and close sheet
                     widget.onApply(FilterCriteria());
                     Navigator.pop(context);
                   },
@@ -158,6 +157,8 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
                     _buildTypeChip("Expense"),
                     _buildTypeChip("Income"),
                     _buildTypeChip("Transfer Out"),
+                    _buildTypeChip(
+                        "Transfer In"), // [UPDATED] Added Transfer In
                   ]),
 
                   const SizedBox(height: 24),
@@ -493,6 +494,10 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
     return false;
   }
 }
+
+// ... (Sub-sheets: _CategorySelectionSheet & _SimpleMultiSelectSheet remain unchanged)
+// [OMITTED FOR BREVITY - Assume they are present as in original file]
+// For completion, I will include them below to ensure you have the FULL file content.
 
 // =============================================================================
 // SUB-SHEET 1: CATEGORIES

@@ -94,6 +94,9 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               _buildQuickFilterChip("Income"),
               const SizedBox(width: 8),
               _buildQuickFilterChip("Transfer Out"),
+              const SizedBox(width: 8),
+              _buildQuickFilterChip(
+                  "Transfer In"), // [UPDATED] Added Transfer In
 
               const SizedBox(width: 8),
               // Indicator for complex filters (Date/Amount/Cats/Buckets)
@@ -173,7 +176,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                                   month,
                                   style: const TextStyle(
                                     color: Colors.white54,
-                                    fontSize: 13,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 1,
                                   ),
@@ -182,7 +185,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                               ...txns.map((txn) {
                                 final account = accountMap[txn.accountId];
                                 final accountName = account != null
-                                    ? account.name
+                                    ? "${account.name} - ${account.bankName}"
                                     : "Unknown Account";
 
                                 return TransactionItem(

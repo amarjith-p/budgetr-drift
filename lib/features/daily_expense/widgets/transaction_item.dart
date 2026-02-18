@@ -113,7 +113,7 @@ class _TransactionItemState extends State<TransactionItem> {
                           style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 15)),
+                              fontSize: 14)),
                       // [UPDATED] Show Source Account Name directly in title block if provided
                       if (widget.sourceAccountName != null)
                         Padding(
@@ -128,7 +128,7 @@ class _TransactionItemState extends State<TransactionItem> {
                               widget.sourceAccountName!,
                               style: const TextStyle(
                                   color: Colors.blueAccent,
-                                  fontSize: 10,
+                                  fontSize: 9,
                                   fontWeight: FontWeight.w600),
                             ),
                           ),

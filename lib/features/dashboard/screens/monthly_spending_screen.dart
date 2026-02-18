@@ -8,6 +8,7 @@ import '../../../core/widgets/modern_loader.dart';
 import '../../../core/services/category_service.dart';
 import '../../../core/models/transaction_category_model.dart';
 import '../../../core/models/financial_record_model.dart';
+import '../../../core/widgets/modern_app_bar.dart'; // [NEW IMPORT]
 
 // Credit Tracker
 import '../../credit_tracker/models/credit_models.dart';
@@ -104,235 +105,213 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
 
     return Scaffold(
       backgroundColor: BudgetrColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Column(
+      // [FIX] Removed standard AppBar
+      // Replaced with SafeArea > Column > ModernAppBar layout
+      body: SafeArea(
+        child: Column(
           children: [
-            const Text(
-              "Monthly Overview",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+            // 1. MODERN APP BAR
+            ModernAppBar(
+              title: "Monthly Overview",
+              subtitle: dateString,
+              trailingIcon: null, // No specific action needed here
             ),
-            Text(
-              dateString,
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
+
+            // 2. MAIN CONTENT
+            Expanded(
+              child: _isLoadingInfo
+                  ? const Center(
+                      child: FuturisticLoader(
+                          size: 80, label: "LOADING TRANSACTIONS..."))
+                  : StreamBuilder<List<DashboardTransaction>>(
+                      stream: _dashboardService.getMonthlyTransactions(
+                        widget.record.year,
+                        widget.record.month,
+                      ),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: FuturisticLoader(
+                                  size: 80, label: "LOADING TRANSACTIONS..."));
+                        }
+
+                        var transactions = snapshot.data ?? [];
+                        transactions = transactions
+                            .where(
+                                (t) => t.type == 'Expense' && t.sourceId != '')
+                            .toList();
+
+                        // [NEW] Calculate Total Out of Bucket Amount
+                        final double outOfBucketTotal = transactions
+                            .where((t) => t.bucket == 'Out of Bucket')
+                            .fold(0.0, (sum, t) => sum + t.amount);
+
+                        if (_hideOutOfBucket) {
+                          transactions = transactions
+                              .where((t) => t.bucket != 'Out of Bucket')
+                              .toList();
+                        }
+
+                        return ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            BucketTrendsChart(
+                              transactions: transactions,
+                              year: widget.record.year,
+                              month: widget.record.month,
+                              budgetLimit: totalBudget,
+                            ),
+                            const SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: () => setState(
+                                  () => _hideOutOfBucket = !_hideOutOfBucket),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                                margin: const EdgeInsets.only(bottom: 24),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _hideOutOfBucket
+                                      ? BudgetrColors.accent.withOpacity(0.15)
+                                      : BudgetrColors.cardSurface
+                                          .withOpacity(0.4),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _hideOutOfBucket
+                                        ? BudgetrColors.accent.withOpacity(0.5)
+                                        : Colors.white.withOpacity(0.05),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: _hideOutOfBucket
+                                            ? BudgetrColors.accent
+                                            : Colors.white10,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.filter_alt_off_outlined,
+                                        size: 18,
+                                        color: _hideOutOfBucket
+                                            ? Colors.white
+                                            : Colors.white54,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Hide 'Out of Bucket'",
+                                            style: TextStyle(
+                                              color: _hideOutOfBucket
+                                                  ? Colors.white
+                                                  : Colors.white70,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _hideOutOfBucket
+                                                ? "Showing planned expenses only"
+                                                : "Showing all expenses",
+                                            style: TextStyle(
+                                              color: _hideOutOfBucket
+                                                  ? Colors.white70
+                                                  : Colors.white38,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                          // [NEW] Display Total Amount
+                                          if (outOfBucketTotal > 0) ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              "Out of Bucket Total: ${currencyFormat.format(outOfBucketTotal)}",
+                                              style: const TextStyle(
+                                                color: Colors.redAccent,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ]
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(
+                                      _hideOutOfBucket
+                                          ? Icons.check_circle
+                                          : Icons.circle_outlined,
+                                      color: _hideOutOfBucket
+                                          ? BudgetrColors.accent
+                                          : Colors.white24,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (transactions.isEmpty)
+                              Center(
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 32),
+                                    Icon(
+                                      Icons.receipt_long_outlined,
+                                      size: 64,
+                                      color: Colors.white.withOpacity(0.1),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      _hideOutOfBucket
+                                          ? "No planned transactions found"
+                                          : "No transactions found",
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else ...[
+                              const Padding(
+                                padding: EdgeInsets.only(left: 4, bottom: 12),
+                                child: Text(
+                                  "Transactions",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              ...transactions.map((txn) =>
+                                  MonthlyTransactionCard(
+                                    txn: txn,
+                                    accountName: _accountNames[txn.sourceId] ??
+                                        "Unknown",
+                                    bankName: _bankNames[txn.sourceId] ?? "",
+                                    iconData: _categoryIcons[txn.category] ??
+                                        Icons.category_outlined,
+                                  )),
+                            ]
+                          ],
+                        );
+                      },
+                    ),
             ),
           ],
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: _isLoadingInfo
-          ? const Center(
-              child:
-                  FuturisticLoader(size: 80, label: "LOADING TRANSACTIONS..."))
-          : StreamBuilder<List<DashboardTransaction>>(
-              stream: _dashboardService.getMonthlyTransactions(
-                widget.record.year,
-                widget.record.month,
-              ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: FuturisticLoader(
-                          size: 80, label: "LOADING TRANSACTIONS..."));
-                }
-
-                var transactions = snapshot.data ?? [];
-                transactions = transactions
-                    .where((t) => t.type == 'Expense' && t.sourceId != '')
-                    .toList();
-
-                // [NEW] Calculate Total Out of Bucket Amount
-                final double outOfBucketTotal = transactions
-                    .where((t) => t.bucket == 'Out of Bucket')
-                    .fold(0.0, (sum, t) => sum + t.amount);
-
-                if (_hideOutOfBucket) {
-                  transactions = transactions
-                      .where((t) => t.bucket != 'Out of Bucket')
-                      .toList();
-                }
-
-                // if (transactions.isEmpty) {
-                //   return Center(
-                //     child: Column(
-                //       mainAxisAlignment: MainAxisAlignment.center,
-                //       children: [
-                //         Icon(
-                //           Icons.receipt_long_outlined,
-                //           size: 64,
-                //           color: Colors.white.withOpacity(0.1),
-                //         ),
-                //         const SizedBox(height: 16),
-                //         Text(
-                //           _hideOutOfBucket
-                //               ? "No planned transactions found"
-                //               : "No transactions found",
-                //           style: TextStyle(
-                //             color: Colors.white.withOpacity(0.5),
-                //           ),
-                //         ),
-                //       ],
-                //     ),
-                //   );
-                // }
-
-                return ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    BucketTrendsChart(
-                      transactions: transactions,
-                      year: widget.record.year,
-                      month: widget.record.month,
-                      budgetLimit: totalBudget,
-                    ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () =>
-                          setState(() => _hideOutOfBucket = !_hideOutOfBucket),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        margin: const EdgeInsets.only(bottom: 24),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _hideOutOfBucket
-                              ? BudgetrColors.accent.withOpacity(0.15)
-                              : BudgetrColors.cardSurface.withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: _hideOutOfBucket
-                                ? BudgetrColors.accent.withOpacity(0.5)
-                                : Colors.white.withOpacity(0.05),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: _hideOutOfBucket
-                                    ? BudgetrColors.accent
-                                    : Colors.white10,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.filter_alt_off_outlined,
-                                size: 18,
-                                color: _hideOutOfBucket
-                                    ? Colors.white
-                                    : Colors.white54,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Hide 'Out of Bucket'",
-                                    style: TextStyle(
-                                      color: _hideOutOfBucket
-                                          ? Colors.white
-                                          : Colors.white70,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _hideOutOfBucket
-                                        ? "Showing planned expenses only"
-                                        : "Showing all expenses",
-                                    style: TextStyle(
-                                      color: _hideOutOfBucket
-                                          ? Colors.white70
-                                          : Colors.white38,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                  // [NEW] Display Total Amount
-                                  if (outOfBucketTotal > 0) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "Out of Bucket Total: ${currencyFormat.format(outOfBucketTotal)}",
-                                      style: const TextStyle(
-                                        color: Colors.redAccent,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ]
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              _hideOutOfBucket
-                                  ? Icons.check_circle
-                                  : Icons.circle_outlined,
-                              color: _hideOutOfBucket
-                                  ? BudgetrColors.accent
-                                  : Colors.white24,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (transactions.isEmpty)
-                      Center(
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 32),
-                            Icon(
-                              Icons.receipt_long_outlined,
-                              size: 64,
-                              color: Colors.white.withOpacity(0.1),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _hideOutOfBucket
-                                  ? "No planned transactions found"
-                                  : "No transactions found",
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else ...[
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4, bottom: 12),
-                        child: Text(
-                          "Transactions",
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      ...transactions.map((txn) => MonthlyTransactionCard(
-                            txn: txn,
-                            accountName:
-                                _accountNames[txn.sourceId] ?? "Unknown",
-                            bankName: _bankNames[txn.sourceId] ?? "",
-                            iconData: _categoryIcons[txn.category] ??
-                                Icons.category_outlined,
-                          )),
-                    ]
-                  ],
-                );
-              },
-            ),
     );
   }
 }

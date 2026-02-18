@@ -3,7 +3,6 @@
 import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/daily_expense/screens/new_expense_screen.dart';
-import 'package:budget/features/daily_expense/widgets/modern_expense_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -15,10 +14,11 @@ import '../../../core/constants/icon_constants.dart';
 import '../../credit_tracker/models/credit_models.dart';
 import '../../credit_tracker/services/credit_service.dart';
 import '../models/expense_models.dart';
+import '../models/filter_criteria.dart'; // [NEW IMPORT]
 import '../services/expense_service.dart';
 import '../widgets/transaction_item.dart';
-import '../widgets/expense_filter_sheet.dart';
-import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
+import '../widgets/smart_filter_sheet.dart'; // [NEW IMPORT - Replaces ExpenseFilterSheet]
+import '../../../core/widgets/glass_card.dart';
 
 class AccountDetailScreen extends StatefulWidget {
   final ExpenseAccountModel account;
@@ -29,12 +29,8 @@ class AccountDetailScreen extends StatefulWidget {
 }
 
 class _AccountDetailScreenState extends State<AccountDetailScreen> {
-  // --- Filter States ---
-  String _selectedType = 'All';
-  String _sortOption = 'Newest';
-  DateTimeRange? _dateRange;
-  Set<String> _selectedCategories = {};
-  Set<String> _selectedBuckets = {};
+  // --- Filter State (Replaced individual variables with FilterCriteria) ---
+  FilterCriteria _criteria = FilterCriteria();
 
   final Color _bgColor = const Color(0xff0D1B2A);
   final Color _accentColor = const Color(0xFF00B4D8);
@@ -176,8 +172,6 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
             backgroundColor: _accentColor,
             child: const Icon(Icons.add, color: Colors.white),
           ),
-          // [FIX] Removed standard AppBar
-          // Switched to SafeArea > Column layout for Modern Header
           body: SafeArea(
             child: Column(
               children: [
@@ -190,7 +184,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                     children: [
                       Column(
                         children: [
-                          if (_hasActiveFilters) _buildActiveFiltersList(),
+                          if (_criteria.hasFilters) _buildActiveFiltersList(),
                           Expanded(
                             child: StreamBuilder<List<ExpenseTransactionModel>>(
                               stream: _transactionStream,
@@ -289,7 +283,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
     );
   }
 
-  // --- NEW: Modern Header Implementation ---
+  // --- MODERN HEADER ---
   Widget _buildModernHeader(bool isPoolAccount) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -366,6 +360,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                       ),
                     ),
                   GestureDetector(
+                    // [UPDATED] Opens SmartFilterSheet
                     onTap: hasData
                         ? () => _openFilterSheet(context, snapshot.data!)
                         : null,
@@ -385,7 +380,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                             size: 20,
                           ),
                         ),
-                        if (_hasActiveFilters)
+                        if (_criteria.hasFilters)
                           Positioned(
                             top: -2,
                             right: -2,
@@ -459,58 +454,29 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
     );
   }
 
+  // [UPDATED] Apply Filters using FilterCriteria matches logic
   List<ExpenseTransactionModel> _applyFilters(
       List<ExpenseTransactionModel> data) {
-    var list = List<ExpenseTransactionModel>.from(data);
-    if (_selectedType != 'All') {
-      if (_selectedType == 'Transfer') {
-        list = list
-            .where((t) => t.type == 'Transfer Out' || t.type == 'Transfer In')
-            .toList();
-      } else {
-        list = list.where((t) => t.type == _selectedType).toList();
-      }
-    }
-    if (_dateRange != null) {
-      list = list.where((t) {
-        final date = t.date;
-        final end = _dateRange!.end
-            .add(const Duration(days: 1))
-            .subtract(const Duration(seconds: 1));
-        return date.isAfter(_dateRange!.start) && date.isBefore(end);
-      }).toList();
-    }
-    if (_selectedCategories.isNotEmpty) {
-      list =
-          list.where((t) => _selectedCategories.contains(t.category)).toList();
-    }
-    if (_selectedBuckets.isNotEmpty) {
-      list = list.where((t) => _selectedBuckets.contains(t.bucket)).toList();
-    }
+    // 1. Filter using criteria matches
+    var list = data.where((t) => _criteria.matches(t)).toList();
 
-    switch (_sortOption) {
-      case 'Newest':
+    // 2. Sort using criteria sortOption
+    switch (_criteria.sortOption) {
+      case SortOption.newest:
         list.sort((a, b) => b.date.compareTo(a.date));
         break;
-      case 'Oldest':
+      case SortOption.oldest:
         list.sort((a, b) => a.date.compareTo(b.date));
         break;
-      case 'Amount High':
+      case SortOption.highestAmount:
         list.sort((a, b) => b.amount.compareTo(a.amount));
         break;
-      case 'Amount Low':
+      case SortOption.lowestAmount:
         list.sort((a, b) => a.amount.compareTo(b.amount));
         break;
     }
     return list;
   }
-
-  bool get _hasActiveFilters =>
-      _selectedType != 'All' ||
-      _dateRange != null ||
-      _selectedCategories.isNotEmpty ||
-      _selectedBuckets.isNotEmpty ||
-      _sortOption != 'Newest';
 
   Widget _buildEmptyState(String msg) => Center(
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -519,36 +485,26 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         Text(msg, style: TextStyle(color: Colors.white.withOpacity(0.5)))
       ]));
 
+  // [UPDATED] Uses SmartFilterSheet
   void _openFilterSheet(
       BuildContext context, List<ExpenseTransactionModel> allTxns) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => SizedBox(
-        // Set the height here (e.g., 75% of screen height)
-        height: MediaQuery.of(context).size.height * 0.90,
-        child: ExpenseFilterSheet(
-          allTxns: allTxns,
-          currentType: _selectedType,
-          currentSort: _sortOption,
-          currentDateRange: _dateRange,
-          currentCategories: _selectedCategories,
-          currentBuckets: _selectedBuckets,
-          onApply: (type, sort, range, categories, buckets) {
-            setState(() {
-              _selectedType = type;
-              _sortOption = sort;
-              _dateRange = range;
-              _selectedCategories = categories;
-              _selectedBuckets = buckets;
-            });
-          },
-        ),
+      builder: (ctx) => SmartFilterSheet(
+        initialFilters: _criteria,
+        allTransactions: allTxns,
+        onApply: (newFilters) {
+          setState(() {
+            _criteria = newFilters;
+          });
+        },
       ),
     );
   }
 
+  // [UPDATED] Updated to reflect FilterCriteria chips
   Widget _buildActiveFiltersList() {
     return Container(
         height: 50,
@@ -557,11 +513,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         child: ListView(scrollDirection: Axis.horizontal, children: [
           GestureDetector(
               onTap: () => setState(() {
-                    _selectedType = 'All';
-                    _sortOption = 'Newest';
-                    _dateRange = null;
-                    _selectedCategories.clear();
-                    _selectedBuckets.clear();
+                    _criteria = FilterCriteria(); // Reset to default
                   }),
               child: Container(
                   margin: const EdgeInsets.only(right: 8),
@@ -578,23 +530,48 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                               color: Colors.redAccent,
                               fontWeight: FontWeight.bold,
                               fontSize: 11))))),
-          if (_selectedType != 'All')
+
+          // Types Chips
+          ..._criteria.transactionTypes
+              .map((type) => _buildFilterChip(type, () {
+                    setState(() => _criteria.transactionTypes.remove(type));
+                  })),
+
+          // Date Chip
+          if (_criteria.dateRange != null)
             _buildFilterChip(
-                _selectedType, () => setState(() => _selectedType = 'All')),
-          if (_dateRange != null)
-            _buildFilterChip(
-                "${DateFormat('dd MMM').format(_dateRange!.start)} - ${DateFormat('dd MMM').format(_dateRange!.end)}",
-                () => setState(() => _dateRange = null)),
-          ..._selectedCategories.map((c) => _buildFilterChip(c, () {
-                setState(() => _selectedCategories.remove(c));
+                "${DateFormat('dd MMM').format(_criteria.dateRange!.start)} - ${DateFormat('dd MMM').format(_criteria.dateRange!.end)}",
+                () => setState(() => _criteria.dateRange = null)),
+
+          // Category Chips
+          ..._criteria.selectedCategories.map((c) => _buildFilterChip(c, () {
+                setState(() => _criteria.selectedCategories.remove(c));
               })),
-          ..._selectedBuckets.map((b) => _buildFilterChip("Bucket: $b", () {
-                setState(() => _selectedBuckets.remove(b));
-              })),
-          if (_sortOption != 'Newest')
-            _buildFilterChip("Sort: $_sortOption",
-                () => setState(() => _sortOption = 'Newest')),
+
+          // Bucket Chips
+          ..._criteria.selectedBuckets
+              .map((b) => _buildFilterChip("Bucket: $b", () {
+                    setState(() => _criteria.selectedBuckets.remove(b));
+                  })),
+
+          // Sort Chip (Show only if not default)
+          if (_criteria.sortOption != SortOption.newest)
+            _buildFilterChip("Sort: ${_getSortLabel(_criteria.sortOption)}",
+                () => setState(() => _criteria.sortOption = SortOption.newest)),
         ]));
+  }
+
+  String _getSortLabel(SortOption option) {
+    switch (option) {
+      case SortOption.newest:
+        return "Newest";
+      case SortOption.oldest:
+        return "Oldest";
+      case SortOption.highestAmount:
+        return "Highest";
+      case SortOption.lowestAmount:
+        return "Lowest";
+    }
   }
 
   Widget _buildFilterChip(String label, VoidCallback onRemove) {

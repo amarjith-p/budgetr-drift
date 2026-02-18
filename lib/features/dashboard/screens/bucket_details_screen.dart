@@ -9,6 +9,7 @@ import '../../../core/constants/icon_constants.dart';
 import '../../../core/services/category_service.dart';
 import '../../../core/models/transaction_category_model.dart';
 import '../../../core/models/financial_record_model.dart';
+import '../../../core/widgets/modern_app_bar.dart'; // [NEW IMPORT]
 
 // Credit Tracker
 import '../../credit_tracker/models/credit_models.dart';
@@ -116,109 +117,98 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
 
     return Scaffold(
       backgroundColor: BudgetrColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Column(
+      // [FIX] Removed standard AppBar
+      // Replaced with SafeArea > Column > ModernAppBar layout
+      body: SafeArea(
+        child: Column(
           children: [
-            Text(
-              widget.bucketName,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold),
+            // 1. MODERN APP BAR
+            ModernAppBar(
+              title: widget.bucketName,
+              subtitle: dateString,
+              trailingIcon: null, // No actions for this screen
             ),
-            Text(
-              dateString,
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
+
+            // 2. MAIN CONTENT (Wrapped in Expanded)
+            Expanded(
+              child: _isLoadingLimit
+                  ? const Center(
+                      child: FuturisticLoader(size: 80, label: "LOADING..."))
+                  : StreamBuilder<List<DashboardTransaction>>(
+                      stream: _dashboardService.getBucketTransactions(
+                        widget.year,
+                        widget.month,
+                        widget.bucketName,
+                      ),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: FuturisticLoader(
+                                  size: 80, label: "LOADING TRANSACTIONS..."));
+                        }
+
+                        var transactions = snapshot.data ?? [];
+                        transactions = transactions
+                            .where(
+                                (t) => t.type == 'Expense' && t.sourceId != '')
+                            .toList();
+
+                        return ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            BucketTrendsChart(
+                              transactions: transactions,
+                              year: widget.year,
+                              month: widget.month,
+                              budgetLimit: _budgetLimit,
+                            ),
+                            if (transactions.isEmpty)
+                              Center(
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 32),
+                                    Icon(Icons.receipt_long_outlined,
+                                        size: 64,
+                                        color: Colors.white.withOpacity(0.1)),
+                                    const SizedBox(height: 16),
+                                    Text("No transactions found",
+                                        style: TextStyle(
+                                            color:
+                                                Colors.white.withOpacity(0.5))),
+                                  ],
+                                ),
+                              )
+                            else ...[
+                              const Padding(
+                                padding: EdgeInsets.only(left: 4, bottom: 12),
+                                child: Text(
+                                  "Transactions",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              ...transactions.map((txn) =>
+                                  BucketTransactionCard(
+                                    txn: txn,
+                                    accountName: _accountNames[txn.sourceId] ??
+                                        "Unknown",
+                                    bankName: _bankNames[txn.sourceId] ?? "",
+                                    iconData: _categoryIcons[txn.category] ??
+                                        Icons.category_outlined,
+                                  )),
+                            ]
+                          ],
+                        );
+                      },
+                    ),
             ),
           ],
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: _isLoadingLimit
-          ? const Center(child: FuturisticLoader(size: 80, label: "LOADING..."))
-          : StreamBuilder<List<DashboardTransaction>>(
-              stream: _dashboardService.getBucketTransactions(
-                widget.year,
-                widget.month,
-                widget.bucketName,
-              ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: FuturisticLoader(
-                          size: 80, label: "LOADING TRANSACTIONS..."));
-                }
-
-                var transactions = snapshot.data ?? [];
-                transactions = transactions
-                    .where((t) => t.type == 'Expense' && t.sourceId != '')
-                    .toList();
-
-                // if (transactions.isEmpty) {
-                //   return Center(
-                //     child: Column(
-                //       mainAxisAlignment: MainAxisAlignment.center,
-                //       children: [
-                //         Icon(Icons.receipt_long_outlined,
-                //             size: 64, color: Colors.white.withOpacity(0.1)),
-                //         const SizedBox(height: 16),
-                //         Text("No transactions found",
-                //             style: TextStyle(
-                //                 color: Colors.white.withOpacity(0.5))),
-                //       ],
-                //     ),
-                //   );
-                // }
-
-                return ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    BucketTrendsChart(
-                      transactions: transactions,
-                      year: widget.year,
-                      month: widget.month,
-                      budgetLimit: _budgetLimit,
-                    ),
-                    if (transactions.isEmpty)
-                      Center(
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 32),
-                            Icon(Icons.receipt_long_outlined,
-                                size: 64, color: Colors.white.withOpacity(0.1)),
-                            const SizedBox(height: 16),
-                            Text("No transactions found",
-                                style: TextStyle(
-                                    color: Colors.white.withOpacity(0.5))),
-                          ],
-                        ),
-                      )
-                    else ...[
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4, bottom: 12),
-                        child: Text(
-                          "Transactions",
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      ...transactions.map((txn) => BucketTransactionCard(
-                            txn: txn,
-                            accountName:
-                                _accountNames[txn.sourceId] ?? "Unknown",
-                            bankName: _bankNames[txn.sourceId] ?? "",
-                            iconData: _categoryIcons[txn.category] ??
-                                Icons.category_outlined,
-                          )),
-                    ]
-                  ],
-                );
-              },
-            ),
     );
   }
 }
