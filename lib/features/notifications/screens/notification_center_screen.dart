@@ -1,8 +1,10 @@
+import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../services/notification_service.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
 
 class NotificationCenterScreen extends StatelessWidget {
   const NotificationCenterScreen({super.key});
@@ -13,100 +15,167 @@ class NotificationCenterScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xff0D1B2A),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text("Notifications",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.done_all),
-            tooltip: "Mark all as read",
-            onPressed: () {
-              notificationService.markAllAsRead();
-            },
+      // [FIX] Removed standard AppBar
+      // Switched to SafeArea > Column layout for Modern Header
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 1. MODERN HEADER
+            _buildModernHeader(context, notificationService),
+
+            // 2. MAIN CONTENT
+            Expanded(
+              child: StreamBuilder<List<AppNotification>>(
+                stream: notificationService.getNotifications(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final list = snapshot.data!;
+                  if (list.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.notifications_off_outlined,
+                              size: 64, color: Colors.white.withOpacity(0.3)),
+                          const SizedBox(height: 16),
+                          Text("No Notifications",
+                              style: TextStyle(
+                                  color: Colors.white.withOpacity(0.5))),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: list.length,
+                    padding: const EdgeInsets.all(16),
+                    itemBuilder: (context, index) {
+                      final item = list[index];
+                      return Dismissible(
+                        key: Key(item.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          color: Colors.redAccent.withOpacity(0.8),
+                          child: const Icon(Icons.delete, color: Colors.white),
+                        ),
+                        onDismissed: (_) {
+                          notificationService.deleteNotification(item.id);
+                        },
+                        child: _NotificationTile(item: item),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- NEW: Modern Header Implementation ---
+  Widget _buildModernHeader(
+      BuildContext context, NotificationService notificationService) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Back Button
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: "Clear all",
-            onPressed: () {
-              _confirmClearAll(context, notificationService);
-            },
+
+          const SizedBox(width: 16),
+
+          // Title Section
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "BudGetR",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "Notification Center",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Mark All Read Button
+          GestureDetector(
+            onTap: () => notificationService.markAllAsRead(),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.done_all_rounded,
+                  color: Colors.white70, size: 20),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Clear All Button
+          GestureDetector(
+            onTap: () => _confirmClearAll(context, notificationService),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.delete_outline_rounded,
+                  color: Colors.redAccent, size: 20),
+            ),
           ),
         ],
-      ),
-      body: StreamBuilder<List<AppNotification>>(
-        stream: notificationService.getNotifications(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final list = snapshot.data!;
-          if (list.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.notifications_off_outlined,
-                      size: 64, color: Colors.white.withOpacity(0.3)),
-                  const SizedBox(height: 16),
-                  Text("No Notifications",
-                      style: TextStyle(color: Colors.white.withOpacity(0.5))),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: list.length,
-            padding: const EdgeInsets.all(16),
-            itemBuilder: (context, index) {
-              final item = list[index];
-              return Dismissible(
-                key: Key(item.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 20),
-                  color: Colors.redAccent.withOpacity(0.8),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                onDismissed: (_) {
-                  notificationService.deleteNotification(item.id);
-                },
-                child: _NotificationTile(item: item),
-              );
-            },
-          );
-        },
       ),
     );
   }
 
   void _confirmClearAll(BuildContext context, NotificationService service) {
-    showDialog(
+    showStatusSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1B263B),
-        title: const Text("Clear All?", style: TextStyle(color: Colors.white)),
-        content: const Text("This will permanently delete all notifications.",
-            style: TextStyle(color: Colors.white70)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              service.clearAll();
-              Navigator.pop(ctx);
-            },
-            child: const Text("Clear", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      title: "Clear All?",
+      message:
+          "Are you sure you want to clear all notifications?\nThis will permanently delete all notifications.",
+      icon: Icons.delete_sweep_sharp,
+      color: Colors.redAccent,
+      cancelButtonText: "Cancel",
+      onCancel: () {},
+      buttonText: "Delete",
+      onDismiss: () async {
+        service.clearAll();
+      },
     );
   }
 }

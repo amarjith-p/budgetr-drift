@@ -9,6 +9,7 @@ import 'package:get_it/get_it.dart';
 import 'package:local_auth/local_auth.dart';
 import '../../settings/screens/settings_screen.dart';
 import 'category_manager_screen.dart';
+import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
 
 class ConfigurationMenuScreen extends StatefulWidget {
   const ConfigurationMenuScreen({super.key});
@@ -20,6 +21,7 @@ class ConfigurationMenuScreen extends StatefulWidget {
 
 class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
   final SettingsService _settingsService = GetIt.I<SettingsService>();
+
   Future<void> _handleSecureAccess(BuildContext context) async {
     final LocalAuthentication auth = LocalAuthentication();
     bool didAuthenticate = false;
@@ -74,97 +76,144 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          "Configurations",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // 1. Biometric Security Toggle (Matched Design)
-              _buildBiometricToggle(),
+      // [FIX] Removed standard AppBar
+      // Switched to SafeArea > Column layout for Modern Header
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 1. MODERN HEADER
+            _buildModernHeader(),
 
-              const SizedBox(height: 16),
+            // 2. SCROLLABLE CONTENT
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    // 1. Biometric Security Toggle (Matched Design)
+                    _buildBiometricToggle(),
 
-              // 2. [NEW] Startup Screen Toggle
-              _buildStartupToggle(),
+                    const SizedBox(height: 16),
 
-              const SizedBox(height: 16),
+                    // 2. Startup Screen Toggle
+                    _buildStartupToggle(),
 
-              // 2. Transaction Categories
-              _buildMenuCard(
-                context,
-                title: "Transaction Categories",
-                subtitle: "Manage Income & Expense types",
-                icon: Icons.category_outlined,
-                color: const Color(0xFFF72585),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const CategoryManagerScreen(),
-                  ),
+                    const SizedBox(height: 16),
+
+                    // 3. Transaction Categories
+                    _buildMenuCard(
+                      context,
+                      title: "Transaction Categories",
+                      subtitle: "Manage Income & Expense types",
+                      icon: Icons.category_outlined,
+                      color: const Color(0xFFF72585),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CategoryManagerScreen(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 4. Backup & Restore
+                    _buildMenuCard(
+                      context,
+                      title: "Backup & Restore",
+                      subtitle: "Export or Import your data",
+                      icon: Icons.settings_backup_restore_rounded,
+                      color: const Color.fromARGB(255, 110, 255, 14),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const BackupScreen()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 5. Database Viewer (Protected)
+                    _buildMenuCard(
+                      context,
+                      icon: Icons.table_view_rounded,
+                      title: "Database Viewer",
+                      subtitle: "Inspect raw SQL tables (Dev)",
+                      color: const Color.fromARGB(255, 255, 187, 14),
+                      onTap: () => _handleSecureAccess(context),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // 3. Backup & Restore
-              _buildMenuCard(
-                context,
-                title: "Backup & Restore",
-                subtitle: "Export or Import your data",
-                icon: Icons.settings_backup_restore_rounded,
-                color: const Color.fromARGB(255, 110, 255, 14),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const BackupScreen()),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // // 4. Sync & Clone
-              // _buildMenuCard(
-              //   context,
-              //   title: "Sync & Clone",
-              //   subtitle: "Transfer data to another device",
-              //   icon: Icons.phonelink_ring_rounded,
-              //   color: const Color(0xFF4CC9F0),
-              //   onTap: () => _showSyncModal(context),
-              // ),
-              // const SizedBox(height: 16),
-
-              // 5. Database Viewer (Protected)
-              _buildMenuCard(
-                context,
-                icon: Icons.table_view_rounded,
-                title: "Database Viewer",
-                subtitle: "Inspect raw SQL tables (Dev)",
-                color: const Color.fromARGB(255, 255, 187, 14),
-                onTap: () => _handleSecureAccess(context),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // --- Widgets ---
+  // --- NEW: Modern Header Implementation ---
+  Widget _buildModernHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Back Button
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Title Section
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "SETTINGS",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "Configuration Menu",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Existing Widgets (Unchanged) ---
 
   Widget _buildBiometricToggle() {
     return ValueListenableBuilder<bool>(
       valueListenable: BiometricService.instance.enabledNotifier,
       builder: (context, enabled, child) {
         Future<void> onToggle(bool value) async {
-          // [NEW] Mark as internal so BiometricGate ignores the pause/resume
+          // Mark as internal so BiometricGate ignores the pause/resume
           BiometricService.instance.markInternalAuth();
 
           try {
@@ -173,7 +222,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
               await BiometricService.instance.setEnabled(value);
             }
           } finally {
-            // [NEW] Unmark after operation completes
+            // Unmark after operation completes
             BiometricService.instance.unmarkInternalAuth();
           }
         }
@@ -382,7 +431,6 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
     );
   }
 
-  // --- [NEW] Startup Toggle Widget ---
   Widget _buildStartupToggle() {
     return FutureBuilder<bool>(
       future: _settingsService.getLaunchToDailyExpense(),

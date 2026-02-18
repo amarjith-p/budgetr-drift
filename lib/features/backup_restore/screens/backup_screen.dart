@@ -175,13 +175,16 @@ class _BackupScreenState extends State<BackupScreen> {
             ),
           ),
 
-          // 2. Main Content
+          // 2. Main Content (Fixed Layout, No Scroll)
           SafeArea(
             child: Column(
               children: [
-                _buildAppBar(context),
+                // 1. MODERN HEADER
+                _buildModernHeader(),
+
+                // 2. CONTENT AREA
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,7 +200,7 @@ class _BackupScreenState extends State<BackupScreen> {
                             "DEVICE SYNC", Icons.devices_rounded),
                         const SizedBox(height: 16),
                         _buildSyncSection(),
-                        const SizedBox(height: 20),
+                        const Spacer(), // Pushes footer to bottom
                         const Center(
                           child: Text(
                             "BudGetR Data Engine by Amarjith",
@@ -205,7 +208,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                 TextStyle(color: Colors.white24, fontSize: 12),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 10),
                       ],
                     ),
                   ),
@@ -227,25 +230,53 @@ class _BackupScreenState extends State<BackupScreen> {
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
+  // --- NEW: Modern Header Implementation ---
+  Widget _buildModernHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
-            style: IconButton.styleFrom(
-              padding: const EdgeInsets.only(left: 6),
+          // Back Button
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
             ),
           ),
+
           const SizedBox(width: 16),
-          const Text(
-            "Data Backup & Restore",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+
+          // Title Section
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "SETTINGS",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "Data Backup & Restore",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

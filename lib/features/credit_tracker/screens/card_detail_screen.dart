@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/widgets/modern_loader.dart';
+import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
 import '../../../core/models/transaction_category_model.dart';
 import '../../../core/services/category_service.dart';
 import '../../../core/constants/icon_constants.dart';
@@ -17,7 +18,6 @@ import '../services/credit_service.dart';
 import '../utils/billing_cycle_utils.dart';
 import '../widgets/credit_summary_card.dart';
 import '../widgets/transaction_list_item.dart';
-// IMPORT NEW FILTER SHEET
 import '../widgets/credit_filter_sheet.dart';
 
 class CreditCardDetailScreen extends StatefulWidget {
@@ -92,275 +92,371 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
 
         return Scaffold(
           backgroundColor: _bgColor,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            titleSpacing: 0,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // [FIX] Removed AppBar, using SafeArea + Column
+          body: SafeArea(
+            child: Column(
               children: [
-                Text(
-                  widget.card.name,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                Text(
-                  widget.card.bankName,
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                // 1. MODERN HEADER
+                _buildModernHeader(),
+
+                // 2. MAIN CONTENT
+                Expanded(
+                  child: StreamBuilder<List<CreditTransactionModel>>(
+                    stream: _transactionStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                            child: FuturisticLoader(
+                                size: 80, label: "LOADING TRANSACTIONS..."));
+                      }
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return _buildEmptyState("No transactions found.");
+                      }
+
+                      final allTxns = _applyFilters(snapshot.data!);
+
+                      // 1. Determine Key Dates
+                      final now = DateTime.now();
+                      final lastStatementDate =
+                          BillingCycleUtils.getLastBillDate(
+                              now, widget.card.billDate);
+
+                      // 2. Buckets
+                      final currentCycleSpends = <CreditTransactionModel>[];
+                      final lastStatementPayments = <CreditTransactionModel>[];
+                      final pastStatementTxns = <CreditTransactionModel>[];
+
+                      for (var txn in allTxns) {
+                        if (BillingCycleUtils.isUnbilled(
+                            txn, widget.card.billDate)) {
+                          if (BillingCycleUtils.isPaymentForStatement(
+                              txn, lastStatementDate, widget.card.dueDate)) {
+                            lastStatementPayments.add(txn);
+                          } else {
+                            currentCycleSpends.add(txn);
+                          }
+                        } else {
+                          pastStatementTxns.add(txn);
+                        }
+                      }
+
+                      double currentUnbilledTotal =
+                          _calculateTotal(currentCycleSpends);
+
+                      // 3. Group History
+                      final groupedHistory = groupBy(pastStatementTxns, (txn) {
+                        final naturalStmtDate =
+                            BillingCycleUtils.getStatementDateForTxn(
+                                txn.date, widget.card.billDate,
+                                forceNextCycle: txn.includeInNextStatement);
+
+                        if (txn.type == 'Income' &&
+                            BillingCycleUtils.isRepaymentCategory(
+                                txn.category)) {
+                          final prevStmtDate =
+                              BillingCycleUtils.getPreviousStatementDate(
+                                  naturalStmtDate, widget.card.billDate);
+                          if (BillingCycleUtils.isPaymentForStatement(
+                              txn, prevStmtDate, widget.card.dueDate)) {
+                            return prevStmtDate;
+                          }
+                        }
+
+                        return naturalStmtDate;
+                      });
+
+                      if (!groupedHistory.containsKey(lastStatementDate)) {
+                        groupedHistory[lastStatementDate] = [];
+                      }
+
+                      final sortedDates = groupedHistory.keys.toList()
+                        ..sort((a, b) => b.compareTo(a));
+
+                      return Column(
+                        children: [
+                          // Active Filters List
+                          if (_hasActiveFilters) _buildActiveFiltersList(),
+
+                          CreditSummaryCard(
+                            currentUnbilled: currentUnbilledTotal,
+                            lastBillDate: lastStatementDate,
+                            lastBillTxns:
+                                groupedHistory[lastStatementDate] ?? [],
+                            payments: lastStatementPayments,
+                            card: widget.card,
+                          ),
+                          Expanded(
+                            child: ListView(
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                if (currentCycleSpends.isNotEmpty) ...[
+                                  _buildSectionHeader(
+                                      "CURRENT CYCLE (UNBILLED)"),
+                                  ...currentCycleSpends.map((t) =>
+                                      TransactionListItem(
+                                        txn: t,
+                                        iconData: categoryIconMap[t.category] ??
+                                            Icons.category_outlined,
+                                        isIgnored: _ignoredTransactionIds
+                                            .contains(t.id),
+                                        onEdit: () => _handleEdit(context, t),
+                                        onDelete: () =>
+                                            _handleDeleteTransaction(
+                                                context, t),
+                                        onMarkAsRepayment: () =>
+                                            _handleMarkAsRepayment(t),
+                                        onIgnore: () =>
+                                            _handleIgnoreTransaction(t.id),
+                                        onDeferToNextBill:
+                                            t.includeInNextStatement
+                                                ? () => _handleDeferTransaction(
+                                                    t, false)
+                                                : null,
+                                      )),
+                                  const SizedBox(height: 24),
+                                ],
+                                if (sortedDates.isNotEmpty)
+                                  _buildSectionHeader("STATEMENTS"),
+                                ...sortedDates.map((date) {
+                                  final rawTxns = groupedHistory[date]!;
+                                  final statementExpenses =
+                                      <CreditTransactionModel>[];
+                                  final statementPayments =
+                                      <CreditTransactionModel>[];
+
+                                  for (var t in rawTxns) {
+                                    if (t.type == 'Income' &&
+                                        BillingCycleUtils.isRepaymentCategory(
+                                            t.category)) {
+                                      statementPayments.add(t);
+                                    } else {
+                                      statementExpenses.add(t);
+                                    }
+                                  }
+
+                                  final isLastStatement =
+                                      BillingCycleUtils.isSameDay(
+                                          date, lastStatementDate);
+                                  if (isLastStatement) {
+                                    statementPayments
+                                        .addAll(lastStatementPayments);
+                                  }
+
+                                  final billTotal =
+                                      _calculateTotal(statementExpenses);
+
+                                  if (statementExpenses.isEmpty &&
+                                      statementPayments.isEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildStatementHeader(date, billTotal,
+                                          isLastStatement, statementPayments),
+                                      ...statementExpenses.map((t) {
+                                        final bool isDanger =
+                                            BillingCycleUtils.isDangerZone(
+                                                t.date, widget.card.billDate);
+
+                                        final bool showWarning = isDanger &&
+                                            !t.includeInNextStatement &&
+                                            !t.isSettlementVerified;
+
+                                        return TransactionListItem(
+                                          txn: t,
+                                          iconData:
+                                              categoryIconMap[t.category] ??
+                                                  Icons.category_outlined,
+                                          isIgnored: _ignoredTransactionIds
+                                              .contains(t.id),
+                                          onEdit: () => _handleEdit(context, t),
+                                          onDelete: () =>
+                                              _handleDeleteTransaction(
+                                                  context, t),
+                                          onMarkAsRepayment: () =>
+                                              _handleMarkAsRepayment(t),
+                                          onIgnore: () =>
+                                              _handleIgnoreTransaction(t.id),
+                                          onDeferToNextBill: t
+                                                  .isSettlementVerified
+                                              ? null
+                                              : () => _handleDeferTransaction(
+                                                  t, !t.includeInNextStatement),
+                                          onVerifySettlement: () =>
+                                              _handleVerifySettlement(t),
+                                          showDangerWarning: showWarning,
+                                        );
+                                      }),
+                                      if (statementPayments.isNotEmpty) ...[
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                              left: 16, top: 8, bottom: 8),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                  Icons
+                                                      .subdirectory_arrow_right,
+                                                  color: Colors.greenAccent,
+                                                  size: 16),
+                                              const SizedBox(width: 8),
+                                              const Text("Payments Received",
+                                                  style: TextStyle(
+                                                      color: Colors.greenAccent,
+                                                      fontSize: 12)),
+                                            ],
+                                          ),
+                                        ),
+                                        ...statementPayments
+                                            .map((t) => TransactionListItem(
+                                                  txn: t,
+                                                  iconData: Icons.payment,
+                                                  isIgnored:
+                                                      _ignoredTransactionIds
+                                                          .contains(t.id),
+                                                  onEdit: () =>
+                                                      _handleEdit(context, t),
+                                                  onDelete: () =>
+                                                      _handleDeleteTransaction(
+                                                          context, t),
+                                                  onMarkAsRepayment: () =>
+                                                      _handleMarkAsRepayment(t),
+                                                  onIgnore: () =>
+                                                      _handleIgnoreTransaction(
+                                                          t.id),
+                                                )),
+                                      ],
+                                      const SizedBox(height: 24),
+                                    ],
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
-            iconTheme: const IconThemeData(color: Colors.white),
-            actions: [
-              StreamBuilder<List<CreditTransactionModel>>(
-                stream: _transactionStream,
-                builder: (context, snapshot) {
-                  final hasData = snapshot.hasData && snapshot.data!.isNotEmpty;
-                  return Stack(
-                    alignment: Alignment.topRight,
-                    children: [
-                      IconButton(
-                        onPressed: hasData
-                            ? () => _openFilterSheet(context, snapshot.data!)
-                            : null,
-                        icon: const Icon(Icons.filter_list_rounded),
-                        tooltip: "Filter Transactions",
-                      ),
-                      if (_hasActiveFilters)
-                        Container(
-                          margin: const EdgeInsets.all(10),
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Colors.redAccent,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          body: StreamBuilder<List<CreditTransactionModel>>(
-            stream: _transactionStream,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                    child: FuturisticLoader(
-                        size: 80, label: "LOADING TRANSACTIONS..."));
-              }
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return _buildEmptyState("No transactions found.");
-              }
-
-              final allTxns = _applyFilters(snapshot.data!);
-
-              // 1. Determine Key Dates
-              final now = DateTime.now();
-              final lastStatementDate =
-                  BillingCycleUtils.getLastBillDate(now, widget.card.billDate);
-
-              // 2. Buckets
-              final currentCycleSpends = <CreditTransactionModel>[];
-              final lastStatementPayments = <CreditTransactionModel>[];
-              final pastStatementTxns = <CreditTransactionModel>[];
-
-              for (var txn in allTxns) {
-                if (BillingCycleUtils.isUnbilled(txn, widget.card.billDate)) {
-                  if (BillingCycleUtils.isPaymentForStatement(
-                      txn, lastStatementDate, widget.card.dueDate)) {
-                    lastStatementPayments.add(txn);
-                  } else {
-                    currentCycleSpends.add(txn);
-                  }
-                } else {
-                  pastStatementTxns.add(txn);
-                }
-              }
-
-              double currentUnbilledTotal = _calculateTotal(currentCycleSpends);
-
-              // 3. Group History
-              final groupedHistory = groupBy(pastStatementTxns, (txn) {
-                final naturalStmtDate =
-                    BillingCycleUtils.getStatementDateForTxn(
-                        txn.date, widget.card.billDate,
-                        forceNextCycle: txn.includeInNextStatement);
-
-                if (txn.type == 'Income' &&
-                    BillingCycleUtils.isRepaymentCategory(txn.category)) {
-                  final prevStmtDate =
-                      BillingCycleUtils.getPreviousStatementDate(
-                          naturalStmtDate, widget.card.billDate);
-                  if (BillingCycleUtils.isPaymentForStatement(
-                      txn, prevStmtDate, widget.card.dueDate)) {
-                    return prevStmtDate;
-                  }
-                }
-
-                return naturalStmtDate;
-              });
-
-              if (!groupedHistory.containsKey(lastStatementDate)) {
-                groupedHistory[lastStatementDate] = [];
-              }
-
-              final sortedDates = groupedHistory.keys.toList()
-                ..sort((a, b) => b.compareTo(a));
-
-              return Column(
-                children: [
-                  // --- NEW: Active Filters List ---
-                  if (_hasActiveFilters) _buildActiveFiltersList(),
-
-                  CreditSummaryCard(
-                    currentUnbilled: currentUnbilledTotal,
-                    lastBillDate: lastStatementDate,
-                    lastBillTxns: groupedHistory[lastStatementDate] ?? [],
-                    payments: lastStatementPayments,
-                    card: widget.card,
-                  ),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        if (currentCycleSpends.isNotEmpty) ...[
-                          _buildSectionHeader("CURRENT CYCLE (UNBILLED)"),
-                          ...currentCycleSpends.map((t) => TransactionListItem(
-                                txn: t,
-                                iconData: categoryIconMap[t.category] ??
-                                    Icons.category_outlined,
-                                isIgnored:
-                                    _ignoredTransactionIds.contains(t.id),
-                                onEdit: () => _handleEdit(context, t),
-                                onDelete: () =>
-                                    _handleDeleteTransaction(context, t),
-                                onMarkAsRepayment: () =>
-                                    _handleMarkAsRepayment(t),
-                                onIgnore: () => _handleIgnoreTransaction(t.id),
-                                onDeferToNextBill: t.includeInNextStatement
-                                    ? () => _handleDeferTransaction(t, false)
-                                    : null,
-                              )),
-                          const SizedBox(height: 24),
-                        ],
-                        if (sortedDates.isNotEmpty)
-                          _buildSectionHeader("STATEMENTS"),
-                        ...sortedDates.map((date) {
-                          final rawTxns = groupedHistory[date]!;
-                          final statementExpenses = <CreditTransactionModel>[];
-                          final statementPayments = <CreditTransactionModel>[];
-
-                          for (var t in rawTxns) {
-                            if (t.type == 'Income' &&
-                                BillingCycleUtils.isRepaymentCategory(
-                                    t.category)) {
-                              statementPayments.add(t);
-                            } else {
-                              statementExpenses.add(t);
-                            }
-                          }
-
-                          final isLastStatement = BillingCycleUtils.isSameDay(
-                              date, lastStatementDate);
-                          if (isLastStatement) {
-                            statementPayments.addAll(lastStatementPayments);
-                          }
-
-                          final billTotal = _calculateTotal(statementExpenses);
-
-                          if (statementExpenses.isEmpty &&
-                              statementPayments.isEmpty) {
-                            return const SizedBox.shrink();
-                          }
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildStatementHeader(date, billTotal,
-                                  isLastStatement, statementPayments),
-                              ...statementExpenses.map((t) {
-                                final bool isDanger =
-                                    BillingCycleUtils.isDangerZone(
-                                        t.date, widget.card.billDate);
-
-                                final bool showWarning = isDanger &&
-                                    !t.includeInNextStatement &&
-                                    !t.isSettlementVerified;
-
-                                return TransactionListItem(
-                                  txn: t,
-                                  iconData: categoryIconMap[t.category] ??
-                                      Icons.category_outlined,
-                                  isIgnored:
-                                      _ignoredTransactionIds.contains(t.id),
-                                  onEdit: () => _handleEdit(context, t),
-                                  onDelete: () =>
-                                      _handleDeleteTransaction(context, t),
-                                  onMarkAsRepayment: () =>
-                                      _handleMarkAsRepayment(t),
-                                  onIgnore: () =>
-                                      _handleIgnoreTransaction(t.id),
-                                  onDeferToNextBill: t.isSettlementVerified
-                                      ? null
-                                      : () => _handleDeferTransaction(
-                                          t, !t.includeInNextStatement),
-                                  onVerifySettlement: () =>
-                                      _handleVerifySettlement(t),
-                                  showDangerWarning: showWarning,
-                                );
-                              }),
-                              if (statementPayments.isNotEmpty) ...[
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 16, top: 8, bottom: 8),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.subdirectory_arrow_right,
-                                          color: Colors.greenAccent, size: 16),
-                                      const SizedBox(width: 8),
-                                      const Text("Payments Received",
-                                          style: TextStyle(
-                                              color: Colors.greenAccent,
-                                              fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                                ...statementPayments.map((t) =>
-                                    TransactionListItem(
-                                      txn: t,
-                                      iconData: Icons.payment,
-                                      isIgnored:
-                                          _ignoredTransactionIds.contains(t.id),
-                                      onEdit: () => _handleEdit(context, t),
-                                      onDelete: () =>
-                                          _handleDeleteTransaction(context, t),
-                                      onMarkAsRepayment: () =>
-                                          _handleMarkAsRepayment(t),
-                                      onIgnore: () =>
-                                          _handleIgnoreTransaction(t.id),
-                                    )),
-                              ],
-                              const SizedBox(height: 24),
-                            ],
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
           ),
         );
       },
     );
   }
 
-  // --- Filter Helpers ---
+  // --- NEW: Modern Header (Replicating ModernAppBar style with Custom Logic) ---
+  Widget _buildModernHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Back Button
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
+            ),
+          ),
 
-  // REPLACED OLD METHOD with Widget Call
+          const SizedBox(width: 16),
+
+          // Title Section
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.card.bankName.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  widget.card.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Action Button (Filter with Badge)
+          StreamBuilder<List<CreditTransactionModel>>(
+            stream: _transactionStream,
+            builder: (context, snapshot) {
+              final hasData = snapshot.hasData && snapshot.data!.isNotEmpty;
+
+              return GestureDetector(
+                onTap: hasData
+                    ? () => _openFilterSheet(context, snapshot.data!)
+                    : null,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    GlassCard(
+                      borderRadius: 12,
+                      padding: const EdgeInsets.all(10),
+                      margin: EdgeInsets.zero,
+                      // Dim button if disabled
+                      color: hasData
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.white.withOpacity(0.02),
+                      child: Icon(
+                        Icons.filter_list_rounded,
+                        color: hasData ? Colors.white70 : Colors.white24,
+                        size: 20,
+                      ),
+                    ),
+
+                    // Filter Badge (Red Dot)
+                    if (_hasActiveFilters)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                              color: Color(0xFFFF006E), // Bright Pink/Red
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                )
+                              ]),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Filter Helpers ---
   void _openFilterSheet(
       BuildContext context, List<CreditTransactionModel> allTxns) {
     final uniqueCategories = allTxns
@@ -406,7 +502,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     );
   }
 
-  // --- NEW: Active Filters List (Same as AccountDetail) ---
+  // --- Active Filters List ---
   Widget _buildActiveFiltersList() {
     return Container(
       height: 50,
@@ -443,6 +539,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 8),
           if (_selectedType != 'All')
             _buildFilterChip(
               _selectedType,
@@ -473,10 +570,10 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
   Widget _buildFilterChip(String label, VoidCallback onRemove) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.only(left: 12, right: 4, top: 6, bottom: 6),
+      padding: const EdgeInsets.only(left: 12, right: 8, top: 6, bottom: 6),
       decoration: BoxDecoration(
           color: _accentColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: _accentColor.withOpacity(0.3))),
       child: Row(children: [
         Text(label,
@@ -488,7 +585,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         InkWell(
             onTap: onRemove,
             borderRadius: BorderRadius.circular(10),
-            child: Icon(Icons.close, size: 16, color: _accentColor))
+            child: Icon(Icons.close, size: 14, color: _accentColor))
       ]),
     );
   }
@@ -712,30 +809,6 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         if (mounted) setState(() => _isLoading = false);
       },
     );
-
-    //   showDialog(
-    //       context: context,
-    //       builder: (ctx) => AlertDialog(
-    //               backgroundColor: const Color(0xff0D1B2A),
-    //               title: const Text("Delete?",
-    //                   style: TextStyle(color: Colors.white)),
-    //               actions: [
-    //                 TextButton(
-    //                     onPressed: () => Navigator.pop(ctx),
-    //                     child: const Text("Cancel",
-    //                         style: TextStyle(color: Colors.white54))),
-    //                 TextButton(
-    //                     onPressed: () async {
-    //                       Navigator.pop(ctx);
-    //                       setState(() => _isLoading = true);
-    //                       await CreditService().deleteTransaction(txn);
-    //                       if (mounted) setState(() => _isLoading = false);
-    //                     },
-    //                     child: const Text("Delete",
-    //                         style: TextStyle(
-    //                             color: Colors.redAccent,
-    //                             fontWeight: FontWeight.bold)))
-    //               ]));
   }
 
   List<CreditTransactionModel> _applyFilters(

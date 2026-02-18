@@ -11,6 +11,7 @@ import '../../../core/constants/icon_constants.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
 import '../../../core/design/budgetr_components.dart';
+import '../../../core/widgets/glass_card.dart';
 
 class CategoryManagerScreen extends StatefulWidget {
   const CategoryManagerScreen({super.key});
@@ -48,63 +49,6 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen>
 
   // --- Logic to Restore Defaults (Factory Reset) ---
   Future<void> _handleRestoreDefaults() async {
-    // final bool? confirm = await showDialog<bool>(
-    //   context: context,
-    //   builder: (ctx) => AlertDialog(
-    //     title: const Text("Reset to Defaults?"),
-    //     content: const Text(
-    //       "This will DELETE all your custom categories and revert any changes made to default ones.\n\nAre you sure you want to start fresh?",
-    //     ),
-    //     actions: [
-    //       TextButton(
-    //         onPressed: () => Navigator.pop(ctx, false),
-    //         child: const Text("Cancel"),
-    //       ),
-    //       ElevatedButton(
-    //         onPressed: () => Navigator.pop(ctx, true),
-    //         style: ElevatedButton.styleFrom(
-    //           backgroundColor: BudgetrColors.error,
-    //           foregroundColor: Colors.white,
-    //         ),
-    //         child: const Text("Reset All"),
-    //       ),
-    //     ],
-    //   ),
-    // );
-
-    // if (confirm != true) return;
-
-    // if (mounted) {
-    //   showDialog(
-    //     context: context,
-    //     barrierDismissible: false,
-    //     builder: (ctx) => const Center(child: ModernLoader()),
-    //   );
-    // }
-
-    // try {
-    //   await _service.resetToDefaults();
-    //   if (mounted) {
-    //     Navigator.pop(context); // Close Loader
-    //     ScaffoldMessenger.of(context).showSnackBar(
-    //       const SnackBar(
-    //         content: Text("All categories reset to system defaults."),
-    //         backgroundColor: BudgetrColors.success,
-    //       ),
-    //     );
-    //   }
-    // } catch (e) {
-    //   if (mounted) {
-    //     Navigator.pop(context);
-    //     ScaffoldMessenger.of(context).showSnackBar(
-    //       SnackBar(
-    //         content: Text("Error: $e"),
-    //         backgroundColor: BudgetrColors.error,
-    //       ),
-    //     );
-    //   }
-    // }
-
     showStatusSheet(
       context: context,
       title: "Reset to Defaults?",
@@ -155,23 +99,162 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen>
   @override
   Widget build(BuildContext context) {
     return BudgetrScaffold(
-      // Unified AppBar using Design Tokens
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text("Categories", style: BudgetrStyles.h2),
-        iconTheme: const IconThemeData(color: Colors.white),
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
+      // [FIX] Removed standard AppBar
+      // Switched to SafeArea > Column layout for Modern Header
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                // 1. MODERN HEADER
+                _buildModernHeader(),
+
+                // 2. TABS & CONTENT
+                // Adjusted spacing to 20px
+                const SizedBox(height: 20),
+
+                _buildSyncedSlidingToggle(),
+
+                const SizedBox(height: 24),
+
+                Expanded(
+                  child: StreamBuilder<List<TransactionCategoryModel>>(
+                    stream: _categoriesStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                            child: FuturisticLoader(
+                                size: 80, label: "LOADING CATEGORIES..."));
+                      }
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return _buildEmptyState();
+                      }
+
+                      final allCategories = snapshot.data!;
+                      final expenses = allCategories
+                          .where((c) => c.type == 'Expense')
+                          .toList();
+                      final income = allCategories
+                          .where((c) => c.type == 'Income')
+                          .toList();
+
+                      return TabBarView(
+                        controller: _tabController,
+                        physics: const BouncingScrollPhysics(),
+                        children: [
+                          _buildCategoryList(expenses, BudgetrColors.error),
+                          _buildCategoryList(income, BudgetrColors.success),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            // Explicitly styled button for Main Screen
+            Positioned(
+              bottom: 30,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: () => _showAddEditSheet(context, null),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: BudgetrColors.primaryGradient,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: BudgetrStyles.glowBoxShadow(
+                        BudgetrColors.accent,
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.add_rounded, color: Colors.white, size: 24),
+                        SizedBox(width: 12),
+                        Text(
+                          "Add Category",
+                          style: TextStyle(
+                            color: Colors.white, // Forces bright white text
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            inherit: false,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        // --- Restore Defaults Option ---
-        actions: [
+      ),
+    );
+  }
+
+  // --- NEW: Modern Header Implementation ---
+  Widget _buildModernHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Back Button
+          GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Title Section
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "SETTINGS",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "Categories & Subcategories",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Restore Defaults Button
+          // [FIX] Removed 'icon' property because 'child' is used
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
             color: BudgetrColors.cardSurface,
             shape: RoundedRectangleBorder(
               borderRadius: BudgetrStyles.radiusS,
@@ -195,96 +278,14 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen>
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              // Adjusted spacing to 20px
-              const SizedBox(height: 20),
-
-              _buildSyncedSlidingToggle(),
-
-              const SizedBox(height: 24),
-
-              Expanded(
-                child: StreamBuilder<List<TransactionCategoryModel>>(
-                  stream: _categoriesStream,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                          child: FuturisticLoader(
-                              size: 80, label: "LOADING CATEGORIES..."));
-                    }
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return _buildEmptyState();
-                    }
-
-                    final allCategories = snapshot.data!;
-                    final expenses = allCategories
-                        .where((c) => c.type == 'Expense')
-                        .toList();
-                    final income =
-                        allCategories.where((c) => c.type == 'Income').toList();
-
-                    return TabBarView(
-                      controller: _tabController,
-                      physics: const BouncingScrollPhysics(),
-                      children: [
-                        _buildCategoryList(expenses, BudgetrColors.error),
-                        _buildCategoryList(income, BudgetrColors.success),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          // Explicitly styled button for Main Screen
-          Positioned(
-            bottom: 30,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: () => _showAddEditSheet(context, null),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: BudgetrColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: BudgetrStyles.glowBoxShadow(
-                      BudgetrColors.accent,
-                    ),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.add_rounded, color: Colors.white, size: 24),
-                      SizedBox(width: 12),
-                      Text(
-                        "Add Category",
-                        style: TextStyle(
-                          color: Colors.white, // Forces bright white text
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          inherit: false,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            // Use GlassCard container for the button trigger to match style
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.more_horiz_rounded,
+                  color: Colors.white70, size: 20),
             ),
           ),
         ],
@@ -314,35 +315,6 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen>
   }
 
   void _confirmDelete(BuildContext context, String id) {
-    // showDialog(
-    //   context: context,
-    //   builder: (ctx) => AlertDialog(
-    //     title: const Text("Delete Category?"),
-    //     content: const Text(
-    //       "This will remove the category from selection. Existing transactions will remain unaffected.",
-    //     ),
-    //     actions: [
-    //       TextButton(
-    //         onPressed: () => Navigator.pop(ctx),
-    //         child: const Text("Cancel"),
-    //       ),
-    //       TextButton(
-    //         onPressed: () {
-    //           _service.deleteCategory(id);
-    //           Navigator.pop(ctx);
-    //         },
-    //         child: const Text(
-    //           "Delete",
-    //           style: TextStyle(
-    //             color: BudgetrColors.error,
-    //             fontWeight: FontWeight.bold,
-    //           ),
-    //         ),
-    //       ),
-    //     ],
-    //   ),
-    // );
-
     showStatusSheet(
       context: context,
       title: "Delete Category?",

@@ -20,7 +20,8 @@ import 'expense_analytics_screen.dart';
 import 'category_breakdown_screen.dart';
 import '../widgets/cash_flow_card.dart';
 import '../widgets/balance_trend_chart.dart';
-import '../../home/screens/home_screen.dart'; // [ADDED] For Navigation
+import '../../home/screens/home_screen.dart'; // For Navigation
+import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
 
 class DailyExpenseScreen extends StatefulWidget {
   const DailyExpenseScreen({super.key});
@@ -48,7 +49,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     }
   }
 
-  // [NEW] Logic to handle Back Press
+  // Logic to handle Back Press
   void _handlePopInvoked(bool didPop) {
     if (didPop) return;
 
@@ -67,21 +68,42 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
   Widget build(BuildContext context) {
     const Color bgColor = Color(0xff0D1B2A);
 
-    // [CHANGED] Wrap Scaffold in PopScope
+    // Wrap Scaffold in PopScope
     return PopScope(
       canPop: false, // We handle the pop manually
       onPopInvoked: _handlePopInvoked,
       child: Scaffold(
         backgroundColor: bgColor,
         extendBody: true,
-        appBar: _buildAppBar(bgColor),
-        body: IndexedStack(
-          index: _currentIndex,
+        // [FIX] Removed standard AppBar property
+        // Switched to Stack > SafeArea > Column layout for Modern Header
+        body: Stack(
           children: [
-            _buildOriginalHomeContent(), // 0: Overview
-            const AllTransactionsScreen(), // 1: Transactions
-            const ExpenseAnalyticsScreen(), // 2: Analytics
-            const CategoryBreakdownScreen(), // 3: Breakdown
+            // Background Elements (Optional, kept consistent if needed)
+            // ... (Your background elements here if any, otherwise plain bgColor)
+
+            SafeArea(
+              bottom: false, // Let content flow behind bottom nav
+              child: Column(
+                children: [
+                  // 1. MODERN HEADER (Replaces AppBar)
+                  _buildModernHeader(),
+
+                  // 2. SCREEN CONTENT (IndexedStack)
+                  Expanded(
+                    child: IndexedStack(
+                      index: _currentIndex,
+                      children: [
+                        _buildOriginalHomeContent(), // 0: Overview
+                        const AllTransactionsScreen(), // 1: Transactions
+                        const ExpenseAnalyticsScreen(), // 2: Analytics
+                        const CategoryBreakdownScreen(), // 3: Breakdown
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         bottomNavigationBar: _buildFullWidthAnimatedBar(context),
@@ -89,97 +111,128 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(Color bgColor) {
-    String title = "Daily Tracker";
-    if (_currentIndex == 1) title = "All Transactions";
-    if (_currentIndex == 2) title = "Analytics";
-    if (_currentIndex == 3) title = "Insights";
+  // --- NEW: Modern Header Implementation ---
+  Widget _buildModernHeader() {
+    String title = "Transaction Tracker";
+    String subtitle = "ACCOUNTS & WALLETS";
 
-    return AppBar(
-      backgroundColor: bgColor.withOpacity(0.85),
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      centerTitle: true,
+    if (_currentIndex == 1) {
+      title = "All Transactions";
+      subtitle = "OVERVIEW";
+    } else if (_currentIndex == 2) {
+      title = "Visual Insights";
+      subtitle = "ANALYTICS";
+    } else if (_currentIndex == 3) {
+      title = "Income & Expense Book";
+      subtitle = "OVERVIEW";
+    }
 
-      // [NEW] Leading Icon that calls our smart pop logic
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
-        onPressed: () => _handlePopInvoked(false),
-      ),
-
-      title: Padding(
-        padding: const EdgeInsets.only(left: 8.0),
-        child: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
-        ),
-      ),
-      flexibleSpace: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(color: Colors.transparent),
-        ),
-      ),
-      actions: [
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SpendingCalendarScreen()),
-            );
-          },
-          child: Container(
-            margin: const EdgeInsets.only(right: 16),
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white.withOpacity(0.15)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          // Back Button
+          GestureDetector(
+            onTap: () => _handlePopInvoked(false),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
             ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Title Section
+          Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE71D36),
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(9)),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    "HEATMAP",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 7,
-                      letterSpacing: 0.5,
-                    ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
                   ),
                 ),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      DateTime.now().day.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        height: 1.0,
-                      ),
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
                   ),
                 ),
               ],
             ),
           ),
-        )
-      ],
+
+          // Heatmap Action Button (Only show on Overview or make persistent)
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const SpendingCalendarScreen()),
+              );
+            },
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(0), // Custom padding inside
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE71D36),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(12)),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        "HEATMAP",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 6,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          DateTime.now().day.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            height: 1.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -201,16 +254,13 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
             ),
           ),
         ),
-        SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              Expanded(
-                child: _buildDualRowAccounts(),
-              ),
-            ],
-          ),
+        Column(
+          children: [
+            const SizedBox(height: 10),
+            Expanded(
+              child: _buildDualRowAccounts(),
+            ),
+          ],
         ),
       ],
     );
