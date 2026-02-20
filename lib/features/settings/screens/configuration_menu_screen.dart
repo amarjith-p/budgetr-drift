@@ -1,6 +1,7 @@
 import 'package:budget/core/services/biometric_service.dart';
 import 'package:budget/features/backup_restore/screens/backup_screen.dart';
 import 'package:budget/features/database_viewer/screens/database_viewer_screen.dart';
+import 'package:budget/features/notifications/screens/notification_manager_screen.dart';
 import 'package:budget/features/qr_sync/screens/qr_generate_screen.dart';
 import 'package:budget/features/qr_sync/screens/qr_scan_screen.dart';
 import 'package:budget/features/settings/services/settings_service.dart';
@@ -130,6 +131,20 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                               builder: (_) => const BackupScreen()),
                         );
                       },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildMenuCard(
+                      context,
+                      title: "Notification Manager",
+                      subtitle: "Triggers, Limits & Schedule",
+                      icon: Icons.notifications_active_rounded,
+                      color: const Color(0xFF00B4D8),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationManagerScreen(),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
 
