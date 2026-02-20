@@ -20,7 +20,7 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
 
   // --- PREFERENCE KEYS ---
   static const String kPrefDailyEnabled = 'notif_enable_daily_reminder';
-  static const String kPrefDailyTime = 'notif_time_daily'; // Format: "HH:mm"
+  static const String kPrefDailyTime = 'notif_time_daily';
 
   static const String kPrefLoanGoalEnabled = 'notif_enable_loangoal';
   static const String kPrefLoanGoalTime = 'notif_time_loangoal';
@@ -29,6 +29,8 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
   static const String kPrefBackupTime = 'notif_time_backup';
 
   static const String kPrefCreditEnabled = 'notif_enable_credit';
+  static const String kPrefCreditTime = 'notif_time_credit';
+
   static const String kPrefBudgetEnabled = 'notif_enable_budget';
   static const String kPrefAccountEnabled = 'notif_enable_account';
   static const String kPrefInvestEnabled = 'notif_enable_invest';
@@ -36,18 +38,17 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
 
   // --- STATE VARIABLES ---
   bool _dailyEnabled = true;
-  TimeOfDay _dailyTime =
-      const TimeOfDay(hour: 20, minute: 0); // Default 8:00 PM
+  TimeOfDay _dailyTime = const TimeOfDay(hour: 20, minute: 0);
 
   bool _loanGoalEnabled = true;
-  TimeOfDay _loanGoalTime =
-      const TimeOfDay(hour: 9, minute: 0); // Default 9:00 AM
+  TimeOfDay _loanGoalTime = const TimeOfDay(hour: 9, minute: 0);
 
   bool _backupEnabled = true;
-  TimeOfDay _backupTime =
-      const TimeOfDay(hour: 18, minute: 0); // Default 6:00 PM
+  TimeOfDay _backupTime = const TimeOfDay(hour: 18, minute: 0);
 
   bool _creditEnabled = true;
+  TimeOfDay _creditTime = const TimeOfDay(hour: 10, minute: 0);
+
   bool _budgetEnabled = true;
   bool _accountEnabled = true;
   bool _investEnabled = true;
@@ -75,6 +76,9 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
           const TimeOfDay(hour: 18, minute: 0));
 
       _creditEnabled = _prefs.getBool(kPrefCreditEnabled) ?? true;
+      _creditTime = _parseTime(_prefs.getString(kPrefCreditTime),
+          const TimeOfDay(hour: 10, minute: 0));
+
       _budgetEnabled = _prefs.getBool(kPrefBudgetEnabled) ?? true;
       _accountEnabled = _prefs.getBool(kPrefAccountEnabled) ?? true;
       _investEnabled = _prefs.getBool(kPrefInvestEnabled) ?? true;
@@ -99,7 +103,7 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
   String _format12Hour(TimeOfDay time) {
     final now = DateTime.now();
     final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
-    return DateFormat.jm().format(dt); // E.g., "3:30 PM"
+    return DateFormat.jm().format(dt);
   }
 
   Future<void> _saveSetting(String key, dynamic value) async {
@@ -128,7 +132,6 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
       context: context,
       initialTime: initialTime,
       builder: (BuildContext context, Widget? child) {
-        // Force 12-hour clock format
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
           child: child!,
@@ -156,7 +159,9 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(),
+            // 1. MODERN HEADER
+            _buildModernHeader(context),
+
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
@@ -199,7 +204,24 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
                       }),
                     ),
 
-                    // 3. Backup Check
+                    // 3. Credit Cards
+                    _buildConfigCard(
+                      title: "Credit Cards",
+                      subtitle: "Bill generation and due dates",
+                      enabled: _creditEnabled,
+                      time: _creditTime,
+                      onToggle: (v) {
+                        setState(() => _creditEnabled = v);
+                        _saveSetting(kPrefCreditEnabled, v);
+                        _rescheduleAll();
+                      },
+                      onTimeTap: () => _pickTime(context, _creditTime, (t) {
+                        setState(() => _creditTime = t);
+                        _saveSetting(kPrefCreditTime, _formatTimeStr(t));
+                      }),
+                    ),
+
+                    // 4. Backup Check
                     _buildConfigCard(
                       title: "Backup Verification",
                       subtitle: "Checks if your data is safely backed up",
@@ -216,12 +238,8 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
                     ),
 
                     const SizedBox(height: 24),
-                    _buildSectionHeader("INSTANT / BACKGROUND MODULES"),
-                    _buildSwitch("Credit Cards", "Bill generation, limits",
-                        _creditEnabled, (v) {
-                      setState(() => _creditEnabled = v);
-                      _saveSetting(kPrefCreditEnabled, v);
-                    }),
+                    _buildSectionHeader("BACKGROUND MODULES"),
+
                     _buildSwitch(
                         "Budget Watch", "Bucket overflows", _budgetEnabled,
                         (v) {
@@ -265,21 +283,54 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  // --- MODERN HEADER ---
+  Widget _buildModernHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
+          // Back Button
           GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: Colors.white70, size: 20),
+            onTap: () => Navigator.maybePop(context),
+            child: GlassCard(
+              borderRadius: 12,
+              padding: const EdgeInsets.all(10),
+              margin: EdgeInsets.zero,
+              color: Colors.white.withOpacity(0.05),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white70, size: 20),
+            ),
           ),
+
           const SizedBox(width: 16),
-          const Text(
-            "Notification Manager",
-            style: TextStyle(
-                color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+
+          // Title Section
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "SETTINGS",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  "Notification Manager",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

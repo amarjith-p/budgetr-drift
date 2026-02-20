@@ -57,32 +57,17 @@ class SystemNotificationService {
               AndroidFlutterLocalNotificationsPlugin>();
 
       if (androidImplementation != null) {
-        // 1. Reverted to the highly reliable native notification request
         debugPrint("Requesting Notification Permission...");
         await androidImplementation.requestNotificationsPermission();
 
-        // 2. Request Exact Alarms
         debugPrint("Requesting Exact Alarms Permission...");
         await androidImplementation.requestExactAlarmsPermission();
       }
 
-      // 3. Request Battery Whitelist (Handled securely by permission_handler)
       debugPrint("Requesting Battery Optimization Whitelist...");
       if (await Permission.ignoreBatteryOptimizations.isDenied) {
         await Permission.ignoreBatteryOptimizations.request();
       }
-    } else if (Platform.isIOS) {
-      // final DarwinFlutterLocalNotificationsPlugin? iOSImplementation =
-      //     _notificationsPlugin.resolvePlatformSpecificImplementation<
-      //         DarwinFlutterLocalNotificationsPlugin>();
-
-      // if (iOSImplementation != null) {
-      //   await iOSImplementation.requestPermissions(
-      //     alert: true,
-      //     badge: true,
-      //     sound: true,
-      //   );
-      // }
     }
   }
 
@@ -120,6 +105,10 @@ class SystemNotificationService {
   }) async {
     if (scheduledDate.isBefore(DateTime.now())) return;
 
+    // [NEW] Embed the exact ISO date into the payload for the UI to read later
+    final String enhancedPayload =
+        "${payload ?? ''}|DATE:${scheduledDate.toIso8601String()}";
+
     try {
       await _notificationsPlugin.zonedSchedule(
         id,
@@ -140,11 +129,10 @@ class SystemNotificationService {
           iOS: DarwinNotificationDetails(
               presentSound: true, presentAlert: true, presentBadge: true),
         ),
-        // [CRITICAL FIX] Changed from exactAllowWhileIdle to alarmClock
         androidScheduleMode: AndroidScheduleMode.alarmClock,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        payload: payload,
+        payload: enhancedPayload, // Use the new payload
       );
       debugPrint("Scheduled Notif ($id) for $scheduledDate");
     } catch (e) {
@@ -168,6 +156,9 @@ class SystemNotificationService {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
+    // [NEW] Embed the repeat time info into the payload
+    final String enhancedPayload = "${payload ?? ''}|REPEAT:$hour:$minute";
+
     try {
       await _notificationsPlugin.zonedSchedule(
         id,
@@ -188,12 +179,11 @@ class SystemNotificationService {
           iOS: DarwinNotificationDetails(
               presentSound: true, presentAlert: true, presentBadge: true),
         ),
-        // [CRITICAL FIX] Changed from exactAllowWhileIdle to alarmClock
         androidScheduleMode: AndroidScheduleMode.alarmClock,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
-        payload: payload,
+        payload: enhancedPayload, // Use the new payload
       );
       debugPrint("Scheduled Daily Notif ($id) for $hour:$minute");
     } catch (e) {

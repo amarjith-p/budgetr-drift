@@ -26,6 +26,9 @@ class RealTimeNotificationManager {
   Timer? _debounceTimer;
   bool _isRescheduling = false;
 
+  // Global offset counter to prevent notification collisions
+  int _schedulerOffsetSeconds = 0;
+
   static const String kPrefDailyEnabled = 'notif_enable_daily_reminder';
   static const String kPrefDailyTime = 'notif_time_daily';
 
@@ -36,6 +39,8 @@ class RealTimeNotificationManager {
   static const String kPrefBackupTime = 'notif_time_backup';
 
   static const String kPrefCreditEnabled = 'notif_enable_credit';
+  // [NEW] Unique time key for Credit Cards
+  static const String kPrefCreditTime = 'notif_time_credit';
 
   void init() {
     debugPrint("Initializing Real-Time Notification Engine...");
@@ -76,9 +81,8 @@ class RealTimeNotificationManager {
       final goals = await _db.goals.select().get();
       final cards = await _db.creditCards.select().get();
 
-      await _scheduleLoanReminders(loans);
-      await _scheduleGoalDeadlines(goals);
-      await _scheduleCreditCardBills(cards);
+      // Reschedule modules with staggering
+      _scheduleWithStaggering(loans, goals, cards);
     });
   }
 
@@ -93,16 +97,40 @@ class RealTimeNotificationManager {
 
       await _systemService.cancelAll();
 
-      await _scheduleLoanReminders(loans);
-      await _scheduleGoalDeadlines(goals);
-      await _scheduleCreditCardBills(cards);
+      // Reset the offset counter
+      _schedulerOffsetSeconds = 0;
 
+      // Schedule fixed items
       await _scheduleDailyAppReminder();
       await _scheduleBackupReminder();
+
+      // Schedule modules with staggering
+      await _scheduleWithStaggering(loans, goals, cards);
     } finally {
       await Future.delayed(const Duration(milliseconds: 300));
       _isRescheduling = false;
     }
+  }
+
+  Future<void> _scheduleWithStaggering(
+      List<Loan> loans, List<Goal> goals, List<CreditCard> cards) async {
+    await _scheduleLoanReminders(loans);
+    await _scheduleGoalDeadlines(goals);
+    await _scheduleCreditCardBills(cards);
+  }
+
+  // --- HELPER: Apply Staggering ---
+  DateTime _applyStagger(DateTime baseTime) {
+    final staggered = baseTime.add(Duration(seconds: _schedulerOffsetSeconds));
+    _schedulerOffsetSeconds += 15;
+    return staggered;
+  }
+
+  // --- HELPER: Safe Date Clamping (Prevents Feb 31st Bug) ---
+  DateTime _getValidDate(int year, int month, int day) {
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final clampedDay = (day > daysInMonth) ? daysInMonth : day;
+    return DateTime(year, month, clampedDay);
   }
 
   Future<TimeOfDay> _fetchTime(
@@ -150,28 +178,28 @@ class RealTimeNotificationManager {
     );
   }
 
-  // [NEW] Credit Card Scheduling
-  // [UPDATED] Credit Card Scheduling
   Future<void> _scheduleCreditCardBills(List<CreditCard> cards) async {
     if (!await _isEnabled(kPrefCreditEnabled)) return;
-    final time = await _fetchTime(kPrefLoanGoalTime, 9, 0);
+    // [UPDATED] Use independent Credit Time
+    final time = await _fetchTime(kPrefCreditTime, 10, 0);
     final now = DateTime.now();
 
     for (var card in cards) {
-      // --- 1. SCHEDULE DUE DATES ---
-      DateTime nextDueDate = DateTime(now.year, now.month, card.dueDate);
+      // 1. Due Date (Clamped safely)
+      DateTime nextDueDate = _getValidDate(now.year, now.month, card.dueDate);
       if (nextDueDate.isBefore(DateTime(now.year, now.month, now.day))) {
-        nextDueDate = DateTime(now.year, now.month + 1, card.dueDate);
+        nextDueDate = _getValidDate(now.year, now.month + 1, card.dueDate);
       }
 
       final dueTime = DateTime(nextDueDate.year, nextDueDate.month,
           nextDueDate.day, time.hour, time.minute);
+
       if (dueTime.isAfter(now)) {
         await _systemService.scheduleNotification(
           id: ('cc_${card.id}_today').hashCode.abs(),
           title: 'Credit Card Bill Due',
           body: 'Your bill for ${card.name} is due today.',
-          scheduledDate: dueTime,
+          scheduledDate: _applyStagger(dueTime),
           payload: card.id,
         );
       }
@@ -182,7 +210,7 @@ class RealTimeNotificationManager {
           id: ('cc_${card.id}_1day').hashCode.abs(),
           title: 'Credit Card Bill Tomorrow',
           body: 'Your bill for ${card.name} is due tomorrow.',
-          scheduledDate: oneDayBefore,
+          scheduledDate: _applyStagger(oneDayBefore),
           payload: card.id,
         );
       }
@@ -193,25 +221,26 @@ class RealTimeNotificationManager {
           id: ('cc_${card.id}_3days').hashCode.abs(),
           title: 'Credit Card Bill Soon',
           body: 'Your bill for ${card.name} is due in 3 days.',
-          scheduledDate: threeDaysBefore,
+          scheduledDate: _applyStagger(threeDaysBefore),
           payload: card.id,
         );
       }
 
-      // --- 2. [NEW] SCHEDULE STATEMENT GENERATION ---
-      DateTime nextBillDate = DateTime(now.year, now.month, card.billDate);
+      // 2. Statement Date (Clamped safely)
+      DateTime nextBillDate = _getValidDate(now.year, now.month, card.billDate);
       if (nextBillDate.isBefore(DateTime(now.year, now.month, now.day))) {
-        nextBillDate = DateTime(now.year, now.month + 1, card.billDate);
+        nextBillDate = _getValidDate(now.year, now.month + 1, card.billDate);
       }
 
       final billTime = DateTime(nextBillDate.year, nextBillDate.month,
           nextBillDate.day, time.hour, time.minute);
+
       if (billTime.isAfter(now)) {
         await _systemService.scheduleNotification(
           id: ('cc_${card.id}_stmt').hashCode.abs(),
           title: 'Statement Generated',
           body: 'Your bill for ${card.name} is generated today.',
-          scheduledDate: billTime,
+          scheduledDate: _applyStagger(billTime),
           payload: card.id,
         );
       }
@@ -228,10 +257,11 @@ class RealTimeNotificationManager {
       if (remaining <= 0 || loan.isClosed) continue;
 
       final int emiDay = loan.nextPaymentDate?.day ?? loan.startDate.day;
-      DateTime nextEmiDate = DateTime(now.year, now.month, emiDay);
+
+      DateTime nextEmiDate = _getValidDate(now.year, now.month, emiDay);
 
       if (nextEmiDate.isBefore(DateTime(now.year, now.month, now.day))) {
-        nextEmiDate = DateTime(now.year, now.month + 1, emiDay);
+        nextEmiDate = _getValidDate(now.year, now.month + 1, emiDay);
       }
 
       if (loan.dueDate != null && nextEmiDate.isAfter(loan.dueDate!)) continue;
@@ -244,7 +274,7 @@ class RealTimeNotificationManager {
           id: ('loan_${loan.id}_today').hashCode.abs(),
           title: 'EMI Repayment Due',
           body: 'Your EMI for ${loan.title} is due today.',
-          scheduledDate: dueTime,
+          scheduledDate: _applyStagger(dueTime),
           payload: loan.id,
         );
       }
@@ -255,7 +285,7 @@ class RealTimeNotificationManager {
           id: ('loan_${loan.id}_1day').hashCode.abs(),
           title: 'EMI Due Tomorrow',
           body: 'Your EMI for ${loan.title} is due tomorrow.',
-          scheduledDate: oneDayBefore,
+          scheduledDate: _applyStagger(oneDayBefore),
           payload: loan.id,
         );
       }
@@ -266,7 +296,7 @@ class RealTimeNotificationManager {
           id: ('loan_${loan.id}_3days').hashCode.abs(),
           title: 'EMI Due Soon',
           body: 'Your EMI for ${loan.title} is due in 3 days.',
-          scheduledDate: threeDaysBefore,
+          scheduledDate: _applyStagger(threeDaysBefore),
           payload: loan.id,
         );
       }
@@ -290,7 +320,7 @@ class RealTimeNotificationManager {
           id: ('goal_${goal.id}_today').hashCode.abs(),
           title: 'Goal Deadline Reached',
           body: 'Time is up for your goal: ${goal.name}.',
-          scheduledDate: dueTime,
+          scheduledDate: _applyStagger(dueTime),
           payload: goal.id,
         );
       }
@@ -303,7 +333,7 @@ class RealTimeNotificationManager {
           id: ('goal_${goal.id}_1day').hashCode.abs(),
           title: 'Goal Deadline Tomorrow',
           body: '${goal.name} is due tomorrow.',
-          scheduledDate: warnTime1,
+          scheduledDate: _applyStagger(warnTime1),
           payload: goal.id,
         );
       }
@@ -316,7 +346,7 @@ class RealTimeNotificationManager {
           id: ('goal_${goal.id}_7days').hashCode.abs(),
           title: 'Goal Deadline Approaching',
           body: '${goal.name} is due in 7 days.',
-          scheduledDate: warnTime7,
+          scheduledDate: _applyStagger(warnTime7),
           payload: goal.id,
         );
       }
