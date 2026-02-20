@@ -158,7 +158,8 @@ class RealTimeNotificationManager {
     await _systemService.scheduleDailyNotification(
       id: 9999,
       title: 'Daily Check-in',
-      body: 'Time to log your daily expenses.',
+      body:
+          'Keep your ledger accurate. Take a moment to record today\'s financial activity.',
       hour: time.hour,
       minute: time.minute,
       payload: 'daily_expense',
@@ -171,7 +172,7 @@ class RealTimeNotificationManager {
     await _systemService.scheduleDailyNotification(
       id: 8888,
       title: 'Backup Verification',
-      body: 'Please ensure your data is backed up.',
+      body: 'Please Ensure your Data is Secured and Backed Up.',
       hour: time.hour,
       minute: time.minute,
       payload: 'backup',
@@ -198,7 +199,7 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('cc_${card.id}_today').hashCode.abs(),
           title: 'Credit Card Bill Due',
-          body: 'Your bill for ${card.name} is due today.',
+          body: 'Your Bill for ${card.name} is Due Today.',
           scheduledDate: _applyStagger(dueTime),
           payload: card.id,
         );
@@ -209,7 +210,7 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('cc_${card.id}_1day').hashCode.abs(),
           title: 'Credit Card Bill Tomorrow',
-          body: 'Your bill for ${card.name} is due tomorrow.',
+          body: 'Your Bill for ${card.name} is Due Tomorrow.',
           scheduledDate: _applyStagger(oneDayBefore),
           payload: card.id,
         );
@@ -220,7 +221,7 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('cc_${card.id}_3days').hashCode.abs(),
           title: 'Credit Card Bill Soon',
-          body: 'Your bill for ${card.name} is due in 3 days.',
+          body: 'Your Bill for ${card.name} is Due in 3 Days.',
           scheduledDate: _applyStagger(threeDaysBefore),
           payload: card.id,
         );
@@ -239,7 +240,7 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('cc_${card.id}_stmt').hashCode.abs(),
           title: 'Statement Generated',
-          body: 'Your bill for ${card.name} is generated today.',
+          body: 'Your Bill for ${card.name} is Generated Today.',
           scheduledDate: _applyStagger(billTime),
           payload: card.id,
         );
@@ -273,7 +274,7 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('loan_${loan.id}_today').hashCode.abs(),
           title: 'EMI Repayment Due',
-          body: 'Your EMI for ${loan.title} is due today.',
+          body: 'Your EMI for ${loan.title} is Due Today.',
           scheduledDate: _applyStagger(dueTime),
           payload: loan.id,
         );
@@ -284,7 +285,7 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('loan_${loan.id}_1day').hashCode.abs(),
           title: 'EMI Due Tomorrow',
-          body: 'Your EMI for ${loan.title} is due tomorrow.',
+          body: 'Your EMI for ${loan.title} is Due Tomorrow.',
           scheduledDate: _applyStagger(oneDayBefore),
           payload: loan.id,
         );
@@ -295,7 +296,7 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('loan_${loan.id}_3days').hashCode.abs(),
           title: 'EMI Due Soon',
-          body: 'Your EMI for ${loan.title} is due in 3 days.',
+          body: 'Your EMI for ${loan.title} is Due in 3 Days.',
           scheduledDate: _applyStagger(threeDaysBefore),
           payload: loan.id,
         );
@@ -319,7 +320,7 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('goal_${goal.id}_today').hashCode.abs(),
           title: 'Goal Deadline Reached',
-          body: 'Time is up for your goal: ${goal.name}.',
+          body: 'Time is up for your Goal: ${goal.name}.',
           scheduledDate: _applyStagger(dueTime),
           payload: goal.id,
         );
@@ -332,7 +333,7 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('goal_${goal.id}_1day').hashCode.abs(),
           title: 'Goal Deadline Tomorrow',
-          body: '${goal.name} is due tomorrow.',
+          body: '${goal.name} is Due Tomorrow.',
           scheduledDate: _applyStagger(warnTime1),
           payload: goal.id,
         );

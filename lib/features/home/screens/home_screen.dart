@@ -320,10 +320,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // [NEW DESIGN] Vertical Chip (Icon Top, Text Bottom) - Saves Width
+  // [UPDATED] Using _BouncyButton for Tactile Feedback
   Widget _buildVerticalActionChip(BuildContext context, String label,
       IconData icon, Color iconColor, Widget page) {
-    return GestureDetector(
+    return _BouncyButton(
       onTap: () => Navigator.push(
           context, MaterialPageRoute(builder: (context) => page)),
       child: Container(
@@ -354,10 +354,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // [UPDATED] Card Builder for Flexible Grid - Uses Expanded automatically from parent
+  // [UPDATED] Using _BouncyButton for Tactile Feedback
   Widget _buildCompactCard(BuildContext context, String title, IconData icon,
       Color color, Widget page) {
-    return GestureDetector(
+    return _BouncyButton(
       onTap: () => Navigator.push(
           context, MaterialPageRoute(builder: (context) => page)),
       child: Container(
@@ -677,6 +677,59 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 15,
                 fontWeight: FontWeight.w600)),
       ],
+    );
+  }
+}
+
+// ==============================================================================
+//  [NEW] PRIVATE HELPER FOR TACTILE BOUNCE EFFECT
+// ==============================================================================
+class _BouncyButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const _BouncyButton({required this.child, required this.onTap});
+
+  @override
+  State<_BouncyButton> createState() => _BouncyButtonState();
+}
+
+class _BouncyButtonState extends State<_BouncyButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: widget.child,
+      ),
     );
   }
 }

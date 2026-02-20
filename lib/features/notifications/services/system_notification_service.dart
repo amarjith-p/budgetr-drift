@@ -81,16 +81,18 @@ class SystemNotificationService {
       id,
       title,
       body,
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'budgetr_critical',
           'Critical Alerts',
           channelDescription: 'Immediate alerts for spending and balance',
           importance: Importance.max,
           priority: Priority.high,
-          color: Color(0xFF0D1B2A),
+          color: const Color(0xFF0D1B2A),
+          // [FIX] Enables Expandable Text
+          styleInformation: BigTextStyleInformation(body),
         ),
-        iOS: DarwinNotificationDetails(presentSound: true),
+        iOS: const DarwinNotificationDetails(presentSound: true),
       ),
       payload: payload,
     );
@@ -105,7 +107,6 @@ class SystemNotificationService {
   }) async {
     if (scheduledDate.isBefore(DateTime.now())) return;
 
-    // [NEW] Embed the exact ISO date into the payload for the UI to read later
     final String enhancedPayload =
         "${payload ?? ''}|DATE:${scheduledDate.toIso8601String()}";
 
@@ -115,24 +116,26 @@ class SystemNotificationService {
         title,
         body,
         tz.TZDateTime.from(scheduledDate, tz.local),
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
             'budgetr_scheduled_v2',
             'Scheduled Reminders',
             channelDescription: 'Reminders for bills and loans',
             importance: Importance.high,
             priority: Priority.high,
-            color: Color(0xFF0D1B2A),
+            color: const Color(0xFF0D1B2A),
             enableVibration: true,
             playSound: true,
+            // [FIX] Enables Expandable Text
+            styleInformation: BigTextStyleInformation(body),
           ),
-          iOS: DarwinNotificationDetails(
+          iOS: const DarwinNotificationDetails(
               presentSound: true, presentAlert: true, presentBadge: true),
         ),
         androidScheduleMode: AndroidScheduleMode.alarmClock,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        payload: enhancedPayload, // Use the new payload
+        payload: enhancedPayload,
       );
       debugPrint("Scheduled Notif ($id) for $scheduledDate");
     } catch (e) {
@@ -156,7 +159,6 @@ class SystemNotificationService {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
-    // [NEW] Embed the repeat time info into the payload
     final String enhancedPayload = "${payload ?? ''}|REPEAT:$hour:$minute";
 
     try {
@@ -165,25 +167,27 @@ class SystemNotificationService {
         title,
         body,
         scheduledDate,
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
             'budgetr_daily_v3',
             'Daily Check-in',
             channelDescription: 'Daily generic reminders',
             importance: Importance.high,
             priority: Priority.high,
-            color: Color(0xFF0D1B2A),
+            color: const Color(0xFF0D1B2A),
             enableVibration: true,
             playSound: true,
+            // [FIX] Enables Expandable Text
+            styleInformation: BigTextStyleInformation(body),
           ),
-          iOS: DarwinNotificationDetails(
+          iOS: const DarwinNotificationDetails(
               presentSound: true, presentAlert: true, presentBadge: true),
         ),
         androidScheduleMode: AndroidScheduleMode.alarmClock,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
-        payload: enhancedPayload, // Use the new payload
+        payload: enhancedPayload,
       );
       debugPrint("Scheduled Daily Notif ($id) for $hour:$minute");
     } catch (e) {

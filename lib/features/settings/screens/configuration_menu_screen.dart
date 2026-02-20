@@ -7,10 +7,12 @@ import 'package:budget/features/qr_sync/screens/qr_scan_screen.dart';
 import 'package:budget/features/settings/services/settings_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:google_fonts/google_fonts.dart'; // Added for typography
 import 'package:local_auth/local_auth.dart';
 import '../../settings/screens/settings_screen.dart';
 import 'category_manager_screen.dart';
-import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
+import '../../../core/widgets/glass_card.dart';
+import '../../../core/design/budgetr_colors.dart'; // Added for Glows
 
 class ConfigurationMenuScreen extends StatefulWidget {
   const ConfigurationMenuScreen({super.key});
@@ -77,103 +79,129 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
-      // [FIX] Removed standard AppBar
-      // Switched to SafeArea > Column layout for Modern Header
-      body: SafeArea(
-        child: Column(
-          children: [
-            // 1. MODERN HEADER
-            _buildModernHeader(),
+      body: Stack(
+        children: [
+          // [DESIGN UPGRADE] Ambient Glows
+          _buildAmbientGlow(
+              Alignment.topRight, BudgetrColors.accent.withOpacity(0.15)),
+          _buildAmbientGlow(
+              Alignment.bottomLeft, const Color(0xFF4361EE).withOpacity(0.1)),
 
-            // 2. SCROLLABLE CONTENT
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    // 1. Biometric Security Toggle (Matched Design)
-                    _buildBiometricToggle(),
+          SafeArea(
+            child: Column(
+              children: [
+                // 1. MODERN HEADER
+                _buildModernHeader(),
 
-                    const SizedBox(height: 16),
+                // 2. SCROLLABLE CONTENT
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
 
-                    // 2. Startup Screen Toggle
-                    _buildStartupToggle(),
-
-                    const SizedBox(height: 16),
-
-                    // 3. Transaction Categories
-                    _buildMenuCard(
-                      context,
-                      title: "Transaction Categories",
-                      subtitle: "Manage Income & Expense types",
-                      icon: Icons.category_outlined,
-                      color: const Color(0xFFF72585),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CategoryManagerScreen(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // 4. Backup & Restore
-                    _buildMenuCard(
-                      context,
-                      title: "Backup & Restore",
-                      subtitle: "Export or Import your data",
-                      icon: Icons.settings_backup_restore_rounded,
-                      color: const Color.fromARGB(255, 110, 255, 14),
-                      onTap: () {
-                        Navigator.push(
+                        // SECTION: PREFERENCES
+                        _buildSectionLabel("PREFERENCES"),
+                        _buildStartupToggle(),
+                        const SizedBox(height: 16),
+                        _buildMenuCard(
                           context,
-                          MaterialPageRoute(
-                              builder: (_) => const BackupScreen()),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildMenuCard(
-                      context,
-                      title: "Notification Manager",
-                      subtitle: "Triggers, Limits & Schedule",
-                      icon: Icons.notifications_active_rounded,
-                      color: const Color(0xFF00B4D8),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationManagerScreen(),
+                          title: "Notification Manager",
+                          subtitle: "Triggers, Limits & Schedule",
+                          icon: Icons.notifications_active_rounded,
+                          color: const Color(0xFF00B4D8),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const NotificationManagerScreen(),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                        const SizedBox(height: 16),
+                        _buildMenuCard(
+                          context,
+                          title: "Transaction Categories",
+                          subtitle: "Manage Income & Expense types",
+                          icon: Icons.category_outlined,
+                          color: const Color(0xFFF72585),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CategoryManagerScreen(),
+                            ),
+                          ),
+                        ),
 
-                    // 5. Database Viewer (Protected)
-                    _buildMenuCard(
-                      context,
-                      icon: Icons.table_view_rounded,
-                      title: "Database Viewer",
-                      subtitle: "Inspect raw SQL tables (Dev)",
-                      color: const Color.fromARGB(255, 255, 187, 14),
-                      onTap: () => _handleSecureAccess(context),
+                        const SizedBox(height: 32),
+
+                        // SECTION: SECURITY
+                        _buildSectionLabel("SECURITY"),
+                        _buildBiometricToggle(),
+
+                        const SizedBox(height: 32),
+
+                        // SECTION: DATA
+                        _buildSectionLabel("DATA MANAGEMENT"),
+                        _buildMenuCard(
+                          context,
+                          title: "Backup & Restore",
+                          subtitle: "Export or Import your data",
+                          icon: Icons.settings_backup_restore_rounded,
+                          color: const Color.fromARGB(255, 110, 255, 14),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const BackupScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _buildMenuCard(
+                          context,
+                          icon: Icons.table_view_rounded,
+                          title: "Database Viewer",
+                          subtitle: "Inspect raw SQL tables (Dev)",
+                          color: const Color.fromARGB(255, 255, 187, 14),
+                          onTap: () => _handleSecureAccess(context),
+                        ),
+                        const SizedBox(height: 40),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- WIDGETS ---
+
+  Widget _buildSectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, left: 4),
+      child: Text(
+        label,
+        style: GoogleFonts.robotoSlab(
+          color: Colors.white38,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.5,
         ),
       ),
     );
   }
 
-  // --- NEW: Modern Header Implementation ---
   Widget _buildModernHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Back Button
           GestureDetector(
             onTap: () => Navigator.maybePop(context),
             child: GlassCard(
@@ -185,11 +213,8 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                   color: Colors.white70, size: 20),
             ),
           ),
-
           const SizedBox(width: 16),
-
-          // Title Section
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -203,9 +228,9 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                     letterSpacing: 2.0,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  "Configuration Menu",
+                  "Configuration",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -221,81 +246,129 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
     );
   }
 
-  // --- Existing Widgets (Unchanged) ---
+  Widget _buildAmbientGlow(Alignment alignment, Color color) {
+    return Positioned.fill(
+      child: Align(
+        alignment: alignment,
+        child: Container(
+          width: 300,
+          height: 300,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: color, blurRadius: 100, spreadRadius: 50)
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildBiometricToggle() {
     return ValueListenableBuilder<bool>(
       valueListenable: BiometricService.instance.enabledNotifier,
       builder: (context, enabled, child) {
         Future<void> onToggle(bool value) async {
-          // Mark as internal so BiometricGate ignores the pause/resume
           BiometricService.instance.markInternalAuth();
-
           try {
             bool auth = await BiometricService.instance.authenticate();
             if (auth) {
               await BiometricService.instance.setEnabled(value);
             }
           } finally {
-            // Unmark after operation completes
             BiometricService.instance.unmarkInternalAuth();
           }
         }
 
-        return GestureDetector(
-          onTap: () => onToggle(!enabled),
-          child: Container(
-            padding: const EdgeInsets.all(20),
+        return _buildToggleTile(
+          title: "Biometric Security",
+          subtitle: enabled ? "App is Secured" : "Tap to Enable",
+          icon: Icons.fingerprint,
+          color: const Color(0xFF00B4D8),
+          value: enabled,
+          onChanged: onToggle,
+        );
+      },
+    );
+  }
+
+  Widget _buildStartupToggle() {
+    return FutureBuilder<bool>(
+      future: _settingsService.getLaunchToDailyExpense(),
+      builder: (context, snapshot) {
+        final enabled = snapshot.data ?? false;
+        return _buildToggleTile(
+          title: "Quick Launch",
+          subtitle: enabled ? "Opens Daily Expense" : "Opens Home Dashboard",
+          icon: Icons.rocket_rounded,
+          color: const Color(0xFFFF9F1C),
+          value: enabled,
+          onChanged: (val) async {
+            await _settingsService.setLaunchToDailyExpense(val);
+            setState(() {});
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildToggleTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required bool value,
+    required Function(bool) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF1B263B).withOpacity(0.8),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00B4D8).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.fingerprint,
-                      color: Color(0xFF00B4D8), size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Biometric Security",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        enabled ? "App is Secured" : "Tap to Enable",
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                Text(
+                  title,
+                  style: GoogleFonts.robotoSlab(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                Switch(
-                  value: enabled,
-                  activeColor: const Color(0xFF00B4D8),
-                  onChanged: onToggle,
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
           ),
-        );
-      },
+          Switch(
+            value: value,
+            activeColor: color,
+            inactiveTrackColor: Colors.white10,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
     );
   }
 
@@ -307,24 +380,24 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return _BouncyButton(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1B263B).withOpacity(0.8),
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -333,13 +406,13 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: GoogleFonts.robotoSlab(
                       color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: TextStyle(
@@ -352,168 +425,65 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: Colors.white.withOpacity(0.3),
-              size: 16,
+              color: Colors.white.withOpacity(0.2),
+              size: 14,
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  void _showSyncModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1B263B),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              "Sync Device",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3A86FF).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child:
-                    const Icon(Icons.upload_rounded, color: Color(0xFF3A86FF)),
-              ),
-              title: const Text("Generate QR (Sender)",
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
-              subtitle: const Text("Generate QR code to send data",
-                  style: TextStyle(color: Colors.white54)),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const QrGenerateScreen()));
-              },
-            ),
-            const Divider(color: Colors.white10, height: 32),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF72585).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.download_rounded,
-                    color: Color(0xFFF72585)),
-              ),
-              title: const Text("Scan QR (Receiver)",
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
-              subtitle: const Text("Overwrite this device with new data",
-                  style: TextStyle(color: Colors.white54)),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const QrScanScreen()));
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+// ==============================================================================
+//  [HELPER] TACTILE BOUNCE EFFECT (Same as Home Screen)
+// ==============================================================================
+class _BouncyButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const _BouncyButton({required this.child, required this.onTap});
+
+  @override
+  State<_BouncyButton> createState() => _BouncyButtonState();
+}
+
+class _BouncyButtonState extends State<_BouncyButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
 
-  Widget _buildStartupToggle() {
-    return FutureBuilder<bool>(
-      future: _settingsService.getLaunchToDailyExpense(),
-      builder: (context, snapshot) {
-        final enabled = snapshot.data ?? false;
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
-        return GestureDetector(
-          onTap: () async {
-            await _settingsService.setLaunchToDailyExpense(!enabled);
-            setState(() {}); // Refresh UI
-          },
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1B263B).withOpacity(0.8),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF9F1C).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.rocket_rounded,
-                      color: Color(0xFFFF9F1C), size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Quick Launch",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        enabled
-                            ? "Opens Daily Expense"
-                            : "Opens Home Dashboard",
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: enabled,
-                  activeColor: const Color(0xFFFF9F1C),
-                  onChanged: (val) async {
-                    await _settingsService.setLaunchToDailyExpense(val);
-                    setState(() {});
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
       },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: widget.child,
+      ),
     );
   }
 }

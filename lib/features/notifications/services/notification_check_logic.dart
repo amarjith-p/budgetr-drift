@@ -115,7 +115,7 @@ class NotificationCheckLogic {
             await createNotification(
               type: 'due_date',
               title: 'EMI Repayment Due',
-              message: 'Your EMI for ${loan.title} is due today.',
+              message: 'Your EMI for ${loan.title} is Due Today.',
               payload: loan.id,
               pushSystem: false, // Don't pop up again, just write to DB
             );
@@ -158,7 +158,7 @@ class NotificationCheckLogic {
             await createNotification(
               type: 'due_date',
               title: 'Credit Card Bill Due',
-              message: 'Your bill for ${card.name} is due today.',
+              message: 'Your Bill for ${card.name} is Due Today.',
               payload: card.id,
               pushSystem: false,
             );
@@ -170,7 +170,7 @@ class NotificationCheckLogic {
               await createNotification(
                 type: 'statement',
                 title: 'Statement Generated',
-                message: 'Your bill for ${card.name} is generated today.',
+                message: 'Your Bill for ${card.name} is Generated Today.',
                 payload: card.id,
                 pushSystem: false,
               );
@@ -248,7 +248,7 @@ class NotificationCheckLogic {
             await createNotification(
               type: 'budget_not_set',
               title: 'Set Your Budget',
-              message: 'Welcome to a new month! Plan your finances now.',
+              message: 'Welcome to a new month! Plan your Budget now.',
               payload: 'dashboard',
             );
             await _markNotified(key);
@@ -341,7 +341,7 @@ class NotificationCheckLogic {
           await createNotification(
             type: 'global_overrun',
             title: 'Critical: Income Exceeded',
-            message: 'Your total spending is higher than your income!',
+            message: 'Your Total Spending is Higher than your Income!',
             payload: 'dashboard',
           );
           await _markNotified(key);
@@ -453,7 +453,7 @@ class NotificationCheckLogic {
               type: 'daily_spike',
               title: 'High Spending Alert',
               message:
-                  'You spent INR ${todayTotal.toStringAsFixed(2)} today, exceeding your limit.',
+                  'You Spent INR ${todayTotal.toStringAsFixed(2)} today, Exceeding your Limit.',
               payload: 'spending_calendar',
             );
             await _markNotified(key);
@@ -480,7 +480,7 @@ class NotificationCheckLogic {
             type: 'inv_stale',
             title: 'Outdated Prices',
             message:
-                'Portfolio prices haven\'t been updated in $daysSinceUpdate days.',
+                'Portfolio Prices haven\'t been Updated in $daysSinceUpdate Days.',
             payload: 'investment',
           );
           await _markNotified(key);
@@ -532,7 +532,7 @@ class NotificationCheckLogic {
             await createNotification(
               type: 'inv_volatility',
               title: 'Market Alert',
-              message: 'Your portfolio is $direction by $percentStr% today.',
+              message: 'Your Portfolio is $direction by $percentStr% today.',
               payload: 'investment',
             );
             await _markNotified(key);
@@ -561,7 +561,7 @@ class NotificationCheckLogic {
               type: 'loan_closed',
               title: 'Loan Paid Off! 🎉',
               message:
-                  'Fantastic! You have successfully closed your loan: ${loan.title}.',
+                  'Fantastic! You have Successfully Closed your Loan: ${loan.title}.',
               payload: loan.id,
             );
             await _markNotified(key);
@@ -591,7 +591,7 @@ class NotificationCheckLogic {
             await createNotification(
               type: 'loan_overdue',
               title: 'Loan Overdue Alert',
-              message: 'The repayment for ${loan.title} is overdue!',
+              message: 'The Repayment for ${loan.title} is Overdue!',
               payload: loan.id,
             );
             await _markNotified(key);
@@ -608,7 +608,7 @@ class NotificationCheckLogic {
               type: 'goal_achieved',
               title: 'Goal Achieved! 🎉',
               message:
-                  'Congratulations! You have reached your goal: ${goal.name}.',
+                  'Congratulations! You have Reached your Goal: ${goal.name}.',
               payload: goal.id,
             );
             await _markNotified(key);
