@@ -472,7 +472,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                     color: const Color(0xFFFF9F1C).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.rocket_launch_rounded,
+                  child: const Icon(Icons.rocket_rounded,
                       color: Color(0xFFFF9F1C), size: 24),
                 ),
                 const SizedBox(width: 16),

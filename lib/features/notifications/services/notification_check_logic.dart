@@ -216,7 +216,7 @@ class NotificationCheckLogic {
                 type: 'high_util',
                 title: 'High Utilization Alert',
                 message:
-                    'You have used ${utilization.toStringAsFixed(1)}% of ${card.name}.',
+                    'You have used ${utilization.toStringAsFixed(2)}% of ${card.name}.',
                 payload: card.id,
               );
               await _markNotified(key);
@@ -392,7 +392,7 @@ class NotificationCheckLogic {
               type: 'low_balance',
               title: 'Low Balance: ${acc.name}',
               message:
-                  'Balance is low (INR ${acc.currentBalance.toStringAsFixed(0)}).',
+                  'Balance is low (INR ${acc.currentBalance.toStringAsFixed(2)}).',
               payload: acc.id,
             );
             await _markNotified(key);
@@ -453,7 +453,7 @@ class NotificationCheckLogic {
               type: 'daily_spike',
               title: 'High Spending Alert',
               message:
-                  'You spent INR ${todayTotal.toStringAsFixed(0)} today, exceeding your limit.',
+                  'You spent INR ${todayTotal.toStringAsFixed(2)} today, exceeding your limit.',
               payload: 'spending_calendar',
             );
             await _markNotified(key);
@@ -527,7 +527,7 @@ class NotificationCheckLogic {
           final key = _getDailyKey('inv_volatility', 'portfolio');
           if (await _shouldNotify(key)) {
             final direction = changePercent > 0 ? "up" : "down";
-            final percentStr = (absChange * 100).toStringAsFixed(1);
+            final percentStr = (absChange * 100).toStringAsFixed(2);
 
             await createNotification(
               type: 'inv_volatility',

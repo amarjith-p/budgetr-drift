@@ -252,7 +252,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.analytics_outlined,
+                    Icons.fact_check_rounded,
                     color: Colors.purpleAccent,
                     size: 20,
                   ),

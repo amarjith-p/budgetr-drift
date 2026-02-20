@@ -589,7 +589,7 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
         // Option 2: Goal (Cyan/Accent)
         _buildFabOption(
           "New Goal",
-          Icons.flag_circle_rounded,
+          Icons.rocket_launch_rounded,
           BudgetrColors.accent,
           () => _showAddSheet(0),
         ),
@@ -731,7 +731,7 @@ class _GoalCard extends StatelessWidget {
                   child: Icon(
                       isHistory
                           ? Icons.emoji_events_rounded
-                          : Icons.flag_circle_rounded,
+                          : Icons.rocket_launch_rounded,
                       color: color,
                       size: 24),
                 ),
@@ -894,7 +894,7 @@ class _LoanCard extends StatelessWidget {
                   child: Icon(
                       isClosed
                           ? Icons.lock_open_rounded
-                          : Icons.credit_card_off_rounded,
+                          : Icons.credit_score_rounded,
                       color: color,
                       size: 20),
                 ),

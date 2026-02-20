@@ -263,7 +263,7 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
                     if (_accountEnabled)
                       _buildSlider(
                         "Low Balance Threshold",
-                        "Alert when below ₹${_lowBalanceThreshold.toStringAsFixed(0)}",
+                        "Alert when below ₹${_lowBalanceThreshold.toStringAsFixed(2)}",
                         _lowBalanceThreshold,
                         100,
                         10000,

@@ -11,7 +11,7 @@ import '../../../core/services/service_locator.dart';
 // Services
 import '../../daily_expense/services/expense_service.dart';
 import '../../dashboard/services/dashboard_service.dart';
-import '../../backup_restore/services/backup_service.dart'; // [ADDED] Import
+import '../../backup_restore/services/backup_service.dart';
 
 // Models
 import '../../dashboard/models/dashboard_transaction.dart';
@@ -40,25 +40,18 @@ class _HomeScreenState extends State<HomeScreen> {
   final expenseService = locator<ExpenseService>();
   final dashboardService = locator<DashboardService>();
 
-  // State for balance visibility
   bool _isBalanceVisible = false;
-
-  // [ADDED] Backup Logic
   final BackupService _backupService = BackupService();
   bool _needsBackup = false;
-
-  // Budget Mode State
   bool _isBudgetMode = false;
   DateTime? _lastBackPressTime;
 
   @override
   void initState() {
     super.initState();
-    // [ADDED] Check status
     _checkBackupStatus();
   }
 
-  // [ADDED] Logic
   Future<void> _checkBackupStatus() async {
     final overdue = await _backupService.isBackupOverdue();
     if (mounted && overdue != _needsBackup) {
@@ -66,9 +59,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-// [ADDED] Handle Back Press Logic
   void _handlePopInvoked(bool didPop) {
-    if (didPop) return; // If system already handled it, do nothing.
+    if (didPop) return;
 
     final now = DateTime.now();
     final backButtonHasNotBeenPressedOrSnackBarHasClosed =
@@ -77,29 +69,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (backButtonHasNotBeenPressedOrSnackBarHasClosed) {
       _lastBackPressTime = now;
-      ScaffoldMessenger.of(context).clearSnackBars(); // Clear old ones
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          // 1. Set background to white so the dark text is visible
           backgroundColor: Colors.white,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           duration: const Duration(seconds: 2),
-
-          // 2. Use a Row to place Icon next to Text
           content: Row(
             children: [
-              // Warning Icon
-              const Icon(
-                Icons.warning_amber_rounded,
-                color: Color(0xFFFF9F1C), // Matches your text color
-                size: 24,
-              ),
-              const SizedBox(width: 8), // Spacing
-
-              // Text
+              const Icon(Icons.warning_amber_rounded,
+                  color: Color(0xFFFF9F1C), size: 24),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   "Press back again to exit",
@@ -114,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } else {
-      SystemNavigator.pop(); // Close the App
+      SystemNavigator.pop();
     }
   }
 
@@ -129,13 +111,12 @@ class _HomeScreenState extends State<HomeScreen> {
           appBar: const HomeAppBar(),
           body: Stack(
             children: [
-              // Background ambient gradients
               _buildAmbientGlow(
                   Alignment.topRight, BudgetrColors.accent.withOpacity(0.15)),
               _buildAmbientGlow(Alignment.bottomLeft,
                   const Color(0xFF4361EE).withOpacity(0.1)),
-
               SafeArea(
+                // [DESIGN FIX] Using Column with Expanded sections for perfect fit
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
@@ -143,14 +124,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const SizedBox(height: 10),
 
-                      // [ADDED] Warning Banner - Inserted here
+                      // 1. BANNER (Optional)
                       if (_needsBackup)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 15),
                           child: InkWell(
                             onTap: () async {
                               await _backupService.shareBackup();
-                              _checkBackupStatus(); // Refresh after backup
+                              _checkBackupStatus();
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Container(
@@ -169,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      "Quick check: Time to Backup your data!. Tap to Backup Now.",
+                                      "Time to Backup data!. Tap to Backup Now.",
                                       style: GoogleFonts.robotoSlab(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -184,28 +165,29 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
-                      // [END ADDED BANNER]
 
-                      // 1. Summary Card
+                      // 2. FINANCIAL OVERVIEW (Fixed Height)
                       _buildFinancialOverview(),
 
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 20),
 
-                      // 2. Financial Engines
+                      // 3. FINANCE TODAY (EXPANDED ENGINE)
+                      // This section will grow to fill all available space in the middle
                       _buildSectionHeader("Finance Today"),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 12),
                       Expanded(
-                        child: _buildFeatureGrid(context),
+                        child: _buildFlexibleFeatureGrid(context),
                       ),
 
-                      const SizedBox(height: 25),
-
-                      // 3. Quick Actions
-                      _buildSectionHeader("More Tools"),
-                      const SizedBox(height: 15),
-                      _buildQuickActionList(context),
-
                       const SizedBox(height: 20),
+
+                      // 4. MORE TOOLS (COMPACT 3-COL GRID)
+                      // Fixed at the bottom, accessible without scrolling
+                      _buildSectionHeader("More Tools"),
+                      const SizedBox(height: 12),
+                      _buildCompactQuickActionGrid(context),
+
+                      const SizedBox(height: 12), // Bottom padding
                     ],
                   ),
                 ),
@@ -215,7 +197,219 @@ class _HomeScreenState extends State<HomeScreen> {
         ));
   }
 
-  // ... [Keep ALL your other methods (_buildFinancialOverview, _buildMiniStat, etc.) exactly identical] ...
+  // --- 100% RESPONSIVE MIDDLE SECTION ---
+  Widget _buildFlexibleFeatureGrid(BuildContext context) {
+    return Column(
+      children: [
+        // Top Row
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildCompactCard(
+                    context,
+                    "Budget Dashboard",
+                    Icons.donut_large_rounded,
+                    const Color(0xFF4361EE),
+                    const DashboardScreen()),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildCompactCard(
+                    context,
+                    "Daily Expense",
+                    Icons.account_balance_wallet_rounded,
+                    const Color(0xFF06D6A0),
+                    const DailyExpenseScreen()),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Bottom Row
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildCompactCard(
+                    context,
+                    "Credit Tracker",
+                    Icons.credit_card_rounded,
+                    const Color(0xFFEF476F),
+                    const CreditTrackerScreen()),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildCompactCard(
+                    context,
+                    "Custom Entry",
+                    Icons.post_add_rounded,
+                    const Color(0xFFFFD166),
+                    const CustomEntryDashboard()),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- COMPACT 3-COLUMN BOTTOM GRID ---
+  Widget _buildCompactQuickActionGrid(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min, // Takes minimal space needed
+      children: [
+        // Row 1
+        Row(
+          children: [
+            Expanded(
+                child: _buildVerticalActionChip(
+                    context,
+                    "Goals & Loans",
+                    Icons.rocket_launch_rounded,
+                    const Color(0xFF7209B7),
+                    const GoalsLoansDashboard())),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _buildVerticalActionChip(
+                    context,
+                    "Investments",
+                    Icons.insights_rounded,
+                    const Color(0xFF3F37C9),
+                    const InvestmentScreen())),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _buildVerticalActionChip(
+                    context,
+                    "Net Worth",
+                    Icons.diamond_rounded,
+                    const Color(0xFF4CC9F0),
+                    const NetWorthScreen())),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Row 2
+        Row(
+          children: [
+            Expanded(
+                child: _buildVerticalActionChip(
+                    context,
+                    "Budget Buckets",
+                    Icons.widgets_rounded,
+                    const Color(0xFFF72585),
+                    const SettingsScreen())),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _buildVerticalActionChip(
+                    context,
+                    "Settlements",
+                    Icons.fact_check_rounded,
+                    const Color(0xFFFF9F1C),
+                    const SettlementScreen())),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _buildVerticalActionChip(
+                    context,
+                    "Settings",
+                    Icons.tune_rounded,
+                    const Color(0xFFADB5BD),
+                    const ConfigurationMenuScreen())),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // [NEW DESIGN] Vertical Chip (Icon Top, Text Bottom) - Saves Width
+  Widget _buildVerticalActionChip(BuildContext context, String label,
+      IconData icon, Color iconColor, Widget page) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+          context, MaterialPageRoute(builder: (context) => page)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white10),
+          color: Colors.white.withOpacity(0.03),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: iconColor, size: 22),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.robotoSlab(
+                  color: Colors.white70,
+                  fontSize: 11, // Slightly smaller font to fit 3 cols
+                  height: 1.1),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // [UPDATED] Card Builder for Flexible Grid - Uses Expanded automatically from parent
+  Widget _buildCompactCard(BuildContext context, String title, IconData icon,
+      Color color, Widget page) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+          context, MaterialPageRoute(builder: (context) => page)),
+      child: Container(
+        // Removed hardcoded constraints, relies on parent Expanded
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8), // Smoother corners
+          border: Border.all(color: Colors.white.withOpacity(0.2)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 36), // Slightly larger icon
+            const SizedBox(height: 10),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.robotoSlab(
+                    color: Colors.white, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ... [UNCHANGED HELPERS BELOW] ...
+
+  Widget _buildSectionHeader(String title) {
+    return Text(title,
+        style: GoogleFonts.robotoSlab(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight:
+                FontWeight.bold)); // Slightly smaller header to save space
+  }
+
+  Widget _buildAmbientGlow(Alignment alignment, Color color) {
+    return Positioned.fill(
+      child: Align(
+        alignment: alignment,
+        child: Container(
+          width: 300,
+          height: 300,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: color, blurRadius: 100, spreadRadius: 50)
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildFinancialOverview() {
     final now = DateTime.now();
@@ -239,7 +433,6 @@ class _HomeScreenState extends State<HomeScreen> {
           final txns = snapshot.data![1] as List<DashboardTransaction>;
           final records = snapshot.data![2] as List<FinancialRecord>;
 
-          // 1. Find Current Month Budget
           final recordId = "${now.year}${now.month.toString().padLeft(2, '0')}";
           final currentRecord = records.firstWhere(
             (r) => r.id == recordId,
@@ -258,20 +451,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 updatedAt: DateTime.now()),
           );
 
-          // Sum Allocations (excluding Income)
           currentRecord.allocations.forEach((key, value) {
             if (key != 'Income') monthlyBudget += value;
           });
 
-          // 2. Calculate Total Spent with Filtering
           for (var txn in txns) {
             bool exclude = false;
-
             if (_isBudgetMode) {
               if (txn.bucket == 'Out of Bucket') exclude = true;
               if (txn.category == 'Non-Calculated Expense') exclude = true;
             }
-
             if (!exclude) {
               if (txn.type == 'Expense' ||
                   (txn.type == 'Transfer Out' &&
@@ -284,9 +473,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(20), // Reduced padding slightly
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8), // Match rounded look
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -295,13 +484,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 Colors.white.withOpacity(0.03),
               ],
             ),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // --- Header Row ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,9 +500,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Text("Total Account Balance",
                             style: GoogleFonts.robotoSlab(
-                                color: Colors.white70, fontSize: 14)),
+                                color: Colors.white70, fontSize: 13)),
                         const SizedBox(width: 8),
-                        // [UPDATED] Visibility Toggle Icon
                         GestureDetector(
                           onTap: () {
                             setState(() {
@@ -379,13 +566,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(dateStr,
                               style: GoogleFonts.robotoSlab(
                                   color: Colors.white.withOpacity(0.6),
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w500)),
                           const SizedBox(height: 2),
                           Text(timeStr,
                               style: GoogleFonts.robotoSlab(
                                   color: Colors.white,
-                                  fontSize: 14,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                   fontFeatures: [
                                     const FontFeature.tabularFigures()
@@ -396,8 +583,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-
-              // [UPDATED] Masked Total Balance Logic
               Text(
                   _isBalanceVisible
                       ? "₹ ${currentBalance.toStringAsFixed(2)}"
@@ -407,8 +592,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1)),
-              const SizedBox(height: 20),
-
+              const SizedBox(height: 16), // Reduced gap
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -416,8 +600,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       "Monthly Budget",
                       "    ₹ ${monthlyBudget.toStringAsFixed(2)}",
                       Colors.blueAccent),
-
-                  // Custom Column for Spent so far + Toggle
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -431,9 +613,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(width: 8),
                           Text(_isBudgetMode ? "Budget Spent" : "Spent so far",
                               style: GoogleFonts.robotoSlab(
-                                  color: Colors.white54, fontSize: 12)),
+                                  color: Colors.white54, fontSize: 11)),
                           const SizedBox(width: 6),
-                          // Toggle Icon
                           SizedBox(
                             height: 20,
                             width: 20,
@@ -463,7 +644,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text("    ₹ ${totalSpent.toStringAsFixed(2)}",
                           style: GoogleFonts.openSans(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w600)),
                     ],
                   ),
@@ -486,164 +667,16 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
             Text(label,
                 style: GoogleFonts.robotoSlab(
-                    color: Colors.white54, fontSize: 12)),
+                    color: Colors.white54, fontSize: 11)),
           ],
         ),
         const SizedBox(height: 4),
         Text(value,
             style: GoogleFonts.openSans(
                 color: Colors.white,
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w600)),
       ],
-    );
-  }
-
-  Widget _buildFeatureGrid(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double itemWidth = (constraints.maxWidth - 16) / 2;
-        double itemHeight = (constraints.maxHeight - 16) / 2;
-        double childAspectRatio = itemWidth / itemHeight;
-
-        return GridView.count(
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: childAspectRatio,
-          children: [
-            _buildCompactCard(
-                context,
-                "Budget Dashboard",
-                Icons.donut_large_rounded,
-                const Color(0xFF4361EE),
-                const DashboardScreen()),
-            _buildCompactCard(
-                context,
-                "Daily Expense",
-                Icons.account_balance_wallet_rounded,
-                const Color(0xFF00B4D8),
-                const DailyExpenseScreen()),
-            _buildCompactCard(
-                context,
-                "Credit Tracker",
-                Icons.credit_card_rounded,
-                const Color(0xFFE63946),
-                const CreditTrackerScreen()),
-            _buildCompactCard(
-                context,
-                "Custom Entry",
-                Icons.dashboard_customize_rounded,
-                const Color(0xFFFF9F1C),
-                const CustomEntryDashboard()),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildCompactCard(BuildContext context, String title, IconData icon,
-      Color color, Widget page) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-          context, MaterialPageRoute(builder: (context) => page)),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 12),
-            Text(title,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.robotoSlab(
-                    color: Colors.white, fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Text(title,
-        style: GoogleFonts.robotoSlab(
-            color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold));
-  }
-
-  Widget _buildAmbientGlow(Alignment alignment, Color color) {
-    return Positioned.fill(
-      child: Align(
-        alignment: alignment,
-        child: Container(
-          width: 300,
-          height: 300,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(color: color, blurRadius: 100, spreadRadius: 50)
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionList(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _buildActionChip(
-              context,
-              "Goals & Loans",
-              Icons.flag_rounded,
-              const Color.fromARGB(255, 38, 219, 2),
-              const GoalsLoansDashboard()),
-          _buildActionChip(context, "Investments", Icons.show_chart_rounded,
-              const Color.fromARGB(255, 161, 1, 241), const InvestmentScreen()),
-          _buildActionChip(context, "Net Worth", Icons.currency_rupee_rounded,
-              const Color.fromARGB(255, 92, 123, 21), const NetWorthScreen()),
-          _buildActionChip(context, "Budget Buckets", Icons.pie_chart_outline,
-              const Color.fromARGB(255, 255, 90, 175), const SettingsScreen()),
-          _buildActionChip(
-              context,
-              "Settlements",
-              Icons.analytics_outlined,
-              const Color.fromARGB(255, 121, 48, 248),
-              const SettlementScreen()),
-          _buildActionChip(context, "Settings", Icons.settings_rounded,
-              Colors.white70, const ConfigurationMenuScreen()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionChip(BuildContext context, String label, IconData icon,
-      Color iconColor, Widget page) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-          context, MaterialPageRoute(builder: (context) => page)),
-      child: Container(
-        margin: const EdgeInsets.only(right: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.white10),
-          color: Colors.white.withOpacity(0.02),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: iconColor, size: 18),
-            const SizedBox(width: 8),
-            Text(label, style: GoogleFonts.robotoSlab(color: Colors.white70)),
-          ],
-        ),
-      ),
     );
   }
 }
