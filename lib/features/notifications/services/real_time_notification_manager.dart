@@ -1,157 +1,336 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/database/app_database.dart';
 import 'notification_service.dart';
+import 'system_notification_service.dart';
 
-/// Central Nervous System for Notifications
-/// Listens to:
-/// 1. Database Changes (Data Events)
-/// 2. Clock Ticks (Time Events)
 class RealTimeNotificationManager {
   final AppDatabase _db = AppDatabase.instance;
   final NotificationService _notificationService =
       GetIt.I<NotificationService>();
+  final SystemNotificationService _systemService =
+      GetIt.I<SystemNotificationService>();
 
-  // Stream Subscriptions (Data Events)
-  StreamSubscription? _expenseSub;
+  StreamSubscription? _expenseAccSub;
+  StreamSubscription? _expenseTxnSub;
   StreamSubscription? _creditSub;
   StreamSubscription? _goalSub;
   StreamSubscription? _loanSub;
   StreamSubscription? _budgetSub;
   StreamSubscription? _investmentSub;
 
-  // Debounce Timers
-  Timer? _expenseTimer;
-  Timer? _creditTimer;
-  Timer? _goalTimer;
-  Timer? _loanTimer;
-  Timer? _budgetTimer;
-  Timer? _investmentTimer;
+  Timer? _debounceTimer;
+  bool _isRescheduling = false;
 
-  // Heartbeat Timer (Time Events)
-  Timer? _heartbeatTimer;
+  static const String kPrefDailyEnabled = 'notif_enable_daily_reminder';
+  static const String kPrefDailyTime = 'notif_time_daily';
 
-  // --- INITIALIZATION ---
+  static const String kPrefLoanGoalEnabled = 'notif_enable_loangoal';
+  static const String kPrefLoanGoalTime = 'notif_time_loangoal';
+
+  static const String kPrefBackupEnabled = 'notif_enable_backup';
+  static const String kPrefBackupTime = 'notif_time_backup';
+
+  static const String kPrefCreditEnabled = 'notif_enable_credit';
+
   void init() {
     debugPrint("Initializing Real-Time Notification Engine...");
-
-    // 1. Start Database Listeners
     _initDbListeners();
-
-    // 2. Start Time Heartbeat
-    _startHeartbeat();
+    rescheduleAll();
   }
 
   void _initDbListeners() {
-    // 1. Daily Expenses & Accounts
-    // Trigger: Spending Money -> Affects Account Balance AND Budget Limits
-    _expenseSub = _db.expenseAccounts.select().watch().listen((_) {
-      _debounce(_expenseTimer, () {
-        debugPrint("RealTime: Expense/Account Change Detected");
-        _notificationService
-            .checkDailyExpenseHealth(); // Low Balance / Negative
-        _notificationService.checkBudgetHealth(); // Budget Overflow
-      });
-    });
+    _expenseAccSub = _db.expenseAccounts
+        .select()
+        .watch()
+        .listen((_) => _onDatabaseChanged());
+    _expenseTxnSub = _db.expenseTransactions
+        .select()
+        .watch()
+        .listen((_) => _onDatabaseChanged());
+    _creditSub =
+        _db.creditCards.select().watch().listen((_) => _onDatabaseChanged());
+    _investmentSub = _db.investmentRecords
+        .select()
+        .watch()
+        .listen((_) => _onDatabaseChanged());
+    _budgetSub = _db.financialRecords
+        .select()
+        .watch()
+        .listen((_) => _onDatabaseChanged());
+    _goalSub = _db.goals.select().watch().listen((_) => _onDatabaseChanged());
+    _loanSub = _db.loans.select().watch().listen((_) => _onDatabaseChanged());
+  }
 
-    // 2. Credit Cards
-    // Trigger: Spending on Card -> Affects Utilization
-    _creditSub = _db.creditCards.select().watch().listen((_) {
-      _debounce(_creditTimer, () {
-        debugPrint("RealTime: Credit Change Detected");
-        _notificationService.checkCreditHealth();
-        _notificationService.checkBudgetHealth();
-      });
-    });
+  void _onDatabaseChanged() {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
-    // 3. Goals
-    // Trigger: Saving money -> Goal Achievement
-    _goalSub = _db.goals.select().watch().listen((_) {
-      _debounce(_goalTimer, () {
-        debugPrint("RealTime: Goal Change Detected");
-        _notificationService.checkGoalLoanStatus();
-      });
-    });
+    _debounceTimer = Timer(const Duration(seconds: 2), () async {
+      await _notificationService.runLogicChecks();
 
-    // 4. Loans
-    // Trigger: Paying off loan -> Loan Completion
-    _loanSub = _db.loans.select().watch().listen((_) {
-      _debounce(_loanTimer, () {
-        debugPrint("RealTime: Loan Change Detected");
-        _notificationService.checkGoalLoanStatus();
-      });
-    });
+      final loans = await _db.loans.select().get();
+      final goals = await _db.goals.select().get();
+      final cards = await _db.creditCards.select().get();
 
-    // 5. Budget Settings
-    // Trigger: Changing limits -> Re-validate spending
-    _budgetSub = _db.financialRecords.select().watch().listen((_) {
-      _debounce(_budgetTimer, () {
-        debugPrint("RealTime: Budget Config Change Detected");
-        _notificationService.checkBudgetHealth();
-      });
-    });
-
-    // 6. Investments
-    // Trigger: Price Refresh / New Asset -> Volatility / Milestones
-    _investmentSub = _db.investmentRecords.select().watch().listen((_) {
-      _debounce(_investmentTimer, () {
-        debugPrint("RealTime: Investment Change Detected");
-        _notificationService.checkInvestmentVolatilityAndMilestones();
-        _notificationService.checkInvestmentHealth();
-      });
+      await _scheduleLoanReminders(loans);
+      await _scheduleGoalDeadlines(goals);
+      await _scheduleCreditCardBills(cards);
     });
   }
 
-  /// Runs periodic checks for events that depend on TIME, not Data.
-  /// (e.g., Midnight crossover for Due Dates, Statements, Backup Overdue)
-  void _startHeartbeat() {
-    // Run every 60 seconds
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
-      debugPrint("RealTime: Heartbeat Check (Time-based Events)");
+  Future<void> rescheduleAll() async {
+    if (_isRescheduling) return;
+    _isRescheduling = true;
 
-      // These checks rely on 'Today's Date'.
-      // If the clock ticks past midnight while app is open, these will fire.
+    try {
+      final loans = await _db.loans.select().get();
+      final goals = await _db.goals.select().get();
+      final cards = await _db.creditCards.select().get();
 
-      // 1. Check for Statements & Due Dates
-      _notificationService.checkCreditHealth();
+      await _systemService.cancelAll();
 
-      // 2. Check for Loan Deadlines
-      _notificationService.checkGoalLoanStatus();
+      await _scheduleLoanReminders(loans);
+      await _scheduleGoalDeadlines(goals);
+      await _scheduleCreditCardBills(cards);
 
-      // 3. Check for Backup Overdue
-      _notificationService.checkBackupStatus();
-
-      // 4. Check for Stale Investment Data
-      _notificationService.checkInvestmentHealth();
-    });
+      await _scheduleDailyAppReminder();
+      await _scheduleBackupReminder();
+    } finally {
+      await Future.delayed(const Duration(milliseconds: 300));
+      _isRescheduling = false;
+    }
   }
 
-  // --- HELPER: Debounce ---
-  void _debounce(Timer? timer, Function action) {
-    if (timer?.isActive ?? false) timer!.cancel();
-    timer = Timer(const Duration(seconds: 2), () {
-      action();
-    });
+  Future<TimeOfDay> _fetchTime(
+      String key, int defaultHour, int defaultMinute) async {
+    final prefs = await SharedPreferences.getInstance();
+    final timeStr = prefs.getString(key);
+    if (timeStr == null || !timeStr.contains(":"))
+      return TimeOfDay(hour: defaultHour, minute: defaultMinute);
+    final parts = timeStr.split(":");
+    return TimeOfDay(
+        hour: int.tryParse(parts[0]) ?? defaultHour,
+        minute: int.tryParse(parts[1]) ?? defaultMinute);
   }
 
-  // --- CLEANUP ---
+  Future<bool> _isEnabled(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(key) ?? true;
+  }
+
+  // --- SCHEDULING LOGIC ---
+
+  Future<void> _scheduleDailyAppReminder() async {
+    if (!await _isEnabled(kPrefDailyEnabled)) return;
+    final time = await _fetchTime(kPrefDailyTime, 20, 0);
+    await _systemService.scheduleDailyNotification(
+      id: 9999,
+      title: 'Daily Check-in',
+      body: 'Time to log your daily expenses.',
+      hour: time.hour,
+      minute: time.minute,
+      payload: 'daily_expense',
+    );
+  }
+
+  Future<void> _scheduleBackupReminder() async {
+    if (!await _isEnabled(kPrefBackupEnabled)) return;
+    final time = await _fetchTime(kPrefBackupTime, 18, 0);
+    await _systemService.scheduleDailyNotification(
+      id: 8888,
+      title: 'Backup Verification',
+      body: 'Please ensure your data is backed up.',
+      hour: time.hour,
+      minute: time.minute,
+      payload: 'backup',
+    );
+  }
+
+  // [NEW] Credit Card Scheduling
+  // [UPDATED] Credit Card Scheduling
+  Future<void> _scheduleCreditCardBills(List<CreditCard> cards) async {
+    if (!await _isEnabled(kPrefCreditEnabled)) return;
+    final time = await _fetchTime(kPrefLoanGoalTime, 9, 0);
+    final now = DateTime.now();
+
+    for (var card in cards) {
+      // --- 1. SCHEDULE DUE DATES ---
+      DateTime nextDueDate = DateTime(now.year, now.month, card.dueDate);
+      if (nextDueDate.isBefore(DateTime(now.year, now.month, now.day))) {
+        nextDueDate = DateTime(now.year, now.month + 1, card.dueDate);
+      }
+
+      final dueTime = DateTime(nextDueDate.year, nextDueDate.month,
+          nextDueDate.day, time.hour, time.minute);
+      if (dueTime.isAfter(now)) {
+        await _systemService.scheduleNotification(
+          id: ('cc_${card.id}_today').hashCode.abs(),
+          title: 'Credit Card Bill Due',
+          body: 'Your bill for ${card.name} is due today.',
+          scheduledDate: dueTime,
+          payload: card.id,
+        );
+      }
+
+      final oneDayBefore = dueTime.subtract(const Duration(days: 1));
+      if (oneDayBefore.isAfter(now)) {
+        await _systemService.scheduleNotification(
+          id: ('cc_${card.id}_1day').hashCode.abs(),
+          title: 'Credit Card Bill Tomorrow',
+          body: 'Your bill for ${card.name} is due tomorrow.',
+          scheduledDate: oneDayBefore,
+          payload: card.id,
+        );
+      }
+
+      final threeDaysBefore = dueTime.subtract(const Duration(days: 3));
+      if (threeDaysBefore.isAfter(now)) {
+        await _systemService.scheduleNotification(
+          id: ('cc_${card.id}_3days').hashCode.abs(),
+          title: 'Credit Card Bill Soon',
+          body: 'Your bill for ${card.name} is due in 3 days.',
+          scheduledDate: threeDaysBefore,
+          payload: card.id,
+        );
+      }
+
+      // --- 2. [NEW] SCHEDULE STATEMENT GENERATION ---
+      DateTime nextBillDate = DateTime(now.year, now.month, card.billDate);
+      if (nextBillDate.isBefore(DateTime(now.year, now.month, now.day))) {
+        nextBillDate = DateTime(now.year, now.month + 1, card.billDate);
+      }
+
+      final billTime = DateTime(nextBillDate.year, nextBillDate.month,
+          nextBillDate.day, time.hour, time.minute);
+      if (billTime.isAfter(now)) {
+        await _systemService.scheduleNotification(
+          id: ('cc_${card.id}_stmt').hashCode.abs(),
+          title: 'Statement Generated',
+          body: 'Your bill for ${card.name} is generated today.',
+          scheduledDate: billTime,
+          payload: card.id,
+        );
+      }
+    }
+  }
+
+  Future<void> _scheduleLoanReminders(List<Loan> loans) async {
+    if (!await _isEnabled(kPrefLoanGoalEnabled)) return;
+    final time = await _fetchTime(kPrefLoanGoalTime, 9, 0);
+    final now = DateTime.now();
+
+    for (var loan in loans) {
+      final remaining = loan.totalAmount - loan.paidAmount;
+      if (remaining <= 0 || loan.isClosed) continue;
+
+      final int emiDay = loan.nextPaymentDate?.day ?? loan.startDate.day;
+      DateTime nextEmiDate = DateTime(now.year, now.month, emiDay);
+
+      if (nextEmiDate.isBefore(DateTime(now.year, now.month, now.day))) {
+        nextEmiDate = DateTime(now.year, now.month + 1, emiDay);
+      }
+
+      if (loan.dueDate != null && nextEmiDate.isAfter(loan.dueDate!)) continue;
+
+      final dueTime = DateTime(nextEmiDate.year, nextEmiDate.month,
+          nextEmiDate.day, time.hour, time.minute);
+
+      if (dueTime.isAfter(now)) {
+        await _systemService.scheduleNotification(
+          id: ('loan_${loan.id}_today').hashCode.abs(),
+          title: 'EMI Repayment Due',
+          body: 'Your EMI for ${loan.title} is due today.',
+          scheduledDate: dueTime,
+          payload: loan.id,
+        );
+      }
+
+      final oneDayBefore = dueTime.subtract(const Duration(days: 1));
+      if (oneDayBefore.isAfter(now)) {
+        await _systemService.scheduleNotification(
+          id: ('loan_${loan.id}_1day').hashCode.abs(),
+          title: 'EMI Due Tomorrow',
+          body: 'Your EMI for ${loan.title} is due tomorrow.',
+          scheduledDate: oneDayBefore,
+          payload: loan.id,
+        );
+      }
+
+      final threeDaysBefore = dueTime.subtract(const Duration(days: 3));
+      if (threeDaysBefore.isAfter(now)) {
+        await _systemService.scheduleNotification(
+          id: ('loan_${loan.id}_3days').hashCode.abs(),
+          title: 'EMI Due Soon',
+          body: 'Your EMI for ${loan.title} is due in 3 days.',
+          scheduledDate: threeDaysBefore,
+          payload: loan.id,
+        );
+      }
+    }
+  }
+
+  Future<void> _scheduleGoalDeadlines(List<Goal> goals) async {
+    if (!await _isEnabled(kPrefLoanGoalEnabled)) return;
+    final time = await _fetchTime(kPrefLoanGoalTime, 9, 0);
+    final now = DateTime.now();
+
+    for (var goal in goals) {
+      if (goal.isCompleted || goal.deadline == null) continue;
+
+      final dead = goal.deadline!;
+      final dueTime =
+          DateTime(dead.year, dead.month, dead.day, time.hour, time.minute);
+
+      if (dueTime.isAfter(now)) {
+        await _systemService.scheduleNotification(
+          id: ('goal_${goal.id}_today').hashCode.abs(),
+          title: 'Goal Deadline Reached',
+          body: 'Time is up for your goal: ${goal.name}.',
+          scheduledDate: dueTime,
+          payload: goal.id,
+        );
+      }
+
+      final oneDayBefore = dead.subtract(const Duration(days: 1));
+      final warnTime1 = DateTime(oneDayBefore.year, oneDayBefore.month,
+          oneDayBefore.day, time.hour, time.minute);
+      if (warnTime1.isAfter(now)) {
+        await _systemService.scheduleNotification(
+          id: ('goal_${goal.id}_1day').hashCode.abs(),
+          title: 'Goal Deadline Tomorrow',
+          body: '${goal.name} is due tomorrow.',
+          scheduledDate: warnTime1,
+          payload: goal.id,
+        );
+      }
+
+      final sevenDaysBefore = dead.subtract(const Duration(days: 7));
+      final warnTime7 = DateTime(sevenDaysBefore.year, sevenDaysBefore.month,
+          sevenDaysBefore.day, time.hour, time.minute);
+      if (warnTime7.isAfter(now)) {
+        await _systemService.scheduleNotification(
+          id: ('goal_${goal.id}_7days').hashCode.abs(),
+          title: 'Goal Deadline Approaching',
+          body: '${goal.name} is due in 7 days.',
+          scheduledDate: warnTime7,
+          payload: goal.id,
+        );
+      }
+    }
+  }
+
   void dispose() {
-    _expenseSub?.cancel();
+    _expenseAccSub?.cancel();
+    _expenseTxnSub?.cancel();
     _creditSub?.cancel();
     _goalSub?.cancel();
     _loanSub?.cancel();
     _budgetSub?.cancel();
     _investmentSub?.cancel();
-
-    _expenseTimer?.cancel();
-    _creditTimer?.cancel();
-    _goalTimer?.cancel();
-    _loanTimer?.cancel();
-    _budgetTimer?.cancel();
-    _investmentTimer?.cancel();
-
-    _heartbeatTimer?.cancel();
+    _debounceTimer?.cancel();
   }
 }

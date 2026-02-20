@@ -1,8 +1,11 @@
-import 'dart:io'; // [NEW] Needed for Platform checks
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class SystemNotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -10,19 +13,21 @@ class SystemNotificationService {
 
   bool _isInitialized = false;
 
-  // Initialize the plugin & Request Permissions
   Future<void> init() async {
     if (_isInitialized) return;
 
     tz.initializeTimeZones();
 
-    // Android Settings
+    try {
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      debugPrint("Could not set local timezone: $e");
+    }
+
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // iOS Settings
-    // Note: We set these to false initially so we can request permissions
-    // deliberately in the next step
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
       requestSoundPermission: false,
@@ -39,30 +44,32 @@ class SystemNotificationService {
       initSettings,
       onDidReceiveNotificationResponse: (details) {
         debugPrint("Notification Clicked: ${details.payload}");
-        // Handle navigation here if needed
       },
     );
-
-    // [NEW] Request Permissions Immediately on Launch
-    await _requestPermissions();
 
     _isInitialized = true;
   }
 
-  /// Handles Platform-specific permission requests
-  Future<void> _requestPermissions() async {
+  Future<void> requestPermissions() async {
     if (Platform.isAndroid) {
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
           _notificationsPlugin.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
 
       if (androidImplementation != null) {
-        // 1. Request Notification Permission (Android 13+)
+        // 1. Reverted to the highly reliable native notification request
+        debugPrint("Requesting Notification Permission...");
         await androidImplementation.requestNotificationsPermission();
 
-        // 2. Request Exact Alarms Permission (Android 12+)
-        // Crucial for 'zonedSchedule' to work reliably for Future events
+        // 2. Request Exact Alarms
+        debugPrint("Requesting Exact Alarms Permission...");
         await androidImplementation.requestExactAlarmsPermission();
+      }
+
+      // 3. Request Battery Whitelist (Handled securely by permission_handler)
+      debugPrint("Requesting Battery Optimization Whitelist...");
+      if (await Permission.ignoreBatteryOptimizations.isDenied) {
+        await Permission.ignoreBatteryOptimizations.request();
       }
     } else if (Platform.isIOS) {
       // final DarwinFlutterLocalNotificationsPlugin? iOSImplementation =
@@ -79,38 +86,31 @@ class SystemNotificationService {
     }
   }
 
-  /// Show an instant notification (Mirroring In-App)
   Future<void> showInstantNotification({
     required int id,
     required String title,
     required String body,
     String? payload,
   }) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'budgetr_high_importance', // Channel ID
-      'High Importance Notifications', // Channel Name
-      channelDescription: 'Critical alerts for budget and spending',
-      importance: Importance.max,
-      priority: Priority.high,
-      color: Color(0xFF0D1B2A),
-    );
-
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: DarwinNotificationDetails(presentSound: true),
-    );
-
     await _notificationsPlugin.show(
       id,
       title,
       body,
-      details,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'budgetr_critical',
+          'Critical Alerts',
+          channelDescription: 'Immediate alerts for spending and balance',
+          importance: Importance.max,
+          priority: Priority.high,
+          color: Color(0xFF0D1B2A),
+        ),
+        iOS: DarwinNotificationDetails(presentSound: true),
+      ),
       payload: payload,
     );
   }
 
-  /// Schedule a notification for a future time (Works if App is Closed)
   Future<void> scheduleNotification({
     required int id,
     required String title,
@@ -118,39 +118,98 @@ class SystemNotificationService {
     required DateTime scheduledDate,
     String? payload,
   }) async {
-    // Don't schedule if date is in the past
     if (scheduledDate.isBefore(DateTime.now())) return;
 
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'budgetr_scheduled',
-          'Scheduled Reminders',
-          channelDescription: 'Reminders for bills and loans',
-          importance: Importance.high,
-          priority: Priority.high,
-          color: Color(0xFF0D1B2A),
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tz.TZDateTime.from(scheduledDate, tz.local),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'budgetr_scheduled_v2',
+            'Scheduled Reminders',
+            channelDescription: 'Reminders for bills and loans',
+            importance: Importance.high,
+            priority: Priority.high,
+            color: Color(0xFF0D1B2A),
+            enableVibration: true,
+            playSound: true,
+          ),
+          iOS: DarwinNotificationDetails(
+              presentSound: true, presentAlert: true, presentBadge: true),
         ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: payload,
-    );
+        // [CRITICAL FIX] Changed from exactAllowWhileIdle to alarmClock
+        androidScheduleMode: AndroidScheduleMode.alarmClock,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: payload,
+      );
+      debugPrint("Scheduled Notif ($id) for $scheduledDate");
+    } catch (e) {
+      debugPrint("Error Scheduling Notification: $e");
+    }
   }
 
-  /// Cancel a specific notification (e.g., if Loan is paid)
+  Future<void> scheduleDailyNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int hour,
+    required int minute,
+    String? payload,
+  }) async {
+    final now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate =
+        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'budgetr_daily_v3',
+            'Daily Check-in',
+            channelDescription: 'Daily generic reminders',
+            importance: Importance.high,
+            priority: Priority.high,
+            color: Color(0xFF0D1B2A),
+            enableVibration: true,
+            playSound: true,
+          ),
+          iOS: DarwinNotificationDetails(
+              presentSound: true, presentAlert: true, presentBadge: true),
+        ),
+        // [CRITICAL FIX] Changed from exactAllowWhileIdle to alarmClock
+        androidScheduleMode: AndroidScheduleMode.alarmClock,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: payload,
+      );
+      debugPrint("Scheduled Daily Notif ($id) for $hour:$minute");
+    } catch (e) {
+      debugPrint("Error Scheduling Daily Notification: $e");
+    }
+  }
+
   Future<void> cancelNotification(int id) async {
     await _notificationsPlugin.cancel(id);
   }
 
-  /// Cancel all to prevent stale alerts
   Future<void> cancelAll() async {
     await _notificationsPlugin.cancelAll();
+  }
+
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async {
+    return await _notificationsPlugin.pendingNotificationRequests();
   }
 }

@@ -201,14 +201,14 @@ class InvestmentService {
 
     // [HOOK] Trigger Notifications after price update
     // We use GetIt lazy access to avoid circular dependency in constructors
-    try {
-      if (GetIt.I.isRegistered<NotificationService>()) {
-        await GetIt.I<NotificationService>()
-            .checkInvestmentVolatilityAndMilestones();
-      }
-    } catch (e) {
-      print("Notification Hook Error: $e");
-    }
+    // try {
+    //   if (GetIt.I.isRegistered<NotificationService>()) {
+    //     await GetIt.I<NotificationService>()
+    //         .checkInvestmentVolatilityAndMilestones();
+    //   }
+    // } catch (e) {
+    //   print("Notification Hook Error: $e");
+    // }
   }
 
   // --- SEARCH LOGIC ---
