@@ -395,7 +395,9 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
         if (goals.isEmpty) {
           return _buildEmptyState(
             _showHistory ? "No completed goals yet" : "No active goals",
-            _showHistory ? Icons.emoji_events_outlined : Icons.flag_outlined,
+            _showHistory
+                ? Icons.emoji_events_outlined
+                : Icons.rocket_launch_rounded,
             _showHistory
                 ? "Keep pushing! You'll get there."
                 : "Create a goal to start tracking.",
