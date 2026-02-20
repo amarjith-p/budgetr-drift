@@ -125,6 +125,7 @@ class GoalLoanService {
         .write(db.GoalsCompanion(
       name: Value(goal.name),
       targetAmount: Value(goal.targetAmount),
+      startDate: Value(goal.startDate),
       deadline: Value(goal.deadline),
       color: Value(goal.color),
       icon: Value(goal.icon),
@@ -270,6 +271,7 @@ class GoalLoanService {
       principalAmount: Value(loan.principalAmount),
       totalAmount: Value(loan.totalAmount),
       interestRate: Value(loan.interestRate),
+      startDate: Value(loan.startDate),
       emiAmount: Value(loan.emiAmount),
       nextPaymentDate: Value(loan.nextPaymentDate),
       dueDate: Value(loan.dueDate),

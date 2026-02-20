@@ -203,7 +203,7 @@ class _ScheduledNotificationsScreenState
       cleanPayload = parts[0];
       try {
         final date = DateTime.parse(parts[1]);
-        displayText = DateFormat('EEE, MMM d • h:mm a').format(date);
+        displayText = DateFormat('EEE, MMM d, yyyy • hh:mm:ss a').format(date);
       } catch (_) {}
     } else if (payload.contains('|REPEAT:')) {
       final parts = payload.split('|REPEAT:');
@@ -215,8 +215,13 @@ class _ScheduledNotificationsScreenState
 
         // Convert to 12h format manually or via context if available
         final now = DateTime.now();
-        final dt =
-            DateTime(now.year, now.month, now.day, time.hour, time.minute);
+        final dt = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          time.hour,
+          time.minute,
+        );
         final formattedTime = DateFormat.jm().format(dt);
 
         displayText = "Daily @ $formattedTime";
