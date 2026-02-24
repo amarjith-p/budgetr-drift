@@ -3,6 +3,7 @@ import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/glass_card.dart';
 import 'package:budget/core/widgets/modern_app_bar.dart';
 import 'package:budget/core/widgets/modern_dropdown.dart';
+import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/credit_tracker/models/credit_models.dart';
 import 'package:budget/features/credit_tracker/services/credit_service.dart';
 import 'package:budget/features/daily_expense/models/expense_models.dart';
@@ -1318,32 +1319,27 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   }
 
   Future<void> _delete() async {
-    final confirm = await showDialog<bool>(
+    showStatusSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xff1B263B),
-        title:
-            const Text("Delete Rule?", style: TextStyle(color: Colors.white)),
-        content: const Text(
-            "This will stop future transactions. Past records created by this rule will remain.",
-            style: TextStyle(color: Colors.white70)),
-        actions: [
-          TextButton(
-            child: const Text("CANCEL"),
-            onPressed: () => Navigator.pop(ctx, false),
-          ),
-          TextButton(
-            child:
-                const Text("DELETE", style: TextStyle(color: Colors.redAccent)),
-            onPressed: () => Navigator.pop(ctx, true),
-          ),
-        ],
-      ),
+      title: "Delete Plan?",
+      message:
+          "This will stop future transactions. Past records created by this plan will remain.",
+      icon: Icons.delete_sweep_sharp,
+      color: Colors.redAccent,
+      cancelButtonText: "Cancel",
+      onCancel: () {},
+      buttonText: "Delete",
+      onDismiss: () async {
+        await GetIt.I<RecurringService>().deletePattern(widget.pattern!.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Plan deleted successfully."),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      },
     );
-
-    if (confirm == true && widget.pattern != null) {
-      await GetIt.I<RecurringService>().deletePattern(widget.pattern!.id);
-      if (mounted) Navigator.pop(context);
-    }
   }
 }
