@@ -139,7 +139,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                         const SizedBox(height: 16),
                         _buildMenuCard(
                           context,
-                          title: "Recurring Payments",
+                          title: "Recurring Transactions",
                           subtitle: "Manage subscriptions & auto-pay",
                           icon: Icons.autorenew_rounded,
                           color: const Color(0xFF4CC9F0),
