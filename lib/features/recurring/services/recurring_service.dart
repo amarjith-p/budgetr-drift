@@ -5,10 +5,12 @@ import 'package:budget/features/credit_tracker/services/credit_service.dart';
 import 'package:budget/features/daily_expense/models/expense_models.dart';
 import 'package:budget/features/daily_expense/services/expense_service.dart';
 import 'package:budget/features/recurring/models/recurring_models.dart';
+import 'package:budget/features/notifications/database/notification_tables.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:rxdart/rxdart.dart'; // [NEW] Required for combineLatest2
 import 'package:uuid/uuid.dart';
 
 class RecurringService {
@@ -46,33 +48,93 @@ class RecurringService {
         .map((rows) => rows.map(_mapToModel).toList());
   }
 
+  // --- [FIXED] REACTIVE FORECASTING ---
+
+  Stream<Map<String, double>> getForecastingStream() {
+    // 1. Stream of Accounts (Liquidity updates)
+    final accountsStream = _db.select(_db.expenseAccounts).watch();
+
+    // 2. Stream of Patterns (Bill updates)
+    final patternsStream = (_db.select(_db.recurringPatterns)
+          ..where((t) => t.isActive.equals(true)))
+        .watch();
+
+    // Combine both streams: Updates whenever EITHER changes
+    return Rx.combineLatest2(accountsStream, patternsStream,
+        (List<db.ExpenseAccount> accounts, List<db.RecurringPattern> patterns) {
+      // A. Calculate Total Liquidity
+      double totalLiquidity = 0;
+      for (var acc in accounts) {
+        totalLiquidity += acc.currentBalance;
+      }
+
+      // B. Calculate Bills (Next 30 Days)
+      final now = DateTime.now();
+      final next30 = now.add(const Duration(days: 30));
+      double pendingBills = 0;
+
+      for (var row in patterns) {
+        // Convert to model to use helper methods
+        final p = _mapToModel(row);
+
+        DateTime cursor = p.nextRunAt;
+
+        // Loop to catch multiple occurrences in 30 days (e.g. Weekly)
+        while (cursor.isBefore(next30)) {
+          pendingBills += p.amount;
+
+          // Advance cursor
+          cursor = _calculateNextRunFromBaseline(
+              cursor,
+              p.frequency,
+              p.interval,
+              p.scheduleType,
+              p.weekParam,
+              p.dayParam,
+              p.executionTime,
+              advance: true);
+        }
+      }
+
+      return {
+        'liquidity': totalLiquidity,
+        'bills': pendingBills,
+        'safe': totalLiquidity - pendingBills
+      };
+    });
+  }
+
   // --- ACTIONS ---
 
   Future<void> savePattern(RecurringPatternModel model) async {
     final timeStr =
         "${model.executionTime.hour.toString().padLeft(2, '0')}:${model.executionTime.minute.toString().padLeft(2, '0')}";
 
-    DateTime nextRun = _calculateNextRunFromBaseline(
-        model.startDate,
-        model.frequency,
-        model.interval,
-        model.scheduleType,
-        model.weekParam,
-        model.dayParam,
-        model.executionTime);
+    DateTime nextRun = model.nextRunAt;
 
-    final now = DateTime.now();
-    if (nextRun.isBefore(now)) {
-      while (nextRun.isBefore(now)) {
-        nextRun = _calculateNextRunFromBaseline(
-            nextRun,
-            model.frequency,
-            model.interval,
-            model.scheduleType,
-            model.weekParam,
-            model.dayParam,
-            model.executionTime,
-            advance: true);
+    if (model.id.isEmpty || model.occurrencesProcessed == 0) {
+      nextRun = _calculateNextRunFromBaseline(
+          model.startDate,
+          model.frequency,
+          model.interval,
+          model.scheduleType,
+          model.weekParam,
+          model.dayParam,
+          model.executionTime);
+
+      final now = DateTime.now();
+      if (nextRun.isBefore(now)) {
+        while (nextRun.isBefore(now)) {
+          nextRun = _calculateNextRunFromBaseline(
+              nextRun,
+              model.frequency,
+              model.interval,
+              model.scheduleType,
+              model.weekParam,
+              model.dayParam,
+              model.executionTime,
+              advance: true);
+        }
       }
     }
 
@@ -101,18 +163,46 @@ class RecurringService {
             scheduleType: Value(model.scheduleType),
             weekParam: Value(model.weekParam),
             dayParam: Value(model.dayParam),
+            isVariable: Value(model.isVariable),
+            endDate: Value(model.endDate),
+            maxOccurrences: Value(model.maxOccurrences),
+            occurrencesProcessed: Value(model.occurrencesProcessed),
+            website: Value(model.website),
+            notifyBefore: Value(model.notifyBefore),
             nextRunAt: nextRun,
             isActive: Value(model.isActive),
             autoExecute: Value(model.autoExecute),
           ),
         );
 
-    if (model.autoExecute) processDuePayments();
+    if (model.autoExecute && !model.isVariable) {
+      processDuePayments();
+    }
   }
 
   Future<void> deletePattern(String id) async {
     await (_db.delete(_db.recurringPatterns)..where((t) => t.id.equals(id)))
         .go();
+  }
+
+  Future<void> skipNextOccurrence(String id) async {
+    final row = await (_db.select(_db.recurringPatterns)
+          ..where((t) => t.id.equals(id)))
+        .getSingle();
+    final model = _mapToModel(row);
+
+    final next = _calculateNextRunFromBaseline(
+        model.nextRunAt,
+        model.frequency,
+        model.interval,
+        model.scheduleType,
+        model.weekParam,
+        model.dayParam,
+        model.executionTime,
+        advance: true);
+
+    await (_db.update(_db.recurringPatterns)..where((t) => t.id.equals(id)))
+        .write(db.RecurringPatternsCompanion(nextRunAt: Value(next)));
   }
 
   // --- SMART ENGINE UTILS ---
@@ -147,8 +237,8 @@ class RecurringService {
       return DateTime(targetBase.year, targetBase.month, targetBase.day,
           time.hour, time.minute);
     } else {
-      return _findSmartDay(
-          targetBase.year, targetBase.month, weekParam!, dayParam!, time);
+      return _findSmartDay(targetBase.year, targetBase.month, weekParam ?? 1,
+          dayParam ?? 1, time);
     }
   }
 
@@ -182,22 +272,18 @@ class RecurringService {
     }
   }
 
-  // --- HELPER: RESOLVE ACCOUNT NAMES (UPDATED) ---
+  // --- HELPER: RESOLVE ACCOUNT NAMES ---
 
   Future<String> _resolveAccountName(String id) async {
-    // 1. Try Bank
     final bank = await (_db.select(_db.expenseAccounts)
           ..where((a) => a.id.equals(id)))
         .getSingleOrNull();
-    if (bank != null)
-      return "${bank.bankName} - ${bank.name}"; // [FIX] Format: SBI - Salary Acc
+    if (bank != null) return "${bank.bankName} - ${bank.name}";
 
-    // 2. Try Credit
     final card = await (_db.select(_db.creditCards)
           ..where((c) => c.id.equals(id)))
         .getSingleOrNull();
-    if (card != null)
-      return "${card.bankName} - ${card.name}"; // [FIX] Format: HDFC - Regalia
+    if (card != null) return "${card.bankName} - ${card.name}";
 
     return "Unknown";
   }
@@ -209,30 +295,142 @@ class RecurringService {
     return card != null;
   }
 
+  // LOW BALANCE GUARD
+  Future<bool> _hasSufficientFunds(
+      String? accountId, String? cardId, double amount) async {
+    if (cardId != null) {
+      final card = await (_db.select(_db.creditCards)
+            ..where((c) => c.id.equals(cardId)))
+          .getSingleOrNull();
+      if (card == null) return false;
+      return (card.creditLimit - card.currentBalance) >= amount;
+    }
+    if (accountId != null) {
+      final acc = await (_db.select(_db.expenseAccounts)
+            ..where((a) => a.id.equals(accountId)))
+          .getSingleOrNull();
+      if (acc == null) return false;
+      return acc.currentBalance >= amount;
+    }
+    return true;
+  }
+
   // --- EXECUTION LOGIC ---
 
   Future<void> processDuePayments() async {
     final now = DateTime.now();
     final patterns = await (_db.select(_db.recurringPatterns)
-          ..where((t) => t.isActive.equals(true))
-          ..where((t) => t.autoExecute.equals(true)))
+          ..where((t) => t.isActive.equals(true)))
         .get();
 
     for (var row in patterns) {
       if (row.nextRunAt.isBefore(now) || row.nextRunAt.isAtSameMomentAs(now)) {
-        await executeTransaction(_mapToModel(row));
+        final model = _mapToModel(row);
+
+        if (model.isVariable) {
+          await _createNotification(
+              title: "Variable Bill Due: ${model.name}",
+              message: "Tap to enter amount and pay.",
+              relatedId: model.id);
+          continue;
+        }
+
+        if (model.autoExecute) {
+          await executeTransaction(model);
+          if (model.notifyBefore) {
+            await _createNotification(
+                title: "Auto-Paid: ${model.name}",
+                message: "Successfully paid ₹${model.amount}",
+                relatedId: model.id);
+          }
+        } else {
+          await _createNotification(
+              title: "Bill Due: ${model.name}",
+              message: "Amount: ₹${model.amount}. Tap to pay.",
+              relatedId: model.id);
+        }
       }
     }
   }
 
-  Future<void> manualExecute(String id) async {
+  Future<void> _createNotification(
+      {required String title,
+      required String message,
+      required String relatedId}) async {
+    await _db.into(_db.appNotifications).insert(
+        db.AppNotificationsCompanion.insert(
+            id: _uuid.v4(),
+            title: title,
+            message: message,
+            type: 'Recurring_Prompt',
+            isRead: const Value(false),
+            createdAt: DateTime.now(),
+            payload: Value(relatedId)));
+  }
+
+  Future<void> manualExecute(String id, {double? overrideAmount}) async {
     final row = await (_db.select(_db.recurringPatterns)
           ..where((t) => t.id.equals(id)))
         .getSingle();
-    await executeTransaction(_mapToModel(row));
+
+    var model = _mapToModel(row);
+    if (overrideAmount != null) {
+      model = RecurringPatternModel(
+          id: model.id,
+          name: model.name,
+          amount: overrideAmount,
+          type: model.type,
+          category: model.category,
+          subCategory: model.subCategory,
+          bucket: model.bucket,
+          notes: model.notes,
+          sourceAccountId: model.sourceAccountId,
+          sourceCardId: model.sourceCardId,
+          destinationAccountId: model.destinationAccountId,
+          frequency: model.frequency,
+          interval: model.interval,
+          startDate: model.startDate,
+          executionTime: model.executionTime,
+          nextRunAt: model.nextRunAt,
+          isActive: model.isActive,
+          autoExecute: model.autoExecute,
+          isVariable: model.isVariable,
+          endDate: model.endDate,
+          maxOccurrences: model.maxOccurrences,
+          occurrencesProcessed: model.occurrencesProcessed,
+          website: model.website,
+          notifyBefore: model.notifyBefore);
+    }
+
+    await executeTransaction(model);
   }
 
   Future<void> executeTransaction(RecurringPatternModel pattern) async {
+    if (pattern.amount == 0.0 && pattern.isVariable) {
+      debugPrint(
+          "GUARD: Attempted to execute 0.00 variable payment. Aborting.");
+      return;
+    }
+
+    // LOW BALANCE GUARD
+    final hasFunds = await _hasSufficientFunds(
+        pattern.sourceAccountId, pattern.sourceCardId, pattern.amount);
+    if (!hasFunds) {
+      await _createNotification(
+          title: "Payment Failed: ${pattern.name}",
+          message: "Insufficient balance/limit.",
+          relatedId: pattern.id);
+
+      await _db.into(_db.recurringLogs).insert(db.RecurringLogsCompanion.insert(
+            id: _uuid.v4(),
+            patternId: pattern.id,
+            executedAt: DateTime.now(),
+            isSuccess: false,
+            error: Value("Insufficient Funds Guard"),
+          ));
+      return;
+    }
+
     String? txnId;
     bool success = false;
     String? error;
@@ -240,8 +438,6 @@ class RecurringService {
     try {
       if (pattern.type == 'Transfer') {
         txnId = _uuid.v4();
-
-        // Resolve Names for Description
         String sourceName = "Unknown";
         if (pattern.sourceCardId != null)
           sourceName = await _resolveAccountName(pattern.sourceCardId!);
@@ -252,7 +448,6 @@ class RecurringService {
         if (pattern.destinationAccountId != null)
           destName = await _resolveAccountName(pattern.destinationAccountId!);
 
-        // CASE 1: Credit -> Bank (Cash Advance)
         if (pattern.sourceCardId != null) {
           await GetIt.I<CreditService>().addTransaction(CreditTransactionModel(
             id: txnId,
@@ -263,8 +458,7 @@ class RecurringService {
             type: 'Expense',
             category: 'Transfer',
             subCategory: 'Cash Advance',
-            notes:
-                "Auto: ${pattern.name} (To $destName)", // Context: Where it went
+            notes: "Auto: ${pattern.name} (To $destName)",
           ));
 
           if (pattern.destinationAccountId != null) {
@@ -278,15 +472,11 @@ class RecurringService {
               type: 'Income',
               category: 'Transfer',
               subCategory: 'From Credit',
-              notes:
-                  "Auto: ${pattern.name} (From $sourceName)", // Context: Where it came from
+              notes: "Auto: ${pattern.name} (From $sourceName)",
             ));
           }
           success = true;
-        }
-        // CASE 2: Bank -> Destination
-        else {
-          // 1. Create Sender Transaction (Bank Transfer Out)
+        } else {
           await GetIt.I<ExpenseService>()
               .addTransaction(ExpenseTransactionModel(
             id: txnId,
@@ -299,17 +489,14 @@ class RecurringService {
             subCategory: 'Payment',
             notes: "Auto: ${pattern.name}",
             transferAccountId: pattern.destinationAccountId,
-            transferAccountName:
-                destName, // [FIX] Shows "Bank - Account" in list
+            transferAccountName: destName,
           ));
 
-          // 2. Create Receiver Transaction
           if (pattern.destinationAccountId != null) {
             final isDestCredit =
                 await _isCreditCard(pattern.destinationAccountId!);
 
             if (isDestCredit) {
-              // Bank -> Credit (Bill Payment)
               await GetIt.I<CreditService>()
                   .addTransaction(CreditTransactionModel(
                 id: _uuid.v4(),
@@ -320,11 +507,9 @@ class RecurringService {
                 type: 'Expense',
                 category: 'Payment',
                 subCategory: 'Auto Pay',
-                notes:
-                    "Auto: ${pattern.name} (From $sourceName)", // [FIX] Shows source in Credit Tracker
+                notes: "Auto: ${pattern.name} (From $sourceName)",
               ));
             } else {
-              // Bank -> Bank
               await GetIt.I<ExpenseService>()
                   .addTransaction(ExpenseTransactionModel(
                 id: _uuid.v4(),
@@ -335,8 +520,7 @@ class RecurringService {
                 type: 'Income',
                 category: 'Transfer',
                 subCategory: 'From Bank',
-                notes:
-                    "Auto: ${pattern.name} (From $sourceName)", // [FIX] Shows source in Bank Tracker
+                notes: "Auto: ${pattern.name} (From $sourceName)",
               ));
             }
           }
@@ -372,7 +556,6 @@ class RecurringService {
         }
         success = true;
       } else {
-        // Expense
         txnId = _uuid.v4();
         if (pattern.sourceCardId != null) {
           await GetIt.I<CreditService>().addTransaction(CreditTransactionModel(
@@ -426,9 +609,25 @@ class RecurringService {
           pattern.dayParam,
           pattern.executionTime,
           advance: true);
+
+      final newCount = pattern.occurrencesProcessed + 1;
+
+      bool shouldDeactivate = false;
+      if (pattern.maxOccurrences != null &&
+          newCount >= pattern.maxOccurrences!) {
+        shouldDeactivate = true;
+      }
+      if (pattern.endDate != null && next.isAfter(pattern.endDate!)) {
+        shouldDeactivate = true;
+      }
+
       await (_db.update(_db.recurringPatterns)
             ..where((t) => t.id.equals(pattern.id)))
-          .write(db.RecurringPatternsCompanion(nextRunAt: Value(next)));
+          .write(db.RecurringPatternsCompanion(
+        nextRunAt: Value(next),
+        occurrencesProcessed: Value(newCount),
+        isActive: shouldDeactivate ? const Value(false) : const Value.absent(),
+      ));
     }
   }
 
@@ -456,6 +655,12 @@ class RecurringService {
       nextRunAt: row.nextRunAt,
       isActive: row.isActive,
       autoExecute: row.autoExecute,
+      isVariable: row.isVariable,
+      endDate: row.endDate,
+      maxOccurrences: row.maxOccurrences,
+      occurrencesProcessed: row.occurrencesProcessed,
+      website: row.website,
+      notifyBefore: row.notifyBefore,
     );
   }
 }

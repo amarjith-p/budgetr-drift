@@ -29,6 +29,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   late TextEditingController _nameCtrl;
   late TextEditingController _amountCtrl;
   late TextEditingController _notesCtrl;
+  late TextEditingController _websiteCtrl;
 
   // Config
   String _txnType = 'Expense';
@@ -48,6 +49,12 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   String _scheduleType = 'Fixed';
   int _smartWeek = 1;
   int _smartDay = 1;
+
+  // Smart Configs
+  bool _isVariable = false;
+  bool _hasEndDate = false;
+  DateTime? _endDate;
+  bool _notifyBefore = true;
 
   List<ExpenseAccountModel> _bankAccounts = [];
   List<CreditCardModel> _creditCards = [];
@@ -79,6 +86,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     _amountCtrl =
         TextEditingController(text: widget.pattern?.amount.toString() ?? '');
     _notesCtrl = TextEditingController(text: widget.pattern?.notes ?? '');
+    _websiteCtrl = TextEditingController(text: widget.pattern?.website ?? '');
 
     if (widget.pattern != null) {
       _loadExistingPattern(widget.pattern!);
@@ -99,6 +107,17 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     _scheduleType = p.scheduleType;
     _smartWeek = p.weekParam ?? 1;
     _smartDay = p.dayParam ?? 1;
+
+    // [FIXED] Load missing fields
+    _isVariable = p.isVariable;
+    _endDate = p.endDate;
+    _hasEndDate = p.endDate != null;
+    _notifyBefore = p.notifyBefore;
+
+    // [FIX] Ensure website controller text is updated
+    if (p.website != null) {
+      _websiteCtrl.text = p.website!;
+    }
 
     if (p.sourceCardId != null) {
       _sourceType = 'Credit';
@@ -183,23 +202,21 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                           children: [
                             _buildHeaderInput(),
                             const SizedBox(height: 20),
-
                             _sectionHeader("CONFIGURATION"),
                             _buildTypeSelector(),
                             const SizedBox(height: 16),
                             _buildAccountSelectors(),
-
                             const SizedBox(height: 24),
-                            // [FIX] Hide Details for Transfer
                             if (_txnType != 'Transfer') ...[
                               _sectionHeader("DETAILS"),
                               _buildCategoryBuckets(),
                               const SizedBox(height: 24),
                             ],
-
                             _sectionHeader("SCHEDULE"),
                             _buildFeatureRichSchedule(),
-
+                            const SizedBox(height: 24),
+                            _sectionHeader("ADVANCED"),
+                            _buildAdvancedSettings(),
                             const SizedBox(height: 40),
                           ],
                         ),
@@ -210,6 +227,79 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                 ],
               ),
       ),
+    );
+  }
+
+  Widget _buildAdvancedSettings() {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(children: [
+        TextFormField(
+          controller: _websiteCtrl,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+              labelText: "Service Website (Optional)",
+              labelStyle: TextStyle(color: Colors.white54),
+              hintText: "netflix.com",
+              hintStyle: TextStyle(color: Colors.white24),
+              prefixIcon: Icon(Icons.public, color: Colors.white54),
+              enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white10))),
+        ),
+        const SizedBox(height: 16),
+        SwitchListTile(
+          title: const Text("Pre-Payment Notification",
+              style: TextStyle(color: Colors.white)),
+          subtitle: const Text("Remind me before executing",
+              style: TextStyle(color: Colors.white38, fontSize: 12)),
+          value: _notifyBefore,
+          onChanged: (v) => setState(() => _notifyBefore = v),
+          activeColor: const Color(0xFF00B4D8),
+          contentPadding: EdgeInsets.zero,
+        ),
+        SwitchListTile(
+          title: const Text("Auto-Stop Date",
+              style: TextStyle(color: Colors.white)),
+          subtitle: Text(
+              _hasEndDate
+                  ? "Stops on ${DateFormat('d MMM yyyy').format(_endDate ?? DateTime.now())}"
+                  : "Runs indefinitely",
+              style: const TextStyle(color: Colors.white38, fontSize: 12)),
+          value: _hasEndDate,
+          onChanged: (v) {
+            setState(() => _hasEndDate = v);
+            if (v && _endDate == null)
+              _endDate = DateTime.now().add(const Duration(days: 365));
+          },
+          activeColor: Colors.redAccent,
+          contentPadding: EdgeInsets.zero,
+        ),
+        if (_hasEndDate)
+          InkWell(
+              onTap: () async {
+                final d = await showDatePicker(
+                    context: context,
+                    initialDate: _endDate ?? DateTime.now(),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime(2040),
+                    builder: (context, child) =>
+                        Theme(data: ThemeData.dark(), child: child!));
+                if (d != null) setState(() => _endDate = d);
+              },
+              child: Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Row(children: [
+                    const Icon(Icons.calendar_today,
+                        size: 16, color: Colors.redAccent),
+                    const SizedBox(width: 8),
+                    Text(DateFormat('d MMMM yyyy').format(_endDate!),
+                        style: const TextStyle(color: Colors.white))
+                  ])))
+      ]),
     );
   }
 
@@ -662,19 +752,24 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
           ),
           const SizedBox(height: 20),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Automatic Execution",
-                      style: TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text("Create transaction without asking",
-                      style: TextStyle(color: Colors.white38, fontSize: 10))
-                ]),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text("Automatic Execution",
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+              Text(
+                  _isVariable
+                      ? "Disabled (Variable Amount)"
+                      : "Create transaction without asking",
+                  style: TextStyle(
+                      color: _isVariable ? Colors.orange : Colors.white38,
+                      fontSize: 10))
+            ]),
             Switch(
-                value: _autoExecute,
+                value: _autoExecute && !_isVariable,
                 activeColor: const Color(0xFF00B4D8),
-                onChanged: (v) => setState(() => _autoExecute = v))
+                onChanged: _isVariable
+                    ? null
+                    : (v) => setState(() => _autoExecute = v))
           ]),
         ],
       ),
@@ -728,16 +823,42 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                   border: InputBorder.none),
               validator: (v) => v!.isEmpty ? "Required" : null),
           const Divider(color: Colors.white10),
-          TextFormField(
-              controller: _amountCtrl,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(
-                  color: Color(0xFF00B4D8),
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                  prefixText: "₹ ", hintText: "0.00", border: InputBorder.none),
-              validator: (v) => v!.isEmpty ? "Required" : null)
+          Row(children: [
+            Expanded(
+              child: _isVariable
+                  ? const Text("VARIABLE AMOUNT",
+                      style: TextStyle(
+                          color: Colors.orange,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold))
+                  : TextFormField(
+                      controller: _amountCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(
+                          color: Color(0xFF00B4D8),
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold),
+                      decoration: const InputDecoration(
+                          prefixText: "₹ ",
+                          hintText: "0.00",
+                          border: InputBorder.none),
+                      validator: (v) =>
+                          !_isVariable && v!.isEmpty ? "Required" : null),
+            ),
+            Container(width: 1, height: 30, color: Colors.white10),
+            const SizedBox(width: 10),
+            Column(children: [
+              const Text("VARIABLE",
+                  style: TextStyle(fontSize: 8, color: Colors.white54)),
+              Switch(
+                  value: _isVariable,
+                  activeColor: Colors.orange,
+                  onChanged: (v) => setState(() {
+                        _isVariable = v;
+                        if (v) _amountCtrl.text = "0.00";
+                      }))
+            ])
+          ])
         ]));
   }
 
@@ -805,7 +926,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     final pattern = RecurringPatternModel(
       id: widget.pattern?.id ?? const Uuid().v4(),
       name: _nameCtrl.text,
-      amount: double.parse(_amountCtrl.text),
+      amount: double.tryParse(_amountCtrl.text) ?? 0.0,
       type: _txnType,
       category: _category,
       subCategory: _subCategory,
@@ -821,9 +942,13 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       scheduleType: _scheduleType,
       weekParam: _smartWeek,
       dayParam: _smartDay,
-      nextRunAt: DateTime.now(), // Service recalculates
+      nextRunAt: widget.pattern?.nextRunAt ?? DateTime.now(),
       isActive: true,
       autoExecute: _autoExecute,
+      isVariable: _isVariable,
+      endDate: _hasEndDate ? _endDate : null,
+      website: _websiteCtrl.text,
+      notifyBefore: _notifyBefore,
     );
 
     try {

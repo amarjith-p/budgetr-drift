@@ -9462,6 +9462,52 @@ class $RecurringPatternsTable extends RecurringPatterns
   late final GeneratedColumn<int> dayParam = GeneratedColumn<int>(
       'day_param', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _isVariableMeta =
+      const VerificationMeta('isVariable');
+  @override
+  late final GeneratedColumn<bool> isVariable = GeneratedColumn<bool>(
+      'is_variable', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_variable" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _endDateMeta =
+      const VerificationMeta('endDate');
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+      'end_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _maxOccurrencesMeta =
+      const VerificationMeta('maxOccurrences');
+  @override
+  late final GeneratedColumn<int> maxOccurrences = GeneratedColumn<int>(
+      'max_occurrences', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _occurrencesProcessedMeta =
+      const VerificationMeta('occurrencesProcessed');
+  @override
+  late final GeneratedColumn<int> occurrencesProcessed = GeneratedColumn<int>(
+      'occurrences_processed', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _websiteMeta =
+      const VerificationMeta('website');
+  @override
+  late final GeneratedColumn<String> website = GeneratedColumn<String>(
+      'website', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _notifyBeforeMeta =
+      const VerificationMeta('notifyBefore');
+  @override
+  late final GeneratedColumn<bool> notifyBefore = GeneratedColumn<bool>(
+      'notify_before', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("notify_before" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _nextRunAtMeta =
       const VerificationMeta('nextRunAt');
   @override
@@ -9516,6 +9562,12 @@ class $RecurringPatternsTable extends RecurringPatterns
         scheduleType,
         weekParam,
         dayParam,
+        isVariable,
+        endDate,
+        maxOccurrences,
+        occurrencesProcessed,
+        website,
+        notifyBefore,
         nextRunAt,
         isActive,
         autoExecute,
@@ -9632,6 +9684,38 @@ class $RecurringPatternsTable extends RecurringPatterns
       context.handle(_dayParamMeta,
           dayParam.isAcceptableOrUnknown(data['day_param']!, _dayParamMeta));
     }
+    if (data.containsKey('is_variable')) {
+      context.handle(
+          _isVariableMeta,
+          isVariable.isAcceptableOrUnknown(
+              data['is_variable']!, _isVariableMeta));
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(_endDateMeta,
+          endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta));
+    }
+    if (data.containsKey('max_occurrences')) {
+      context.handle(
+          _maxOccurrencesMeta,
+          maxOccurrences.isAcceptableOrUnknown(
+              data['max_occurrences']!, _maxOccurrencesMeta));
+    }
+    if (data.containsKey('occurrences_processed')) {
+      context.handle(
+          _occurrencesProcessedMeta,
+          occurrencesProcessed.isAcceptableOrUnknown(
+              data['occurrences_processed']!, _occurrencesProcessedMeta));
+    }
+    if (data.containsKey('website')) {
+      context.handle(_websiteMeta,
+          website.isAcceptableOrUnknown(data['website']!, _websiteMeta));
+    }
+    if (data.containsKey('notify_before')) {
+      context.handle(
+          _notifyBeforeMeta,
+          notifyBefore.isAcceptableOrUnknown(
+              data['notify_before']!, _notifyBeforeMeta));
+    }
     if (data.containsKey('next_run_at')) {
       context.handle(
           _nextRunAtMeta,
@@ -9700,6 +9784,18 @@ class $RecurringPatternsTable extends RecurringPatterns
           .read(DriftSqlType.int, data['${effectivePrefix}week_param']),
       dayParam: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}day_param']),
+      isVariable: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_variable'])!,
+      endDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}end_date']),
+      maxOccurrences: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}max_occurrences']),
+      occurrencesProcessed: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}occurrences_processed'])!,
+      website: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}website']),
+      notifyBefore: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}notify_before'])!,
       nextRunAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}next_run_at'])!,
       isActive: attachedDatabase.typeMapping
@@ -9737,6 +9833,12 @@ class RecurringPattern extends DataClass
   final String scheduleType;
   final int? weekParam;
   final int? dayParam;
+  final bool isVariable;
+  final DateTime? endDate;
+  final int? maxOccurrences;
+  final int occurrencesProcessed;
+  final String? website;
+  final bool notifyBefore;
   final DateTime nextRunAt;
   final bool isActive;
   final bool autoExecute;
@@ -9760,6 +9862,12 @@ class RecurringPattern extends DataClass
       required this.scheduleType,
       this.weekParam,
       this.dayParam,
+      required this.isVariable,
+      this.endDate,
+      this.maxOccurrences,
+      required this.occurrencesProcessed,
+      this.website,
+      required this.notifyBefore,
       required this.nextRunAt,
       required this.isActive,
       required this.autoExecute,
@@ -9795,6 +9903,18 @@ class RecurringPattern extends DataClass
     if (!nullToAbsent || dayParam != null) {
       map['day_param'] = Variable<int>(dayParam);
     }
+    map['is_variable'] = Variable<bool>(isVariable);
+    if (!nullToAbsent || endDate != null) {
+      map['end_date'] = Variable<DateTime>(endDate);
+    }
+    if (!nullToAbsent || maxOccurrences != null) {
+      map['max_occurrences'] = Variable<int>(maxOccurrences);
+    }
+    map['occurrences_processed'] = Variable<int>(occurrencesProcessed);
+    if (!nullToAbsent || website != null) {
+      map['website'] = Variable<String>(website);
+    }
+    map['notify_before'] = Variable<bool>(notifyBefore);
     map['next_run_at'] = Variable<DateTime>(nextRunAt);
     map['is_active'] = Variable<bool>(isActive);
     map['auto_execute'] = Variable<bool>(autoExecute);
@@ -9832,6 +9952,18 @@ class RecurringPattern extends DataClass
       dayParam: dayParam == null && nullToAbsent
           ? const Value.absent()
           : Value(dayParam),
+      isVariable: Value(isVariable),
+      endDate: endDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endDate),
+      maxOccurrences: maxOccurrences == null && nullToAbsent
+          ? const Value.absent()
+          : Value(maxOccurrences),
+      occurrencesProcessed: Value(occurrencesProcessed),
+      website: website == null && nullToAbsent
+          ? const Value.absent()
+          : Value(website),
+      notifyBefore: Value(notifyBefore),
       nextRunAt: Value(nextRunAt),
       isActive: Value(isActive),
       autoExecute: Value(autoExecute),
@@ -9862,6 +9994,13 @@ class RecurringPattern extends DataClass
       scheduleType: serializer.fromJson<String>(json['scheduleType']),
       weekParam: serializer.fromJson<int?>(json['weekParam']),
       dayParam: serializer.fromJson<int?>(json['dayParam']),
+      isVariable: serializer.fromJson<bool>(json['isVariable']),
+      endDate: serializer.fromJson<DateTime?>(json['endDate']),
+      maxOccurrences: serializer.fromJson<int?>(json['maxOccurrences']),
+      occurrencesProcessed:
+          serializer.fromJson<int>(json['occurrencesProcessed']),
+      website: serializer.fromJson<String?>(json['website']),
+      notifyBefore: serializer.fromJson<bool>(json['notifyBefore']),
       nextRunAt: serializer.fromJson<DateTime>(json['nextRunAt']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       autoExecute: serializer.fromJson<bool>(json['autoExecute']),
@@ -9890,6 +10029,12 @@ class RecurringPattern extends DataClass
       'scheduleType': serializer.toJson<String>(scheduleType),
       'weekParam': serializer.toJson<int?>(weekParam),
       'dayParam': serializer.toJson<int?>(dayParam),
+      'isVariable': serializer.toJson<bool>(isVariable),
+      'endDate': serializer.toJson<DateTime?>(endDate),
+      'maxOccurrences': serializer.toJson<int?>(maxOccurrences),
+      'occurrencesProcessed': serializer.toJson<int>(occurrencesProcessed),
+      'website': serializer.toJson<String?>(website),
+      'notifyBefore': serializer.toJson<bool>(notifyBefore),
       'nextRunAt': serializer.toJson<DateTime>(nextRunAt),
       'isActive': serializer.toJson<bool>(isActive),
       'autoExecute': serializer.toJson<bool>(autoExecute),
@@ -9916,6 +10061,12 @@ class RecurringPattern extends DataClass
           String? scheduleType,
           Value<int?> weekParam = const Value.absent(),
           Value<int?> dayParam = const Value.absent(),
+          bool? isVariable,
+          Value<DateTime?> endDate = const Value.absent(),
+          Value<int?> maxOccurrences = const Value.absent(),
+          int? occurrencesProcessed,
+          Value<String?> website = const Value.absent(),
+          bool? notifyBefore,
           DateTime? nextRunAt,
           bool? isActive,
           bool? autoExecute,
@@ -9944,6 +10095,13 @@ class RecurringPattern extends DataClass
         scheduleType: scheduleType ?? this.scheduleType,
         weekParam: weekParam.present ? weekParam.value : this.weekParam,
         dayParam: dayParam.present ? dayParam.value : this.dayParam,
+        isVariable: isVariable ?? this.isVariable,
+        endDate: endDate.present ? endDate.value : this.endDate,
+        maxOccurrences:
+            maxOccurrences.present ? maxOccurrences.value : this.maxOccurrences,
+        occurrencesProcessed: occurrencesProcessed ?? this.occurrencesProcessed,
+        website: website.present ? website.value : this.website,
+        notifyBefore: notifyBefore ?? this.notifyBefore,
         nextRunAt: nextRunAt ?? this.nextRunAt,
         isActive: isActive ?? this.isActive,
         autoExecute: autoExecute ?? this.autoExecute,
@@ -9980,6 +10138,19 @@ class RecurringPattern extends DataClass
           : this.scheduleType,
       weekParam: data.weekParam.present ? data.weekParam.value : this.weekParam,
       dayParam: data.dayParam.present ? data.dayParam.value : this.dayParam,
+      isVariable:
+          data.isVariable.present ? data.isVariable.value : this.isVariable,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      maxOccurrences: data.maxOccurrences.present
+          ? data.maxOccurrences.value
+          : this.maxOccurrences,
+      occurrencesProcessed: data.occurrencesProcessed.present
+          ? data.occurrencesProcessed.value
+          : this.occurrencesProcessed,
+      website: data.website.present ? data.website.value : this.website,
+      notifyBefore: data.notifyBefore.present
+          ? data.notifyBefore.value
+          : this.notifyBefore,
       nextRunAt: data.nextRunAt.present ? data.nextRunAt.value : this.nextRunAt,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       autoExecute:
@@ -10009,6 +10180,12 @@ class RecurringPattern extends DataClass
           ..write('scheduleType: $scheduleType, ')
           ..write('weekParam: $weekParam, ')
           ..write('dayParam: $dayParam, ')
+          ..write('isVariable: $isVariable, ')
+          ..write('endDate: $endDate, ')
+          ..write('maxOccurrences: $maxOccurrences, ')
+          ..write('occurrencesProcessed: $occurrencesProcessed, ')
+          ..write('website: $website, ')
+          ..write('notifyBefore: $notifyBefore, ')
           ..write('nextRunAt: $nextRunAt, ')
           ..write('isActive: $isActive, ')
           ..write('autoExecute: $autoExecute, ')
@@ -10037,6 +10214,12 @@ class RecurringPattern extends DataClass
         scheduleType,
         weekParam,
         dayParam,
+        isVariable,
+        endDate,
+        maxOccurrences,
+        occurrencesProcessed,
+        website,
+        notifyBefore,
         nextRunAt,
         isActive,
         autoExecute,
@@ -10064,6 +10247,12 @@ class RecurringPattern extends DataClass
           other.scheduleType == this.scheduleType &&
           other.weekParam == this.weekParam &&
           other.dayParam == this.dayParam &&
+          other.isVariable == this.isVariable &&
+          other.endDate == this.endDate &&
+          other.maxOccurrences == this.maxOccurrences &&
+          other.occurrencesProcessed == this.occurrencesProcessed &&
+          other.website == this.website &&
+          other.notifyBefore == this.notifyBefore &&
           other.nextRunAt == this.nextRunAt &&
           other.isActive == this.isActive &&
           other.autoExecute == this.autoExecute &&
@@ -10089,6 +10278,12 @@ class RecurringPatternsCompanion extends UpdateCompanion<RecurringPattern> {
   final Value<String> scheduleType;
   final Value<int?> weekParam;
   final Value<int?> dayParam;
+  final Value<bool> isVariable;
+  final Value<DateTime?> endDate;
+  final Value<int?> maxOccurrences;
+  final Value<int> occurrencesProcessed;
+  final Value<String?> website;
+  final Value<bool> notifyBefore;
   final Value<DateTime> nextRunAt;
   final Value<bool> isActive;
   final Value<bool> autoExecute;
@@ -10113,6 +10308,12 @@ class RecurringPatternsCompanion extends UpdateCompanion<RecurringPattern> {
     this.scheduleType = const Value.absent(),
     this.weekParam = const Value.absent(),
     this.dayParam = const Value.absent(),
+    this.isVariable = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.maxOccurrences = const Value.absent(),
+    this.occurrencesProcessed = const Value.absent(),
+    this.website = const Value.absent(),
+    this.notifyBefore = const Value.absent(),
     this.nextRunAt = const Value.absent(),
     this.isActive = const Value.absent(),
     this.autoExecute = const Value.absent(),
@@ -10138,6 +10339,12 @@ class RecurringPatternsCompanion extends UpdateCompanion<RecurringPattern> {
     this.scheduleType = const Value.absent(),
     this.weekParam = const Value.absent(),
     this.dayParam = const Value.absent(),
+    this.isVariable = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.maxOccurrences = const Value.absent(),
+    this.occurrencesProcessed = const Value.absent(),
+    this.website = const Value.absent(),
+    this.notifyBefore = const Value.absent(),
     required DateTime nextRunAt,
     this.isActive = const Value.absent(),
     this.autoExecute = const Value.absent(),
@@ -10172,6 +10379,12 @@ class RecurringPatternsCompanion extends UpdateCompanion<RecurringPattern> {
     Expression<String>? scheduleType,
     Expression<int>? weekParam,
     Expression<int>? dayParam,
+    Expression<bool>? isVariable,
+    Expression<DateTime>? endDate,
+    Expression<int>? maxOccurrences,
+    Expression<int>? occurrencesProcessed,
+    Expression<String>? website,
+    Expression<bool>? notifyBefore,
     Expression<DateTime>? nextRunAt,
     Expression<bool>? isActive,
     Expression<bool>? autoExecute,
@@ -10198,6 +10411,13 @@ class RecurringPatternsCompanion extends UpdateCompanion<RecurringPattern> {
       if (scheduleType != null) 'schedule_type': scheduleType,
       if (weekParam != null) 'week_param': weekParam,
       if (dayParam != null) 'day_param': dayParam,
+      if (isVariable != null) 'is_variable': isVariable,
+      if (endDate != null) 'end_date': endDate,
+      if (maxOccurrences != null) 'max_occurrences': maxOccurrences,
+      if (occurrencesProcessed != null)
+        'occurrences_processed': occurrencesProcessed,
+      if (website != null) 'website': website,
+      if (notifyBefore != null) 'notify_before': notifyBefore,
       if (nextRunAt != null) 'next_run_at': nextRunAt,
       if (isActive != null) 'is_active': isActive,
       if (autoExecute != null) 'auto_execute': autoExecute,
@@ -10225,6 +10445,12 @@ class RecurringPatternsCompanion extends UpdateCompanion<RecurringPattern> {
       Value<String>? scheduleType,
       Value<int?>? weekParam,
       Value<int?>? dayParam,
+      Value<bool>? isVariable,
+      Value<DateTime?>? endDate,
+      Value<int?>? maxOccurrences,
+      Value<int>? occurrencesProcessed,
+      Value<String?>? website,
+      Value<bool>? notifyBefore,
       Value<DateTime>? nextRunAt,
       Value<bool>? isActive,
       Value<bool>? autoExecute,
@@ -10249,6 +10475,12 @@ class RecurringPatternsCompanion extends UpdateCompanion<RecurringPattern> {
       scheduleType: scheduleType ?? this.scheduleType,
       weekParam: weekParam ?? this.weekParam,
       dayParam: dayParam ?? this.dayParam,
+      isVariable: isVariable ?? this.isVariable,
+      endDate: endDate ?? this.endDate,
+      maxOccurrences: maxOccurrences ?? this.maxOccurrences,
+      occurrencesProcessed: occurrencesProcessed ?? this.occurrencesProcessed,
+      website: website ?? this.website,
+      notifyBefore: notifyBefore ?? this.notifyBefore,
       nextRunAt: nextRunAt ?? this.nextRunAt,
       isActive: isActive ?? this.isActive,
       autoExecute: autoExecute ?? this.autoExecute,
@@ -10315,6 +10547,24 @@ class RecurringPatternsCompanion extends UpdateCompanion<RecurringPattern> {
     if (dayParam.present) {
       map['day_param'] = Variable<int>(dayParam.value);
     }
+    if (isVariable.present) {
+      map['is_variable'] = Variable<bool>(isVariable.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (maxOccurrences.present) {
+      map['max_occurrences'] = Variable<int>(maxOccurrences.value);
+    }
+    if (occurrencesProcessed.present) {
+      map['occurrences_processed'] = Variable<int>(occurrencesProcessed.value);
+    }
+    if (website.present) {
+      map['website'] = Variable<String>(website.value);
+    }
+    if (notifyBefore.present) {
+      map['notify_before'] = Variable<bool>(notifyBefore.value);
+    }
     if (nextRunAt.present) {
       map['next_run_at'] = Variable<DateTime>(nextRunAt.value);
     }
@@ -10354,6 +10604,12 @@ class RecurringPatternsCompanion extends UpdateCompanion<RecurringPattern> {
           ..write('scheduleType: $scheduleType, ')
           ..write('weekParam: $weekParam, ')
           ..write('dayParam: $dayParam, ')
+          ..write('isVariable: $isVariable, ')
+          ..write('endDate: $endDate, ')
+          ..write('maxOccurrences: $maxOccurrences, ')
+          ..write('occurrencesProcessed: $occurrencesProcessed, ')
+          ..write('website: $website, ')
+          ..write('notifyBefore: $notifyBefore, ')
           ..write('nextRunAt: $nextRunAt, ')
           ..write('isActive: $isActive, ')
           ..write('autoExecute: $autoExecute, ')
@@ -15870,6 +16126,12 @@ typedef $$RecurringPatternsTableCreateCompanionBuilder
   Value<String> scheduleType,
   Value<int?> weekParam,
   Value<int?> dayParam,
+  Value<bool> isVariable,
+  Value<DateTime?> endDate,
+  Value<int?> maxOccurrences,
+  Value<int> occurrencesProcessed,
+  Value<String?> website,
+  Value<bool> notifyBefore,
   required DateTime nextRunAt,
   Value<bool> isActive,
   Value<bool> autoExecute,
@@ -15896,6 +16158,12 @@ typedef $$RecurringPatternsTableUpdateCompanionBuilder
   Value<String> scheduleType,
   Value<int?> weekParam,
   Value<int?> dayParam,
+  Value<bool> isVariable,
+  Value<DateTime?> endDate,
+  Value<int?> maxOccurrences,
+  Value<int> occurrencesProcessed,
+  Value<String?> website,
+  Value<bool> notifyBefore,
   Value<DateTime> nextRunAt,
   Value<bool> isActive,
   Value<bool> autoExecute,
@@ -15988,6 +16256,26 @@ class $$RecurringPatternsTableFilterComposer
 
   ColumnFilters<int> get dayParam => $composableBuilder(
       column: $table.dayParam, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isVariable => $composableBuilder(
+      column: $table.isVariable, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+      column: $table.endDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get maxOccurrences => $composableBuilder(
+      column: $table.maxOccurrences,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get occurrencesProcessed => $composableBuilder(
+      column: $table.occurrencesProcessed,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get website => $composableBuilder(
+      column: $table.website, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get notifyBefore => $composableBuilder(
+      column: $table.notifyBefore, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get nextRunAt => $composableBuilder(
       column: $table.nextRunAt, builder: (column) => ColumnFilters(column));
@@ -16091,6 +16379,27 @@ class $$RecurringPatternsTableOrderingComposer
   ColumnOrderings<int> get dayParam => $composableBuilder(
       column: $table.dayParam, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get isVariable => $composableBuilder(
+      column: $table.isVariable, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+      column: $table.endDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get maxOccurrences => $composableBuilder(
+      column: $table.maxOccurrences,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get occurrencesProcessed => $composableBuilder(
+      column: $table.occurrencesProcessed,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get website => $composableBuilder(
+      column: $table.website, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get notifyBefore => $composableBuilder(
+      column: $table.notifyBefore,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get nextRunAt => $composableBuilder(
       column: $table.nextRunAt, builder: (column) => ColumnOrderings(column));
 
@@ -16166,6 +16475,24 @@ class $$RecurringPatternsTableAnnotationComposer
 
   GeneratedColumn<int> get dayParam =>
       $composableBuilder(column: $table.dayParam, builder: (column) => column);
+
+  GeneratedColumn<bool> get isVariable => $composableBuilder(
+      column: $table.isVariable, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<int> get maxOccurrences => $composableBuilder(
+      column: $table.maxOccurrences, builder: (column) => column);
+
+  GeneratedColumn<int> get occurrencesProcessed => $composableBuilder(
+      column: $table.occurrencesProcessed, builder: (column) => column);
+
+  GeneratedColumn<String> get website =>
+      $composableBuilder(column: $table.website, builder: (column) => column);
+
+  GeneratedColumn<bool> get notifyBefore => $composableBuilder(
+      column: $table.notifyBefore, builder: (column) => column);
 
   GeneratedColumn<DateTime> get nextRunAt =>
       $composableBuilder(column: $table.nextRunAt, builder: (column) => column);
@@ -16244,6 +16571,12 @@ class $$RecurringPatternsTableTableManager extends RootTableManager<
             Value<String> scheduleType = const Value.absent(),
             Value<int?> weekParam = const Value.absent(),
             Value<int?> dayParam = const Value.absent(),
+            Value<bool> isVariable = const Value.absent(),
+            Value<DateTime?> endDate = const Value.absent(),
+            Value<int?> maxOccurrences = const Value.absent(),
+            Value<int> occurrencesProcessed = const Value.absent(),
+            Value<String?> website = const Value.absent(),
+            Value<bool> notifyBefore = const Value.absent(),
             Value<DateTime> nextRunAt = const Value.absent(),
             Value<bool> isActive = const Value.absent(),
             Value<bool> autoExecute = const Value.absent(),
@@ -16269,6 +16602,12 @@ class $$RecurringPatternsTableTableManager extends RootTableManager<
             scheduleType: scheduleType,
             weekParam: weekParam,
             dayParam: dayParam,
+            isVariable: isVariable,
+            endDate: endDate,
+            maxOccurrences: maxOccurrences,
+            occurrencesProcessed: occurrencesProcessed,
+            website: website,
+            notifyBefore: notifyBefore,
             nextRunAt: nextRunAt,
             isActive: isActive,
             autoExecute: autoExecute,
@@ -16294,6 +16633,12 @@ class $$RecurringPatternsTableTableManager extends RootTableManager<
             Value<String> scheduleType = const Value.absent(),
             Value<int?> weekParam = const Value.absent(),
             Value<int?> dayParam = const Value.absent(),
+            Value<bool> isVariable = const Value.absent(),
+            Value<DateTime?> endDate = const Value.absent(),
+            Value<int?> maxOccurrences = const Value.absent(),
+            Value<int> occurrencesProcessed = const Value.absent(),
+            Value<String?> website = const Value.absent(),
+            Value<bool> notifyBefore = const Value.absent(),
             required DateTime nextRunAt,
             Value<bool> isActive = const Value.absent(),
             Value<bool> autoExecute = const Value.absent(),
@@ -16319,6 +16664,12 @@ class $$RecurringPatternsTableTableManager extends RootTableManager<
             scheduleType: scheduleType,
             weekParam: weekParam,
             dayParam: dayParam,
+            isVariable: isVariable,
+            endDate: endDate,
+            maxOccurrences: maxOccurrences,
+            occurrencesProcessed: occurrencesProcessed,
+            website: website,
+            notifyBefore: notifyBefore,
             nextRunAt: nextRunAt,
             isActive: isActive,
             autoExecute: autoExecute,
