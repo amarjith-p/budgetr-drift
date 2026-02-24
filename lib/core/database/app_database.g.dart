@@ -9346,6 +9346,1385 @@ class AppNotificationsCompanion extends UpdateCompanion<AppNotification> {
   }
 }
 
+class $RecurringPatternsTable extends RecurringPatterns
+    with TableInfo<$RecurringPatternsTable, RecurringPattern> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecurringPatternsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+      'amount', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+      'type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _subCategoryMeta =
+      const VerificationMeta('subCategory');
+  @override
+  late final GeneratedColumn<String> subCategory = GeneratedColumn<String>(
+      'sub_category', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _bucketMeta = const VerificationMeta('bucket');
+  @override
+  late final GeneratedColumn<String> bucket = GeneratedColumn<String>(
+      'bucket', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('Unallocated'));
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _sourceAccountIdMeta =
+      const VerificationMeta('sourceAccountId');
+  @override
+  late final GeneratedColumn<String> sourceAccountId = GeneratedColumn<String>(
+      'source_account_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sourceCardIdMeta =
+      const VerificationMeta('sourceCardId');
+  @override
+  late final GeneratedColumn<String> sourceCardId = GeneratedColumn<String>(
+      'source_card_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _destinationAccountIdMeta =
+      const VerificationMeta('destinationAccountId');
+  @override
+  late final GeneratedColumn<String> destinationAccountId =
+      GeneratedColumn<String>('destination_account_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _frequencyMeta =
+      const VerificationMeta('frequency');
+  @override
+  late final GeneratedColumn<String> frequency = GeneratedColumn<String>(
+      'frequency', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _intervalMeta =
+      const VerificationMeta('interval');
+  @override
+  late final GeneratedColumn<int> interval = GeneratedColumn<int>(
+      'interval', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1));
+  static const VerificationMeta _startDateMeta =
+      const VerificationMeta('startDate');
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+      'start_date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _executionTimeMeta =
+      const VerificationMeta('executionTime');
+  @override
+  late final GeneratedColumn<String> executionTime = GeneratedColumn<String>(
+      'execution_time', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _scheduleTypeMeta =
+      const VerificationMeta('scheduleType');
+  @override
+  late final GeneratedColumn<String> scheduleType = GeneratedColumn<String>(
+      'schedule_type', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('Fixed'));
+  static const VerificationMeta _weekParamMeta =
+      const VerificationMeta('weekParam');
+  @override
+  late final GeneratedColumn<int> weekParam = GeneratedColumn<int>(
+      'week_param', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _dayParamMeta =
+      const VerificationMeta('dayParam');
+  @override
+  late final GeneratedColumn<int> dayParam = GeneratedColumn<int>(
+      'day_param', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _nextRunAtMeta =
+      const VerificationMeta('nextRunAt');
+  @override
+  late final GeneratedColumn<DateTime> nextRunAt = GeneratedColumn<DateTime>(
+      'next_run_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _isActiveMeta =
+      const VerificationMeta('isActive');
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+      'is_active', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_active" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _autoExecuteMeta =
+      const VerificationMeta('autoExecute');
+  @override
+  late final GeneratedColumn<bool> autoExecute = GeneratedColumn<bool>(
+      'auto_execute', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("auto_execute" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        amount,
+        type,
+        category,
+        subCategory,
+        bucket,
+        notes,
+        sourceAccountId,
+        sourceCardId,
+        destinationAccountId,
+        frequency,
+        interval,
+        startDate,
+        executionTime,
+        scheduleType,
+        weekParam,
+        dayParam,
+        nextRunAt,
+        isActive,
+        autoExecute,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recurring_patterns';
+  @override
+  VerificationContext validateIntegrity(Insertable<RecurringPattern> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(_amountMeta,
+          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+          _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('sub_category')) {
+      context.handle(
+          _subCategoryMeta,
+          subCategory.isAcceptableOrUnknown(
+              data['sub_category']!, _subCategoryMeta));
+    } else if (isInserting) {
+      context.missing(_subCategoryMeta);
+    }
+    if (data.containsKey('bucket')) {
+      context.handle(_bucketMeta,
+          bucket.isAcceptableOrUnknown(data['bucket']!, _bucketMeta));
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('source_account_id')) {
+      context.handle(
+          _sourceAccountIdMeta,
+          sourceAccountId.isAcceptableOrUnknown(
+              data['source_account_id']!, _sourceAccountIdMeta));
+    }
+    if (data.containsKey('source_card_id')) {
+      context.handle(
+          _sourceCardIdMeta,
+          sourceCardId.isAcceptableOrUnknown(
+              data['source_card_id']!, _sourceCardIdMeta));
+    }
+    if (data.containsKey('destination_account_id')) {
+      context.handle(
+          _destinationAccountIdMeta,
+          destinationAccountId.isAcceptableOrUnknown(
+              data['destination_account_id']!, _destinationAccountIdMeta));
+    }
+    if (data.containsKey('frequency')) {
+      context.handle(_frequencyMeta,
+          frequency.isAcceptableOrUnknown(data['frequency']!, _frequencyMeta));
+    } else if (isInserting) {
+      context.missing(_frequencyMeta);
+    }
+    if (data.containsKey('interval')) {
+      context.handle(_intervalMeta,
+          interval.isAcceptableOrUnknown(data['interval']!, _intervalMeta));
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(_startDateMeta,
+          startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta));
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('execution_time')) {
+      context.handle(
+          _executionTimeMeta,
+          executionTime.isAcceptableOrUnknown(
+              data['execution_time']!, _executionTimeMeta));
+    } else if (isInserting) {
+      context.missing(_executionTimeMeta);
+    }
+    if (data.containsKey('schedule_type')) {
+      context.handle(
+          _scheduleTypeMeta,
+          scheduleType.isAcceptableOrUnknown(
+              data['schedule_type']!, _scheduleTypeMeta));
+    }
+    if (data.containsKey('week_param')) {
+      context.handle(_weekParamMeta,
+          weekParam.isAcceptableOrUnknown(data['week_param']!, _weekParamMeta));
+    }
+    if (data.containsKey('day_param')) {
+      context.handle(_dayParamMeta,
+          dayParam.isAcceptableOrUnknown(data['day_param']!, _dayParamMeta));
+    }
+    if (data.containsKey('next_run_at')) {
+      context.handle(
+          _nextRunAtMeta,
+          nextRunAt.isAcceptableOrUnknown(
+              data['next_run_at']!, _nextRunAtMeta));
+    } else if (isInserting) {
+      context.missing(_nextRunAtMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(_isActiveMeta,
+          isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta));
+    }
+    if (data.containsKey('auto_execute')) {
+      context.handle(
+          _autoExecuteMeta,
+          autoExecute.isAcceptableOrUnknown(
+              data['auto_execute']!, _autoExecuteMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RecurringPattern map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecurringPattern(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      amount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
+      type: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category'])!,
+      subCategory: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sub_category'])!,
+      bucket: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}bucket'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes'])!,
+      sourceAccountId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}source_account_id']),
+      sourceCardId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_card_id']),
+      destinationAccountId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}destination_account_id']),
+      frequency: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}frequency'])!,
+      interval: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}interval'])!,
+      startDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date'])!,
+      executionTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}execution_time'])!,
+      scheduleType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}schedule_type'])!,
+      weekParam: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}week_param']),
+      dayParam: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}day_param']),
+      nextRunAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}next_run_at'])!,
+      isActive: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_active'])!,
+      autoExecute: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}auto_execute'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $RecurringPatternsTable createAlias(String alias) {
+    return $RecurringPatternsTable(attachedDatabase, alias);
+  }
+}
+
+class RecurringPattern extends DataClass
+    implements Insertable<RecurringPattern> {
+  final String id;
+  final String name;
+  final double amount;
+  final String type;
+  final String category;
+  final String subCategory;
+  final String bucket;
+  final String notes;
+  final String? sourceAccountId;
+  final String? sourceCardId;
+  final String? destinationAccountId;
+  final String frequency;
+  final int interval;
+  final DateTime startDate;
+  final String executionTime;
+  final String scheduleType;
+  final int? weekParam;
+  final int? dayParam;
+  final DateTime nextRunAt;
+  final bool isActive;
+  final bool autoExecute;
+  final DateTime createdAt;
+  const RecurringPattern(
+      {required this.id,
+      required this.name,
+      required this.amount,
+      required this.type,
+      required this.category,
+      required this.subCategory,
+      required this.bucket,
+      required this.notes,
+      this.sourceAccountId,
+      this.sourceCardId,
+      this.destinationAccountId,
+      required this.frequency,
+      required this.interval,
+      required this.startDate,
+      required this.executionTime,
+      required this.scheduleType,
+      this.weekParam,
+      this.dayParam,
+      required this.nextRunAt,
+      required this.isActive,
+      required this.autoExecute,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['amount'] = Variable<double>(amount);
+    map['type'] = Variable<String>(type);
+    map['category'] = Variable<String>(category);
+    map['sub_category'] = Variable<String>(subCategory);
+    map['bucket'] = Variable<String>(bucket);
+    map['notes'] = Variable<String>(notes);
+    if (!nullToAbsent || sourceAccountId != null) {
+      map['source_account_id'] = Variable<String>(sourceAccountId);
+    }
+    if (!nullToAbsent || sourceCardId != null) {
+      map['source_card_id'] = Variable<String>(sourceCardId);
+    }
+    if (!nullToAbsent || destinationAccountId != null) {
+      map['destination_account_id'] = Variable<String>(destinationAccountId);
+    }
+    map['frequency'] = Variable<String>(frequency);
+    map['interval'] = Variable<int>(interval);
+    map['start_date'] = Variable<DateTime>(startDate);
+    map['execution_time'] = Variable<String>(executionTime);
+    map['schedule_type'] = Variable<String>(scheduleType);
+    if (!nullToAbsent || weekParam != null) {
+      map['week_param'] = Variable<int>(weekParam);
+    }
+    if (!nullToAbsent || dayParam != null) {
+      map['day_param'] = Variable<int>(dayParam);
+    }
+    map['next_run_at'] = Variable<DateTime>(nextRunAt);
+    map['is_active'] = Variable<bool>(isActive);
+    map['auto_execute'] = Variable<bool>(autoExecute);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  RecurringPatternsCompanion toCompanion(bool nullToAbsent) {
+    return RecurringPatternsCompanion(
+      id: Value(id),
+      name: Value(name),
+      amount: Value(amount),
+      type: Value(type),
+      category: Value(category),
+      subCategory: Value(subCategory),
+      bucket: Value(bucket),
+      notes: Value(notes),
+      sourceAccountId: sourceAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceAccountId),
+      sourceCardId: sourceCardId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceCardId),
+      destinationAccountId: destinationAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(destinationAccountId),
+      frequency: Value(frequency),
+      interval: Value(interval),
+      startDate: Value(startDate),
+      executionTime: Value(executionTime),
+      scheduleType: Value(scheduleType),
+      weekParam: weekParam == null && nullToAbsent
+          ? const Value.absent()
+          : Value(weekParam),
+      dayParam: dayParam == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dayParam),
+      nextRunAt: Value(nextRunAt),
+      isActive: Value(isActive),
+      autoExecute: Value(autoExecute),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory RecurringPattern.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecurringPattern(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      amount: serializer.fromJson<double>(json['amount']),
+      type: serializer.fromJson<String>(json['type']),
+      category: serializer.fromJson<String>(json['category']),
+      subCategory: serializer.fromJson<String>(json['subCategory']),
+      bucket: serializer.fromJson<String>(json['bucket']),
+      notes: serializer.fromJson<String>(json['notes']),
+      sourceAccountId: serializer.fromJson<String?>(json['sourceAccountId']),
+      sourceCardId: serializer.fromJson<String?>(json['sourceCardId']),
+      destinationAccountId:
+          serializer.fromJson<String?>(json['destinationAccountId']),
+      frequency: serializer.fromJson<String>(json['frequency']),
+      interval: serializer.fromJson<int>(json['interval']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      executionTime: serializer.fromJson<String>(json['executionTime']),
+      scheduleType: serializer.fromJson<String>(json['scheduleType']),
+      weekParam: serializer.fromJson<int?>(json['weekParam']),
+      dayParam: serializer.fromJson<int?>(json['dayParam']),
+      nextRunAt: serializer.fromJson<DateTime>(json['nextRunAt']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      autoExecute: serializer.fromJson<bool>(json['autoExecute']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'amount': serializer.toJson<double>(amount),
+      'type': serializer.toJson<String>(type),
+      'category': serializer.toJson<String>(category),
+      'subCategory': serializer.toJson<String>(subCategory),
+      'bucket': serializer.toJson<String>(bucket),
+      'notes': serializer.toJson<String>(notes),
+      'sourceAccountId': serializer.toJson<String?>(sourceAccountId),
+      'sourceCardId': serializer.toJson<String?>(sourceCardId),
+      'destinationAccountId': serializer.toJson<String?>(destinationAccountId),
+      'frequency': serializer.toJson<String>(frequency),
+      'interval': serializer.toJson<int>(interval),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'executionTime': serializer.toJson<String>(executionTime),
+      'scheduleType': serializer.toJson<String>(scheduleType),
+      'weekParam': serializer.toJson<int?>(weekParam),
+      'dayParam': serializer.toJson<int?>(dayParam),
+      'nextRunAt': serializer.toJson<DateTime>(nextRunAt),
+      'isActive': serializer.toJson<bool>(isActive),
+      'autoExecute': serializer.toJson<bool>(autoExecute),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  RecurringPattern copyWith(
+          {String? id,
+          String? name,
+          double? amount,
+          String? type,
+          String? category,
+          String? subCategory,
+          String? bucket,
+          String? notes,
+          Value<String?> sourceAccountId = const Value.absent(),
+          Value<String?> sourceCardId = const Value.absent(),
+          Value<String?> destinationAccountId = const Value.absent(),
+          String? frequency,
+          int? interval,
+          DateTime? startDate,
+          String? executionTime,
+          String? scheduleType,
+          Value<int?> weekParam = const Value.absent(),
+          Value<int?> dayParam = const Value.absent(),
+          DateTime? nextRunAt,
+          bool? isActive,
+          bool? autoExecute,
+          DateTime? createdAt}) =>
+      RecurringPattern(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        amount: amount ?? this.amount,
+        type: type ?? this.type,
+        category: category ?? this.category,
+        subCategory: subCategory ?? this.subCategory,
+        bucket: bucket ?? this.bucket,
+        notes: notes ?? this.notes,
+        sourceAccountId: sourceAccountId.present
+            ? sourceAccountId.value
+            : this.sourceAccountId,
+        sourceCardId:
+            sourceCardId.present ? sourceCardId.value : this.sourceCardId,
+        destinationAccountId: destinationAccountId.present
+            ? destinationAccountId.value
+            : this.destinationAccountId,
+        frequency: frequency ?? this.frequency,
+        interval: interval ?? this.interval,
+        startDate: startDate ?? this.startDate,
+        executionTime: executionTime ?? this.executionTime,
+        scheduleType: scheduleType ?? this.scheduleType,
+        weekParam: weekParam.present ? weekParam.value : this.weekParam,
+        dayParam: dayParam.present ? dayParam.value : this.dayParam,
+        nextRunAt: nextRunAt ?? this.nextRunAt,
+        isActive: isActive ?? this.isActive,
+        autoExecute: autoExecute ?? this.autoExecute,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  RecurringPattern copyWithCompanion(RecurringPatternsCompanion data) {
+    return RecurringPattern(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      type: data.type.present ? data.type.value : this.type,
+      category: data.category.present ? data.category.value : this.category,
+      subCategory:
+          data.subCategory.present ? data.subCategory.value : this.subCategory,
+      bucket: data.bucket.present ? data.bucket.value : this.bucket,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      sourceAccountId: data.sourceAccountId.present
+          ? data.sourceAccountId.value
+          : this.sourceAccountId,
+      sourceCardId: data.sourceCardId.present
+          ? data.sourceCardId.value
+          : this.sourceCardId,
+      destinationAccountId: data.destinationAccountId.present
+          ? data.destinationAccountId.value
+          : this.destinationAccountId,
+      frequency: data.frequency.present ? data.frequency.value : this.frequency,
+      interval: data.interval.present ? data.interval.value : this.interval,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      executionTime: data.executionTime.present
+          ? data.executionTime.value
+          : this.executionTime,
+      scheduleType: data.scheduleType.present
+          ? data.scheduleType.value
+          : this.scheduleType,
+      weekParam: data.weekParam.present ? data.weekParam.value : this.weekParam,
+      dayParam: data.dayParam.present ? data.dayParam.value : this.dayParam,
+      nextRunAt: data.nextRunAt.present ? data.nextRunAt.value : this.nextRunAt,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      autoExecute:
+          data.autoExecute.present ? data.autoExecute.value : this.autoExecute,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecurringPattern(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('amount: $amount, ')
+          ..write('type: $type, ')
+          ..write('category: $category, ')
+          ..write('subCategory: $subCategory, ')
+          ..write('bucket: $bucket, ')
+          ..write('notes: $notes, ')
+          ..write('sourceAccountId: $sourceAccountId, ')
+          ..write('sourceCardId: $sourceCardId, ')
+          ..write('destinationAccountId: $destinationAccountId, ')
+          ..write('frequency: $frequency, ')
+          ..write('interval: $interval, ')
+          ..write('startDate: $startDate, ')
+          ..write('executionTime: $executionTime, ')
+          ..write('scheduleType: $scheduleType, ')
+          ..write('weekParam: $weekParam, ')
+          ..write('dayParam: $dayParam, ')
+          ..write('nextRunAt: $nextRunAt, ')
+          ..write('isActive: $isActive, ')
+          ..write('autoExecute: $autoExecute, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+        id,
+        name,
+        amount,
+        type,
+        category,
+        subCategory,
+        bucket,
+        notes,
+        sourceAccountId,
+        sourceCardId,
+        destinationAccountId,
+        frequency,
+        interval,
+        startDate,
+        executionTime,
+        scheduleType,
+        weekParam,
+        dayParam,
+        nextRunAt,
+        isActive,
+        autoExecute,
+        createdAt
+      ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecurringPattern &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.amount == this.amount &&
+          other.type == this.type &&
+          other.category == this.category &&
+          other.subCategory == this.subCategory &&
+          other.bucket == this.bucket &&
+          other.notes == this.notes &&
+          other.sourceAccountId == this.sourceAccountId &&
+          other.sourceCardId == this.sourceCardId &&
+          other.destinationAccountId == this.destinationAccountId &&
+          other.frequency == this.frequency &&
+          other.interval == this.interval &&
+          other.startDate == this.startDate &&
+          other.executionTime == this.executionTime &&
+          other.scheduleType == this.scheduleType &&
+          other.weekParam == this.weekParam &&
+          other.dayParam == this.dayParam &&
+          other.nextRunAt == this.nextRunAt &&
+          other.isActive == this.isActive &&
+          other.autoExecute == this.autoExecute &&
+          other.createdAt == this.createdAt);
+}
+
+class RecurringPatternsCompanion extends UpdateCompanion<RecurringPattern> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<double> amount;
+  final Value<String> type;
+  final Value<String> category;
+  final Value<String> subCategory;
+  final Value<String> bucket;
+  final Value<String> notes;
+  final Value<String?> sourceAccountId;
+  final Value<String?> sourceCardId;
+  final Value<String?> destinationAccountId;
+  final Value<String> frequency;
+  final Value<int> interval;
+  final Value<DateTime> startDate;
+  final Value<String> executionTime;
+  final Value<String> scheduleType;
+  final Value<int?> weekParam;
+  final Value<int?> dayParam;
+  final Value<DateTime> nextRunAt;
+  final Value<bool> isActive;
+  final Value<bool> autoExecute;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const RecurringPatternsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.type = const Value.absent(),
+    this.category = const Value.absent(),
+    this.subCategory = const Value.absent(),
+    this.bucket = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.sourceAccountId = const Value.absent(),
+    this.sourceCardId = const Value.absent(),
+    this.destinationAccountId = const Value.absent(),
+    this.frequency = const Value.absent(),
+    this.interval = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.executionTime = const Value.absent(),
+    this.scheduleType = const Value.absent(),
+    this.weekParam = const Value.absent(),
+    this.dayParam = const Value.absent(),
+    this.nextRunAt = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.autoExecute = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RecurringPatternsCompanion.insert({
+    required String id,
+    required String name,
+    required double amount,
+    required String type,
+    required String category,
+    required String subCategory,
+    this.bucket = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.sourceAccountId = const Value.absent(),
+    this.sourceCardId = const Value.absent(),
+    this.destinationAccountId = const Value.absent(),
+    required String frequency,
+    this.interval = const Value.absent(),
+    required DateTime startDate,
+    required String executionTime,
+    this.scheduleType = const Value.absent(),
+    this.weekParam = const Value.absent(),
+    this.dayParam = const Value.absent(),
+    required DateTime nextRunAt,
+    this.isActive = const Value.absent(),
+    this.autoExecute = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        amount = Value(amount),
+        type = Value(type),
+        category = Value(category),
+        subCategory = Value(subCategory),
+        frequency = Value(frequency),
+        startDate = Value(startDate),
+        executionTime = Value(executionTime),
+        nextRunAt = Value(nextRunAt);
+  static Insertable<RecurringPattern> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<double>? amount,
+    Expression<String>? type,
+    Expression<String>? category,
+    Expression<String>? subCategory,
+    Expression<String>? bucket,
+    Expression<String>? notes,
+    Expression<String>? sourceAccountId,
+    Expression<String>? sourceCardId,
+    Expression<String>? destinationAccountId,
+    Expression<String>? frequency,
+    Expression<int>? interval,
+    Expression<DateTime>? startDate,
+    Expression<String>? executionTime,
+    Expression<String>? scheduleType,
+    Expression<int>? weekParam,
+    Expression<int>? dayParam,
+    Expression<DateTime>? nextRunAt,
+    Expression<bool>? isActive,
+    Expression<bool>? autoExecute,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (amount != null) 'amount': amount,
+      if (type != null) 'type': type,
+      if (category != null) 'category': category,
+      if (subCategory != null) 'sub_category': subCategory,
+      if (bucket != null) 'bucket': bucket,
+      if (notes != null) 'notes': notes,
+      if (sourceAccountId != null) 'source_account_id': sourceAccountId,
+      if (sourceCardId != null) 'source_card_id': sourceCardId,
+      if (destinationAccountId != null)
+        'destination_account_id': destinationAccountId,
+      if (frequency != null) 'frequency': frequency,
+      if (interval != null) 'interval': interval,
+      if (startDate != null) 'start_date': startDate,
+      if (executionTime != null) 'execution_time': executionTime,
+      if (scheduleType != null) 'schedule_type': scheduleType,
+      if (weekParam != null) 'week_param': weekParam,
+      if (dayParam != null) 'day_param': dayParam,
+      if (nextRunAt != null) 'next_run_at': nextRunAt,
+      if (isActive != null) 'is_active': isActive,
+      if (autoExecute != null) 'auto_execute': autoExecute,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RecurringPatternsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<double>? amount,
+      Value<String>? type,
+      Value<String>? category,
+      Value<String>? subCategory,
+      Value<String>? bucket,
+      Value<String>? notes,
+      Value<String?>? sourceAccountId,
+      Value<String?>? sourceCardId,
+      Value<String?>? destinationAccountId,
+      Value<String>? frequency,
+      Value<int>? interval,
+      Value<DateTime>? startDate,
+      Value<String>? executionTime,
+      Value<String>? scheduleType,
+      Value<int?>? weekParam,
+      Value<int?>? dayParam,
+      Value<DateTime>? nextRunAt,
+      Value<bool>? isActive,
+      Value<bool>? autoExecute,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return RecurringPatternsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      amount: amount ?? this.amount,
+      type: type ?? this.type,
+      category: category ?? this.category,
+      subCategory: subCategory ?? this.subCategory,
+      bucket: bucket ?? this.bucket,
+      notes: notes ?? this.notes,
+      sourceAccountId: sourceAccountId ?? this.sourceAccountId,
+      sourceCardId: sourceCardId ?? this.sourceCardId,
+      destinationAccountId: destinationAccountId ?? this.destinationAccountId,
+      frequency: frequency ?? this.frequency,
+      interval: interval ?? this.interval,
+      startDate: startDate ?? this.startDate,
+      executionTime: executionTime ?? this.executionTime,
+      scheduleType: scheduleType ?? this.scheduleType,
+      weekParam: weekParam ?? this.weekParam,
+      dayParam: dayParam ?? this.dayParam,
+      nextRunAt: nextRunAt ?? this.nextRunAt,
+      isActive: isActive ?? this.isActive,
+      autoExecute: autoExecute ?? this.autoExecute,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (subCategory.present) {
+      map['sub_category'] = Variable<String>(subCategory.value);
+    }
+    if (bucket.present) {
+      map['bucket'] = Variable<String>(bucket.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (sourceAccountId.present) {
+      map['source_account_id'] = Variable<String>(sourceAccountId.value);
+    }
+    if (sourceCardId.present) {
+      map['source_card_id'] = Variable<String>(sourceCardId.value);
+    }
+    if (destinationAccountId.present) {
+      map['destination_account_id'] =
+          Variable<String>(destinationAccountId.value);
+    }
+    if (frequency.present) {
+      map['frequency'] = Variable<String>(frequency.value);
+    }
+    if (interval.present) {
+      map['interval'] = Variable<int>(interval.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (executionTime.present) {
+      map['execution_time'] = Variable<String>(executionTime.value);
+    }
+    if (scheduleType.present) {
+      map['schedule_type'] = Variable<String>(scheduleType.value);
+    }
+    if (weekParam.present) {
+      map['week_param'] = Variable<int>(weekParam.value);
+    }
+    if (dayParam.present) {
+      map['day_param'] = Variable<int>(dayParam.value);
+    }
+    if (nextRunAt.present) {
+      map['next_run_at'] = Variable<DateTime>(nextRunAt.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (autoExecute.present) {
+      map['auto_execute'] = Variable<bool>(autoExecute.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecurringPatternsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('amount: $amount, ')
+          ..write('type: $type, ')
+          ..write('category: $category, ')
+          ..write('subCategory: $subCategory, ')
+          ..write('bucket: $bucket, ')
+          ..write('notes: $notes, ')
+          ..write('sourceAccountId: $sourceAccountId, ')
+          ..write('sourceCardId: $sourceCardId, ')
+          ..write('destinationAccountId: $destinationAccountId, ')
+          ..write('frequency: $frequency, ')
+          ..write('interval: $interval, ')
+          ..write('startDate: $startDate, ')
+          ..write('executionTime: $executionTime, ')
+          ..write('scheduleType: $scheduleType, ')
+          ..write('weekParam: $weekParam, ')
+          ..write('dayParam: $dayParam, ')
+          ..write('nextRunAt: $nextRunAt, ')
+          ..write('isActive: $isActive, ')
+          ..write('autoExecute: $autoExecute, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RecurringLogsTable extends RecurringLogs
+    with TableInfo<$RecurringLogsTable, RecurringLog> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecurringLogsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _patternIdMeta =
+      const VerificationMeta('patternId');
+  @override
+  late final GeneratedColumn<String> patternId = GeneratedColumn<String>(
+      'pattern_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES recurring_patterns (id)'));
+  static const VerificationMeta _executedAtMeta =
+      const VerificationMeta('executedAt');
+  @override
+  late final GeneratedColumn<DateTime> executedAt = GeneratedColumn<DateTime>(
+      'executed_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _isSuccessMeta =
+      const VerificationMeta('isSuccess');
+  @override
+  late final GeneratedColumn<bool> isSuccess = GeneratedColumn<bool>(
+      'is_success', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_success" IN (0, 1))'));
+  static const VerificationMeta _errorMeta = const VerificationMeta('error');
+  @override
+  late final GeneratedColumn<String> error = GeneratedColumn<String>(
+      'error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _generatedTxnIdMeta =
+      const VerificationMeta('generatedTxnId');
+  @override
+  late final GeneratedColumn<String> generatedTxnId = GeneratedColumn<String>(
+      'generated_txn_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, patternId, executedAt, isSuccess, error, generatedTxnId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recurring_logs';
+  @override
+  VerificationContext validateIntegrity(Insertable<RecurringLog> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('pattern_id')) {
+      context.handle(_patternIdMeta,
+          patternId.isAcceptableOrUnknown(data['pattern_id']!, _patternIdMeta));
+    } else if (isInserting) {
+      context.missing(_patternIdMeta);
+    }
+    if (data.containsKey('executed_at')) {
+      context.handle(
+          _executedAtMeta,
+          executedAt.isAcceptableOrUnknown(
+              data['executed_at']!, _executedAtMeta));
+    } else if (isInserting) {
+      context.missing(_executedAtMeta);
+    }
+    if (data.containsKey('is_success')) {
+      context.handle(_isSuccessMeta,
+          isSuccess.isAcceptableOrUnknown(data['is_success']!, _isSuccessMeta));
+    } else if (isInserting) {
+      context.missing(_isSuccessMeta);
+    }
+    if (data.containsKey('error')) {
+      context.handle(
+          _errorMeta, error.isAcceptableOrUnknown(data['error']!, _errorMeta));
+    }
+    if (data.containsKey('generated_txn_id')) {
+      context.handle(
+          _generatedTxnIdMeta,
+          generatedTxnId.isAcceptableOrUnknown(
+              data['generated_txn_id']!, _generatedTxnIdMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RecurringLog map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecurringLog(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      patternId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}pattern_id'])!,
+      executedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}executed_at'])!,
+      isSuccess: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_success'])!,
+      error: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}error']),
+      generatedTxnId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}generated_txn_id']),
+    );
+  }
+
+  @override
+  $RecurringLogsTable createAlias(String alias) {
+    return $RecurringLogsTable(attachedDatabase, alias);
+  }
+}
+
+class RecurringLog extends DataClass implements Insertable<RecurringLog> {
+  final String id;
+  final String patternId;
+  final DateTime executedAt;
+  final bool isSuccess;
+  final String? error;
+  final String? generatedTxnId;
+  const RecurringLog(
+      {required this.id,
+      required this.patternId,
+      required this.executedAt,
+      required this.isSuccess,
+      this.error,
+      this.generatedTxnId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['pattern_id'] = Variable<String>(patternId);
+    map['executed_at'] = Variable<DateTime>(executedAt);
+    map['is_success'] = Variable<bool>(isSuccess);
+    if (!nullToAbsent || error != null) {
+      map['error'] = Variable<String>(error);
+    }
+    if (!nullToAbsent || generatedTxnId != null) {
+      map['generated_txn_id'] = Variable<String>(generatedTxnId);
+    }
+    return map;
+  }
+
+  RecurringLogsCompanion toCompanion(bool nullToAbsent) {
+    return RecurringLogsCompanion(
+      id: Value(id),
+      patternId: Value(patternId),
+      executedAt: Value(executedAt),
+      isSuccess: Value(isSuccess),
+      error:
+          error == null && nullToAbsent ? const Value.absent() : Value(error),
+      generatedTxnId: generatedTxnId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(generatedTxnId),
+    );
+  }
+
+  factory RecurringLog.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecurringLog(
+      id: serializer.fromJson<String>(json['id']),
+      patternId: serializer.fromJson<String>(json['patternId']),
+      executedAt: serializer.fromJson<DateTime>(json['executedAt']),
+      isSuccess: serializer.fromJson<bool>(json['isSuccess']),
+      error: serializer.fromJson<String?>(json['error']),
+      generatedTxnId: serializer.fromJson<String?>(json['generatedTxnId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'patternId': serializer.toJson<String>(patternId),
+      'executedAt': serializer.toJson<DateTime>(executedAt),
+      'isSuccess': serializer.toJson<bool>(isSuccess),
+      'error': serializer.toJson<String?>(error),
+      'generatedTxnId': serializer.toJson<String?>(generatedTxnId),
+    };
+  }
+
+  RecurringLog copyWith(
+          {String? id,
+          String? patternId,
+          DateTime? executedAt,
+          bool? isSuccess,
+          Value<String?> error = const Value.absent(),
+          Value<String?> generatedTxnId = const Value.absent()}) =>
+      RecurringLog(
+        id: id ?? this.id,
+        patternId: patternId ?? this.patternId,
+        executedAt: executedAt ?? this.executedAt,
+        isSuccess: isSuccess ?? this.isSuccess,
+        error: error.present ? error.value : this.error,
+        generatedTxnId:
+            generatedTxnId.present ? generatedTxnId.value : this.generatedTxnId,
+      );
+  RecurringLog copyWithCompanion(RecurringLogsCompanion data) {
+    return RecurringLog(
+      id: data.id.present ? data.id.value : this.id,
+      patternId: data.patternId.present ? data.patternId.value : this.patternId,
+      executedAt:
+          data.executedAt.present ? data.executedAt.value : this.executedAt,
+      isSuccess: data.isSuccess.present ? data.isSuccess.value : this.isSuccess,
+      error: data.error.present ? data.error.value : this.error,
+      generatedTxnId: data.generatedTxnId.present
+          ? data.generatedTxnId.value
+          : this.generatedTxnId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecurringLog(')
+          ..write('id: $id, ')
+          ..write('patternId: $patternId, ')
+          ..write('executedAt: $executedAt, ')
+          ..write('isSuccess: $isSuccess, ')
+          ..write('error: $error, ')
+          ..write('generatedTxnId: $generatedTxnId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, patternId, executedAt, isSuccess, error, generatedTxnId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecurringLog &&
+          other.id == this.id &&
+          other.patternId == this.patternId &&
+          other.executedAt == this.executedAt &&
+          other.isSuccess == this.isSuccess &&
+          other.error == this.error &&
+          other.generatedTxnId == this.generatedTxnId);
+}
+
+class RecurringLogsCompanion extends UpdateCompanion<RecurringLog> {
+  final Value<String> id;
+  final Value<String> patternId;
+  final Value<DateTime> executedAt;
+  final Value<bool> isSuccess;
+  final Value<String?> error;
+  final Value<String?> generatedTxnId;
+  final Value<int> rowid;
+  const RecurringLogsCompanion({
+    this.id = const Value.absent(),
+    this.patternId = const Value.absent(),
+    this.executedAt = const Value.absent(),
+    this.isSuccess = const Value.absent(),
+    this.error = const Value.absent(),
+    this.generatedTxnId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RecurringLogsCompanion.insert({
+    required String id,
+    required String patternId,
+    required DateTime executedAt,
+    required bool isSuccess,
+    this.error = const Value.absent(),
+    this.generatedTxnId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        patternId = Value(patternId),
+        executedAt = Value(executedAt),
+        isSuccess = Value(isSuccess);
+  static Insertable<RecurringLog> custom({
+    Expression<String>? id,
+    Expression<String>? patternId,
+    Expression<DateTime>? executedAt,
+    Expression<bool>? isSuccess,
+    Expression<String>? error,
+    Expression<String>? generatedTxnId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (patternId != null) 'pattern_id': patternId,
+      if (executedAt != null) 'executed_at': executedAt,
+      if (isSuccess != null) 'is_success': isSuccess,
+      if (error != null) 'error': error,
+      if (generatedTxnId != null) 'generated_txn_id': generatedTxnId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RecurringLogsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? patternId,
+      Value<DateTime>? executedAt,
+      Value<bool>? isSuccess,
+      Value<String?>? error,
+      Value<String?>? generatedTxnId,
+      Value<int>? rowid}) {
+    return RecurringLogsCompanion(
+      id: id ?? this.id,
+      patternId: patternId ?? this.patternId,
+      executedAt: executedAt ?? this.executedAt,
+      isSuccess: isSuccess ?? this.isSuccess,
+      error: error ?? this.error,
+      generatedTxnId: generatedTxnId ?? this.generatedTxnId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (patternId.present) {
+      map['pattern_id'] = Variable<String>(patternId.value);
+    }
+    if (executedAt.present) {
+      map['executed_at'] = Variable<DateTime>(executedAt.value);
+    }
+    if (isSuccess.present) {
+      map['is_success'] = Variable<bool>(isSuccess.value);
+    }
+    if (error.present) {
+      map['error'] = Variable<String>(error.value);
+    }
+    if (generatedTxnId.present) {
+      map['generated_txn_id'] = Variable<String>(generatedTxnId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecurringLogsCompanion(')
+          ..write('id: $id, ')
+          ..write('patternId: $patternId, ')
+          ..write('executedAt: $executedAt, ')
+          ..write('isSuccess: $isSuccess, ')
+          ..write('error: $error, ')
+          ..write('generatedTxnId: $generatedTxnId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -9376,6 +10755,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $HeatmapLimitsTable heatmapLimits = $HeatmapLimitsTable(this);
   late final $AppNotificationsTable appNotifications =
       $AppNotificationsTable(this);
+  late final $RecurringPatternsTable recurringPatterns =
+      $RecurringPatternsTable(this);
+  late final $RecurringLogsTable recurringLogs = $RecurringLogsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9398,7 +10780,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         loans,
         goals,
         heatmapLimits,
-        appNotifications
+        appNotifications,
+        recurringPatterns,
+        recurringLogs
       ];
 }
 
@@ -14466,6 +15850,823 @@ typedef $$AppNotificationsTableProcessedTableManager = ProcessedTableManager<
     ),
     AppNotification,
     PrefetchHooks Function()>;
+typedef $$RecurringPatternsTableCreateCompanionBuilder
+    = RecurringPatternsCompanion Function({
+  required String id,
+  required String name,
+  required double amount,
+  required String type,
+  required String category,
+  required String subCategory,
+  Value<String> bucket,
+  Value<String> notes,
+  Value<String?> sourceAccountId,
+  Value<String?> sourceCardId,
+  Value<String?> destinationAccountId,
+  required String frequency,
+  Value<int> interval,
+  required DateTime startDate,
+  required String executionTime,
+  Value<String> scheduleType,
+  Value<int?> weekParam,
+  Value<int?> dayParam,
+  required DateTime nextRunAt,
+  Value<bool> isActive,
+  Value<bool> autoExecute,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$RecurringPatternsTableUpdateCompanionBuilder
+    = RecurringPatternsCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<double> amount,
+  Value<String> type,
+  Value<String> category,
+  Value<String> subCategory,
+  Value<String> bucket,
+  Value<String> notes,
+  Value<String?> sourceAccountId,
+  Value<String?> sourceCardId,
+  Value<String?> destinationAccountId,
+  Value<String> frequency,
+  Value<int> interval,
+  Value<DateTime> startDate,
+  Value<String> executionTime,
+  Value<String> scheduleType,
+  Value<int?> weekParam,
+  Value<int?> dayParam,
+  Value<DateTime> nextRunAt,
+  Value<bool> isActive,
+  Value<bool> autoExecute,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+final class $$RecurringPatternsTableReferences extends BaseReferences<
+    _$AppDatabase, $RecurringPatternsTable, RecurringPattern> {
+  $$RecurringPatternsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$RecurringLogsTable, List<RecurringLog>>
+      _recurringLogsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.recurringLogs,
+              aliasName: $_aliasNameGenerator(
+                  db.recurringPatterns.id, db.recurringLogs.patternId));
+
+  $$RecurringLogsTableProcessedTableManager get recurringLogsRefs {
+    final manager = $$RecurringLogsTableTableManager($_db, $_db.recurringLogs)
+        .filter((f) => f.patternId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_recurringLogsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$RecurringPatternsTableFilterComposer
+    extends Composer<_$AppDatabase, $RecurringPatternsTable> {
+  $$RecurringPatternsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get subCategory => $composableBuilder(
+      column: $table.subCategory, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get bucket => $composableBuilder(
+      column: $table.bucket, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceAccountId => $composableBuilder(
+      column: $table.sourceAccountId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceCardId => $composableBuilder(
+      column: $table.sourceCardId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get destinationAccountId => $composableBuilder(
+      column: $table.destinationAccountId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get frequency => $composableBuilder(
+      column: $table.frequency, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get interval => $composableBuilder(
+      column: $table.interval, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get executionTime => $composableBuilder(
+      column: $table.executionTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get scheduleType => $composableBuilder(
+      column: $table.scheduleType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get weekParam => $composableBuilder(
+      column: $table.weekParam, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get dayParam => $composableBuilder(
+      column: $table.dayParam, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get nextRunAt => $composableBuilder(
+      column: $table.nextRunAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+      column: $table.isActive, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get autoExecute => $composableBuilder(
+      column: $table.autoExecute, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> recurringLogsRefs(
+      Expression<bool> Function($$RecurringLogsTableFilterComposer f) f) {
+    final $$RecurringLogsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.recurringLogs,
+        getReferencedColumn: (t) => t.patternId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$RecurringLogsTableFilterComposer(
+              $db: $db,
+              $table: $db.recurringLogs,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$RecurringPatternsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecurringPatternsTable> {
+  $$RecurringPatternsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get subCategory => $composableBuilder(
+      column: $table.subCategory, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get bucket => $composableBuilder(
+      column: $table.bucket, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceAccountId => $composableBuilder(
+      column: $table.sourceAccountId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceCardId => $composableBuilder(
+      column: $table.sourceCardId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get destinationAccountId => $composableBuilder(
+      column: $table.destinationAccountId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get frequency => $composableBuilder(
+      column: $table.frequency, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get interval => $composableBuilder(
+      column: $table.interval, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get executionTime => $composableBuilder(
+      column: $table.executionTime,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get scheduleType => $composableBuilder(
+      column: $table.scheduleType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get weekParam => $composableBuilder(
+      column: $table.weekParam, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get dayParam => $composableBuilder(
+      column: $table.dayParam, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get nextRunAt => $composableBuilder(
+      column: $table.nextRunAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+      column: $table.isActive, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get autoExecute => $composableBuilder(
+      column: $table.autoExecute, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$RecurringPatternsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecurringPatternsTable> {
+  $$RecurringPatternsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get subCategory => $composableBuilder(
+      column: $table.subCategory, builder: (column) => column);
+
+  GeneratedColumn<String> get bucket =>
+      $composableBuilder(column: $table.bucket, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceAccountId => $composableBuilder(
+      column: $table.sourceAccountId, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceCardId => $composableBuilder(
+      column: $table.sourceCardId, builder: (column) => column);
+
+  GeneratedColumn<String> get destinationAccountId => $composableBuilder(
+      column: $table.destinationAccountId, builder: (column) => column);
+
+  GeneratedColumn<String> get frequency =>
+      $composableBuilder(column: $table.frequency, builder: (column) => column);
+
+  GeneratedColumn<int> get interval =>
+      $composableBuilder(column: $table.interval, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<String> get executionTime => $composableBuilder(
+      column: $table.executionTime, builder: (column) => column);
+
+  GeneratedColumn<String> get scheduleType => $composableBuilder(
+      column: $table.scheduleType, builder: (column) => column);
+
+  GeneratedColumn<int> get weekParam =>
+      $composableBuilder(column: $table.weekParam, builder: (column) => column);
+
+  GeneratedColumn<int> get dayParam =>
+      $composableBuilder(column: $table.dayParam, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextRunAt =>
+      $composableBuilder(column: $table.nextRunAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get autoExecute => $composableBuilder(
+      column: $table.autoExecute, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> recurringLogsRefs<T extends Object>(
+      Expression<T> Function($$RecurringLogsTableAnnotationComposer a) f) {
+    final $$RecurringLogsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.recurringLogs,
+        getReferencedColumn: (t) => t.patternId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$RecurringLogsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.recurringLogs,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$RecurringPatternsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $RecurringPatternsTable,
+    RecurringPattern,
+    $$RecurringPatternsTableFilterComposer,
+    $$RecurringPatternsTableOrderingComposer,
+    $$RecurringPatternsTableAnnotationComposer,
+    $$RecurringPatternsTableCreateCompanionBuilder,
+    $$RecurringPatternsTableUpdateCompanionBuilder,
+    (RecurringPattern, $$RecurringPatternsTableReferences),
+    RecurringPattern,
+    PrefetchHooks Function({bool recurringLogsRefs})> {
+  $$RecurringPatternsTableTableManager(
+      _$AppDatabase db, $RecurringPatternsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecurringPatternsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RecurringPatternsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RecurringPatternsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<double> amount = const Value.absent(),
+            Value<String> type = const Value.absent(),
+            Value<String> category = const Value.absent(),
+            Value<String> subCategory = const Value.absent(),
+            Value<String> bucket = const Value.absent(),
+            Value<String> notes = const Value.absent(),
+            Value<String?> sourceAccountId = const Value.absent(),
+            Value<String?> sourceCardId = const Value.absent(),
+            Value<String?> destinationAccountId = const Value.absent(),
+            Value<String> frequency = const Value.absent(),
+            Value<int> interval = const Value.absent(),
+            Value<DateTime> startDate = const Value.absent(),
+            Value<String> executionTime = const Value.absent(),
+            Value<String> scheduleType = const Value.absent(),
+            Value<int?> weekParam = const Value.absent(),
+            Value<int?> dayParam = const Value.absent(),
+            Value<DateTime> nextRunAt = const Value.absent(),
+            Value<bool> isActive = const Value.absent(),
+            Value<bool> autoExecute = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              RecurringPatternsCompanion(
+            id: id,
+            name: name,
+            amount: amount,
+            type: type,
+            category: category,
+            subCategory: subCategory,
+            bucket: bucket,
+            notes: notes,
+            sourceAccountId: sourceAccountId,
+            sourceCardId: sourceCardId,
+            destinationAccountId: destinationAccountId,
+            frequency: frequency,
+            interval: interval,
+            startDate: startDate,
+            executionTime: executionTime,
+            scheduleType: scheduleType,
+            weekParam: weekParam,
+            dayParam: dayParam,
+            nextRunAt: nextRunAt,
+            isActive: isActive,
+            autoExecute: autoExecute,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            required double amount,
+            required String type,
+            required String category,
+            required String subCategory,
+            Value<String> bucket = const Value.absent(),
+            Value<String> notes = const Value.absent(),
+            Value<String?> sourceAccountId = const Value.absent(),
+            Value<String?> sourceCardId = const Value.absent(),
+            Value<String?> destinationAccountId = const Value.absent(),
+            required String frequency,
+            Value<int> interval = const Value.absent(),
+            required DateTime startDate,
+            required String executionTime,
+            Value<String> scheduleType = const Value.absent(),
+            Value<int?> weekParam = const Value.absent(),
+            Value<int?> dayParam = const Value.absent(),
+            required DateTime nextRunAt,
+            Value<bool> isActive = const Value.absent(),
+            Value<bool> autoExecute = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              RecurringPatternsCompanion.insert(
+            id: id,
+            name: name,
+            amount: amount,
+            type: type,
+            category: category,
+            subCategory: subCategory,
+            bucket: bucket,
+            notes: notes,
+            sourceAccountId: sourceAccountId,
+            sourceCardId: sourceCardId,
+            destinationAccountId: destinationAccountId,
+            frequency: frequency,
+            interval: interval,
+            startDate: startDate,
+            executionTime: executionTime,
+            scheduleType: scheduleType,
+            weekParam: weekParam,
+            dayParam: dayParam,
+            nextRunAt: nextRunAt,
+            isActive: isActive,
+            autoExecute: autoExecute,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$RecurringPatternsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({recurringLogsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (recurringLogsRefs) db.recurringLogs
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (recurringLogsRefs)
+                    await $_getPrefetchedData<RecurringPattern,
+                            $RecurringPatternsTable, RecurringLog>(
+                        currentTable: table,
+                        referencedTable: $$RecurringPatternsTableReferences
+                            ._recurringLogsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$RecurringPatternsTableReferences(db, table, p0)
+                                .recurringLogsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.patternId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$RecurringPatternsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $RecurringPatternsTable,
+    RecurringPattern,
+    $$RecurringPatternsTableFilterComposer,
+    $$RecurringPatternsTableOrderingComposer,
+    $$RecurringPatternsTableAnnotationComposer,
+    $$RecurringPatternsTableCreateCompanionBuilder,
+    $$RecurringPatternsTableUpdateCompanionBuilder,
+    (RecurringPattern, $$RecurringPatternsTableReferences),
+    RecurringPattern,
+    PrefetchHooks Function({bool recurringLogsRefs})>;
+typedef $$RecurringLogsTableCreateCompanionBuilder = RecurringLogsCompanion
+    Function({
+  required String id,
+  required String patternId,
+  required DateTime executedAt,
+  required bool isSuccess,
+  Value<String?> error,
+  Value<String?> generatedTxnId,
+  Value<int> rowid,
+});
+typedef $$RecurringLogsTableUpdateCompanionBuilder = RecurringLogsCompanion
+    Function({
+  Value<String> id,
+  Value<String> patternId,
+  Value<DateTime> executedAt,
+  Value<bool> isSuccess,
+  Value<String?> error,
+  Value<String?> generatedTxnId,
+  Value<int> rowid,
+});
+
+final class $$RecurringLogsTableReferences
+    extends BaseReferences<_$AppDatabase, $RecurringLogsTable, RecurringLog> {
+  $$RecurringLogsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $RecurringPatternsTable _patternIdTable(_$AppDatabase db) =>
+      db.recurringPatterns.createAlias($_aliasNameGenerator(
+          db.recurringLogs.patternId, db.recurringPatterns.id));
+
+  $$RecurringPatternsTableProcessedTableManager get patternId {
+    final $_column = $_itemColumn<String>('pattern_id')!;
+
+    final manager =
+        $$RecurringPatternsTableTableManager($_db, $_db.recurringPatterns)
+            .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_patternIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$RecurringLogsTableFilterComposer
+    extends Composer<_$AppDatabase, $RecurringLogsTable> {
+  $$RecurringLogsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get executedAt => $composableBuilder(
+      column: $table.executedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isSuccess => $composableBuilder(
+      column: $table.isSuccess, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get error => $composableBuilder(
+      column: $table.error, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get generatedTxnId => $composableBuilder(
+      column: $table.generatedTxnId,
+      builder: (column) => ColumnFilters(column));
+
+  $$RecurringPatternsTableFilterComposer get patternId {
+    final $$RecurringPatternsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.patternId,
+        referencedTable: $db.recurringPatterns,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$RecurringPatternsTableFilterComposer(
+              $db: $db,
+              $table: $db.recurringPatterns,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$RecurringLogsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecurringLogsTable> {
+  $$RecurringLogsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get executedAt => $composableBuilder(
+      column: $table.executedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isSuccess => $composableBuilder(
+      column: $table.isSuccess, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get error => $composableBuilder(
+      column: $table.error, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get generatedTxnId => $composableBuilder(
+      column: $table.generatedTxnId,
+      builder: (column) => ColumnOrderings(column));
+
+  $$RecurringPatternsTableOrderingComposer get patternId {
+    final $$RecurringPatternsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.patternId,
+        referencedTable: $db.recurringPatterns,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$RecurringPatternsTableOrderingComposer(
+              $db: $db,
+              $table: $db.recurringPatterns,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$RecurringLogsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecurringLogsTable> {
+  $$RecurringLogsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get executedAt => $composableBuilder(
+      column: $table.executedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSuccess =>
+      $composableBuilder(column: $table.isSuccess, builder: (column) => column);
+
+  GeneratedColumn<String> get error =>
+      $composableBuilder(column: $table.error, builder: (column) => column);
+
+  GeneratedColumn<String> get generatedTxnId => $composableBuilder(
+      column: $table.generatedTxnId, builder: (column) => column);
+
+  $$RecurringPatternsTableAnnotationComposer get patternId {
+    final $$RecurringPatternsTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.patternId,
+            referencedTable: $db.recurringPatterns,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$RecurringPatternsTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.recurringPatterns,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return composer;
+  }
+}
+
+class $$RecurringLogsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $RecurringLogsTable,
+    RecurringLog,
+    $$RecurringLogsTableFilterComposer,
+    $$RecurringLogsTableOrderingComposer,
+    $$RecurringLogsTableAnnotationComposer,
+    $$RecurringLogsTableCreateCompanionBuilder,
+    $$RecurringLogsTableUpdateCompanionBuilder,
+    (RecurringLog, $$RecurringLogsTableReferences),
+    RecurringLog,
+    PrefetchHooks Function({bool patternId})> {
+  $$RecurringLogsTableTableManager(_$AppDatabase db, $RecurringLogsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecurringLogsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RecurringLogsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RecurringLogsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> patternId = const Value.absent(),
+            Value<DateTime> executedAt = const Value.absent(),
+            Value<bool> isSuccess = const Value.absent(),
+            Value<String?> error = const Value.absent(),
+            Value<String?> generatedTxnId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              RecurringLogsCompanion(
+            id: id,
+            patternId: patternId,
+            executedAt: executedAt,
+            isSuccess: isSuccess,
+            error: error,
+            generatedTxnId: generatedTxnId,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String patternId,
+            required DateTime executedAt,
+            required bool isSuccess,
+            Value<String?> error = const Value.absent(),
+            Value<String?> generatedTxnId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              RecurringLogsCompanion.insert(
+            id: id,
+            patternId: patternId,
+            executedAt: executedAt,
+            isSuccess: isSuccess,
+            error: error,
+            generatedTxnId: generatedTxnId,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$RecurringLogsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({patternId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (patternId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.patternId,
+                    referencedTable:
+                        $$RecurringLogsTableReferences._patternIdTable(db),
+                    referencedColumn:
+                        $$RecurringLogsTableReferences._patternIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$RecurringLogsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $RecurringLogsTable,
+    RecurringLog,
+    $$RecurringLogsTableFilterComposer,
+    $$RecurringLogsTableOrderingComposer,
+    $$RecurringLogsTableAnnotationComposer,
+    $$RecurringLogsTableCreateCompanionBuilder,
+    $$RecurringLogsTableUpdateCompanionBuilder,
+    (RecurringLog, $$RecurringLogsTableReferences),
+    RecurringLog,
+    PrefetchHooks Function({bool patternId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -14506,4 +16707,8 @@ class $AppDatabaseManager {
       $$HeatmapLimitsTableTableManager(_db, _db.heatmapLimits);
   $$AppNotificationsTableTableManager get appNotifications =>
       $$AppNotificationsTableTableManager(_db, _db.appNotifications);
+  $$RecurringPatternsTableTableManager get recurringPatterns =>
+      $$RecurringPatternsTableTableManager(_db, _db.recurringPatterns);
+  $$RecurringLogsTableTableManager get recurringLogs =>
+      $$RecurringLogsTableTableManager(_db, _db.recurringLogs);
 }

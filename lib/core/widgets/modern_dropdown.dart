@@ -142,12 +142,10 @@ void showSelectionSheet<T>({
                     title: Text(
                       labelBuilder(item),
                       style: TextStyle(
-                        color: isSelected
-                            ? BudgetrColors.accent
-                            : Colors.white70,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        color:
+                            isSelected ? BudgetrColors.accent : Colors.white70,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                     trailing: isSelected
@@ -166,4 +164,61 @@ void showSelectionSheet<T>({
       ),
     ),
   );
+}
+
+// [ADDED CLASS] This fixes the error in RecurringEditorScreen
+class ModernDropdown<T> extends StatelessWidget {
+  final T value;
+  final List<T> items;
+  final String label;
+  final Function(T?) onChanged;
+  final String Function(T)? itemLabelBuilder;
+  final IconData? icon;
+
+  const ModernDropdown({
+    super.key,
+    required this.value,
+    required this.items,
+    required this.label,
+    required this.onChanged,
+    this.itemLabelBuilder,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white38,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.5,
+            ),
+          ),
+        ),
+        ModernDropdownPill(
+          label: itemLabelBuilder?.call(value) ?? value.toString(),
+          isActive: false,
+          icon: icon ?? Icons.layers_outlined,
+          isEnabled: true,
+          onTap: () {
+            showSelectionSheet<T>(
+              context: context,
+              title: "Select $label",
+              items: items,
+              selectedItem: value,
+              labelBuilder: itemLabelBuilder ?? (item) => item.toString(),
+              onSelect: onChanged,
+            );
+          },
+        ),
+      ],
+    );
+  }
 }

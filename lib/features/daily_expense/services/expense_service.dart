@@ -1,3 +1,4 @@
+import 'package:budget/features/credit_tracker/models/credit_models.dart';
 import 'package:budget/features/credit_tracker/services/credit_service.dart';
 import 'package:budget/features/daily_expense/models/filter_criteria.dart';
 // import 'package:budget/features/daily_expense/models/filter_criteria.dart';
@@ -168,6 +169,21 @@ class ExpenseService {
         .toList();
   }
 
+  // [HELPER] Resolve Account Name
+  Future<String> _resolveAccountName(String id) async {
+    final bank = await (_db.select(_db.expenseAccounts)
+          ..where((a) => a.id.equals(id)))
+        .getSingleOrNull();
+    if (bank != null) return "${bank.bankName} - ${bank.name}";
+
+    final card = await (_db.select(_db.creditCards)
+          ..where((c) => c.id.equals(id)))
+        .getSingleOrNull();
+    if (card != null) return "${card.bankName} - ${card.name}";
+
+    return "Linked Account";
+  }
+
   Future<void> addTransaction(ExpenseTransactionModel txn,
       {String? creditCategoryOverride,
       String? creditSubCategoryOverride}) async {
@@ -175,6 +191,15 @@ class ExpenseService {
       final docId = txn.id.isNotEmpty ? txn.id : _uuid.v4();
       final String? dbAccountId =
           (txn.accountId.isEmpty) ? null : txn.accountId;
+
+      // [FIX] Auto-detect Linked Credit Card
+      String? finalLinkedCardId = txn.linkedCreditCardId;
+      if (finalLinkedCardId == null && txn.transferAccountId != null) {
+        final card = await (_db.select(_db.creditCards)
+              ..where((c) => c.id.equals(txn.transferAccountId!)))
+            .getSingleOrNull();
+        if (card != null) finalLinkedCardId = card.id;
+      }
 
       await _db
           .into(_db.expenseTransactions)
@@ -189,9 +214,11 @@ class ExpenseService {
             subCategory: Value(txn.subCategory),
             notes: Value(txn.notes),
             transferAccountId: Value(txn.transferAccountId),
-            transferAccountName: Value(txn.transferAccountName),
-            transferAccountBankName: Value(txn.transferAccountBankName),
-            linkedCreditCardId: Value(txn.linkedCreditCardId),
+            transferAccountName:
+                Value(txn.transferAccountName), // Reverted: Use UI value
+            transferAccountBankName:
+                Value(txn.transferAccountBankName), // Reverted: Use UI value
+            linkedCreditCardId: Value(finalLinkedCardId), // Use detected ID
           ));
 
       if (dbAccountId != null) {
@@ -199,19 +226,35 @@ class ExpenseService {
             isAdding: true);
       }
 
-      if (txn.linkedCreditCardId != null) {
+      // [FIXED] Credit Transaction Logic
+      if (finalLinkedCardId != null) {
         final isPayment = txn.type == 'Transfer Out' &&
-            txn.transferAccountId == txn.linkedCreditCardId;
-        await _updateCreditBalance(txn.linkedCreditCardId!, txn.amount,
+            txn.transferAccountId == finalLinkedCardId;
+
+        // Context-Aware Note for Credit Entry: "Transfer from Bank - Account"
+        String creditNote = txn.notes;
+        if (isPayment && dbAccountId != null) {
+          final sourceName = await _resolveAccountName(dbAccountId);
+          if (creditNote.isEmpty) {
+            creditNote = "Transfer from $sourceName";
+          } else {
+            creditNote = "$creditNote (From $sourceName)";
+          }
+        }
+
+        await _updateCreditBalance(finalLinkedCardId, txn.amount,
             isExpense: !isPayment);
+
         await _addCreditTransaction(txn, docId, isPayment,
             categoryOverride: creditCategoryOverride,
-            subCategoryOverride: creditSubCategoryOverride);
+            subCategoryOverride: creditSubCategoryOverride,
+            noteOverride: creditNote, // Pass note override
+            targetCardId: finalLinkedCardId);
       }
 
       if ((txn.type == 'Transfer Out' || txn.type == 'Transfer In') &&
           txn.transferAccountId != null &&
-          txn.transferAccountId != txn.linkedCreditCardId) {
+          txn.transferAccountId != finalLinkedCardId) {
         final partnerType =
             txn.type == 'Transfer Out' ? 'Transfer In' : 'Transfer Out';
 
@@ -241,7 +284,7 @@ class ExpenseService {
               transferAccountId: Value(dbAccountId),
               transferAccountName: Value(sourceName),
               transferAccountBankName: Value(sourceBank),
-              linkedCreditCardId: Value(txn.linkedCreditCardId),
+              linkedCreditCardId: Value(finalLinkedCardId),
             ));
 
         await _updateAccountBalance(
@@ -300,6 +343,15 @@ class ExpenseService {
 
       final isNewTransfer = newTxn.type.contains('Transfer');
 
+      // [FIX] Auto-detect Linked Card
+      String? finalLinkedCardId = newTxn.linkedCreditCardId;
+      if (finalLinkedCardId == null && newTxn.transferAccountId != null) {
+        final card = await (_db.select(_db.creditCards)
+              ..where((c) => c.id.equals(newTxn.transferAccountId!)))
+            .getSingleOrNull();
+        if (card != null) finalLinkedCardId = card.id;
+      }
+
       await _db
           .into(_db.expenseTransactions)
           .insert(db.ExpenseTransactionsCompanion.insert(
@@ -314,11 +366,12 @@ class ExpenseService {
             notes: Value(newTxn.notes),
             transferAccountId:
                 Value(isNewTransfer ? newTxn.transferAccountId : null),
-            transferAccountName:
-                Value(isNewTransfer ? newTxn.transferAccountName : null),
-            transferAccountBankName:
-                Value(isNewTransfer ? newTxn.transferAccountBankName : null),
-            linkedCreditCardId: Value(newTxn.linkedCreditCardId),
+            transferAccountName: Value(
+                isNewTransfer ? newTxn.transferAccountName : null), // Reverted
+            transferAccountBankName: Value(isNewTransfer
+                ? newTxn.transferAccountBankName
+                : null), // Reverted
+            linkedCreditCardId: Value(finalLinkedCardId),
           ));
 
       if (newAccountId != null) {
@@ -326,17 +379,30 @@ class ExpenseService {
             isAdding: true);
       }
 
-      if (newTxn.linkedCreditCardId != null) {
+      if (finalLinkedCardId != null) {
         final isPayment = newTxn.type == 'Transfer Out' &&
-            newTxn.transferAccountId == newTxn.linkedCreditCardId;
-        await _updateCreditBalance(newTxn.linkedCreditCardId!, newTxn.amount,
+            newTxn.transferAccountId == finalLinkedCardId;
+
+        // [FIX] Context-Aware Note
+        String creditNote = newTxn.notes;
+        if (isPayment && newAccountId != null) {
+          final sourceName = await _resolveAccountName(newAccountId);
+          if (creditNote.isEmpty) {
+            creditNote = "Transfer from $sourceName";
+          } else {
+            creditNote = "$creditNote (From $sourceName)";
+          }
+        }
+
+        await _updateCreditBalance(finalLinkedCardId, newTxn.amount,
             isExpense: !isPayment);
-        await _addCreditTransaction(newTxn, newTxn.id, isPayment);
+        await _addCreditTransaction(newTxn, newTxn.id, isPayment,
+            noteOverride: creditNote, targetCardId: finalLinkedCardId);
       }
 
       if (isNewTransfer &&
           newTxn.transferAccountId != null &&
-          newTxn.transferAccountId != newTxn.linkedCreditCardId) {
+          newTxn.transferAccountId != finalLinkedCardId) {
         final partnerType =
             newTxn.type == 'Transfer Out' ? 'Transfer In' : 'Transfer Out';
 
@@ -493,23 +559,40 @@ class ExpenseService {
     }
   }
 
+  // [MODIFIED] Helper to add credit transaction with overrides
   Future<void> _addCreditTransaction(
       ExpenseTransactionModel txn, String expenseId, bool isPayment,
-      {String? categoryOverride, String? subCategoryOverride}) async {
+      {String? categoryOverride,
+      String? subCategoryOverride,
+      String? noteOverride, // [NEW]
+      String? targetCardId}) async {
+    // [NEW]
+
+    // [LOGIC] Force defaults for Transfer/Payment
+    final effectiveCategory =
+        isPayment ? 'Payment' : (categoryOverride ?? txn.category);
+    final effectiveSubCategory = isPayment
+        ? 'Manual Transfer'
+        : (subCategoryOverride ?? txn.subCategory);
+    final effectiveBucket = isPayment ? 'Unallocated' : txn.bucket;
+    final effectiveNote = noteOverride ?? txn.notes;
+    final effectiveDesc = effectiveNote.isNotEmpty
+        ? effectiveNote
+        : (txn.notes.isEmpty ? txn.category : txn.notes);
+
     await _db
         .into(_db.creditTransactions)
         .insert(db.CreditTransactionsCompanion.insert(
           id: _uuid.v4(),
-          cardId: txn.linkedCreditCardId!,
+          cardId: targetCardId ?? txn.linkedCreditCardId!,
           amount: txn.amount,
           date: txn.date,
-          description: txn.notes.isEmpty ? txn.category : txn.notes,
-          bucket: Value(txn.bucket),
-          // [FIX] Changed 'Payment' to 'Income' to match BillingCycleUtils
+          description: effectiveDesc,
+          bucket: Value(effectiveBucket),
           type: isPayment ? 'Income' : 'Expense',
           category: categoryOverride ?? txn.category,
           subCategory: subCategoryOverride ?? txn.subCategory,
-          notes: txn.notes,
+          notes: effectiveNote,
           linkedExpenseId: Value(expenseId),
         ));
   }

@@ -387,7 +387,7 @@ class _ModernExpenseSheetState extends State<ModernExpenseSheet> {
             bucket: 'Unallocated',
             type: 'Transfer Out',
             category: 'Transfer',
-            subCategory: 'Credit Card Bill',
+            subCategory: 'Credit Card Payment',
             notes: _notesCtrl.text,
             transferAccountId: _selectedCreditCard!.id,
             transferAccountName: _selectedCreditCard!.name,
