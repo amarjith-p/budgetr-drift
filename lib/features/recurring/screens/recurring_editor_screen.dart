@@ -2,6 +2,7 @@ import 'package:budget/core/services/category_service.dart';
 import 'package:budget/core/widgets/glass_card.dart';
 import 'package:budget/core/widgets/modern_app_bar.dart';
 import 'package:budget/core/widgets/modern_dropdown.dart';
+import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/credit_tracker/models/credit_models.dart';
 import 'package:budget/features/credit_tracker/services/credit_service.dart';
 import 'package:budget/features/daily_expense/models/expense_models.dart';
@@ -13,6 +14,10 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+
+import 'package:budget/features/settings/services/settings_service.dart';
+import 'package:budget/features/dashboard/services/dashboard_service.dart';
+import 'package:budget/features/settlement/services/settlement_service.dart';
 
 class RecurringEditorScreen extends StatefulWidget {
   final RecurringPatternModel? pattern;
@@ -36,6 +41,8 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   String _sourceType = 'Bank';
   String _sourceId = '';
   String _destId = '';
+
+  // Variables (No default selection initially)
   String _bucket = '';
   String _category = '';
   String _subCategory = '';
@@ -55,6 +62,10 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   bool _hasEndDate = false;
   DateTime? _endDate;
   bool _notifyBefore = true;
+
+  // --- STATE VARIABLES ---
+  List<String> _globalFallbackBuckets = [];
+  bool _isMonthSettled = false;
 
   List<ExpenseAccountModel> _bankAccounts = [];
   List<CreditCardModel> _creditCards = [];
@@ -108,13 +119,11 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     _smartWeek = p.weekParam ?? 1;
     _smartDay = p.dayParam ?? 1;
 
-    // [FIXED] Load missing fields
     _isVariable = p.isVariable;
     _endDate = p.endDate;
     _hasEndDate = p.endDate != null;
     _notifyBefore = p.notifyBefore;
 
-    // [FIX] Ensure website controller text is updated
     if (p.website != null) {
       _websiteCtrl.text = p.website!;
     }
@@ -132,49 +141,100 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
-    final banks = await GetIt.I<ExpenseService>().getAccounts().first;
-    final cards = await GetIt.I<CreditService>().getCreditCards().first;
-    final allCats = await GetIt.I<CategoryService>().getCategories().first;
-    final buckets =
-        await GetIt.I<RecurringService>().getCurrentDashboardBuckets();
+    final banksFuture = GetIt.I<ExpenseService>().getAccounts().first;
+    final cardsFuture = GetIt.I<CreditService>().getCreditCards().first;
+    final catsFuture = GetIt.I<CategoryService>().getCategories().first;
+    final configFuture = GetIt.I<SettingsService>().getPercentageConfig();
+
+    final results =
+        await Future.wait([banksFuture, cardsFuture, catsFuture, configFuture]);
 
     if (mounted) {
+      final config = results[3] as dynamic;
+      _globalFallbackBuckets =
+          (config.categories as List).map((e) => e.name as String).toList();
+      _globalFallbackBuckets.add('Out of Bucket');
+
       setState(() {
-        _bankAccounts = banks;
-        _creditCards = cards;
-        _realBuckets = buckets;
-        _categories = allCats
+        _bankAccounts = results[0] as List<ExpenseAccountModel>;
+        _creditCards = results[1] as List<CreditCardModel>;
+        _categories = (results[2] as List<TransactionCategoryModel>)
             .where((c) =>
                 c.type == (_txnType == 'Transfer' ? 'Expense' : _txnType))
             .toList();
 
         if (_sourceId.isEmpty) {
-          if (_sourceType == 'Bank' && banks.isNotEmpty)
-            _sourceId = banks.first.id;
-          if (_sourceType == 'Credit' && cards.isNotEmpty)
-            _sourceId = cards.first.id;
+          if (_sourceType == 'Bank' && _bankAccounts.isNotEmpty)
+            _sourceId = _bankAccounts.first.id;
+          if (_sourceType == 'Credit' && _creditCards.isNotEmpty)
+            _sourceId = _creditCards.first.id;
         }
 
-        if (_bucket.isEmpty && _realBuckets.isNotEmpty)
-          _bucket = _realBuckets.first;
-
-        if (_category.isEmpty && _categories.isNotEmpty) {
-          _category = _categories.first.name;
-          _subCategories = _categories.first.subCategories;
-          if (_subCategories.isNotEmpty) _subCategory = _subCategories.first;
-        } else if (_category.isNotEmpty) {
+        if (_category.isNotEmpty) {
           final match =
               _categories.where((c) => c.name == _category).firstOrNull;
           if (match != null) _subCategories = match.subCategories;
         }
-        _isLoading = false;
       });
+
+      await _updateBucketsForDate(_startDate);
+
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _updateBucketsForDate(DateTime date) async {
+    try {
+      final isSettled = await GetIt.I<SettlementService>()
+          .isMonthSettled(date.year, date.month);
+
+      if (isSettled) {
+        setState(() {
+          _isMonthSettled = true;
+          _realBuckets = ['Out of Bucket'];
+          _bucket = 'Out of Bucket';
+        });
+        return;
+      }
+
+      final record = await GetIt.I<DashboardService>()
+          .getRecordForMonth(date.year, date.month);
+
+      List<String> newBuckets = [];
+      if (record != null && record.bucketOrder.isNotEmpty) {
+        newBuckets = List.from(record.bucketOrder);
+        for (var key in record.allocations.keys) {
+          if (!newBuckets.contains(key)) newBuckets.add(key);
+        }
+      } else if (record != null) {
+        final sorted = record.allocations.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        newBuckets = sorted.map((e) => e.key).toList();
+      } else {
+        newBuckets = List.from(_globalFallbackBuckets);
+      }
+
+      if (!newBuckets.contains('Out of Bucket'))
+        newBuckets.add('Out of Bucket');
+
+      setState(() {
+        _isMonthSettled = false;
+        _realBuckets = newBuckets;
+
+        if (_bucket.isNotEmpty && !_realBuckets.contains(_bucket)) {
+          _bucket = '';
+        }
+      });
+    } catch (e) {
+      setState(() => _realBuckets = List.from(_globalFallbackBuckets));
     }
   }
 
   void _updateCategoriesForType(String type) {
     setState(() {
       _txnType = type;
+      _category = '';
+      _subCategory = '';
       _loadData();
     });
   }
@@ -191,6 +251,9 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                   ModernAppBar(
                     title: widget.pattern == null ? "Create Plan" : "Edit Plan",
                     subtitle: "AUTOMATION",
+                    trailingIcon:
+                        widget.pattern != null ? Icons.delete_outline : null,
+                    onTrailingPressed: widget.pattern != null ? _delete : null,
                   ),
                   Expanded(
                     child: SingleChildScrollView(
@@ -227,6 +290,59 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                 ],
               ),
       ),
+    );
+  }
+
+  Widget _labeledDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required Function(String?) onChanged,
+  }) {
+    final isValid = items.contains(value);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            color: Colors.white38,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.black26,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: isValid ? value : null,
+              dropdownColor: const Color(0xff1B263B),
+              isExpanded: true,
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
+              hint: const Text(
+                "Select...",
+                style: TextStyle(color: Colors.white30),
+              ),
+              items: items.map((i) {
+                return DropdownMenuItem<String>(
+                  value: i,
+                  child: Text(
+                    i,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                );
+              }).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -307,7 +423,8 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     List<dynamic> destinationOptions = [];
     if (_txnType == 'Transfer') {
       destinationOptions = [..._bankAccounts, ..._creditCards];
-      destinationOptions.removeWhere((item) => item.id == _sourceId);
+      destinationOptions
+          .removeWhere((item) => (item as dynamic).id == _sourceId);
     }
 
     return GlassCard(
@@ -425,21 +542,23 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       required Function(String?) onChanged}) {
     final List<DropdownMenuItem<String>> menuItems = customItems ??
         (dataItems ?? [])
-            .map((i) => DropdownMenuItem(
+            .map((dynamic i) => DropdownMenuItem<String>(
                 value: i.id as String,
-                child:
-                    Text(i.name, style: const TextStyle(color: Colors.white))))
+                child: Text(i.name as String,
+                    style: const TextStyle(color: Colors.white))))
             .toList();
     final isValid = menuItems.any((item) => item.value == value);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
           color: Colors.black26, borderRadius: BorderRadius.circular(8)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: isValid ? value : null,
           dropdownColor: const Color(0xff1B263B),
-          isExpanded: true,
+          isExpanded: true, // Forces stretch
           hint: const Text("Select Account",
               style: TextStyle(color: Colors.white30)),
           items: menuItems,
@@ -456,7 +575,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
             color: isActive ? Colors.white24 : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(8),
             border:
                 Border.all(color: isActive ? Colors.white : Colors.white12)),
         child: Text(label,
@@ -467,21 +586,46 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   }
 
   Widget _buildCategoryBuckets() {
-    // Only used for Income/Expense
     bool isExpense = _txnType == 'Expense';
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (isExpense) ...[
-            ModernDropdown<String>(
+            if (_isMonthSettled)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                    color: Colors.orangeAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: Colors.orangeAccent.withOpacity(0.3))),
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_clock,
+                        color: Colors.orangeAccent, size: 16),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        "Month Settled: Buckets restricted.",
+                        style:
+                            TextStyle(color: Colors.orangeAccent, fontSize: 11),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            _labeledDropdown(
                 label: "Budget Bucket",
                 value: _bucket,
                 items: _realBuckets,
                 onChanged: (val) => setState(() => _bucket = val!)),
             const SizedBox(height: 16),
           ],
-          ModernDropdown<String>(
+          _labeledDropdown(
               label: "Category",
               value: _category,
               items: _categories.map((c) => c.name).toList(),
@@ -490,13 +634,11 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                   _category = val!;
                   final cat = _categories.firstWhere((c) => c.name == val);
                   _subCategories = cat.subCategories;
-                  _subCategory = _subCategories.isNotEmpty
-                      ? _subCategories.first
-                      : 'General';
+                  _subCategory = '';
                 });
               }),
           const SizedBox(height: 16),
-          ModernDropdown<String>(
+          _labeledDropdown(
               label: "Sub-Category",
               value: _subCategory,
               items: _subCategories,
@@ -514,25 +656,30 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-                children: ['Daily', 'Weekly', 'Monthly', 'Yearly'].map((f) {
+          Row(
+            children: ['Daily', 'Weekly', 'Monthly', 'Yearly'].map((f) {
               final isSelected = _frequency == f;
-              return Padding(
-                  padding: const EdgeInsets.only(right: 8),
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: f != 'Yearly' ? 8.0 : 0.0),
                   child: ChoiceChip(
-                      label: Text(f),
-                      selected: isSelected,
-                      selectedColor: const Color(0xFF00B4D8),
-                      disabledColor: Colors.white10,
-                      labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : Colors.white60,
-                          fontWeight: FontWeight.bold),
-                      onSelected: (val) {
-                        if (val) setState(() => _frequency = f);
-                      }));
-            }).toList()),
+                    label: Container(
+                      alignment: Alignment.center,
+                      child: Text(f),
+                    ),
+                    selected: isSelected,
+                    selectedColor: const Color(0xFF00B4D8),
+                    disabledColor: Colors.white10,
+                    labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white60,
+                        fontWeight: FontWeight.bold),
+                    onSelected: (val) {
+                      if (val) setState(() => _frequency = f);
+                    },
+                  ),
+                ),
+              );
+            }).toList(),
           ),
           const SizedBox(height: 16),
           Row(
@@ -615,7 +762,10 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                         lastDate: DateTime(2030),
                         builder: (context, child) =>
                             Theme(data: ThemeData.dark(), child: child!));
-                    if (d != null) setState(() => _startDate = d);
+                    if (d != null) {
+                      setState(() => _startDate = d);
+                      await _updateBucketsForDate(d);
+                    }
                   },
                   child: Row(children: [
                     const Icon(Icons.calendar_month, color: Colors.white54),
@@ -677,7 +827,10 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                       lastDate: DateTime(2030),
                       builder: (context, child) =>
                           Theme(data: ThemeData.dark(), child: child!));
-                  if (d != null) setState(() => _startDate = d);
+                  if (d != null) {
+                    setState(() => _startDate = d);
+                    await _updateBucketsForDate(d);
+                  }
                 },
                 child: Row(children: [
                   const Icon(Icons.calendar_month, color: Colors.white54),
@@ -699,7 +852,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.white10)),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -866,7 +1019,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     return Container(
         decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12)),
+            borderRadius: BorderRadius.circular(8)),
         child: Row(
             children: ['Expense', 'Income', 'Transfer'].map((type) {
           final isSelected = _txnType == type;
@@ -882,7 +1035,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                           color: isSelected
                               ? color.withOpacity(0.2)
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                           border: isSelected ? Border.all(color: color) : null),
                       alignment: Alignment.center,
                       child: Text(type.toUpperCase(),
@@ -906,7 +1059,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                     backgroundColor: const Color(0xFF00B4D8),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12))),
+                        borderRadius: BorderRadius.circular(8))),
                 onPressed: _save,
                 child: const Text("SAVE PLAN",
                     style: TextStyle(
@@ -921,6 +1074,26 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Please select an account")));
       return;
+    }
+
+    // [VALIDATION] Enforce fields based on transaction type
+    if (_txnType == 'Expense') {
+      if (_bucket.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please select a Budget Bucket")));
+        return;
+      }
+      if (_category.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please select a Category")));
+        return;
+      }
+    } else if (_txnType == 'Income') {
+      if (_category.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please select a Category")));
+        return;
+      }
     }
 
     final pattern = RecurringPatternModel(
@@ -966,5 +1139,30 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
     }
+  }
+
+  Future<void> _delete() async {
+    showStatusSheet(
+      context: context,
+      title: "Delete Plan?",
+      message:
+          "This will stop future transactions. Past records created by this plan will remain.",
+      icon: Icons.delete_sweep_sharp,
+      color: Colors.redAccent,
+      cancelButtonText: "Cancel",
+      onCancel: () {},
+      buttonText: "Delete",
+      onDismiss: () async {
+        await GetIt.I<RecurringService>().deletePattern(widget.pattern!.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Plan deleted successfully."),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      },
+    );
   }
 }

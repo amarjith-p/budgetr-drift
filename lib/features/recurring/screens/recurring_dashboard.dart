@@ -260,7 +260,7 @@ class RecurringDashboard extends StatelessWidget {
               decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.1),
                   borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(16))),
+                      const BorderRadius.vertical(top: Radius.circular(8))),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -421,7 +421,7 @@ class _VariablePaySheetState extends State<_VariablePaySheet> {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xff0D1B2A).withOpacity(0.9),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
@@ -469,7 +469,7 @@ class _VariablePaySheetState extends State<_VariablePaySheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white10),
             ),
             child: TextField(
