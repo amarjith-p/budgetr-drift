@@ -46,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
@@ -83,6 +83,17 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(recurringPatterns, recurringPatterns.scheduleType);
           await m.addColumn(recurringPatterns, recurringPatterns.weekParam);
           await m.addColumn(recurringPatterns, recurringPatterns.dayParam);
+        }
+        if (from < 10) {
+          // [NEW] Scale Up Migration
+          await m.addColumn(recurringPatterns, recurringPatterns.isVariable);
+          await m.addColumn(recurringPatterns, recurringPatterns.endDate);
+          await m.addColumn(
+              recurringPatterns, recurringPatterns.maxOccurrences);
+          await m.addColumn(
+              recurringPatterns, recurringPatterns.occurrencesProcessed);
+          await m.addColumn(recurringPatterns, recurringPatterns.website);
+          await m.addColumn(recurringPatterns, recurringPatterns.notifyBefore);
         }
       },
     );

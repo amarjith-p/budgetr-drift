@@ -18,10 +18,18 @@ class RecurringPatternModel {
   final DateTime startDate;
   final TimeOfDay executionTime;
 
-  // [NEW] Smart Fields
+  // Smart Fields
   final String scheduleType; // 'Fixed' or 'Smart'
   final int? weekParam; // 1, 2, 3, 4, -1 (Last)
   final int? dayParam; // 1 (Mon) to 7 (Sun)
+
+  // [NEW] Scale Up Fields
+  final bool isVariable; // If true, pauses for amount input
+  final DateTime? endDate; // Optional stop date
+  final int? maxOccurrences; // Optional stop count
+  final int occurrencesProcessed;
+  final String? website; // For Favicons
+  final bool notifyBefore;
 
   final DateTime nextRunAt;
   final bool isActive;
@@ -46,6 +54,12 @@ class RecurringPatternModel {
     this.scheduleType = 'Fixed',
     this.weekParam,
     this.dayParam,
+    this.isVariable = false,
+    this.endDate,
+    this.maxOccurrences,
+    this.occurrencesProcessed = 0,
+    this.website,
+    this.notifyBefore = true,
     required this.nextRunAt,
     this.isActive = true,
     this.autoExecute = true,

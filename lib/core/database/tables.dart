@@ -436,6 +436,7 @@ class HeatmapLimits extends Table {
 }
 // --- RECURRING / PLANNED PAYMENTS ---
 
+// --- RECURRING / PLANNED PAYMENTS ---
 class RecurringPatterns extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -459,12 +460,18 @@ class RecurringPatterns extends Table {
   TextColumn get executionTime => text()();
 
   // [NEW] SMART SCHEDULE COLUMNS
-  // 'Fixed' = Same Date (e.g. 15th), 'Smart' = Nth Weekday (e.g. 2nd Friday)
   TextColumn get scheduleType => text().withDefault(const Constant('Fixed'))();
-  // 1=First, 2=Second, 3=Third, 4=Fourth, -1=Last
   IntColumn get weekParam => integer().nullable()();
-  // 1=Mon, 2=Tue ... 7=Sun
   IntColumn get dayParam => integer().nullable()();
+
+  // [NEW - SCALE UP FIELDS]
+  BoolColumn get isVariable => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get endDate => dateTime().nullable()(); // Auto-Stop date
+  IntColumn get maxOccurrences => integer().nullable()(); // Stop after N times
+  IntColumn get occurrencesProcessed =>
+      integer().withDefault(const Constant(0))();
+  TextColumn get website => text().nullable()(); // For logo fetching
+  BoolColumn get notifyBefore => boolean().withDefault(const Constant(true))();
 
   DateTimeColumn get nextRunAt => dateTime()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
