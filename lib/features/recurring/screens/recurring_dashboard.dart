@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/glass_card.dart';
 import 'package:budget/core/widgets/modern_app_bar.dart';
 import 'package:budget/features/recurring/models/recurring_models.dart';
@@ -18,8 +19,8 @@ class RecurringDashboard extends StatelessWidget {
         child: Column(
           children: [
             ModernAppBar(
-              title: "Financial Autopilot",
-              subtitle: "SUBSCRIPTIONS",
+              title: "Recurring Transactions",
+              subtitle: "AUTOMATED",
               trailingIcon: Icons.add_rounded,
               onTrailingPressed: () => Navigator.push(
                   context,
@@ -40,14 +41,19 @@ class RecurringDashboard extends StatelessWidget {
                             style: const TextStyle(color: Colors.red)));
                   }
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                      child: FuturisticLoader(
+                        size: 80,
+                        label: "LOADING TRANSACTIONS...",
+                      ),
+                    );
                   }
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return _buildEmptyState();
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     itemCount: snapshot.data!.length,
                     itemBuilder: (context, index) =>
                         _buildTimelineCard(context, snapshot.data![index]),
@@ -94,7 +100,10 @@ class RecurringDashboard extends StatelessWidget {
           }
 
           return GlassCard(
-              padding: const EdgeInsets.all(20),
+              borderRadius: 8,
+              margin: const EdgeInsets.only(
+                  top: 2, left: 12, right: 12, bottom: 18),
+              padding: const EdgeInsets.all(12),
               child: Column(children: [
                 // Header: Status Pill
                 Row(
@@ -139,7 +148,7 @@ class RecurringDashboard extends StatelessWidget {
                                     color: Colors.white38,
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold)),
-                            Text("₹${safe.toStringAsFixed(0)}",
+                            Text("₹${safe.toStringAsFixed(2)}",
                                 style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 24,
@@ -162,9 +171,9 @@ class RecurringDashboard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                          "${(usageRatio * 100).toStringAsFixed(0)}% Committed",
+                          "${(usageRatio * 100).toStringAsFixed(2)}% Committed",
                           style: TextStyle(color: statusColor, fontSize: 10)),
-                      Text("Total Money: ₹${liquidity.toStringAsFixed(0)}",
+                      Text("Total Money: ₹${liquidity.toStringAsFixed(2)}",
                           style: const TextStyle(
                               color: Colors.white38, fontSize: 10))
                     ]),
@@ -179,14 +188,14 @@ class RecurringDashboard extends StatelessWidget {
                       child: _miniStat(
                           Icons.account_balance_wallet,
                           "Total Money",
-                          "₹${liquidity.toStringAsFixed(0)}",
+                          "₹${liquidity.toStringAsFixed(2)}",
                           Colors.white70)),
                   Container(width: 1, height: 30, color: Colors.white10),
                   Expanded(
                       child: Padding(
                           padding: const EdgeInsets.only(left: 16),
                           child: _miniStat(Icons.receipt_long, "Upcoming Bills",
-                              "₹${bills.toStringAsFixed(0)}", Colors.white))),
+                              "₹${bills.toStringAsFixed(2)}", Colors.white))),
                 ])
               ]));
         });
@@ -195,7 +204,7 @@ class RecurringDashboard extends StatelessWidget {
   Widget _miniStat(IconData icon, String label, String value, Color color) {
     return Row(children: [
       Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.05), shape: BoxShape.circle),
           child: Icon(icon, color: Colors.white54, size: 16)),
@@ -251,8 +260,9 @@ class RecurringDashboard extends StatelessWidget {
           MaterialPageRoute(
               builder: (_) => RecurringEditorScreen(pattern: item))),
       child: GlassCard(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(0),
+        borderRadius: 8,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(4),
         child: Column(
           children: [
             Container(
@@ -285,7 +295,7 @@ class RecurringDashboard extends StatelessWidget {
                     width: 44,
                     height: 44,
                     padding: hasLogo
-                        ? const EdgeInsets.all(2)
+                        ? const EdgeInsets.all(4)
                         : const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.05),

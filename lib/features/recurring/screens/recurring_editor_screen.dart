@@ -1,8 +1,8 @@
 import 'package:budget/core/services/category_service.dart';
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/glass_card.dart';
 import 'package:budget/core/widgets/modern_app_bar.dart';
 import 'package:budget/core/widgets/modern_dropdown.dart';
-import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/credit_tracker/models/credit_models.dart';
 import 'package:budget/features/credit_tracker/services/credit_service.dart';
 import 'package:budget/features/daily_expense/models/expense_models.dart';
@@ -39,7 +39,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   // Config
   String _txnType = 'Expense';
   String _sourceType = 'Bank';
-  String _sourceId = '';
+  String _sourceId = ''; // Starts empty (No default selection)
   String _destId = '';
 
   // Variables (No default selection initially)
@@ -163,12 +163,8 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                 c.type == (_txnType == 'Transfer' ? 'Expense' : _txnType))
             .toList();
 
-        if (_sourceId.isEmpty) {
-          if (_sourceType == 'Bank' && _bankAccounts.isNotEmpty)
-            _sourceId = _bankAccounts.first.id;
-          if (_sourceType == 'Credit' && _creditCards.isNotEmpty)
-            _sourceId = _creditCards.first.id;
-        }
+        // CHANGED: Removed default account selection.
+        // _sourceId remains empty until user selects it.
 
         if (_category.isNotEmpty) {
           final match =
@@ -245,39 +241,40 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       backgroundColor: const Color(0xff0D1B2A),
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(
+                child: FuturisticLoader(size: 80, label: "LOADING RULES..."))
             : Column(
                 children: [
                   ModernAppBar(
-                    title: widget.pattern == null ? "Create Plan" : "Edit Plan",
-                    subtitle: "AUTOMATION",
+                    title: widget.pattern == null ? "Create Rule" : "Edit Rule",
+                    subtitle: "RECURRING TRANSACTION",
                     trailingIcon:
                         widget.pattern != null ? Icons.delete_outline : null,
                     onTrailingPressed: widget.pattern != null ? _delete : null,
                   ),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Form(
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildHeaderInput(),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 12),
                             _sectionHeader("CONFIGURATION"),
                             _buildTypeSelector(),
                             const SizedBox(height: 16),
                             _buildAccountSelectors(),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 12),
                             if (_txnType != 'Transfer') ...[
                               _sectionHeader("DETAILS"),
                               _buildCategoryBuckets(),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 12),
                             ],
                             _sectionHeader("SCHEDULE"),
                             _buildFeatureRichSchedule(),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 12),
                             _sectionHeader("ADVANCED"),
                             _buildAdvancedSettings(),
                             const SizedBox(height: 40),
@@ -348,6 +345,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
 
   Widget _buildAdvancedSettings() {
     return GlassCard(
+      borderRadius: 8,
       padding: const EdgeInsets.all(16),
       child: Column(children: [
         TextFormField(
@@ -428,6 +426,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     }
 
     return GlassCard(
+      borderRadius: 8,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,9 +446,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                 _sourceType == 'Bank',
                 () => setState(() {
                       _sourceType = 'Bank';
-                      _sourceId = _bankAccounts.isNotEmpty
-                          ? _bankAccounts.first.id
-                          : '';
+                      _sourceId = ''; // CHANGED: Reset to empty, user must pick
                     })),
             const SizedBox(width: 10),
             _miniTab(
@@ -457,8 +454,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                 _sourceType == 'Credit',
                 () => setState(() {
                       _sourceType = 'Credit';
-                      _sourceId =
-                          _creditCards.isNotEmpty ? _creditCards.first.id : '';
+                      _sourceId = ''; // CHANGED: Reset to empty, user must pick
                     })),
           ]),
           const SizedBox(height: 10),
@@ -575,7 +571,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
             color: isActive ? Colors.white24 : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(20),
             border:
                 Border.all(color: isActive ? Colors.white : Colors.white12)),
         child: Text(label,
@@ -588,6 +584,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   Widget _buildCategoryBuckets() {
     bool isExpense = _txnType == 'Expense';
     return GlassCard(
+      borderRadius: 8,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -652,6 +649,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     final nextDates = GetIt.I<RecurringService>().getNext3Dates(_startDate,
         _frequency, _interval, _scheduleType, _smartWeek, _smartDay, _time);
     return GlassCard(
+      borderRadius: 8,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -852,7 +850,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.white10)),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -962,7 +960,8 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
 
   Widget _buildHeaderInput() {
     return GlassCard(
-        padding: const EdgeInsets.all(16),
+        borderRadius: 8,
+        padding: const EdgeInsets.all(14),
         child: Column(children: [
           TextFormField(
               controller: _nameCtrl,
@@ -971,7 +970,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                   fontSize: 18,
                   fontWeight: FontWeight.bold),
               decoration: const InputDecoration(
-                  hintText: "Plan Name (e.g. Rent)",
+                  hintText: "Rule Name (e.g. Rent)",
                   hintStyle: TextStyle(color: Colors.white24),
                   border: InputBorder.none),
               validator: (v) => v!.isEmpty ? "Required" : null),
@@ -982,14 +981,14 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                   ? const Text("VARIABLE AMOUNT",
                       style: TextStyle(
                           color: Colors.orange,
-                          fontSize: 20,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold))
                   : TextFormField(
                       controller: _amountCtrl,
                       keyboardType: TextInputType.number,
                       style: const TextStyle(
                           color: Color(0xFF00B4D8),
-                          fontSize: 28,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold),
                       decoration: const InputDecoration(
                           prefixText: "₹ ",
@@ -1019,7 +1018,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     return Container(
         decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(8)),
+            borderRadius: BorderRadius.circular(12)),
         child: Row(
             children: ['Expense', 'Income', 'Transfer'].map((type) {
           final isSelected = _txnType == type;
@@ -1035,7 +1034,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                           color: isSelected
                               ? color.withOpacity(0.2)
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                           border: isSelected ? Border.all(color: color) : null),
                       alignment: Alignment.center,
                       child: Text(type.toUpperCase(),
@@ -1059,9 +1058,9 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                     backgroundColor: const Color(0xFF00B4D8),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8))),
+                        borderRadius: BorderRadius.circular(12))),
                 onPressed: _save,
-                child: const Text("SAVE PLAN",
+                child: const Text("SAVE RULE",
                     style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -1088,10 +1087,20 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
             const SnackBar(content: Text("Please select a Category")));
         return;
       }
+      if (_subCategory.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please select a Sub-Category")));
+        return;
+      }
     } else if (_txnType == 'Income') {
       if (_category.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Please select a Category")));
+        return;
+      }
+      if (_subCategory.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please select a Sub-Category")));
         return;
       }
     }
@@ -1128,7 +1137,12 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (_) => const Center(child: CircularProgressIndicator()));
+          builder: (_) => const Center(
+                child: FuturisticLoader(
+                  size: 80,
+                  label: "SAVING RULE...",
+                ),
+              ));
       await GetIt.I<RecurringService>().savePattern(pattern);
       if (mounted) {
         Navigator.pop(context);
@@ -1142,27 +1156,32 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   }
 
   Future<void> _delete() async {
-    showStatusSheet(
+    final confirm = await showDialog<bool>(
       context: context,
-      title: "Delete Plan?",
-      message:
-          "This will stop future transactions. Past records created by this plan will remain.",
-      icon: Icons.delete_sweep_sharp,
-      color: Colors.redAccent,
-      cancelButtonText: "Cancel",
-      onCancel: () {},
-      buttonText: "Delete",
-      onDismiss: () async {
-        await GetIt.I<RecurringService>().deletePattern(widget.pattern!.id);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Plan deleted successfully."),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
-      },
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xff1B263B),
+        title:
+            const Text("Delete Rule?", style: TextStyle(color: Colors.white)),
+        content: const Text(
+            "This will stop future transactions. Past records created by this rule will remain.",
+            style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            child: const Text("CANCEL"),
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          TextButton(
+            child:
+                const Text("DELETE", style: TextStyle(color: Colors.redAccent)),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
     );
+
+    if (confirm == true && widget.pattern != null) {
+      await GetIt.I<RecurringService>().deletePattern(widget.pattern!.id);
+      if (mounted) Navigator.pop(context);
+    }
   }
 }
