@@ -235,6 +235,101 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     });
   }
 
+  // --- NEW: Bottom Sheet Helper Function ---
+  void _showSelectionBottomSheet<T>({
+    required BuildContext context,
+    required String title,
+    required List<T> items,
+    required T? selectedValue,
+    required String Function(T) labelBuilder,
+    required void Function(T) onItemSelected,
+    Widget Function(T)? customChildBuilder,
+    bool Function(T)? isEnabled,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.65,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xff1B263B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(title.toUpperCase(),
+                        style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white54),
+                      onPressed: () => Navigator.pop(ctx),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    )
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final isSelected = item == selectedValue;
+                    final enabled = isEnabled != null ? isEnabled(item) : true;
+
+                    return ListTile(
+                      enabled: enabled,
+                      title: customChildBuilder != null
+                          ? customChildBuilder(item)
+                          : Text(
+                              labelBuilder(item),
+                              style: TextStyle(
+                                color: enabled
+                                    ? (isSelected
+                                        ? const Color(0xFF00B4D8)
+                                        : Colors.white)
+                                    : Colors.white38,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                fontSize: enabled ? 16 : 12,
+                              ),
+                            ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check, color: Color(0xFF00B4D8))
+                          : null,
+                      onTap: enabled
+                          ? () {
+                              Navigator.pop(ctx);
+                              onItemSelected(item);
+                            }
+                          : null,
+                    );
+                  },
+                ),
+              ),
+              const SafeArea(child: SizedBox(height: 8)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -290,6 +385,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     );
   }
 
+  // UPDATED METHOD TO USE BOTTOM SHEET
   Widget _labeledDropdown({
     required String label,
     required String value,
@@ -297,6 +393,8 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     required Function(String?) onChanged,
   }) {
     final isValid = items.contains(value);
+    final displayValue = isValid ? value : "Select...";
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -309,33 +407,37 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.black26,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: isValid ? value : null,
-              dropdownColor: const Color(0xff1B263B),
-              isExpanded: true,
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
-              hint: const Text(
-                "Select...",
-                style: TextStyle(color: Colors.white30),
-              ),
-              items: items.map((i) {
-                return DropdownMenuItem<String>(
-                  value: i,
-                  child: Text(
-                    i,
-                    style: const TextStyle(color: Colors.white),
+        InkWell(
+          onTap: () {
+            _showSelectionBottomSheet<String>(
+              context: context,
+              title: "Select $label",
+              items: items,
+              selectedValue: isValid ? value : null,
+              labelBuilder: (item) => item,
+              onItemSelected: (selected) => onChanged(selected),
+            );
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.black26,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  displayValue,
+                  style: TextStyle(
+                    color: isValid ? Colors.white : Colors.white30,
+                    fontSize: 16,
                   ),
-                );
-              }).toList(),
-              onChanged: onChanged,
+                ),
+                const Icon(Icons.arrow_drop_down, color: Colors.white54),
+              ],
             ),
           ),
         ),
@@ -442,7 +544,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
           const SizedBox(height: 8),
           Row(children: [
             _miniTab(
-                "Bank",
+                "Banks & Wallets",
                 _sourceType == 'Bank',
                 () => setState(() {
                       _sourceType = 'Bank';
@@ -450,7 +552,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                     })),
             const SizedBox(width: 10),
             _miniTab(
-                "Credit",
+                "Credit Cards",
                 _sourceType == 'Credit',
                 () => setState(() {
                       _sourceType = 'Credit';
@@ -531,6 +633,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     );
   }
 
+  // UPDATED METHOD TO USE BOTTOM SHEET
   Widget _dropdown(
       {List<dynamic>? dataItems,
       List<DropdownMenuItem<String>>? customItems,
@@ -543,22 +646,42 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                 child: Text(i.name as String,
                     style: const TextStyle(color: Colors.white))))
             .toList();
-    final isValid = menuItems.any((item) => item.value == value);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-          color: Colors.black26, borderRadius: BorderRadius.circular(8)),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: isValid ? value : null,
-          dropdownColor: const Color(0xff1B263B),
-          isExpanded: true, // Forces stretch
-          hint: const Text("Select Account",
-              style: TextStyle(color: Colors.white30)),
+    final isValid = menuItems.any((item) => item.value == value);
+    final selectedItem =
+        isValid ? menuItems.firstWhere((item) => item.value == value) : null;
+
+    return InkWell(
+      onTap: () {
+        _showSelectionBottomSheet<DropdownMenuItem<String>>(
+          context: context,
+          title: "Select Account",
           items: menuItems,
-          onChanged: onChanged,
+          selectedValue: selectedItem,
+          labelBuilder: (item) => "",
+          customChildBuilder: (item) => item.child,
+          isEnabled: (item) => item.enabled,
+          onItemSelected: (selected) => onChanged(selected.value),
+        );
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+            color: Colors.black26, borderRadius: BorderRadius.circular(8)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            isValid
+                ? DefaultTextStyle(
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    child: selectedItem!.child,
+                  )
+                : const Text("Select Account",
+                    style: TextStyle(color: Colors.white30, fontSize: 16)),
+            const Icon(Icons.arrow_drop_down, color: Colors.white54),
+          ],
         ),
       ),
     );
@@ -670,7 +793,8 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                     disabledColor: Colors.white10,
                     labelStyle: TextStyle(
                         color: isSelected ? Colors.white : Colors.white60,
-                        fontWeight: FontWeight.bold),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11),
                     onSelected: (val) {
                       if (val) setState(() => _frequency = f);
                     },
@@ -781,38 +905,77 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                   ]))
             else
               Row(children: [
+                // UPDATED: Smart Week Dropdown
                 Expanded(
-                    child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                            value: _smartWeek,
-                            dropdownColor: const Color(0xff1B263B),
-                            icon: const Icon(Icons.keyboard_arrow_down,
-                                color: Colors.white54),
-                            items: _weekRanks.entries
-                                .map((e) => DropdownMenuItem(
-                                    value: e.key,
-                                    child: Text(e.value,
-                                        style: const TextStyle(
-                                            color: Colors.white))))
-                                .toList(),
-                            onChanged: (v) =>
-                                setState(() => _smartWeek = v!)))),
+                  child: InkWell(
+                    onTap: () {
+                      _showSelectionBottomSheet<MapEntry<int, String>>(
+                        context: context,
+                        title: "Select Week",
+                        items: _weekRanks.entries.toList(),
+                        selectedValue: _weekRanks.entries
+                            .firstWhere((e) => e.key == _smartWeek),
+                        labelBuilder: (e) => e.value,
+                        onItemSelected: (e) =>
+                            setState(() => _smartWeek = e.key),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xff1B263B),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_weekRanks[_smartWeek] ?? '',
+                              style: const TextStyle(color: Colors.white)),
+                          const Icon(Icons.keyboard_arrow_down,
+                              color: Colors.white54),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 12),
+                // UPDATED: Smart Day Dropdown
                 Expanded(
-                    child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                            value: _smartDay,
-                            dropdownColor: const Color(0xff1B263B),
-                            icon: const Icon(Icons.keyboard_arrow_down,
-                                color: Colors.white54),
-                            items: _weekDays.entries
-                                .map((e) => DropdownMenuItem(
-                                    value: e.key,
-                                    child: Text(e.value,
-                                        style: const TextStyle(
-                                            color: Colors.white))))
-                                .toList(),
-                            onChanged: (v) => setState(() => _smartDay = v!))))
+                  child: InkWell(
+                    onTap: () {
+                      _showSelectionBottomSheet<MapEntry<int, String>>(
+                        context: context,
+                        title: "Select Day",
+                        items: _weekDays.entries.toList(),
+                        selectedValue: _weekDays.entries
+                            .firstWhere((e) => e.key == _smartDay),
+                        labelBuilder: (e) => e.value,
+                        onItemSelected: (e) =>
+                            setState(() => _smartDay = e.key),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xff1B263B),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_weekDays[_smartDay] ?? '',
+                              style: const TextStyle(color: Colors.white)),
+                          const Icon(Icons.keyboard_arrow_down,
+                              color: Colors.white54),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ]),
             const SizedBox(height: 20),
           ] else ...[
@@ -1075,7 +1238,6 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       return;
     }
 
-    // [VALIDATION] Enforce fields based on transaction type
     if (_txnType == 'Expense') {
       if (_bucket.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -150,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      "Time to Backup data!. Tap to Backup Now.",
+                                      "Tap to Backup data Now!",
                                       style: GoogleFonts.robotoSlab(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
