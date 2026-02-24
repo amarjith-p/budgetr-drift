@@ -8,33 +8,37 @@ import '../../features/notifications/database/notification_tables.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [
-  // Budget & Settlement
-  FinancialRecords,
-  Settlements,
-  // Daily Expense
-  ExpenseAccounts,
-  ExpenseTransactions,
-  // Credit
-  CreditCards,
-  CreditTransactions,
-  // Investment
-  InvestmentRecords,
-  // Net Worth
-  NetWorthRecords,
-  NetWorthSplits,
-  // Custom Entry
-  CustomTemplates,
-  CustomRecords,
-  TransactionCategories, // <--- Ensure this is here
-  Settlements, // <--- New
-  Settings,
-  AssetLogs,
-  Loans,
-  Goals,
-  HeatmapLimits,
-  AppNotifications,
-])
+@DriftDatabase(
+  tables: [
+    // Budget & Settlement
+    FinancialRecords,
+    Settlements,
+    // Daily Expense
+    ExpenseAccounts,
+    ExpenseTransactions,
+    // Credit
+    CreditCards,
+    CreditTransactions,
+    // Investment
+    InvestmentRecords,
+    // Net Worth
+    NetWorthRecords,
+    NetWorthSplits,
+    // Custom Entry
+    CustomTemplates,
+    CustomRecords,
+    TransactionCategories, // <--- Ensure this is here
+    Settlements, // <--- New
+    Settings,
+    AssetLogs,
+    Loans,
+    Goals,
+    HeatmapLimits,
+    AppNotifications,
+    RecurringPatterns,
+    RecurringLogs,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   static final AppDatabase _instance = AppDatabase._internal();
   static AppDatabase get instance => _instance;
@@ -42,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 9;
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
@@ -61,6 +65,24 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(loans);
           await m.createTable(goals);
           await m.createTable(appNotifications);
+        }
+        if (from < 8) {
+          // We wrap in try-catch in case the table didn't exist yet
+          try {
+            await m.deleteTable('recurring_patterns');
+            await m.deleteTable('recurring_logs');
+          } catch (e) {
+            // Table might not exist, ignore
+          }
+
+          await m.createTable(recurringPatterns);
+          await m.createTable(recurringLogs);
+        }
+        if (from < 9) {
+          // Add new columns for Smart Scheduling
+          await m.addColumn(recurringPatterns, recurringPatterns.scheduleType);
+          await m.addColumn(recurringPatterns, recurringPatterns.weekParam);
+          await m.addColumn(recurringPatterns, recurringPatterns.dayParam);
         }
       },
     );

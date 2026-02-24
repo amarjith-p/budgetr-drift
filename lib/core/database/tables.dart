@@ -434,3 +434,56 @@ class HeatmapLimits extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+// --- RECURRING / PLANNED PAYMENTS ---
+
+class RecurringPatterns extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get amount => real()();
+
+  TextColumn get type => text()();
+  TextColumn get category => text()();
+  TextColumn get subCategory => text()();
+  TextColumn get bucket => text().withDefault(const Constant('Unallocated'))();
+  TextColumn get notes => text().withDefault(const Constant(''))();
+
+  TextColumn get sourceAccountId => text().nullable()();
+  TextColumn get sourceCardId => text().nullable()();
+  TextColumn get destinationAccountId => text().nullable()();
+
+  // --- SCHEDULING CORE ---
+  TextColumn get frequency =>
+      text()(); // 'Daily', 'Weekly', 'Monthly', 'Yearly'
+  IntColumn get interval => integer().withDefault(const Constant(1))();
+  DateTimeColumn get startDate => dateTime()();
+  TextColumn get executionTime => text()();
+
+  // [NEW] SMART SCHEDULE COLUMNS
+  // 'Fixed' = Same Date (e.g. 15th), 'Smart' = Nth Weekday (e.g. 2nd Friday)
+  TextColumn get scheduleType => text().withDefault(const Constant('Fixed'))();
+  // 1=First, 2=Second, 3=Third, 4=Fourth, -1=Last
+  IntColumn get weekParam => integer().nullable()();
+  // 1=Mon, 2=Tue ... 7=Sun
+  IntColumn get dayParam => integer().nullable()();
+
+  DateTimeColumn get nextRunAt => dateTime()();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  BoolColumn get autoExecute => boolean().withDefault(const Constant(true))();
+
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class RecurringLogs extends Table {
+  TextColumn get id => text()();
+  TextColumn get patternId => text().references(RecurringPatterns, #id)();
+  DateTimeColumn get executedAt => dateTime()();
+  BoolColumn get isSuccess => boolean()();
+  TextColumn get error => text().nullable()();
+  TextColumn get generatedTxnId => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

@@ -4,6 +4,8 @@ import 'package:budget/features/database_viewer/screens/database_viewer_screen.d
 import 'package:budget/features/notifications/screens/notification_manager_screen.dart';
 import 'package:budget/features/qr_sync/screens/qr_generate_screen.dart';
 import 'package:budget/features/qr_sync/screens/qr_scan_screen.dart';
+// [NEW IMPORT] Recurring Dashboard
+import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
 import 'package:budget/features/settings/services/settings_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -130,6 +132,21 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (_) => const CategoryManagerScreen(),
+                            ),
+                          ),
+                        ),
+                        // [NEW] Recurring Payments Module Entry
+                        const SizedBox(height: 16),
+                        _buildMenuCard(
+                          context,
+                          title: "Recurring Payments",
+                          subtitle: "Manage subscriptions & auto-pay",
+                          icon: Icons.autorenew_rounded,
+                          color: const Color(0xFF4CC9F0),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const RecurringDashboard(),
                             ),
                           ),
                         ),

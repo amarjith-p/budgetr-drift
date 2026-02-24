@@ -1,3 +1,4 @@
+import 'package:budget/features/recurring/services/recurring_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:workmanager/workmanager.dart'; // [ADDED]
@@ -87,6 +88,13 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
         await GetIt.I<NotificationService>().runStartupChecks();
       } catch (e) {
         debugPrint("Notification Check Failed: $e");
+      }
+      // [NEW] INDEPENDENT RECURRING CHECK ON STARTUP
+      // This ensures payments are processed even if background worker is disabled/failed
+      try {
+        await GetIt.I<RecurringService>().processDuePayments();
+      } catch (e) {
+        debugPrint("Startup Recurring Error: $e");
       }
 
       bool launchDailyExpense = false;

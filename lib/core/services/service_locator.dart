@@ -1,3 +1,4 @@
+import 'package:budget/features/recurring/services/recurring_service.dart';
 import 'package:get_it/get_it.dart';
 
 // Feature Service Imports
@@ -42,6 +43,7 @@ class ServiceLocator {
     locator.registerLazySingleton<DatabaseViewerService>(
         () => DatabaseViewerService());
     locator.registerLazySingleton<GoalLoanService>(() => GoalLoanService());
+    locator.registerLazySingleton<RecurringService>(() => RecurringService());
 
     // 3. Notification Services
 
