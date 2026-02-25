@@ -34,6 +34,16 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
   // Sort State
   SortOption _sortOption = SortOption.dateNewest;
 
+  // [NEW] Search State
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Check if any filter is active
@@ -62,6 +72,41 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                   _showFilterSheet();
                 }
               },
+            ),
+
+            // [NEW] Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  style: const TextStyle(color: Colors.white),
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                  decoration: InputDecoration(
+                    hintText: "Search by Name, Provider...",
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                    prefixIcon: const Icon(Icons.search, color: Colors.white38),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = "");
+                            },
+                            child: const Icon(Icons.close,
+                                color: Colors.white38, size: 18),
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                  ),
+                ),
+              ),
             ),
 
             // Filter Status Indicator
@@ -97,9 +142,11 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                             style: const TextStyle(color: Colors.red)));
                   }
 
-                  // 1. Filtering Logic
                   final allInvestments = snapshot.data ?? [];
+
+                  // 1. Apply Filters & Search
                   var investments = allInvestments.where((inv) {
+                    // Filter Logic
                     bool matchType =
                         _filterType == null || inv.type == _filterType;
                     bool matchId = _filterSpecialId == null ||
@@ -108,7 +155,21 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                             inv.specialId!
                                 .toLowerCase()
                                 .contains(_filterSpecialId!.toLowerCase()));
-                    return matchType && matchId;
+
+                    // [NEW] Search Logic
+                    bool matchSearch = _searchQuery.isEmpty ||
+                        inv.name
+                            .toLowerCase()
+                            .contains(_searchQuery.toLowerCase()) ||
+                        inv.providerName
+                            .toLowerCase()
+                            .contains(_searchQuery.toLowerCase()) ||
+                        (inv.specialId != null &&
+                            inv.specialId!
+                                .toLowerCase()
+                                .contains(_searchQuery.toLowerCase()));
+
+                    return matchType && matchId && matchSearch;
                   }).toList();
 
                   // 2. Sorting Logic
@@ -271,16 +332,24 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
       alignment: Alignment.center,
       child: Column(
         children: [
-          Icon(Icons.filter_list_off,
-              size: 60, color: Colors.white.withOpacity(0.1)),
+          Icon(
+              _searchQuery.isNotEmpty
+                  ? Icons.search_off_rounded
+                  : Icons.filter_list_off,
+              size: 60,
+              color: Colors.white.withOpacity(0.1)),
           const SizedBox(height: 16),
           Text(
-            "No investments found",
+            _searchQuery.isNotEmpty
+                ? "No results found"
+                : "No investments found",
             style: TextStyle(color: Colors.white.withOpacity(0.5)),
           ),
           const SizedBox(height: 8),
           Text(
-            "Try clearing filters or adding new assets",
+            _searchQuery.isNotEmpty
+                ? "Try adjusting your search"
+                : "Try clearing filters or adding new assets",
             style:
                 TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
           ),
@@ -378,26 +447,9 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
     }
   }
 
-  // [UPDATED] Proper formatting
   String _formatType(InvestmentType type) {
-    switch (type) {
-      case InvestmentType.mutualFund:
-        return "Mutual Fund";
-      case InvestmentType.stocks:
-        return "Stocks";
-      case InvestmentType.bonds:
-        return "Bonds";
-      case InvestmentType.fixedDeposit:
-        return "Fixed Deposit";
-      case InvestmentType.recurringDeposit:
-        return "Recurring Deposit";
-      case InvestmentType.p2pLending:
-        return "P2P Lending";
-      case InvestmentType.savingsAccount:
-        return "Savings Account";
-      case InvestmentType.others:
-        return "Others";
-    }
+    String label = type.toString().split('.').last;
+    return label[0].toUpperCase() + label.substring(1);
   }
 }
 
@@ -593,7 +645,7 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
-  // [UPDATED] Proper word spacing for Filter Sheet
+  // [UPDATED] Proper formatting for Filter Sheet with word spacing
   String _formatType(InvestmentType type) {
     switch (type) {
       case InvestmentType.mutualFund:
