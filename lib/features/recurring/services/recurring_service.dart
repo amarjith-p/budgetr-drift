@@ -76,7 +76,7 @@ class RecurringService {
       for (var row in patterns) {
         // Convert to model to use helper methods
         final p = _mapToModel(row);
-
+        if (p.type != 'Expense') continue;
         DateTime cursor = p.nextRunAt;
 
         // Loop to catch multiple occurrences in 30 days (e.g. Weekly)

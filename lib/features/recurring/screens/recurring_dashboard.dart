@@ -321,7 +321,7 @@ class RecurringDashboard extends StatelessWidget {
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16)),
+                                fontSize: 14)),
                         Row(children: [
                           if (item.isVariable)
                             Container(
@@ -334,14 +334,20 @@ class RecurringDashboard extends StatelessWidget {
                                 child: const Text("VARIABLE",
                                     style: TextStyle(
                                         fontSize: 8, color: Colors.orange))),
-                          Text("${item.category} • ${item.bucket}",
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.5),
-                                  fontSize: 12)),
+                          Expanded(
+                            child: Text("${item.category} • ${item.bucket}",
+                                overflow:
+                                    TextOverflow.ellipsis, // Prevents overflow
+                                maxLines: 1,
+                                style: TextStyle(
+                                    color: Colors.white.withOpacity(0.5),
+                                    fontSize: 12)),
+                          ),
                         ])
                       ],
                     ),
                   ),
+                  const SizedBox(width: 4),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
