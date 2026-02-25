@@ -10,6 +10,15 @@ import 'package:budget/features/investments/widgets/portfolio_summary_card.dart'
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
+enum SortOption {
+  valueHighToLow,
+  valueLowToHigh,
+  returnHighToLow,
+  nameAsc,
+  dateNewest,
+  dateOldest,
+}
+
 class PortfolioDashboard extends StatefulWidget {
   const PortfolioDashboard({super.key});
 
@@ -18,9 +27,12 @@ class PortfolioDashboard extends StatefulWidget {
 }
 
 class _PortfolioDashboardState extends State<PortfolioDashboard> {
-  // [NEW] Filter State
+  // Filter State
   InvestmentType? _filterType;
   String? _filterSpecialId;
+
+  // [NEW] Sort State
+  SortOption _sortOption = SortOption.dateNewest;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +48,6 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
             ModernAppBar(
               title: "Portfolio Tracker",
               subtitle: "WEALTH OVERVIEW",
-              // [NEW] Filter Action
               trailingIcon: isFiltered
                   ? Icons.filter_alt_off_rounded
                   : Icons.filter_alt_rounded,
@@ -86,9 +97,9 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                             style: const TextStyle(color: Colors.red)));
                   }
 
-                  // [NEW] Apply Filtering Logic
+                  // 1. Filtering Logic
                   final allInvestments = snapshot.data ?? [];
-                  final investments = allInvestments.where((inv) {
+                  var investments = allInvestments.where((inv) {
                     bool matchType =
                         _filterType == null || inv.type == _filterType;
                     bool matchId = _filterSpecialId == null ||
@@ -99,6 +110,26 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                                 .contains(_filterSpecialId!.toLowerCase()));
                     return matchType && matchId;
                   }).toList();
+
+                  // 2. [NEW] Sorting Logic
+                  investments.sort((a, b) {
+                    switch (_sortOption) {
+                      case SortOption.valueHighToLow:
+                        return b.currentMarketValue
+                            .compareTo(a.currentMarketValue);
+                      case SortOption.valueLowToHigh:
+                        return a.currentMarketValue
+                            .compareTo(b.currentMarketValue);
+                      case SortOption.returnHighToLow:
+                        return b.returnPercentage.compareTo(a.returnPercentage);
+                      case SortOption.nameAsc:
+                        return a.name.compareTo(b.name);
+                      case SortOption.dateNewest:
+                        return b.startDate.compareTo(a.startDate);
+                      case SortOption.dateOldest:
+                        return a.startDate.compareTo(b.startDate);
+                    }
+                  });
 
                   // Calculate Global Totals (Based on filtered view)
                   double globalInvested = 0;
@@ -131,19 +162,50 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
 
                       const SizedBox(height: 24),
 
-                      // 2. List Header
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4, bottom: 12),
-                        child: Text(
-                          "YOUR INVESTMENTS",
-                          style: TextStyle(
-                            color: Colors.white38,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
+                      // 2. List Header with [NEW] Sort Button
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 4),
+                            child: Text(
+                              "YOUR INVESTMENTS",
+                              style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
                           ),
-                        ),
+                          GestureDetector(
+                            onTap: _showSortSheet,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.sort_rounded,
+                                      color: Colors.white70, size: 16),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _getSortLabel(_sortOption),
+                                    style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 12),
 
                       // 3. Investment List
                       if (investments.isEmpty)
@@ -245,12 +307,84 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
     );
   }
 
+  void _showSortSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1B263B),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text("SORT BY",
+                    style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5)),
+              ),
+              ...SortOption.values.map((option) => ListTile(
+                    leading: Icon(
+                      _sortOption == option
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: _sortOption == option
+                          ? BudgetrColors.accent
+                          : Colors.white24,
+                    ),
+                    title: Text(_getSortLabel(option),
+                        style: const TextStyle(color: Colors.white)),
+                    onTap: () {
+                      setState(() => _sortOption = option);
+                      Navigator.pop(ctx);
+                    },
+                  )),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getSortLabel(SortOption option) {
+    switch (option) {
+      case SortOption.valueHighToLow:
+        return "Highest Value";
+      case SortOption.valueLowToHigh:
+        return "Lowest Value";
+      case SortOption.returnHighToLow:
+        return "Highest Return %";
+      case SortOption.nameAsc:
+        return "Name (A-Z)";
+      case SortOption.dateNewest:
+        return "Date Added (Newest)";
+      case SortOption.dateOldest:
+        return "Date Added (Oldest)";
+    }
+  }
+
   String _formatType(InvestmentType type) {
     String label = type.toString().split('.').last;
     return label[0].toUpperCase() + label.substring(1);
   }
 }
 
+// [UPDATED] Filter Sheet with Nested Bottom Sheet for Dropdown
 class _FilterSheet extends StatefulWidget {
   final InvestmentType? initialType;
   final String? initialId;
@@ -300,31 +434,33 @@ class _FilterSheetState extends State<_FilterSheet> {
                   letterSpacing: 1.5)),
           const SizedBox(height: 20),
 
-          // Type Selector
+          // [NEW] Custom Type Selector triggering BottomSheet
           const Text("Investment Type",
               style: TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 8),
-          DropdownButtonFormField<InvestmentType>(
-            value: _selectedType,
-            dropdownColor: const Color(0xFF0D1B2A),
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.black12,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          GestureDetector(
+            onTap: _showTypePicker,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedType == null
+                          ? "All Types"
+                          : _formatType(_selectedType!),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down, color: Colors.white54),
+                ],
+              ),
             ),
-            items: [
-              const DropdownMenuItem(value: null, child: Text("All Types")),
-              ...InvestmentType.values.map((type) => DropdownMenuItem(
-                    value: type,
-                    child: Text(type.toString().split('.').last.toUpperCase()),
-                  ))
-            ],
-            onChanged: (val) => setState(() => _selectedType = val),
           ),
 
           const SizedBox(height: 20),
@@ -376,5 +512,82 @@ class _FilterSheetState extends State<_FilterSheet> {
         ],
       ),
     );
+  }
+
+  // [NEW] Nested Bottom Sheet for Type Selection
+  void _showTypePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1B263B),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text("Select Type",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16)),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    ListTile(
+                      leading: Icon(Icons.circle,
+                          size: 10,
+                          color: _selectedType == null
+                              ? BudgetrColors.accent
+                              : Colors.white24),
+                      title: const Text("All Types",
+                          style: TextStyle(color: Colors.white)),
+                      onTap: () {
+                        setState(() => _selectedType = null);
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                    ...InvestmentType.values.map((type) {
+                      return ListTile(
+                        leading: Icon(Icons.circle,
+                            size: 10,
+                            color: _selectedType == type
+                                ? BudgetrColors.accent
+                                : Colors.white24),
+                        title: Text(_formatType(type),
+                            style: const TextStyle(color: Colors.white)),
+                        onTap: () {
+                          setState(() => _selectedType = type);
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatType(InvestmentType type) {
+    String label = type.toString().split('.').last;
+    return label[0].toUpperCase() + label.substring(1);
   }
 }
