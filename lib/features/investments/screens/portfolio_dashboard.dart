@@ -31,7 +31,7 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
   InvestmentType? _filterType;
   String? _filterSpecialId;
 
-  // [NEW] Sort State
+  // Sort State
   SortOption _sortOption = SortOption.dateNewest;
 
   @override
@@ -111,7 +111,7 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                     return matchType && matchId;
                   }).toList();
 
-                  // 2. [NEW] Sorting Logic
+                  // 2. Sorting Logic
                   investments.sort((a, b) {
                     switch (_sortOption) {
                       case SortOption.valueHighToLow:
@@ -162,7 +162,7 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
 
                       const SizedBox(height: 24),
 
-                      // 2. List Header with [NEW] Sort Button
+                      // 2. List Header with Sort Button
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -378,13 +378,29 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
     }
   }
 
+  // [UPDATED] Proper formatting
   String _formatType(InvestmentType type) {
-    String label = type.toString().split('.').last;
-    return label[0].toUpperCase() + label.substring(1);
+    switch (type) {
+      case InvestmentType.mutualFund:
+        return "Mutual Fund";
+      case InvestmentType.stocks:
+        return "Stocks";
+      case InvestmentType.bonds:
+        return "Bonds";
+      case InvestmentType.fixedDeposit:
+        return "Fixed Deposit";
+      case InvestmentType.recurringDeposit:
+        return "Recurring Deposit";
+      case InvestmentType.p2pLending:
+        return "P2P Lending";
+      case InvestmentType.savingsAccount:
+        return "Savings Account";
+      case InvestmentType.others:
+        return "Others";
+    }
   }
 }
 
-// [UPDATED] Filter Sheet with Nested Bottom Sheet for Dropdown
 class _FilterSheet extends StatefulWidget {
   final InvestmentType? initialType;
   final String? initialId;
@@ -433,8 +449,6 @@ class _FilterSheetState extends State<_FilterSheet> {
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5)),
           const SizedBox(height: 20),
-
-          // [NEW] Custom Type Selector triggering BottomSheet
           const Text("Investment Type",
               style: TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 8),
@@ -462,10 +476,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
-          // Special ID Input
           const Text("Special ID",
               style: TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 8),
@@ -483,10 +494,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               prefixIcon: const Icon(Icons.tag, color: Colors.white38),
             ),
           ),
-
           const SizedBox(height: 30),
-
-          // Apply Button
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -514,7 +522,6 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
-  // [NEW] Nested Bottom Sheet for Type Selection
   void _showTypePicker() {
     showModalBottomSheet(
       context: context,
@@ -586,8 +593,25 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
+  // [UPDATED] Proper word spacing for Filter Sheet
   String _formatType(InvestmentType type) {
-    String label = type.toString().split('.').last;
-    return label[0].toUpperCase() + label.substring(1);
+    switch (type) {
+      case InvestmentType.mutualFund:
+        return "Mutual Fund";
+      case InvestmentType.stocks:
+        return "Stocks";
+      case InvestmentType.bonds:
+        return "Bonds";
+      case InvestmentType.fixedDeposit:
+        return "Fixed Deposit";
+      case InvestmentType.recurringDeposit:
+        return "Recurring Deposit";
+      case InvestmentType.p2pLending:
+        return "P2P Lending";
+      case InvestmentType.savingsAccount:
+        return "Savings Account";
+      case InvestmentType.others:
+        return "Others";
+    }
   }
 }
