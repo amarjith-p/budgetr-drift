@@ -306,6 +306,7 @@ class RecurringService {
       return (card.creditLimit - card.currentBalance) >= amount;
     }
     if (accountId != null) {
+      if (accountId == 'EXTERNAL_OPT') return true;
       final acc = await (_db.select(_db.expenseAccounts)
             ..where((a) => a.id.equals(accountId)))
           .getSingleOrNull();
@@ -441,12 +442,22 @@ class RecurringService {
         String sourceName = "Unknown";
         if (pattern.sourceCardId != null)
           sourceName = await _resolveAccountName(pattern.sourceCardId!);
-        if (pattern.sourceAccountId != null)
-          sourceName = await _resolveAccountName(pattern.sourceAccountId!);
+        if (pattern.sourceAccountId != null) {
+          if (pattern.sourceAccountId == 'EXTERNAL_OPT') {
+            sourceName = "External Account";
+          } else {
+            sourceName = await _resolveAccountName(pattern.sourceAccountId!);
+          }
+        }
 
         String destName = "Unknown";
-        if (pattern.destinationAccountId != null)
-          destName = await _resolveAccountName(pattern.destinationAccountId!);
+        if (pattern.destinationAccountId != null) {
+          if (pattern.destinationAccountId == 'EXTERNAL_OPT') {
+            destName = "External Account";
+          } else {
+            destName = await _resolveAccountName(pattern.destinationAccountId!);
+          }
+        }
 
         if (pattern.sourceCardId != null) {
           await GetIt.I<CreditService>().addTransaction(CreditTransactionModel(
@@ -477,51 +488,85 @@ class RecurringService {
           }
           success = true;
         } else {
-          await GetIt.I<ExpenseService>()
-              .addTransaction(ExpenseTransactionModel(
-            id: txnId,
-            accountId: pattern.sourceAccountId ?? '',
-            amount: pattern.amount,
-            date: DateTime.now(),
-            bucket: 'Unallocated',
-            type: 'Transfer Out',
-            category: 'Transfer',
-            subCategory: 'Payment',
-            notes: "Auto: ${pattern.name}",
-            transferAccountId: pattern.destinationAccountId,
-            transferAccountName: destName,
-          ));
+          if (pattern.destinationAccountId == 'EXTERNAL_OPT') {
+            await GetIt.I<ExpenseService>()
+                .addTransaction(ExpenseTransactionModel(
+              id: txnId,
+              accountId: pattern.sourceAccountId!,
+              amount: pattern.amount,
+              date: DateTime.now(),
+              bucket: 'Unallocated',
+              type: 'Transfer Out',
+              category: 'Transfer',
+              subCategory: 'To External',
+              notes: "Auto: ${pattern.name}",
+              transferAccountId: null,
+              transferAccountName: 'External Account',
+              transferAccountBankName: 'External',
+            ));
+          } else if (pattern.sourceAccountId == 'EXTERNAL_OPT') {
+            await GetIt.I<ExpenseService>()
+                .addTransaction(ExpenseTransactionModel(
+              id: txnId,
+              accountId: pattern.destinationAccountId!,
+              amount: pattern.amount,
+              date: DateTime.now(),
+              bucket: 'Unallocated',
+              type: 'Transfer In',
+              category: 'Transfer',
+              subCategory: 'From External',
+              notes: "Auto: ${pattern.name}",
+              transferAccountId: null,
+              transferAccountName: 'External Account',
+              transferAccountBankName: 'External',
+            ));
+          } else {
+            await GetIt.I<ExpenseService>()
+                .addTransaction(ExpenseTransactionModel(
+              id: txnId,
+              accountId: pattern.sourceAccountId ?? '',
+              amount: pattern.amount,
+              date: DateTime.now(),
+              bucket: 'Unallocated',
+              type: 'Transfer Out',
+              category: 'Transfer',
+              subCategory: 'Payment',
+              notes: "Auto: ${pattern.name}",
+              transferAccountId: pattern.destinationAccountId,
+              transferAccountName: destName,
+            ));
 
-          if (pattern.destinationAccountId != null) {
-            final isDestCredit =
-                await _isCreditCard(pattern.destinationAccountId!);
+            if (pattern.destinationAccountId != null) {
+              final isDestCredit =
+                  await _isCreditCard(pattern.destinationAccountId!);
 
-            if (isDestCredit) {
-              await GetIt.I<CreditService>()
-                  .addTransaction(CreditTransactionModel(
-                id: _uuid.v4(),
-                cardId: pattern.destinationAccountId!,
-                amount: -pattern.amount,
-                date: DateTime.now(),
-                bucket: 'Unallocated',
-                type: 'Expense',
-                category: 'Payment',
-                subCategory: 'Auto Pay',
-                notes: "Auto: ${pattern.name} (From $sourceName)",
-              ));
-            } else {
-              await GetIt.I<ExpenseService>()
-                  .addTransaction(ExpenseTransactionModel(
-                id: _uuid.v4(),
-                accountId: pattern.destinationAccountId!,
-                amount: pattern.amount,
-                date: DateTime.now(),
-                bucket: 'Unallocated',
-                type: 'Income',
-                category: 'Transfer',
-                subCategory: 'From Bank',
-                notes: "Auto: ${pattern.name} (From $sourceName)",
-              ));
+              if (isDestCredit) {
+                await GetIt.I<CreditService>()
+                    .addTransaction(CreditTransactionModel(
+                  id: _uuid.v4(),
+                  cardId: pattern.destinationAccountId!,
+                  amount: -pattern.amount,
+                  date: DateTime.now(),
+                  bucket: 'Unallocated',
+                  type: 'Expense',
+                  category: 'Payment',
+                  subCategory: 'Auto Pay',
+                  notes: "Auto: ${pattern.name} (From $sourceName)",
+                ));
+              } else {
+                await GetIt.I<ExpenseService>()
+                    .addTransaction(ExpenseTransactionModel(
+                  id: _uuid.v4(),
+                  accountId: pattern.destinationAccountId!,
+                  amount: pattern.amount,
+                  date: DateTime.now(),
+                  bucket: 'Unallocated',
+                  type: 'Income',
+                  category: 'Transfer',
+                  subCategory: 'From Bank',
+                  notes: "Auto: ${pattern.name} (From $sourceName)",
+                ));
+              }
             }
           }
           success = true;

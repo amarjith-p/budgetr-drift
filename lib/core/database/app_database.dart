@@ -54,7 +54,7 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        if (from < 5) {
+        if (from < 6) {
           // If upgrading, we recreate the table to ensure new columns exist
           // Warning: This clears existing split data. Ideally, use addColumn for each new field.
           // For development speed, we drop and recreate.
@@ -65,36 +65,38 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(loans);
           await m.createTable(goals);
           await m.createTable(appNotifications);
-        }
-        if (from < 8) {
-          // We wrap in try-catch in case the table didn't exist yet
-          try {
-            await m.deleteTable('recurring_patterns');
-            await m.deleteTable('recurring_logs');
-          } catch (e) {
-            // Table might not exist, ignore
-          }
-
           await m.createTable(recurringPatterns);
           await m.createTable(recurringLogs);
         }
-        if (from < 9) {
-          // Add new columns for Smart Scheduling
-          await m.addColumn(recurringPatterns, recurringPatterns.scheduleType);
-          await m.addColumn(recurringPatterns, recurringPatterns.weekParam);
-          await m.addColumn(recurringPatterns, recurringPatterns.dayParam);
-        }
-        if (from < 10) {
-          // [NEW] Scale Up Migration
-          await m.addColumn(recurringPatterns, recurringPatterns.isVariable);
-          await m.addColumn(recurringPatterns, recurringPatterns.endDate);
-          await m.addColumn(
-              recurringPatterns, recurringPatterns.maxOccurrences);
-          await m.addColumn(
-              recurringPatterns, recurringPatterns.occurrencesProcessed);
-          await m.addColumn(recurringPatterns, recurringPatterns.website);
-          await m.addColumn(recurringPatterns, recurringPatterns.notifyBefore);
-        }
+        // if (from < 8) {
+        //   // We wrap in try-catch in case the table didn't exist yet
+        //   try {
+        //     await m.deleteTable('recurring_patterns');
+        //     await m.deleteTable('recurring_logs');
+        //   } catch (e) {
+        //     // Table might not exist, ignore
+        //   }
+
+        //   await m.createTable(recurringPatterns);
+        //   await m.createTable(recurringLogs);
+        // }
+        // if (from < 9) {
+        //   // Add new columns for Smart Scheduling
+        //   await m.addColumn(recurringPatterns, recurringPatterns.scheduleType);
+        //   await m.addColumn(recurringPatterns, recurringPatterns.weekParam);
+        //   await m.addColumn(recurringPatterns, recurringPatterns.dayParam);
+        // }
+        // if (from < 10) {
+        //   // [NEW] Scale Up Migration
+        //   await m.addColumn(recurringPatterns, recurringPatterns.isVariable);
+        //   await m.addColumn(recurringPatterns, recurringPatterns.endDate);
+        //   await m.addColumn(
+        //       recurringPatterns, recurringPatterns.maxOccurrences);
+        //   await m.addColumn(
+        //       recurringPatterns, recurringPatterns.occurrencesProcessed);
+        //   await m.addColumn(recurringPatterns, recurringPatterns.website);
+        //   await m.addColumn(recurringPatterns, recurringPatterns.notifyBefore);
+        // }
       },
     );
   }

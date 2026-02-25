@@ -74,6 +74,26 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   List<String> _subCategories = [];
   List<String> _realBuckets = [];
 
+  // --- EXTERNAL ACCOUNT ---
+  final ExpenseAccountModel _externalAccount = ExpenseAccountModel(
+    id: 'EXTERNAL_OPT',
+    name: 'External Account',
+    bankName: 'External',
+    type: 'External',
+    accountType: 'External',
+    currentBalance: 0,
+    createdAt: DateTime.timestamp(),
+    dashboardOrder: 9999,
+  );
+
+  List<ExpenseAccountModel> _getDisplayBanks() {
+    List<ExpenseAccountModel> filtered = List.from(_bankAccounts);
+    if (_txnType == 'Transfer' && _sourceType == 'Bank') {
+      filtered.add(_externalAccount);
+    }
+    return filtered;
+  }
+
   final Map<int, String> _weekRanks = {
     1: 'First',
     2: 'Second',
@@ -523,7 +543,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   Widget _buildAccountSelectors() {
     List<dynamic> destinationOptions = [];
     if (_txnType == 'Transfer') {
-      destinationOptions = [..._bankAccounts, ..._creditCards];
+      destinationOptions = [..._getDisplayBanks(), ..._creditCards];
       destinationOptions
           .removeWhere((item) => (item as dynamic).id == _sourceId);
     }
@@ -562,7 +582,8 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
           ]),
           const SizedBox(height: 10),
           _dropdown(
-              dataItems: _sourceType == 'Bank' ? _bankAccounts : _creditCards,
+              dataItems:
+                  _sourceType == 'Bank' ? _getDisplayBanks() : _creditCards,
               value: _sourceId,
               onChanged: (v) => setState(() => _sourceId = v!)),
           if (_txnType == 'Transfer') ...[
@@ -578,7 +599,10 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
             Builder(builder: (context) {
               List<DropdownMenuItem<String>> items = [];
               final banks =
-                  _bankAccounts.where((a) => a.id != _sourceId).toList();
+                  _getDisplayBanks().where((a) => a.id != _sourceId).toList();
+              if (_sourceId == _externalAccount.id) {
+                banks.removeWhere((e) => e.id == _externalAccount.id);
+              }
               if (banks.isNotEmpty) {
                 items.add(const DropdownMenuItem(
                     enabled: false,
@@ -1264,6 +1288,22 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       if (_subCategory.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Please select a Sub-Category")));
+        return;
+      }
+    } else if (_txnType == 'Transfer') {
+      if (_destId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Please select a Destination Account")));
+        return;
+      }
+      if (_sourceId == _destId) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Source and destination cannot be the same")));
+        return;
+      }
+      if (_sourceId == 'EXTERNAL_OPT' && _destId == 'EXTERNAL_OPT') {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Cannot transfer between External Accounts")));
         return;
       }
     }

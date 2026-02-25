@@ -349,7 +349,7 @@ class RecurringDashboard extends StatelessWidget {
                           ? const Text("Waiting",
                               style:
                                   TextStyle(color: Colors.orange, fontSize: 14))
-                          : Text("₹${item.amount.toStringAsFixed(0)}",
+                          : Text("₹${item.amount.toStringAsFixed(2)}",
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
