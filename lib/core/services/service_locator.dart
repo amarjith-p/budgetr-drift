@@ -18,6 +18,7 @@ import '../../features/notifications/services/notification_service.dart';
 import '../../features/notifications/services/real_time_notification_manager.dart';
 // [NEW] System Service Import
 import '../../features/notifications/services/system_notification_service.dart';
+import '../../features/investments/services/portfolio_service.dart';
 
 final locator = GetIt.instance;
 
@@ -44,7 +45,7 @@ class ServiceLocator {
         () => DatabaseViewerService());
     locator.registerLazySingleton<GoalLoanService>(() => GoalLoanService());
     locator.registerLazySingleton<RecurringService>(() => RecurringService());
-
+    locator.registerLazySingleton<PortfolioService>(() => PortfolioService());
     // 3. Notification Services
 
     // [NEW] Register System Notification Service & Init

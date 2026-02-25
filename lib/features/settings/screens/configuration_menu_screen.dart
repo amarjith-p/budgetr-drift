@@ -1,11 +1,13 @@
 import 'package:budget/core/services/biometric_service.dart';
 import 'package:budget/features/backup_restore/screens/backup_screen.dart';
 import 'package:budget/features/database_viewer/screens/database_viewer_screen.dart';
+import 'package:budget/features/investment/screens/investment_screen.dart';
 import 'package:budget/features/notifications/screens/notification_manager_screen.dart';
 import 'package:budget/features/qr_sync/screens/qr_generate_screen.dart';
 import 'package:budget/features/qr_sync/screens/qr_scan_screen.dart';
 // [NEW IMPORT] Recurring Dashboard
 import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
+import 'package:budget/features/investments/screens/portfolio_dashboard.dart';
 import 'package:budget/features/settings/services/settings_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -147,6 +149,20 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (_) => const RecurringDashboard(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildMenuCard(
+                          context,
+                          title: "Portfolio Live Tracker",
+                          subtitle: "Stocks, Mutual Funds & Assets",
+                          icon: Icons.show_chart_rounded,
+                          color: const Color(0xFF3A86FF),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const InvestmentScreen(),
                             ),
                           ),
                         ),

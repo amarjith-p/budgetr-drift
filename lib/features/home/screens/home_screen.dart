@@ -1,3 +1,4 @@
+import 'package:budget/features/investments/screens/portfolio_dashboard.dart';
 import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:budget/features/settlement/screens/settlement_screen.dart';
 import 'package:flutter/material.dart';
@@ -276,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     "Investments",
                     Icons.insights_rounded,
                     const Color(0xFF3F37C9),
-                    const InvestmentScreen())),
+                    const PortfolioDashboard())),
             const SizedBox(width: 12),
             Expanded(
                 child: _buildVerticalActionChip(

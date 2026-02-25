@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'tables.dart'; // Ensure this file contains all the table classes I shared previously
 import '../../features/notifications/database/notification_tables.dart';
+import 'package:budget/features/investments/database/investment_tables.dart';
 
 part 'app_database.g.dart';
 
@@ -37,6 +38,8 @@ part 'app_database.g.dart';
     AppNotifications,
     RecurringPatterns,
     RecurringLogs,
+    Investments,
+    InvestmentTransactions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -46,7 +49,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
@@ -54,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        if (from < 6) {
+        if (from < 11) {
           // If upgrading, we recreate the table to ensure new columns exist
           // Warning: This clears existing split data. Ideally, use addColumn for each new field.
           // For development speed, we drop and recreate.
@@ -67,6 +70,8 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(appNotifications);
           await m.createTable(recurringPatterns);
           await m.createTable(recurringLogs);
+          await m.createTable(investments);
+          await m.createTable(investmentTransactions);
         }
         // if (from < 8) {
         //   // We wrap in try-catch in case the table didn't exist yet
