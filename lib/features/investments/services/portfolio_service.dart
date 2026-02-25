@@ -26,7 +26,6 @@ class PortfolioService {
                 startDate: dto.startDate,
                 endDate: Value(dto.endDate),
                 expectedReturn: Value(dto.expectedReturn),
-                // [NEW Fields]
                 folioNumber: Value(dto.folioNumber),
                 units: Value(dto.units),
                 brokerName: Value(dto.brokerName),
@@ -34,6 +33,7 @@ class PortfolioService {
                 linkedBankAccount: Value(dto.linkedBankAccount),
                 purpose: Value(dto.purpose),
                 notes: Value(dto.notes),
+                specialId: Value(dto.specialId), // [NEW]
               ));
 
       await _db
@@ -125,7 +125,6 @@ class PortfolioService {
           endDate: Value(dto.endDate),
           expectedReturn: Value(dto.expectedReturn),
           isActive: Value(dto.isActive),
-          // [NEW Fields]
           folioNumber: Value(dto.folioNumber),
           units: Value(dto.units),
           brokerName: Value(dto.brokerName),
@@ -133,6 +132,7 @@ class PortfolioService {
           linkedBankAccount: Value(dto.linkedBankAccount),
           purpose: Value(dto.purpose),
           notes: Value(dto.notes),
+          specialId: Value(dto.specialId), // [NEW]
         ));
   }
 
@@ -323,7 +323,7 @@ class PortfolioService {
       linkedBankAccount: row.linkedBankAccount,
       purpose: row.purpose,
       notes: row.notes,
-
+      specialId: row.specialId,
       totalInvestedAmount: totalInvested,
       currentMarketValue: currentVal,
       totalGainLoss: gain,

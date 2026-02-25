@@ -28,7 +28,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
   late TextEditingController _returnController;
   late TextEditingController _otherTypeController;
 
-  // [NEW] Additional Info Controllers
+  // Additional Info Controllers
   late TextEditingController _folioController;
   late TextEditingController _unitsController;
   late TextEditingController _brokerController;
@@ -36,9 +36,10 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
   late TextEditingController _bankAccountController;
   late TextEditingController _purposeController;
   late TextEditingController _notesController;
+  late TextEditingController _specialIdController; // [NEW]
 
   // State
-  InvestmentType _selectedType = InvestmentType.mutualFund;
+  InvestmentType? _selectedType; // [UPDATED] Nullable for mandatory check
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
   bool _isLoading = false;
@@ -59,7 +60,6 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
         TextEditingController(text: item?.expectedReturn?.toString() ?? '');
     _otherTypeController = TextEditingController(text: item?.subType ?? '');
 
-    // [NEW] Init
     _folioController = TextEditingController(text: item?.folioNumber ?? '');
     _unitsController = TextEditingController(text: item?.units ?? '');
     _brokerController = TextEditingController(text: item?.brokerName ?? '');
@@ -69,6 +69,8 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
         TextEditingController(text: item?.linkedBankAccount ?? '');
     _purposeController = TextEditingController(text: item?.purpose ?? '');
     _notesController = TextEditingController(text: item?.notes ?? '');
+    _specialIdController =
+        TextEditingController(text: item?.specialId ?? ''); // [NEW]
 
     if (_isEditMode) {
       _selectedType = item!.type;
@@ -85,7 +87,6 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     _amountController.dispose();
     _returnController.dispose();
     _otherTypeController.dispose();
-    // [NEW]
     _folioController.dispose();
     _unitsController.dispose();
     _brokerController.dispose();
@@ -93,6 +94,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     _bankAccountController.dispose();
     _purposeController.dispose();
     _notesController.dispose();
+    _specialIdController.dispose();
     super.dispose();
   }
 
@@ -129,7 +131,8 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                               hint: "e.g. Nifty 50 Index Fund",
                             ),
                             const SizedBox(height: 16),
-                            _buildTypeDropdown(),
+                            // [UPDATED] Custom Selector
+                            _buildTypeSelector(),
                             if (_selectedType == InvestmentType.others) ...[
                               const SizedBox(height: 16),
                               _buildTextField(
@@ -152,6 +155,15 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                               label: "Provider Website (Optional)",
                               icon: Icons.language,
                               hint: "e.g. zerodha.com (for icon)",
+                              isOptional: true,
+                            ),
+                            const SizedBox(height: 16),
+                            // [NEW] Special ID Field
+                            _buildTextField(
+                              controller: _specialIdController,
+                              label: "Special ID",
+                              icon: Icons.tag,
+                              hint: "e.g. Group A, Personal, Retirement",
                               isOptional: true,
                             ),
                           ],
@@ -186,7 +198,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.lock,
+                                    const Icon(Icons.lock,
                                         size: 16, color: Colors.white38),
                                     const SizedBox(width: 8),
                                     const Expanded(
@@ -234,7 +246,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // [NEW] Section 3: Additional Info
+                      // Section 3: Additional Info
                       _buildSectionHeader("ADDITIONAL DETAILS"),
                       GlassCard(
                         borderRadius: 12,
@@ -321,7 +333,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                                 )
                               : Text(
                                   _isEditMode
-                                      ? "UPDATE INVESTMENT"
+                                      ? "UPDATE ASSET"
                                       : "ADD TO PORTFOLIO",
                                   style: const TextStyle(
                                     color: Colors.white,
@@ -404,42 +416,137 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     );
   }
 
-  Widget _buildTypeDropdown() {
-    return DropdownButtonFormField<InvestmentType>(
-      value: _selectedType,
-      dropdownColor: const Color(0xFF1B263B),
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: "Investment Type",
-        labelStyle: const TextStyle(color: Colors.white54),
-        prefixIcon: Icon(Icons.pie_chart,
-            color: BudgetrColors.accent.withOpacity(0.7), size: 20),
-        filled: true,
-        fillColor: Colors.black12,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+  // [UPDATED] Custom Selector triggering BottomSheet
+  Widget _buildTypeSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: _showTypePicker,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.black12,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: _selectedType == null
+                      ? Colors.transparent
+                      : Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.pie_chart,
+                    color: BudgetrColors.accent.withOpacity(0.7), size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _selectedType == null
+                        ? "Select Investment Type *"
+                        : _formatType(_selectedType!),
+                    style: TextStyle(
+                      color:
+                          _selectedType == null ? Colors.white54 : Colors.white,
+                      fontWeight: _selectedType == null
+                          ? FontWeight.normal
+                          : FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down,
+                    color: Colors.white.withOpacity(0.5)),
+              ],
+            ),
+          ),
+        ),
+        // Simple error text if validation fails logic is separate,
+        // but Form validation works best with FormField.
+        // Implementing simple FormField wrapper for validation:
+        FormField<InvestmentType>(
+          validator: (val) {
+            if (_selectedType == null) return "Please select a type";
+            return null;
+          },
+          builder: (state) {
+            if (state.hasError) {
+              return Padding(
+                padding: const EdgeInsets.only(left: 12, top: 8),
+                child: Text(state.errorText!,
+                    style:
+                        const TextStyle(color: Colors.redAccent, fontSize: 12)),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        )
+      ],
+    );
+  }
+
+  void _showTypePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1B263B),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text("Select Type",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16)),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: InvestmentType.values.map((type) {
+                    return ListTile(
+                      leading: Icon(Icons.circle,
+                          size: 10,
+                          color: _selectedType == type
+                              ? BudgetrColors.accent
+                              : Colors.white24),
+                      title: Text(_formatType(type),
+                          style: const TextStyle(color: Colors.white)),
+                      onTap: () {
+                        setState(() => _selectedType = type);
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      items: InvestmentType.values.map((type) {
-        String label = type.toString().split('.').last;
-        label = label[0].toUpperCase() + label.substring(1);
-        if (type == InvestmentType.mutualFund) label = "Mutual Fund";
-        if (type == InvestmentType.fixedDeposit) label = "Fixed Deposit";
-        if (type == InvestmentType.recurringDeposit)
-          label = "Recurring Deposit";
-        if (type == InvestmentType.p2pLending) label = "P2P Lending";
-        if (type == InvestmentType.savingsAccount) label = "Savings Account";
-
-        return DropdownMenuItem(
-          value: type,
-          child: Text(label),
-        );
-      }).toList(),
-      onChanged: (val) {
-        if (val != null) setState(() => _selectedType = val);
-      },
     );
+  }
+
+  String _formatType(InvestmentType type) {
+    String label = type.toString().split('.').last;
+    label = label[0].toUpperCase() + label.substring(1);
+    if (type == InvestmentType.mutualFund) return "Mutual Fund";
+    if (type == InvestmentType.fixedDeposit) return "Fixed Deposit";
+    if (type == InvestmentType.recurringDeposit) return "Recurring Deposit";
+    if (type == InvestmentType.p2pLending) return "P2P Lending";
+    if (type == InvestmentType.savingsAccount) return "Savings Account";
+    return label;
   }
 
   Widget _buildDatePicker({
@@ -526,6 +633,13 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
 
   Future<void> _saveInvestment() async {
     if (!_formKey.currentState!.validate()) return;
+    // Extra validation for type just in case
+    if (_selectedType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Please select an Investment Type"),
+          backgroundColor: Colors.red));
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -537,7 +651,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
       final dto = InvestmentDto(
         id: widget.investmentToEdit?.id,
         name: _nameController.text,
-        type: _selectedType,
+        type: _selectedType!,
         subType: _selectedType == InvestmentType.others
             ? _otherTypeController.text
             : null,
@@ -546,7 +660,6 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
         startDate: _startDate,
         endDate: _endDate,
         expectedReturn: expectedReturn,
-        // [NEW Fields]
         folioNumber: _folioController.text,
         units: _unitsController.text,
         brokerName: _brokerController.text,
@@ -554,6 +667,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
         linkedBankAccount: _bankAccountController.text,
         purpose: _purposeController.text,
         notes: _notesController.text,
+        specialId: _specialIdController.text, // [NEW]
       );
 
       if (_isEditMode) {

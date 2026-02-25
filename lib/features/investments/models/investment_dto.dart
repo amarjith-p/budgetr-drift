@@ -23,7 +23,7 @@ class InvestmentDto {
   final double? expectedReturn;
   final bool isActive;
 
-  // [NEW] Additional Info
+  // Additional Info
   final String? folioNumber;
   final String? units;
   final String? brokerName;
@@ -31,6 +31,9 @@ class InvestmentDto {
   final String? linkedBankAccount;
   final String? purpose;
   final String? notes;
+
+  // [NEW]
+  final String? specialId;
 
   // Dashboard Aggregates
   final double totalInvestedAmount;
@@ -50,8 +53,6 @@ class InvestmentDto {
     this.endDate,
     this.expectedReturn,
     this.isActive = true,
-
-    // [NEW]
     this.folioNumber,
     this.units,
     this.brokerName,
@@ -59,6 +60,7 @@ class InvestmentDto {
     this.linkedBankAccount,
     this.purpose,
     this.notes,
+    this.specialId, // [NEW]
     this.totalInvestedAmount = 0.0,
     this.currentMarketValue = 0.0,
     this.totalGainLoss = 0.0,
@@ -66,7 +68,6 @@ class InvestmentDto {
     this.xirr,
   });
 
-  // Helper to convert String to Enum
   static InvestmentType stringToType(String typeStr) {
     return InvestmentType.values.firstWhere(
       (e) => e.toString().split('.').last == typeStr,

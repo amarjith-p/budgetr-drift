@@ -14,15 +14,17 @@ class Investments extends Table {
   RealColumn get expectedReturn => real().nullable()(); // In percentage
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
-  // [NEW] Additional Info Columns
+  // Additional Info
   TextColumn get folioNumber => text().nullable()();
-  TextColumn get units =>
-      text().nullable()(); // Text to support "100 Units" or "500gms"
+  TextColumn get units => text().nullable()();
   TextColumn get brokerName => text().nullable()();
   TextColumn get linkedBankName => text().nullable()();
   TextColumn get linkedBankAccount => text().nullable()();
   TextColumn get purpose => text().nullable()();
   TextColumn get notes => text().nullable()();
+
+  // [NEW] Special ID for filtering
+  TextColumn get specialId => text().nullable()();
 }
 
 @DataClassName('InvestmentTransaction')

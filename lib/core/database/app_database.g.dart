@@ -11092,6 +11092,12 @@ class $InvestmentsTable extends Investments
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
       'notes', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _specialIdMeta =
+      const VerificationMeta('specialId');
+  @override
+  late final GeneratedColumn<String> specialId = GeneratedColumn<String>(
+      'special_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -11110,7 +11116,8 @@ class $InvestmentsTable extends Investments
         linkedBankName,
         linkedBankAccount,
         purpose,
-        notes
+        notes,
+        specialId
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -11211,6 +11218,10 @@ class $InvestmentsTable extends Investments
       context.handle(
           _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
     }
+    if (data.containsKey('special_id')) {
+      context.handle(_specialIdMeta,
+          specialId.isAcceptableOrUnknown(data['special_id']!, _specialIdMeta));
+    }
     return context;
   }
 
@@ -11254,6 +11265,8 @@ class $InvestmentsTable extends Investments
           .read(DriftSqlType.string, data['${effectivePrefix}purpose']),
       notes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      specialId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}special_id']),
     );
   }
 
@@ -11281,6 +11294,7 @@ class Investment extends DataClass implements Insertable<Investment> {
   final String? linkedBankAccount;
   final String? purpose;
   final String? notes;
+  final String? specialId;
   const Investment(
       {required this.id,
       required this.name,
@@ -11298,7 +11312,8 @@ class Investment extends DataClass implements Insertable<Investment> {
       this.linkedBankName,
       this.linkedBankAccount,
       this.purpose,
-      this.notes});
+      this.notes,
+      this.specialId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -11340,6 +11355,9 @@ class Investment extends DataClass implements Insertable<Investment> {
     }
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || specialId != null) {
+      map['special_id'] = Variable<String>(specialId);
     }
     return map;
   }
@@ -11383,6 +11401,9 @@ class Investment extends DataClass implements Insertable<Investment> {
           : Value(purpose),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      specialId: specialId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(specialId),
     );
   }
 
@@ -11408,6 +11429,7 @@ class Investment extends DataClass implements Insertable<Investment> {
           serializer.fromJson<String?>(json['linkedBankAccount']),
       purpose: serializer.fromJson<String?>(json['purpose']),
       notes: serializer.fromJson<String?>(json['notes']),
+      specialId: serializer.fromJson<String?>(json['specialId']),
     );
   }
   @override
@@ -11431,6 +11453,7 @@ class Investment extends DataClass implements Insertable<Investment> {
       'linkedBankAccount': serializer.toJson<String?>(linkedBankAccount),
       'purpose': serializer.toJson<String?>(purpose),
       'notes': serializer.toJson<String?>(notes),
+      'specialId': serializer.toJson<String?>(specialId),
     };
   }
 
@@ -11451,7 +11474,8 @@ class Investment extends DataClass implements Insertable<Investment> {
           Value<String?> linkedBankName = const Value.absent(),
           Value<String?> linkedBankAccount = const Value.absent(),
           Value<String?> purpose = const Value.absent(),
-          Value<String?> notes = const Value.absent()}) =>
+          Value<String?> notes = const Value.absent(),
+          Value<String?> specialId = const Value.absent()}) =>
       Investment(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -11476,6 +11500,7 @@ class Investment extends DataClass implements Insertable<Investment> {
             : this.linkedBankAccount,
         purpose: purpose.present ? purpose.value : this.purpose,
         notes: notes.present ? notes.value : this.notes,
+        specialId: specialId.present ? specialId.value : this.specialId,
       );
   Investment copyWithCompanion(InvestmentsCompanion data) {
     return Investment(
@@ -11508,6 +11533,7 @@ class Investment extends DataClass implements Insertable<Investment> {
           : this.linkedBankAccount,
       purpose: data.purpose.present ? data.purpose.value : this.purpose,
       notes: data.notes.present ? data.notes.value : this.notes,
+      specialId: data.specialId.present ? data.specialId.value : this.specialId,
     );
   }
 
@@ -11530,7 +11556,8 @@ class Investment extends DataClass implements Insertable<Investment> {
           ..write('linkedBankName: $linkedBankName, ')
           ..write('linkedBankAccount: $linkedBankAccount, ')
           ..write('purpose: $purpose, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('specialId: $specialId')
           ..write(')'))
         .toString();
   }
@@ -11553,7 +11580,8 @@ class Investment extends DataClass implements Insertable<Investment> {
       linkedBankName,
       linkedBankAccount,
       purpose,
-      notes);
+      notes,
+      specialId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -11574,7 +11602,8 @@ class Investment extends DataClass implements Insertable<Investment> {
           other.linkedBankName == this.linkedBankName &&
           other.linkedBankAccount == this.linkedBankAccount &&
           other.purpose == this.purpose &&
-          other.notes == this.notes);
+          other.notes == this.notes &&
+          other.specialId == this.specialId);
 }
 
 class InvestmentsCompanion extends UpdateCompanion<Investment> {
@@ -11595,6 +11624,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
   final Value<String?> linkedBankAccount;
   final Value<String?> purpose;
   final Value<String?> notes;
+  final Value<String?> specialId;
   const InvestmentsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -11613,6 +11643,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     this.linkedBankAccount = const Value.absent(),
     this.purpose = const Value.absent(),
     this.notes = const Value.absent(),
+    this.specialId = const Value.absent(),
   });
   InvestmentsCompanion.insert({
     this.id = const Value.absent(),
@@ -11632,6 +11663,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     this.linkedBankAccount = const Value.absent(),
     this.purpose = const Value.absent(),
     this.notes = const Value.absent(),
+    this.specialId = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
         providerName = Value(providerName),
@@ -11654,6 +11686,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     Expression<String>? linkedBankAccount,
     Expression<String>? purpose,
     Expression<String>? notes,
+    Expression<String>? specialId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -11673,6 +11706,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       if (linkedBankAccount != null) 'linked_bank_account': linkedBankAccount,
       if (purpose != null) 'purpose': purpose,
       if (notes != null) 'notes': notes,
+      if (specialId != null) 'special_id': specialId,
     });
   }
 
@@ -11693,7 +11727,8 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       Value<String?>? linkedBankName,
       Value<String?>? linkedBankAccount,
       Value<String?>? purpose,
-      Value<String?>? notes}) {
+      Value<String?>? notes,
+      Value<String?>? specialId}) {
     return InvestmentsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
@@ -11712,6 +11747,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       linkedBankAccount: linkedBankAccount ?? this.linkedBankAccount,
       purpose: purpose ?? this.purpose,
       notes: notes ?? this.notes,
+      specialId: specialId ?? this.specialId,
     );
   }
 
@@ -11769,6 +11805,9 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (specialId.present) {
+      map['special_id'] = Variable<String>(specialId.value);
+    }
     return map;
   }
 
@@ -11791,7 +11830,8 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
           ..write('linkedBankName: $linkedBankName, ')
           ..write('linkedBankAccount: $linkedBankAccount, ')
           ..write('purpose: $purpose, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('specialId: $specialId')
           ..write(')'))
         .toString();
   }
@@ -18280,6 +18320,7 @@ typedef $$InvestmentsTableCreateCompanionBuilder = InvestmentsCompanion
   Value<String?> linkedBankAccount,
   Value<String?> purpose,
   Value<String?> notes,
+  Value<String?> specialId,
 });
 typedef $$InvestmentsTableUpdateCompanionBuilder = InvestmentsCompanion
     Function({
@@ -18300,6 +18341,7 @@ typedef $$InvestmentsTableUpdateCompanionBuilder = InvestmentsCompanion
   Value<String?> linkedBankAccount,
   Value<String?> purpose,
   Value<String?> notes,
+  Value<String?> specialId,
 });
 
 final class $$InvestmentsTableReferences
@@ -18390,6 +18432,9 @@ class $$InvestmentsTableFilterComposer
   ColumnFilters<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get specialId => $composableBuilder(
+      column: $table.specialId, builder: (column) => ColumnFilters(column));
+
   Expression<bool> investmentTransactionsRefs(
       Expression<bool> Function($$InvestmentTransactionsTableFilterComposer f)
           f) {
@@ -18478,6 +18523,9 @@ class $$InvestmentsTableOrderingComposer
 
   ColumnOrderings<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get specialId => $composableBuilder(
+      column: $table.specialId, builder: (column) => ColumnOrderings(column));
 }
 
 class $$InvestmentsTableAnnotationComposer
@@ -18539,6 +18587,9 @@ class $$InvestmentsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get specialId =>
+      $composableBuilder(column: $table.specialId, builder: (column) => column);
 
   Expression<T> investmentTransactionsRefs<T extends Object>(
       Expression<T> Function($$InvestmentTransactionsTableAnnotationComposer a)
@@ -18604,6 +18655,7 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             Value<String?> linkedBankAccount = const Value.absent(),
             Value<String?> purpose = const Value.absent(),
             Value<String?> notes = const Value.absent(),
+            Value<String?> specialId = const Value.absent(),
           }) =>
               InvestmentsCompanion(
             id: id,
@@ -18623,6 +18675,7 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             linkedBankAccount: linkedBankAccount,
             purpose: purpose,
             notes: notes,
+            specialId: specialId,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -18642,6 +18695,7 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             Value<String?> linkedBankAccount = const Value.absent(),
             Value<String?> purpose = const Value.absent(),
             Value<String?> notes = const Value.absent(),
+            Value<String?> specialId = const Value.absent(),
           }) =>
               InvestmentsCompanion.insert(
             id: id,
@@ -18661,6 +18715,7 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             linkedBankAccount: linkedBankAccount,
             purpose: purpose,
             notes: notes,
+            specialId: specialId,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
