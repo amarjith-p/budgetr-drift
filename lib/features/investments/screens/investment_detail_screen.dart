@@ -10,6 +10,9 @@ import 'package:budget/features/investments/services/portfolio_service.dart';
 import 'package:budget/features/investments/widgets/investment_growth_chart.dart';
 import 'package:budget/features/investments/widgets/investment_history_list.dart';
 import 'package:budget/features/investments/widgets/log_transaction_sheet.dart';
+// [NEW IMPORTS]
+import 'package:budget/features/investments/widgets/income/passive_income_card.dart';
+import 'package:budget/features/investments/widgets/income/passive_income_history_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -51,7 +54,26 @@ class InvestmentDetailScreen extends StatelessWidget {
                             .toList();
                         if (matches.isEmpty) return const SizedBox.shrink();
 
-                        return InvestmentHeaderCard(investment: matches.first);
+                        final investment = matches.first;
+
+                        return Column(
+                          children: [
+                            InvestmentHeaderCard(investment: investment),
+
+                            const SizedBox(height: 16),
+
+                            // [NEW] Passive Income Card Integration
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: PassiveIncomeCard(
+                                investmentId: investmentId,
+                                totalInvested: investment.totalInvestedAmount,
+                                onTap: () => _showPassiveIncomeHistory(context),
+                              ),
+                            ),
+                          ],
+                        );
                       },
                     ),
 
@@ -104,6 +126,16 @@ class InvestmentDetailScreen extends StatelessWidget {
         ),
       ),
       bottomSheet: _buildBottomActions(context),
+    );
+  }
+
+  // [NEW] Show the Passive Income History Sheet
+  void _showPassiveIncomeHistory(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => PassiveIncomeHistorySheet(investmentId: investmentId),
     );
   }
 
@@ -170,38 +202,6 @@ class InvestmentDetailScreen extends StatelessWidget {
   }
 
   Future<void> _handleDelete(BuildContext context) async {
-    // final confirm = await showDialog<bool>(
-    //   context: context,
-    //   builder: (ctx) => AlertDialog(
-    //     backgroundColor: const Color(0xFF1B263B),
-    //     title:
-    //         const Text("Delete Asset?", style: TextStyle(color: Colors.white)),
-    //     content: const Text(
-    //         "This will permanently delete this investment and all its transaction history.",
-    //         style: TextStyle(color: Colors.white70)),
-    //     actions: [
-    //       TextButton(
-    //           onPressed: () => Navigator.pop(ctx, false),
-    //           child: const Text("Cancel",
-    //               style: TextStyle(color: Colors.white54))),
-    //       TextButton(
-    //           onPressed: () => Navigator.pop(ctx, true),
-    //           child: const Text("Delete",
-    //               style: TextStyle(
-    //                   color: Colors.redAccent, fontWeight: FontWeight.bold))),
-    //     ],
-    //   ),
-    // );
-
-    // if (confirm == true && context.mounted) {
-    //   await GetIt.I<PortfolioService>().deleteInvestment(investmentId);
-    //   if (context.mounted) {
-    //     Navigator.pop(context);
-    //     ScaffoldMessenger.of(context)
-    //         .showSnackBar(const SnackBar(content: Text("Investment deleted")));
-    //   }
-    // }
-
     showStatusSheet(
       context: context,
       title: "Delete Asset ?",
@@ -269,7 +269,7 @@ class InvestmentDetailScreen extends StatelessWidget {
   }
 }
 
-// --- NEW HEADER WIDGET WITH CHART TOGGLE ---
+// --- HEADER WIDGET (Unchanged but included for context) ---
 
 class InvestmentHeaderCard extends StatefulWidget {
   final InvestmentDto investment;
@@ -295,7 +295,6 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // Header Row: Label + Toggles
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -310,7 +309,6 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
               ),
               Row(
                 children: [
-                  // Chart Toggle
                   GestureDetector(
                     onTap: () => setState(() => _showChart = !_showChart),
                     child: Container(
@@ -329,7 +327,6 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Info Icon
                   GestureDetector(
                     onTap: () => _showInfoSheet(context, investment),
                     child: Container(
@@ -349,10 +346,7 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
               )
             ],
           ),
-
           const SizedBox(height: 16),
-
-          // Content Switcher
           AnimatedCrossFade(
             firstChild: _buildStatsView(investment, color, isPositive),
             secondChild: _buildChartView(),
@@ -404,19 +398,16 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
                 margin: const EdgeInsets.symmetric(horizontal: 24)),
             _statItem("START DATE",
                 "${investment.startDate.day}/${investment.startDate.month}/${investment.startDate.year}"),
-
-            // Vertical Divider
             Container(
                 width: 1,
                 height: 24,
                 color: Colors.white10,
                 margin: const EdgeInsets.symmetric(horizontal: 24)),
-            // [NEW] XIRR Display
             _statItem(
               "XIRR",
               investment.xirr != null
                   ? "${investment.xirr!.toStringAsFixed(2)}%"
-                  : "N/A", // XIRR usually stays white or styled differently
+                  : "N/A",
             ),
           ],
         )
@@ -424,7 +415,6 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
     );
   }
 
-  // [UPDATED] Removed Fixed Size Constraint
   Widget _buildChartView() {
     return StreamBuilder<List<InvestmentLogDto>>(
       stream: GetIt.I<PortfolioService>()
@@ -444,7 +434,6 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
                   child: Text("Need more data for chart",
                       style: TextStyle(color: Colors.white38))));
         }
-        // [UPDATED] Passed embedded: true to remove internal GlassCard
         return InvestmentGrowthChart(logs: snapshot.data!, embedded: true);
       },
     );
