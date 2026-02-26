@@ -110,7 +110,7 @@ class InvestmentHistoryList extends StatelessWidget {
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 14,
                         ),
                       ),
                       Text(
@@ -119,6 +119,14 @@ class InvestmentHistoryList extends StatelessWidget {
                           color: Colors.white54,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('yyyy').format(log.date),
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 7,
+                          fontWeight: FontWeight.normal,
                         ),
                       ),
                     ],

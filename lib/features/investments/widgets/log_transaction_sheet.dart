@@ -11,7 +11,7 @@ enum LogType { invested, valueUpdate }
 class LogTransactionSheet extends StatefulWidget {
   final int investmentId;
   final LogType initialType;
-  final InvestmentLogDto? logToEdit; // [NEW] For Edit Mode
+  final InvestmentLogDto? logToEdit;
 
   const LogTransactionSheet({
     super.key,
@@ -43,11 +43,12 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
 
       if (log.type == 'valueUpdate') {
         _type = LogType.valueUpdate;
+        // For value updates, current value is the snapshot
         _amountController.text = log.currentValue.abs().toString();
       } else {
         _type = LogType.invested;
+        // For invested/withdrawn, we look at amountInvested
         _amountController.text = log.amountInvested.abs().toString();
-        // If amount is negative, it was a withdrawal
         _isWithdrawal = log.amountInvested < 0 || log.type == 'withdrawn';
       }
     } else {
@@ -161,8 +162,7 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.1)),
               border: InputBorder.none,
             ),
-            autofocus:
-                !_isEditMode, // Don't autofocus on edit to avoid jarring jump
+            autofocus: !_isEditMode,
           ),
           const SizedBox(height: 24),
           InkWell(
@@ -302,24 +302,29 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
 
     try {
       if (_isEditMode) {
-        // [NEW] Edit Logic
+        // Edit Mode: Update parameters
         await service.updateLog(
-            widget.logToEdit!.id,
-            amount,
-            _selectedDate,
-            _isWithdrawal,
-            _type == LogType.invested
-                ? (_isWithdrawal ? 'withdrawn' : 'invested')
-                : 'valueUpdate');
+          widget.logToEdit!.id,
+          amount,
+          _selectedDate,
+          _isWithdrawal,
+          _type == LogType.invested ? 'invested' : 'valueUpdate',
+        );
       } else {
-        // Create Logic
+        // Create Mode
         if (_type == LogType.invested) {
           await service.logInvestmentTransaction(
-              widget.investmentId, amount, _selectedDate,
-              isWithdrawal: _isWithdrawal);
+            widget.investmentId,
+            amount,
+            _selectedDate,
+            isWithdrawal: _isWithdrawal,
+          );
         } else {
           await service.logValueUpdate(
-              widget.investmentId, amount, _selectedDate);
+            widget.investmentId,
+            amount,
+            _selectedDate,
+          );
         }
       }
       if (mounted) Navigator.pop(context);
