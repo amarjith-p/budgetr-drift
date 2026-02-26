@@ -1,4 +1,5 @@
 import 'package:budget/core/design/budgetr_colors.dart';
+import 'package:budget/core/widgets/status_bottom_sheet.dart'; // [Imported]
 import 'package:budget/features/investments/models/investment_log_dto.dart';
 import 'package:budget/features/investments/services/portfolio_service.dart';
 import 'package:budget/features/investments/widgets/log_transaction_sheet.dart';
@@ -55,45 +56,21 @@ class InvestmentHistoryList extends StatelessWidget {
           confirmDismiss: (direction) async {
             if (direction == DismissDirection.endToStart) {
               // DELETE ACTION
-              return await showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  backgroundColor: const Color(0xFF1B263B),
-                  title: const Text("Delete Log?",
-                      style: TextStyle(color: Colors.white)),
-                  content: const Text(
-                    "This will remove this transaction record. Calculations will be updated.",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text("Cancel",
-                          style: TextStyle(color: Colors.white54)),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text("Delete",
-                          style: TextStyle(color: Colors.redAccent)),
-                    ),
-                  ],
-                ),
-              );
+              _showDeleteSheet(context, log.id);
+              // Return false so the item doesn't vanish instantly.
+              // It will vanish when the Stream updates after DB deletion.
+              return false;
             } else {
               // EDIT ACTION
               _showEditSheet(context, log);
-              return false; // Don't dismiss the row
+              return false; // Don't dismiss
             }
           },
-          onDismissed: (direction) {
-            if (direction == DismissDirection.endToStart) {
-              GetIt.I<PortfolioService>().deleteTransaction(log.id);
-            }
-          },
+          // onDismissed is not needed for Delete anymore as the Stream handles the UI update
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.transparent, // Needed for dismissal visual
+              color: Colors.transparent,
               border: Border(
                   bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
             ),
@@ -202,6 +179,24 @@ class InvestmentHistoryList extends StatelessWidget {
             ),
           ),
         );
+      },
+    );
+  }
+
+  void _showDeleteSheet(BuildContext context, int transactionId) {
+    showStatusSheet(
+      context: context,
+      title: "Delete Record?",
+      message:
+          "This will remove this transaction and recalculate your portfolio balance.",
+      icon: Icons.delete_forever_rounded,
+      color: Colors.redAccent,
+      buttonText: "Delete",
+      cancelButtonText: "Cancel",
+      onCancel: () {}, // Just closes sheet
+      onDismiss: () async {
+        // Perform deletion
+        await GetIt.I<PortfolioService>().deleteTransaction(transactionId);
       },
     );
   }

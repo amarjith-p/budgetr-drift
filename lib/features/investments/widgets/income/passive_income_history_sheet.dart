@@ -1,5 +1,7 @@
-import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:budget/core/database/app_database.dart';
+import 'package:budget/core/design/budgetr_colors.dart';
+import 'package:budget/core/widgets/status_bottom_sheet.dart'; // [Imported]
+import 'package:budget/features/investments/database/passive_income_tables.dart'; // [Imported for Type]
 import 'package:budget/features/investments/services/passive_income_service.dart';
 import 'package:budget/features/investments/widgets/income/passive_income_sheet.dart';
 import 'package:flutter/material.dart';
@@ -73,16 +75,25 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                     final log = snapshot.data![index];
                     return Dismissible(
                       key: ValueKey(log.id),
-                      direction: DismissDirection.endToStart,
+                      direction: DismissDirection.endToStart, // Swipe Left only
+                      // --- DELETE BACKGROUND ---
                       background: Container(
                         alignment: Alignment.centerRight,
                         padding: const EdgeInsets.only(right: 20),
-                        color: Colors.redAccent.withOpacity(0.2),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child:
                             const Icon(Icons.delete, color: Colors.redAccent),
                       ),
-                      onDismissed: (_) {
-                        PassiveIncomeService().deleteLog(log.id);
+                      // --- TWO STEP DELETE LOGIC ---
+                      confirmDismiss: (direction) async {
+                        // 1. Show Confirmation Sheet
+                        _showDeleteSheet(context, log.id);
+                        // 2. Return false so the item snaps back visually
+                        // The actual delete happens in the sheet callback
+                        return false;
                       },
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -142,6 +153,23 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showDeleteSheet(BuildContext context, int logId) {
+    showStatusSheet(
+      context: context,
+      title: "Delete Income?",
+      message: "This will remove this record from your history permanently.",
+      icon: Icons.delete_forever_rounded,
+      color: Colors.redAccent,
+      buttonText: "Delete",
+      cancelButtonText: "Cancel",
+      onCancel: () {}, // Dismisses sheet, item snaps back in list
+      onDismiss: () async {
+        // Perform the actual delete
+        await PassiveIncomeService().deleteLog(logId);
+      },
     );
   }
 }
