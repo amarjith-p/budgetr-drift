@@ -77,7 +77,7 @@ class InvestmentDetailScreen extends StatelessWidget {
                       },
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
 
                     // 2. History Section Title
                     const Padding(

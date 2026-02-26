@@ -1,10 +1,11 @@
 import 'package:budget/core/database/app_database.dart';
 import 'package:budget/core/design/budgetr_colors.dart';
-import 'package:budget/core/widgets/status_bottom_sheet.dart'; // [Imported]
-import 'package:budget/features/investments/database/passive_income_tables.dart'; // [Imported for Type]
+import 'package:budget/core/widgets/status_bottom_sheet.dart';
+import 'package:budget/features/investments/database/passive_income_tables.dart';
 import 'package:budget/features/investments/services/passive_income_service.dart';
 import 'package:budget/features/investments/widgets/income/passive_income_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart'; // [Required]
 import 'package:intl/intl.dart';
 
 class PassiveIncomeHistorySheet extends StatelessWidget {
@@ -44,7 +45,6 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.add_circle, color: Colors.amber),
                   onPressed: () {
-                    // Open Add Sheet on top
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
@@ -68,85 +68,98 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: snapshot.data!.length,
-                  itemBuilder: (context, index) {
-                    final log = snapshot.data![index];
-                    return Dismissible(
-                      key: ValueKey(log.id),
-                      direction: DismissDirection.endToStart, // Swipe Left only
-                      // --- DELETE BACKGROUND ---
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child:
-                            const Icon(Icons.delete, color: Colors.redAccent),
-                      ),
-                      // --- TWO STEP DELETE LOGIC ---
-                      confirmDismiss: (direction) async {
-                        // 1. Show Confirmation Sheet
-                        _showDeleteSheet(context, log.id);
-                        // 2. Return false so the item snaps back visually
-                        // The actual delete happens in the sheet callback
-                        return false;
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
+                // Modern List with Auto-Close behavior
+                return SlidableAutoCloseBehavior(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: snapshot.data!.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 8), // Clean spacing
+                    itemBuilder: (context, index) {
+                      final log = snapshot.data![index];
+
+                      return Slidable(
+                        key: ValueKey(log.id),
+
+                        // --- SWIPE LEFT: DELETE ACTION ---
+                        endActionPane: ActionPane(
+                          motion: const ScrollMotion(),
+                          extentRatio: 0.25,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Text("₹",
-                                  style: TextStyle(
-                                      color: Colors.amber,
-                                      fontWeight: FontWeight.bold)),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    log.type.toUpperCase(),
-                                    style: TextStyle(
-                                        color: Colors.white.withOpacity(0.5),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  Text(
-                                    DateFormat('dd MMM yyyy').format(log.date),
-                                    style: const TextStyle(
-                                        color: Colors.white70, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              "+ ₹${log.amount.toStringAsFixed(0)}",
-                              style: const TextStyle(
-                                  color: Colors.amber,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16),
+                            SizedBox(
+                              width: 6,
+                            ), // Spacer to prevent accidental taps
+                            // Spacer to prevent accidental taps
+                            SlidableAction(
+                              onPressed: (_) =>
+                                  _showDeleteSheet(context, log.id),
+                              backgroundColor: const Color(0xFFFE4A49),
+                              foregroundColor: Colors.white,
+                              icon: Icons.delete_rounded,
+                              label: 'Delete',
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 8),
+                              borderRadius: BorderRadius.circular(
+                                  12), // Matches card style
                             ),
                           ],
                         ),
-                      ),
-                    );
-                  },
+
+                        // --- MAIN CONTENT ---
+                        child: Container(
+                          // Note: Margin removed here, handled by separatorBuilder for better sliding
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Text("₹",
+                                    style: TextStyle(
+                                        color: Colors.amber,
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      log.type.toUpperCase(),
+                                      style: TextStyle(
+                                          color: Colors.white.withOpacity(0.5),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      DateFormat('dd MMM yyyy')
+                                          .format(log.date),
+                                      style: const TextStyle(
+                                          color: Colors.white70, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                "+ ₹${log.amount.toStringAsFixed(0)}",
+                                style: const TextStyle(
+                                    color: Colors.amber,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -165,9 +178,8 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
       color: Colors.redAccent,
       buttonText: "Delete",
       cancelButtonText: "Cancel",
-      onCancel: () {}, // Dismisses sheet, item snaps back in list
+      onCancel: () {},
       onDismiss: () async {
-        // Perform the actual delete
         await PassiveIncomeService().deleteLog(logId);
       },
     );

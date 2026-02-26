@@ -77,10 +77,14 @@ class InvestmentHistoryList extends StatelessWidget {
             child: Row(
               children: [
                 // Date
-                SizedBox(
-                  width: 50,
+                Container(
+                  width: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(4),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         DateFormat('dd').format(log.date),
@@ -102,14 +106,14 @@ class InvestmentHistoryList extends StatelessWidget {
                         DateFormat('yyyy').format(log.date),
                         style: const TextStyle(
                           color: Colors.white54,
-                          fontSize: 7,
+                          fontSize: 8,
                           fontWeight: FontWeight.normal,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
 
                 // Description
                 Expanded(
