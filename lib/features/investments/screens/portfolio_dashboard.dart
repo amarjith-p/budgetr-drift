@@ -7,6 +7,10 @@ import 'package:budget/features/investments/screens/investment_detail_screen.dar
 import 'package:budget/features/investments/services/portfolio_service.dart';
 import 'package:budget/features/investments/widgets/portfolio_item_card.dart';
 import 'package:budget/features/investments/widgets/portfolio_summary_card.dart';
+
+// [NEW IMPORT]
+import 'package:budget/features/investments/widgets/portfolio_glass_folder.dart';
+
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -16,8 +20,11 @@ enum SortOption {
   returnHighToLow,
   nameAsc,
   dateNewest,
-  dateOldest,
+  dateOldest
 }
+
+// [NEW] Grouping Option
+enum GroupOption { none, type, specialId }
 
 class PortfolioDashboard extends StatefulWidget {
   const PortfolioDashboard({super.key});
@@ -27,14 +34,12 @@ class PortfolioDashboard extends StatefulWidget {
 }
 
 class _PortfolioDashboardState extends State<PortfolioDashboard> {
-  // Filter State
   InvestmentType? _filterType;
   String? _filterSpecialId;
 
-  // Sort State
   SortOption _sortOption = SortOption.dateNewest;
+  GroupOption _groupOption = GroupOption.none; // [NEW STATE]
 
-  // [NEW] Search State
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
 
@@ -46,7 +51,6 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    // Check if any filter is active
     final isFiltered = _filterType != null ||
         (_filterSpecialId != null && _filterSpecialId!.isNotEmpty);
 
@@ -63,7 +67,6 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                   : Icons.filter_alt_rounded,
               onTrailingPressed: () {
                 if (isFiltered) {
-                  // Clear filters
                   setState(() {
                     _filterType = null;
                     _filterSpecialId = null;
@@ -74,7 +77,7 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
               },
             ),
 
-            // [NEW] Search Bar
+            // Search Bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Container(
@@ -109,13 +112,12 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
               ),
             ),
 
-            // Filter Status Indicator
             if (isFiltered)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                 child: Row(
                   children: [
-                    Text("Filtered by: ",
+                    const Text("Filtered by: ",
                         style: TextStyle(color: Colors.white38, fontSize: 12)),
                     if (_filterType != null)
                       _buildFilterChip(_formatType(_filterType!)),
@@ -132,8 +134,7 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                      child: FuturisticLoader(label: "LOADING ASSETS..."),
-                    );
+                        child: FuturisticLoader(label: "LOADING ASSETS..."));
                   }
 
                   if (snapshot.hasError) {
@@ -144,9 +145,8 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
 
                   final allInvestments = snapshot.data ?? [];
 
-                  // 1. Apply Filters & Search
+                  // Apply Filters & Search
                   var investments = allInvestments.where((inv) {
-                    // Filter Logic
                     bool matchType =
                         _filterType == null || inv.type == _filterType;
                     bool matchId = _filterSpecialId == null ||
@@ -155,8 +155,6 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                             inv.specialId!
                                 .toLowerCase()
                                 .contains(_filterSpecialId!.toLowerCase()));
-
-                    // [NEW] Search Logic
                     bool matchSearch = _searchQuery.isEmpty ||
                         inv.name
                             .toLowerCase()
@@ -172,7 +170,7 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                     return matchType && matchId && matchSearch;
                   }).toList();
 
-                  // 2. Sorting Logic
+                  // Sorting Logic
                   investments.sort((a, b) {
                     switch (_sortOption) {
                       case SortOption.valueHighToLow:
@@ -192,7 +190,6 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                     }
                   });
 
-                  // Calculate Global Totals (Based on filtered view)
                   double globalInvested = 0;
                   double globalCurrent = 0;
                   double globalGain = 0;
@@ -212,7 +209,7 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 10),
                     children: [
-                      // 1. Global Summary
+                      // 1. Optimized Summary Card
                       PortfolioSummaryCard(
                         totalInvested: globalInvested,
                         currentValue: globalCurrent,
@@ -221,73 +218,38 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                         investments: investments,
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 8),
 
-                      // 2. List Header with Sort Button
+                      // [NEW] 2. The Command Bar (Group & Sort)
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Padding(
-                            padding: EdgeInsets.only(left: 4),
-                            child: Text(
-                              "YOUR INVESTMENTS",
-                              style: TextStyle(
-                                color: Colors.white38,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.5,
-                              ),
+                          Expanded(
+                            child: _buildCommandButton(
+                              icon: Icons.grid_view_rounded,
+                              label: "Group: ${_getGroupLabel(_groupOption)}",
+                              onTap: _showGroupSheet,
                             ),
                           ),
-                          GestureDetector(
-                            onTap: _showSortSheet,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.sort_rounded,
-                                      color: Colors.white70, size: 16),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _getSortLabel(_sortOption),
-                                    style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildCommandButton(
+                              icon: Icons.sort_rounded,
+                              label: "Sort: ${_getSortLabel(_sortOption)}",
+                              onTap: _showSortSheet,
                             ),
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 12),
 
-                      // 3. Investment List
+                      // 3. Investment List or Folders
                       if (investments.isEmpty)
                         _buildEmptyState()
                       else
-                        ...investments.map((inv) => PortfolioItemCard(
-                              investment: inv,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => InvestmentDetailScreen(
-                                      investmentId: inv.id!,
-                                      investmentName: inv.name,
-                                    ),
-                                  ),
-                                );
-                              },
-                            )),
+                        _buildAssetList(investments),
 
-                      const SizedBox(height: 80),
+                      const SizedBox(height: 60),
                     ],
                   );
                 },
@@ -308,6 +270,97 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
           );
         },
       ),
+    );
+  }
+
+  // --- NEW: Command Button UI ---
+  Widget _buildCommandButton(
+      {required IconData icon,
+      required String label,
+      required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white70, size: 14),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(Icons.arrow_drop_down, color: Colors.white38, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- NEW: List/Folder Rendering Logic ---
+  Widget _buildAssetList(List<InvestmentDto> investments) {
+    if (_groupOption == GroupOption.none) {
+      // Flat List (Legacy Mode)
+      return Column(
+        children: investments
+            .map((inv) => PortfolioItemCard(
+                  investment: inv,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => InvestmentDetailScreen(
+                          investmentId: inv.id!,
+                          investmentName: inv.name,
+                        ),
+                      ),
+                    );
+                  },
+                ))
+            .toList(),
+      );
+    }
+
+    // Grouping Mode
+    Map<String, List<InvestmentDto>> grouped = {};
+
+    for (var inv in investments) {
+      String key = "Uncategorized";
+
+      if (_groupOption == GroupOption.type) {
+        key = inv.displayType;
+      } else if (_groupOption == GroupOption.specialId) {
+        if (inv.specialId != null && inv.specialId!.isNotEmpty) {
+          key = inv.specialId!;
+        }
+      }
+
+      grouped.putIfAbsent(key, () => []).add(inv);
+    }
+
+    // Sort the keys alphabetically for consistent UI
+    final sortedKeys = grouped.keys.toList()..sort();
+
+    return Column(
+      children: sortedKeys.map((key) {
+        return PortfolioGlassFolder(
+          groupName: key,
+          investments: grouped[key]!,
+        );
+      }).toList(),
     );
   }
 
@@ -340,11 +393,10 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
               color: Colors.white.withOpacity(0.1)),
           const SizedBox(height: 16),
           Text(
-            _searchQuery.isNotEmpty
-                ? "No results found"
-                : "No investments found",
-            style: TextStyle(color: Colors.white.withOpacity(0.5)),
-          ),
+              _searchQuery.isNotEmpty
+                  ? "No results found"
+                  : "No investments found",
+              style: TextStyle(color: Colors.white.withOpacity(0.5))),
           const SizedBox(height: 8),
           Text(
             _searchQuery.isNotEmpty
@@ -430,6 +482,60 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
     );
   }
 
+  void _showGroupSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1B263B),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text("GROUP ASSETS BY",
+                    style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5)),
+              ),
+              ...GroupOption.values.map((option) => ListTile(
+                    leading: Icon(
+                      _groupOption == option
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: _groupOption == option
+                          ? BudgetrColors.accent
+                          : Colors.white24,
+                    ),
+                    title: Text(_getGroupLabel(option, full: true),
+                        style: const TextStyle(color: Colors.white)),
+                    onTap: () {
+                      setState(() => _groupOption = option);
+                      Navigator.pop(ctx);
+                    },
+                  )),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _getSortLabel(SortOption option) {
     switch (option) {
       case SortOption.valueHighToLow:
@@ -441,9 +547,20 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
       case SortOption.nameAsc:
         return "Name (A-Z)";
       case SortOption.dateNewest:
-        return "Date Added (Newest)";
+        return "Newest";
       case SortOption.dateOldest:
-        return "Date Added (Oldest)";
+        return "Oldest";
+    }
+  }
+
+  String _getGroupLabel(GroupOption option, {bool full = false}) {
+    switch (option) {
+      case GroupOption.none:
+        return full ? "None (Flat List)" : "None";
+      case GroupOption.type:
+        return full ? "Asset Type (Mutual Fund, Stock, etc)" : "Type";
+      case GroupOption.specialId:
+        return full ? "Special ID (Custom Tags)" : "Special ID";
     }
   }
 
@@ -645,7 +762,6 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
-  // [UPDATED] Proper formatting for Filter Sheet with word spacing
   String _formatType(InvestmentType type) {
     switch (type) {
       case InvestmentType.mutualFund:

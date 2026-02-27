@@ -148,7 +148,7 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                "+ ₹${log.amount.toStringAsFixed(0)}",
+                                "+ ₹${log.amount.toStringAsFixed(2)}",
                                 style: const TextStyle(
                                     color: Colors.amber,
                                     fontWeight: FontWeight.bold,

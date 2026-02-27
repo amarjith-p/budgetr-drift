@@ -9,7 +9,7 @@ class PortfolioSummaryCard extends StatefulWidget {
   final double currentValue;
   final double totalGainLoss;
   final double returnPercentage;
-  final List<InvestmentDto> investments; // [NEW] Required for Chart
+  final List<InvestmentDto> investments;
 
   const PortfolioSummaryCard({
     super.key,
@@ -25,7 +25,7 @@ class PortfolioSummaryCard extends StatefulWidget {
 }
 
 class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
-  bool _showChart = false; // State to toggle views
+  bool _showChart = false;
   int _touchedIndex = -1;
 
   @override
@@ -38,31 +38,26 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
 
     return GlassCard(
       borderRadius: 16,
+      // [OPTIMIZED] Reduced padding from 20 to 16
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // --- HEADER ROW (Always Visible) ---
+            // --- HEADER ROW ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _showChart ? "ASSET ALLOCATION" : "PORTFOLIO VALUE",
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ],
+                Text(
+                  _showChart ? "ASSET ALLOCATION" : "PORTFOLIO VALUE",
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                  ),
                 ),
                 Row(
                   children: [
-                    // [NEW] Toggle Button
                     GestureDetector(
                       onTap: () => setState(() => _showChart = !_showChart),
                       child: Container(
@@ -81,11 +76,11 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Return Pill (Only show in Stats mode or if space permits)
                     if (!_showChart)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                            horizontal: 8,
+                            vertical: 4), // [OPTIMIZED] Tighter pill
                         decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(20),
@@ -94,14 +89,14 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                         ),
                         child: Row(
                           children: [
-                            Icon(statusIcon, color: statusColor, size: 14),
+                            Icon(statusIcon, color: statusColor, size: 12),
                             const SizedBox(width: 4),
                             Text(
                               "${isPositive ? '+' : ''}${widget.returnPercentage.toStringAsFixed(2)}%",
                               style: TextStyle(
                                 color: statusColor,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                                fontSize: 11, // [OPTIMIZED]
                               ),
                             ),
                           ],
@@ -128,48 +123,45 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
     );
   }
 
-  // --- VIEW 1: The Original Stats View ---
+  // --- VIEW 1: Compact Stats View ---
   Widget _buildStatsView(Color statusColor, bool isPositive) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Main Value
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              "₹${widget.currentValue.toStringAsFixed(2)}",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        Text(
+          "₹${widget.currentValue.toStringAsFixed(2)}",
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 28, // [OPTIMIZED] Reduced from 32
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16), // [OPTIMIZED] Reduced from 24
 
-        // Divider
         Container(height: 1, color: Colors.white10),
-        const SizedBox(height: 16),
+
+        const SizedBox(height: 12), // [OPTIMIZED] Reduced from 16
 
         // Bottom Row
         Row(
           children: [
             Expanded(
               child: _buildMiniStat(
-                "INVESTED AMOUNT",
+                "INVESTED", // [OPTIMIZED] Shorter text
                 "₹${widget.totalInvested.toStringAsFixed(2)}",
                 Colors.white70,
               ),
             ),
-            Container(width: 1, height: 40, color: Colors.white10),
+            Container(
+                width: 1,
+                height: 30,
+                color: Colors.white10), // [OPTIMIZED] Height 40 -> 30
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(left: 20),
                 child: _buildMiniStat(
-                  "TOTAL GAIN/LOSS",
+                  "GAIN/LOSS", // [OPTIMIZED] Shorter text
                   "${isPositive ? '+' : ''}₹${widget.totalGainLoss.toStringAsFixed(2)}",
                   statusColor,
                 ),
@@ -181,16 +173,15 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
     );
   }
 
-  // --- VIEW 2: The New Modern Chart View ---
+  // --- VIEW 2: Compact Chart View ---
   Widget _buildChartView() {
     if (widget.investments.isEmpty) {
       return const SizedBox(
-          height: 150,
+          height: 120,
           child: Center(
               child: Text("No Data", style: TextStyle(color: Colors.white38))));
     }
 
-    // 1. Prepare Data
     final Map<String, double> dataMap = {};
     double totalValue = 0;
     for (var inv in widget.investments) {
@@ -203,7 +194,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
 
     if (totalValue == 0) {
       return const SizedBox(
-          height: 150,
+          height: 120,
           child: Center(
               child:
                   Text("Zero Value", style: TextStyle(color: Colors.white38))));
@@ -221,13 +212,11 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
       const Color(0xFFFF9F1C),
     ];
 
-    // 2. Render Chart Layout
     return Container(
-      height: 180, // Fixed height to match stats view roughly
-      padding: const EdgeInsets.only(top: 10),
+      height: 130, // [OPTIMIZED] Reduced height from 180 -> 130
+      padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: [
-          // Donut
           AspectRatio(
             aspectRatio: 1,
             child: PieChart(
@@ -248,10 +237,11 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                 ),
                 borderData: FlBorderData(show: false),
                 sectionsSpace: 2,
-                centerSpaceRadius: 25,
+                centerSpaceRadius: 20, // [OPTIMIZED] Smaller center
                 sections: List.generate(sortedKeys.length, (i) {
                   final isTouched = i == _touchedIndex;
-                  final radius = isTouched ? 45.0 : 35.0;
+                  final radius =
+                      isTouched ? 35.0 : 25.0; // [OPTIMIZED] Smaller radii
                   final key = sortedKeys[i];
                   final value = dataMap[key]!;
                   final percentage = (value / totalValue) * 100;
@@ -260,11 +250,11 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                     color: colors[i % colors.length],
                     value: value,
                     title: percentage > 5
-                        ? '${percentage.toStringAsFixed(2)}%'
+                        ? '${percentage.toStringAsFixed(0)}%'
                         : '',
                     radius: radius,
                     titleStyle: const TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.bold,
                         color: Colors.white),
                   );
@@ -273,7 +263,6 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
             ),
           ),
           const SizedBox(width: 16),
-          // Legend
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -281,25 +270,25 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: List.generate(sortedKeys.length, (i) {
                   final key = sortedKeys[i];
-                  // Show top 4 only to avoid overflow, or use ScrollView
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.only(
+                        bottom: 4), // [OPTIMIZED] Tighter spacing
                     child: Row(
                       children: [
                         Container(
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: colors[i % colors.length],
-                            shape: BoxShape.circle,
-                          ),
+                              color: colors[i % colors.length],
+                              shape: BoxShape.circle),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             key,
                             style: const TextStyle(
-                                color: Colors.white70, fontSize: 11),
+                                color: Colors.white70,
+                                fontSize: 10), // [OPTIMIZED]
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -323,17 +312,17 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
           label,
           style: const TextStyle(
             color: Colors.white30,
-            fontSize: 10,
+            fontSize: 9, // [OPTIMIZED]
             fontWeight: FontWeight.bold,
             letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
           value,
           style: TextStyle(
             color: valueColor,
-            fontSize: 16,
+            fontSize: 15, // [OPTIMIZED]
             fontWeight: FontWeight.w600,
           ),
         ),

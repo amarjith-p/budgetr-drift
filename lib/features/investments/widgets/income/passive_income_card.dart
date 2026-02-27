@@ -20,7 +20,7 @@ class PassiveIncomeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final service = PassiveIncomeService();
     final currency =
-        NumberFormat.currency(symbol: '₹', decimalDigits: 0, locale: "en_IN");
+        NumberFormat.currency(symbol: '₹', decimalDigits: 2, locale: "en_IN");
 
     return StreamBuilder<PassiveIncomeMetrics>(
       stream: service.watchMetrics(investmentId, totalInvested),

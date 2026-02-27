@@ -72,7 +72,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     _notesController = TextEditingController(text: item?.notes ?? '');
     _specialIdController = TextEditingController(text: item?.specialId ?? '');
     _targetAmountController = TextEditingController(
-        text: item?.targetAmount?.toStringAsFixed(0) ?? ''); // [NEW]
+        text: item?.targetAmount?.toStringAsFixed(2) ?? ''); // [NEW]
 
     if (_isEditMode) {
       _selectedType = item!.type;

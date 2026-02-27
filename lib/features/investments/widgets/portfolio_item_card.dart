@@ -107,7 +107,7 @@ class PortfolioItemCard extends StatelessWidget {
                 ],
               ),
             ),
-
+            const SizedBox(width: 4),
             // 3. Values
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
