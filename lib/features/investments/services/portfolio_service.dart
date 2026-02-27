@@ -10,13 +10,10 @@ class PortfolioService {
   final AppDatabase _db = AppDatabase.instance;
 
   // ===========================================================================
-  //  CORE: CHAIN RECALCULATION ENGINE (THE FIX)
+  //  CORE: CHAIN RECALCULATION ENGINE
   // ===========================================================================
 
-  /// This method is the "Brain". It fetches all transactions for an asset,
-  /// sorts them by date, and replays the math sequentially to fix any broken chains.
   Future<void> _recalculateChain(int investmentId) async {
-    // 1. Fetch all transactions for this investment, sorted by Date ASC
     final allTxns = await (_db.select(_db.investmentTransactions)
           ..where((t) => t.investmentId.equals(investmentId))
           ..orderBy([
@@ -33,27 +30,18 @@ class PortfolioService {
       for (var txn in allTxns) {
         final isValueUpdate = txn.transactionType == 'valueUpdate';
 
-        // --- STEP 1: Determine Values for this Step ---
         if (isValueUpdate) {
-          // For Value Updates, the User's input (stored in snapshot) IS the new running value.
-          // We trust the snapshot value for this specific row type.
           runningCurrentValue = txn.currentValueSnapshot;
         } else {
-          // For Investment/Withdrawal, the value shifts by the amount
-          // amountInvested is positive for Invest, negative for Withdraw
           runningCurrentValue += txn.amountInvested;
           runningTotalInvested += txn.amountInvested;
         }
 
-        // --- STEP 2: Calculate Derived Metrics ---
-        // Gain = Current Value - (Money Put In - Money Taken Out)
         final double currentGain = runningCurrentValue - runningTotalInvested;
 
-        // --- STEP 3: Update the Row with Corrected Math ---
         await (_db.update(_db.investmentTransactions)
               ..where((t) => t.id.equals(txn.id)))
             .write(InvestmentTransactionsCompanion(
-          // Ensure snapshot is synced (crucial if we just calculated it for 'invested' type)
           currentValueSnapshot: Value(runningCurrentValue),
           calculatedGainLoss: Value(currentGain),
         ));
@@ -62,10 +50,9 @@ class PortfolioService {
   }
 
   // ===========================================================================
-  //  WRITE OPERATIONS (Wrapped with Recalculation)
+  //  WRITE OPERATIONS
   // ===========================================================================
 
-  /// 1. Add a New Investment
   Future<void> addNewInvestment(InvestmentDto dto, double initialValue) async {
     await _db.transaction(() async {
       final id =
@@ -86,9 +73,9 @@ class PortfolioService {
                 purpose: Value(dto.purpose),
                 notes: Value(dto.notes),
                 specialId: Value(dto.specialId),
+                targetAmount: Value(dto.targetAmount), // [NEW]
               ));
 
-      // Add the initial transaction
       await _db
           .into(_db.investmentTransactions)
           .insert(InvestmentTransactionsCompanion.insert(
@@ -100,19 +87,16 @@ class PortfolioService {
             calculatedGainLoss: const Value(0.0),
           ));
 
-      // Ensure chain is perfect from start
       await _recalculateChain(id);
     });
   }
 
-  /// 2. Log SIP / Lumpsum OR Withdrawal
   Future<void> logInvestmentTransaction(
       int investmentId, double amount, DateTime date,
       {bool isWithdrawal = false}) async {
     final effectiveAmount = isWithdrawal ? -amount : amount;
     final String type = isWithdrawal ? 'withdrawn' : 'invested';
 
-    // Insert with placeholders; _recalculateChain will fix the snapshots/gain
     await _db
         .into(_db.investmentTransactions)
         .insert(InvestmentTransactionsCompanion.insert(
@@ -120,14 +104,13 @@ class PortfolioService {
           transactionDate: date,
           transactionType: type,
           amountInvested: Value(effectiveAmount),
-          currentValueSnapshot: 0.0, // Placeholder
-          calculatedGainLoss: const Value(0.0), // Placeholder
+          currentValueSnapshot: 0.0,
+          calculatedGainLoss: const Value(0.0),
         ));
 
     await _recalculateChain(investmentId);
   }
 
-  /// 3. Log Current Value (Mark-to-Market)
   Future<void> logValueUpdate(
       int investmentId, double newCurrentValue, DateTime date) async {
     await _db
@@ -137,14 +120,13 @@ class PortfolioService {
           transactionDate: date,
           transactionType: 'valueUpdate',
           amountInvested: const Value(0.0),
-          currentValueSnapshot: newCurrentValue, // User Input
-          calculatedGainLoss: const Value(0.0), // Placeholder
+          currentValueSnapshot: newCurrentValue,
+          calculatedGainLoss: const Value(0.0),
         ));
 
     await _recalculateChain(investmentId);
   }
 
-  /// 4. Update Investment Metadata
   Future<void> updateInvestment(InvestmentDto dto) async {
     if (dto.id == null) return;
     await _db.update(_db.investments).replace(InvestmentsCompanion(
@@ -166,10 +148,10 @@ class PortfolioService {
           purpose: Value(dto.purpose),
           notes: Value(dto.notes),
           specialId: Value(dto.specialId),
+          targetAmount: Value(dto.targetAmount), // [NEW]
         ));
   }
 
-  /// 5. Delete Investment (Cascading)
   Future<void> deleteInvestment(int id) async {
     await _db.transaction(() async {
       await (_db.delete(_db.investmentTransactions)
@@ -181,9 +163,7 @@ class PortfolioService {
 
   // --- SWIPE ACTIONS ---
 
-  /// 6. Delete a Single Transaction Log
   Future<void> deleteTransaction(int transactionId) async {
-    // 1. Get investment ID before deleting (to calc chain later)
     final txn = await (_db.select(_db.investmentTransactions)
           ..where((t) => t.id.equals(transactionId)))
         .getSingleOrNull();
@@ -193,12 +173,10 @@ class PortfolioService {
             ..where((t) => t.id.equals(transactionId)))
           .go();
 
-      // Fix the chain for remaining items
       await _recalculateChain(txn.investmentId);
     }
   }
 
-  /// 7. Update a specific Transaction Log
   Future<void> updateLog(int transactionId, double amount, DateTime date,
       bool isWithdrawal, String type) async {
     final txn = await (_db.select(_db.investmentTransactions)
@@ -208,17 +186,15 @@ class PortfolioService {
     if (txn == null) return;
 
     if (type == 'valueUpdate') {
-      // User is updating a Market Value entry
       await (_db.update(_db.investmentTransactions)
             ..where((t) => t.id.equals(transactionId)))
           .write(InvestmentTransactionsCompanion(
         transactionDate: Value(date),
         transactionType: Value(type),
-        amountInvested: const Value(0.0), // Value updates have 0 investment
-        currentValueSnapshot: Value(amount), // This is the new anchor
+        amountInvested: const Value(0.0),
+        currentValueSnapshot: Value(amount),
       ));
     } else {
-      // User is updating an Investment/Withdrawal
       final effectiveAmount = isWithdrawal ? -amount.abs() : amount.abs();
       await (_db.update(_db.investmentTransactions)
             ..where((t) => t.id.equals(transactionId)))
@@ -226,7 +202,6 @@ class PortfolioService {
         transactionDate: Value(date),
         transactionType: Value(isWithdrawal ? 'withdrawn' : 'invested'),
         amountInvested: Value(effectiveAmount),
-        // We do NOT set currentValueSnapshot here, recalculateChain will derive it
       ));
     }
 
@@ -261,22 +236,18 @@ class PortfolioService {
       double totalInvested = 0.0;
       List<XirrTransaction> xirrFlows = [];
 
-      // Calculate Totals based on Transaction History
       for (var t in transactions) {
         if (t.transactionType == 'invested' ||
             t.transactionType == 'withdrawn') {
           totalInvested += t.amountInvested;
-          // XIRR: Invested is negative cash flow (out of pocket)
           xirrFlows.add(XirrTransaction(t.transactionDate, -t.amountInvested));
         }
       }
 
-      // Sort by date to find the Latest Snapshot
       transactions
           .sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
       final latest = transactions.first;
 
-      // Add Current Value as positive cash flow for XIRR
       if (latest.currentValueSnapshot > 0) {
         xirrFlows
             .add(XirrTransaction(DateTime.now(), latest.currentValueSnapshot));
@@ -342,6 +313,7 @@ class PortfolioService {
       purpose: row.purpose,
       notes: row.notes,
       specialId: row.specialId,
+      targetAmount: row.targetAmount, // [NEW]
       totalInvestedAmount: totalInvested,
       currentMarketValue: currentVal,
       totalGainLoss: gain,

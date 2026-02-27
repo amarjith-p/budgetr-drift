@@ -34,6 +34,7 @@ class InvestmentDto {
 
   // [NEW]
   final String? specialId;
+  final double? targetAmount;
 
   // Dashboard Aggregates
   final double totalInvestedAmount;
@@ -60,7 +61,8 @@ class InvestmentDto {
     this.linkedBankAccount,
     this.purpose,
     this.notes,
-    this.specialId, // [NEW]
+    this.specialId,
+    this.targetAmount, // [NEW]
     this.totalInvestedAmount = 0.0,
     this.currentMarketValue = 0.0,
     this.totalGainLoss = 0.0,

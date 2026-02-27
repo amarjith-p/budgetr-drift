@@ -10,7 +10,6 @@ import 'package:budget/features/investments/services/portfolio_service.dart';
 import 'package:budget/features/investments/widgets/investment_growth_chart.dart';
 import 'package:budget/features/investments/widgets/investment_history_list.dart';
 import 'package:budget/features/investments/widgets/log_transaction_sheet.dart';
-// [NEW IMPORTS]
 import 'package:budget/features/investments/widgets/income/passive_income_card.dart';
 import 'package:budget/features/investments/widgets/income/passive_income_history_sheet.dart';
 import 'package:flutter/material.dart';
@@ -62,7 +61,7 @@ class InvestmentDetailScreen extends StatelessWidget {
 
                             const SizedBox(height: 16),
 
-                            // [NEW] Passive Income Card Integration
+                            // Passive Income Card Integration
                             Padding(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
@@ -129,7 +128,6 @@ class InvestmentDetailScreen extends StatelessWidget {
     );
   }
 
-  // [NEW] Show the Passive Income History Sheet
   void _showPassiveIncomeHistory(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -269,7 +267,7 @@ class InvestmentDetailScreen extends StatelessWidget {
   }
 }
 
-// --- HEADER WIDGET (Unchanged but included for context) ---
+// --- HEADER WIDGET ---
 
 class InvestmentHeaderCard extends StatefulWidget {
   final InvestmentDto investment;
@@ -463,7 +461,7 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: MediaQuery.of(context).size.height * 0.75, // Slightly taller
         decoration: const BoxDecoration(
           color: Color(0xFF1B263B),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -501,8 +499,16 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
             Expanded(
               child: ListView(
                 children: [
+                  if (item.specialId != null && item.specialId!.isNotEmpty)
+                    _buildInfoRow("Special ID", item.specialId!),
                   _buildInfoRow("Provider", item.providerName),
                   _buildInfoRow("Type", item.displayType),
+
+                  // [NEW] Display Target Amount and Special ID
+                  if (item.targetAmount != null && item.targetAmount! > 0)
+                    _buildInfoRow("Target Amount",
+                        "₹${NumberFormat('#,##,###.##').format(item.targetAmount)}"),
+
                   _buildInfoRow("Start Date",
                       DateFormat('dd MMM yyyy').format(item.startDate)),
                   if (item.endDate != null)

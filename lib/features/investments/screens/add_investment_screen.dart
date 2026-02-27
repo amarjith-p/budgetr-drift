@@ -36,10 +36,11 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
   late TextEditingController _bankAccountController;
   late TextEditingController _purposeController;
   late TextEditingController _notesController;
-  late TextEditingController _specialIdController; // [NEW]
+  late TextEditingController _specialIdController;
+  late TextEditingController _targetAmountController; // [NEW]
 
   // State
-  InvestmentType? _selectedType; // [UPDATED] Nullable for mandatory check
+  InvestmentType? _selectedType;
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
   bool _isLoading = false;
@@ -69,8 +70,9 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
         TextEditingController(text: item?.linkedBankAccount ?? '');
     _purposeController = TextEditingController(text: item?.purpose ?? '');
     _notesController = TextEditingController(text: item?.notes ?? '');
-    _specialIdController =
-        TextEditingController(text: item?.specialId ?? ''); // [NEW]
+    _specialIdController = TextEditingController(text: item?.specialId ?? '');
+    _targetAmountController = TextEditingController(
+        text: item?.targetAmount?.toStringAsFixed(0) ?? ''); // [NEW]
 
     if (_isEditMode) {
       _selectedType = item!.type;
@@ -95,6 +97,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     _purposeController.dispose();
     _notesController.dispose();
     _specialIdController.dispose();
+    _targetAmountController.dispose(); // [NEW]
     super.dispose();
   }
 
@@ -131,7 +134,6 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                               hint: "e.g. Nifty 50 Index Fund",
                             ),
                             const SizedBox(height: 16),
-                            // [UPDATED] Custom Selector
                             _buildTypeSelector(),
                             if (_selectedType == InvestmentType.others) ...[
                               const SizedBox(height: 16),
@@ -158,7 +160,6 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                               isOptional: true,
                             ),
                             const SizedBox(height: 16),
-                            // [NEW] Special ID Field
                             _buildTextField(
                               controller: _specialIdController,
                               label: "Special ID",
@@ -212,6 +213,18 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                               ),
                               const SizedBox(height: 16),
                             ],
+
+                            // [NEW] Target Amount Field
+                            _buildTextField(
+                              controller: _targetAmountController,
+                              label: "Target Amount",
+                              icon: Icons.track_changes_rounded,
+                              hint: "e.g. 1000000",
+                              isNumeric: true,
+                              isOptional: true,
+                            ),
+                            const SizedBox(height: 16),
+
                             _buildDatePicker(
                               label: "Start Date",
                               selectedDate: _startDate,
@@ -416,7 +429,6 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     );
   }
 
-  // [UPDATED] Custom Selector triggering BottomSheet
   Widget _buildTypeSelector() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,9 +470,6 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
             ),
           ),
         ),
-        // Simple error text if validation fails logic is separate,
-        // but Form validation works best with FormField.
-        // Implementing simple FormField wrapper for validation:
         FormField<InvestmentType>(
           validator: (val) {
             if (_selectedType == null) return "Please select a type";
@@ -633,7 +642,6 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
 
   Future<void> _saveInvestment() async {
     if (!_formKey.currentState!.validate()) return;
-    // Extra validation for type just in case
     if (_selectedType == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text("Please select an Investment Type"),
@@ -646,6 +654,10 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     try {
       final double? expectedReturn = _returnController.text.isNotEmpty
           ? double.tryParse(_returnController.text)
+          : null;
+
+      final double? targetAmount = _targetAmountController.text.isNotEmpty
+          ? double.tryParse(_targetAmountController.text)
           : null;
 
       final dto = InvestmentDto(
@@ -667,7 +679,8 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
         linkedBankAccount: _bankAccountController.text,
         purpose: _purposeController.text,
         notes: _notesController.text,
-        specialId: _specialIdController.text, // [NEW]
+        specialId: _specialIdController.text,
+        targetAmount: targetAmount, // [NEW]
       );
 
       if (_isEditMode) {

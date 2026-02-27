@@ -22,7 +22,7 @@ class Investments extends Table {
   TextColumn get linkedBankAccount => text().nullable()();
   TextColumn get purpose => text().nullable()();
   TextColumn get notes => text().nullable()();
-
+  RealColumn get targetAmount => real().nullable()();
   // [NEW] Special ID for filtering
   TextColumn get specialId => text().nullable()();
 }

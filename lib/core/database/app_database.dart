@@ -51,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
@@ -59,7 +59,7 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        if (from < 12) {
+        if (from < 13) {
           // If upgrading, we recreate the table to ensure new columns exist
           // Warning: This clears existing split data. Ideally, use addColumn for each new field.
           // For development speed, we drop and recreate.
@@ -75,6 +75,7 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(investments);
           await m.createTable(passiveIncomeLogs);
           await m.createTable(investmentTransactions);
+          await m.addColumn(investments, investments.targetAmount);
         }
         // if (from < 8) {
         //   // We wrap in try-catch in case the table didn't exist yet
