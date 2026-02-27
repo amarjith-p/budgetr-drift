@@ -1,8 +1,11 @@
 import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/features/investments/services/passive_income_service.dart';
+// [NEW IMPORT]
+import 'package:budget/features/investments/widgets/compact_calculator_keyboard.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:math_expressions/math_expressions.dart'; // [NEW IMPORT]
 
 class PassiveIncomeSheet extends StatefulWidget {
   final int investmentId;
@@ -22,6 +25,21 @@ class _PassiveIncomeSheetState extends State<PassiveIncomeSheet> {
   String _type = 'dividend'; // or 'interest'
   bool _isLoading = false;
 
+  // --- NEW: Evaluate Math ---
+  double? _evaluateFinalAmount() {
+    try {
+      String expression =
+          _amountController.text.replaceAll('×', '*').replaceAll('÷', '/');
+      if (expression.isEmpty) return null;
+      Parser p = Parser();
+      Expression exp = p.parse(expression);
+      ContextModel cm = ContextModel();
+      return exp.evaluate(EvaluationType.REAL, cm);
+    } catch (e) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -39,7 +57,6 @@ class _PassiveIncomeSheetState extends State<PassiveIncomeSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -52,7 +69,6 @@ class _PassiveIncomeSheetState extends State<PassiveIncomeSheet> {
                   letterSpacing: 1.5,
                 ),
               ),
-              // Type Toggle
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.05),
@@ -70,12 +86,15 @@ class _PassiveIncomeSheetState extends State<PassiveIncomeSheet> {
 
           const SizedBox(height: 32),
 
-          // Amount Input
           const Text("Amount Received",
               style: TextStyle(color: Colors.white70, fontSize: 13)),
+
+          // --- UPDATED TEXT FIELD ---
           TextField(
             controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            readOnly: true, // Prevents system keyboard
+            showCursor: true, // Keeps cursor active
+            autofocus: false,
             style: const TextStyle(
               color: Colors.amber,
               fontSize: 36,
@@ -89,12 +108,10 @@ class _PassiveIncomeSheetState extends State<PassiveIncomeSheet> {
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.1)),
               border: InputBorder.none,
             ),
-            autofocus: true,
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-          // Date Picker
           InkWell(
             onTap: _pickDate,
             borderRadius: BorderRadius.circular(12),
@@ -123,9 +140,13 @@ class _PassiveIncomeSheetState extends State<PassiveIncomeSheet> {
             ),
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
-          // Save Button
+          // --- NEW CUSTOM KEYBOARD ---
+          CompactCalculatorKeyboard(controller: _amountController),
+
+          const SizedBox(height: 24),
+
           SizedBox(
             width: double.infinity,
             height: 56,
@@ -196,8 +217,13 @@ class _PassiveIncomeSheetState extends State<PassiveIncomeSheet> {
   }
 
   Future<void> _save() async {
-    final amount = double.tryParse(_amountController.text);
-    if (amount == null || amount <= 0) return;
+    final amount = _evaluateFinalAmount();
+    if (amount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Please enter a valid mathematical expression")));
+      return;
+    }
+    if (amount <= 0) return;
 
     setState(() => _isLoading = true);
 

@@ -2,9 +2,12 @@ import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/features/investments/models/investment_log_dto.dart';
 import 'package:budget/features/investments/services/portfolio_service.dart';
+// [NEW IMPORT]
+import 'package:budget/features/investments/widgets/compact_calculator_keyboard.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:math_expressions/math_expressions.dart'; // [NEW IMPORT]
 
 enum LogType { invested, valueUpdate }
 
@@ -43,16 +46,29 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
 
       if (log.type == 'valueUpdate') {
         _type = LogType.valueUpdate;
-        // For value updates, current value is the snapshot
         _amountController.text = log.currentValue.abs().toString();
       } else {
         _type = LogType.invested;
-        // For invested/withdrawn, we look at amountInvested
         _amountController.text = log.amountInvested.abs().toString();
         _isWithdrawal = log.amountInvested < 0 || log.type == 'withdrawn';
       }
     } else {
       _type = widget.initialType;
+    }
+  }
+
+  // --- NEW: Handle Math Parsing on Save ---
+  double? _evaluateFinalAmount() {
+    try {
+      String expression =
+          _amountController.text.replaceAll('×', '*').replaceAll('÷', '/');
+      if (expression.isEmpty) return null;
+      Parser p = Parser();
+      Expression exp = p.parse(expression);
+      ContextModel cm = ContextModel();
+      return exp.evaluate(EvaluationType.REAL, cm);
+    } catch (e) {
+      return null; // Invalid math format
     }
   }
 
@@ -81,6 +97,7 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
         top: 24,
         left: 20,
         right: 20,
+        // Using safe area + minimal padding since system keyboard is hidden
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       decoration: const BoxDecoration(
@@ -146,9 +163,13 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
             style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
           const SizedBox(height: 8),
+
+          // --- UPDATED TEXT FIELD ---
           TextField(
             controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            readOnly: true, // Prevents system keyboard
+            showCursor: true, // Keeps cursor active
+            autofocus: false,
             style: TextStyle(
               color: accentColor,
               fontSize: 32,
@@ -162,9 +183,10 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.1)),
               border: InputBorder.none,
             ),
-            autofocus: !_isEditMode,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          // --- DATE PICKER ---
           InkWell(
             onTap: _pickDate,
             borderRadius: BorderRadius.circular(12),
@@ -192,7 +214,15 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
               ),
             ),
           ),
-          const SizedBox(height: 32),
+
+          const SizedBox(height: 24),
+
+          // --- NEW CUSTOM KEYBOARD ---
+          CompactCalculatorKeyboard(controller: _amountController),
+
+          const SizedBox(height: 24),
+
+          // --- SAVE BUTTON ---
           SizedBox(
             width: double.infinity,
             height: 56,
@@ -204,9 +234,7 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
               ),
               onPressed: _isLoading ? null : _saveLog,
               child: _isLoading
-                  ? const FuturisticLoader(
-                      size: 20,
-                    )
+                  ? const FuturisticLoader(size: 20)
                   : Text(
                       _isEditMode
                           ? "UPDATE RECORD"
@@ -294,15 +322,20 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
   }
 
   Future<void> _saveLog() async {
-    final amount = double.tryParse(_amountController.text);
-    if (amount == null || amount <= 0) return;
+    final amount = _evaluateFinalAmount();
+
+    if (amount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Please enter a valid mathematical expression")));
+      return;
+    }
+    if (amount <= 0) return;
 
     setState(() => _isLoading = true);
     final service = GetIt.I<PortfolioService>();
 
     try {
       if (_isEditMode) {
-        // Edit Mode: Update parameters
         await service.updateLog(
           widget.logToEdit!.id,
           amount,
@@ -311,7 +344,6 @@ class _LogTransactionSheetState extends State<LogTransactionSheet> {
           _type == LogType.invested ? 'invested' : 'valueUpdate',
         );
       } else {
-        // Create Mode
         if (_type == LogType.invested) {
           await service.logInvestmentTransaction(
             widget.investmentId,
