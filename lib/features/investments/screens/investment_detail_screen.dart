@@ -12,6 +12,12 @@ import 'package:budget/features/investments/widgets/investment_history_list.dart
 import 'package:budget/features/investments/widgets/log_transaction_sheet.dart';
 import 'package:budget/features/investments/widgets/income/passive_income_card.dart';
 import 'package:budget/features/investments/widgets/income/passive_income_history_sheet.dart';
+
+import 'package:budget/features/investments/utils/investment_analytics_engine.dart';
+import 'package:budget/features/investments/widgets/analytics/core_financial_stats.dart';
+import 'package:budget/features/investments/widgets/analytics/smart_insight_box.dart';
+import 'package:budget/features/investments/widgets/analytics/target_progress_bar.dart';
+
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -43,7 +49,7 @@ class InvestmentDetailScreen extends StatelessWidget {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    // 1. Smart Header (Stats + Chart Toggle)
+                    // 1. Smart Header & Feature Cards
                     StreamBuilder<List<InvestmentDto>>(
                       stream: GetIt.I<PortfolioService>().watchAllInvestments(),
                       builder: (context, snapshot) {
@@ -57,11 +63,12 @@ class InvestmentDetailScreen extends StatelessWidget {
 
                         return Column(
                           children: [
+                            // Main Stats & Chart
                             InvestmentHeaderCard(investment: investment),
 
                             const SizedBox(height: 16),
 
-                            // Passive Income Card Integration
+                            // Passive Income Card
                             Padding(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
@@ -76,7 +83,7 @@ class InvestmentDetailScreen extends StatelessWidget {
                       },
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 24),
 
                     // 2. History Section Title
                     const Padding(
@@ -267,7 +274,7 @@ class InvestmentDetailScreen extends StatelessWidget {
   }
 }
 
-// --- HEADER WIDGET ---
+// --- HEADER WIDGET (UPDATED TO FETCH LOGS) ---
 
 class InvestmentHeaderCard extends StatefulWidget {
   final InvestmentDto investment;
@@ -284,178 +291,139 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
   @override
   Widget build(BuildContext context) {
     final investment = widget.investment;
-    final isPositive = investment.totalGainLoss >= 0;
-    final color = isPositive ? BudgetrColors.success : BudgetrColors.error;
 
-    return GlassCard(
-      borderRadius: 16,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    // [NEW] Wrap the entire card in a StreamBuilder so the Cockpit gets access to history logs
+    return StreamBuilder<List<InvestmentLogDto>>(
+      stream:
+          GetIt.I<PortfolioService>().watchInvestmentDetails(investment.id!),
+      builder: (context, snapshot) {
+        final logs = snapshot.data ?? [];
+
+        return GlassCard(
+          borderRadius: 16,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(20),
+          child: Column(
             children: [
-              Text(
-                _showChart ? "GROWTH TREND" : "CURRENT VALUE",
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.4),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                ),
-              ),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  GestureDetector(
-                    onTap: () => setState(() => _showChart = !_showChart),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _showChart
-                            ? Icons.home_outlined
-                            : Icons.show_chart_rounded,
-                        color: Colors.white70,
-                        size: 16,
-                      ),
+                  Text(
+                    _showChart ? "GROWTH TREND" : "CURRENT VALUE",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.4),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.5,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  GestureDetector(
-                    onTap: () => _showInfoSheet(context, investment),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        shape: BoxShape.circle,
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => setState(() => _showChart = !_showChart),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _showChart
+                                ? Icons.home_outlined
+                                : Icons.show_chart_rounded,
+                            color: Colors.white70,
+                            size: 16,
+                          ),
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.info_outline_rounded,
-                        color: Colors.white54,
-                        size: 16,
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () => _showInfoSheet(context, investment),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.info_outline_rounded,
+                            color: Colors.white54,
+                            size: 16,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    ],
+                  )
                 ],
-              )
+              ),
+              const SizedBox(height: 16),
+              AnimatedCrossFade(
+                // Pass logs down into the Cockpit and Chart
+                firstChild: _buildCockpitView(investment, logs),
+                secondChild: _buildChartView(logs),
+                crossFadeState: _showChart
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 300),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
-          AnimatedCrossFade(
-            firstChild: _buildStatsView(investment, color, isPositive),
-            secondChild: _buildChartView(),
-            crossFadeState: _showChart
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsView(
-      InvestmentDto investment, Color color, bool isPositive) {
-    return Column(
-      children: [
-        Text(
-          "₹${investment.currentMarketValue.toStringAsFixed(2)}",
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            "${isPositive ? '+' : ''}₹${investment.totalGainLoss.toStringAsFixed(2)} (${investment.returnPercentage.toStringAsFixed(2)}%)",
-            style: TextStyle(
-                color: color, fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _statItem("INVESTED",
-                "₹${investment.totalInvestedAmount.toStringAsFixed(2)}"),
-            Container(
-                width: 1,
-                height: 24,
-                color: Colors.white10,
-                margin: const EdgeInsets.symmetric(horizontal: 24)),
-            _statItem("START DATE",
-                "${investment.startDate.day}/${investment.startDate.month}/${investment.startDate.year}"),
-            Container(
-                width: 1,
-                height: 24,
-                color: Colors.white10,
-                margin: const EdgeInsets.symmetric(horizontal: 24)),
-            _statItem(
-              "XIRR",
-              investment.xirr != null
-                  ? "${investment.xirr!.toStringAsFixed(2)}%"
-                  : "N/A",
-            ),
-          ],
-        )
-      ],
-    );
-  }
-
-  Widget _buildChartView() {
-    return StreamBuilder<List<InvestmentLogDto>>(
-      stream: GetIt.I<PortfolioService>()
-          .watchInvestmentDetails(widget.investment.id!),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SizedBox(
-              height: 150,
-              child: Center(
-                  child: Text("No Data",
-                      style: TextStyle(color: Colors.white38))));
-        }
-        if (snapshot.data!.length < 2) {
-          return const SizedBox(
-              height: 150,
-              child: Center(
-                  child: Text("Need more data for chart",
-                      style: TextStyle(color: Colors.white38))));
-        }
-        return InvestmentGrowthChart(logs: snapshot.data!, embedded: true);
+        );
       },
     );
   }
 
-  Widget _statItem(String label, String value) {
+  // --- NEW: COCKPIT VIEW COMPOSITION ---
+  Widget _buildCockpitView(
+      InvestmentDto investment, List<InvestmentLogDto> logs) {
+    // 1. Generate Intelligence (Now using Transaction Logs)
+    final insight = InvestmentAnalyticsEngine.analyze(investment, logs);
+
     return Column(
       children: [
-        Text(label,
-            style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 10,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-                fontWeight: FontWeight.w600)),
+        // Zone 1: Core Stats (Preserved Logic)
+        CoreFinancialStats(investment: investment),
+
+        // Zone 2 & 3 only show if Target is configured
+        if (investment.targetAmount != null &&
+            investment.targetAmount! > 0) ...[
+          const SizedBox(height: 32),
+
+          // Zone 2: Target Visualizer
+          TargetProgressBar(
+            current: investment.currentMarketValue,
+            target: investment.targetAmount!,
+            projected: insight.projectedValue,
+          ),
+
+          const SizedBox(height: 16),
+
+          // Zone 3: Advisor Card
+          SmartInsightBox(insight: insight),
+        ]
       ],
     );
   }
 
+  Widget _buildChartView(List<InvestmentLogDto> logs) {
+    if (logs.isEmpty) {
+      return const SizedBox(
+          height: 150,
+          child: Center(
+              child: Text("No Data", style: TextStyle(color: Colors.white38))));
+    }
+    if (logs.length < 2) {
+      return const SizedBox(
+          height: 150,
+          child: Center(
+              child: Text("Need more data for chart",
+                  style: TextStyle(color: Colors.white38))));
+    }
+    return InvestmentGrowthChart(logs: logs, embedded: true);
+  }
+
   void _showInfoSheet(BuildContext context, InvestmentDto item) {
+    // ... [UNCHANGED FROM PREVIOUS VERSION] ...
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -499,15 +467,15 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
             Expanded(
               child: ListView(
                 children: [
-                  if (item.specialId != null && item.specialId!.isNotEmpty)
-                    _buildInfoRow("Special ID", item.specialId!),
                   _buildInfoRow("Provider", item.providerName),
                   _buildInfoRow("Type", item.displayType),
 
-                  // [NEW] Display Target Amount and Special ID
+                  // Display Target Amount and Special ID
                   if (item.targetAmount != null && item.targetAmount! > 0)
                     _buildInfoRow("Target Amount",
                         "₹${NumberFormat('#,##,###.##').format(item.targetAmount)}"),
+                  if (item.specialId != null && item.specialId!.isNotEmpty)
+                    _buildInfoRow("Special ID", item.specialId!),
 
                   _buildInfoRow("Start Date",
                       DateFormat('dd MMM yyyy').format(item.startDate)),
