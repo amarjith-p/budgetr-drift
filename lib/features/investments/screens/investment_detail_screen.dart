@@ -472,8 +472,11 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
 
                   // Display Target Amount and Special ID
                   if (item.targetAmount != null && item.targetAmount! > 0)
-                    _buildInfoRow("Target Amount",
-                        "₹${NumberFormat('#,##,###.##').format(item.targetAmount)}"),
+                    _buildInfoRow(
+                        "Target Amount",
+                        NumberFormat.currency(
+                                symbol: '₹', decimalDigits: 2, locale: 'en_IN')
+                            .format(item.targetAmount!)),
                   if (item.specialId != null && item.specialId!.isNotEmpty)
                     _buildInfoRow("Special ID", item.specialId!),
 

@@ -18,7 +18,9 @@ class TargetProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (target <= 0) return const SizedBox.shrink();
 
-    final fmt = NumberFormat.compactCurrency(symbol: '₹', decimalDigits: 1);
+    // [UPDATED] Strict 2-decimal format
+    final fmt =
+        NumberFormat.currency(symbol: '₹', decimalDigits: 2, locale: "en_IN");
 
     final currentPct = (current / target).clamp(0.0, 1.0);
     double projPct = 0.0;
@@ -29,7 +31,6 @@ class TargetProgressBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Labels
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -47,20 +48,16 @@ class TargetProgressBar extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-
-        // Progress Bar Stack
         SizedBox(
           height: 8,
           child: Stack(
             children: [
-              // 1. Background
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              // 2. Projected (Dotted/Lighter)
               if (projected != null && projPct > currentPct)
                 FractionallySizedBox(
                   widthFactor: projPct,
@@ -71,7 +68,6 @@ class TargetProgressBar extends StatelessWidget {
                     ),
                   ),
                 ),
-              // 3. Current (Solid)
               FractionallySizedBox(
                 widthFactor: currentPct,
                 child: Container(
@@ -90,10 +86,7 @@ class TargetProgressBar extends StatelessWidget {
             ],
           ),
         ),
-
         const SizedBox(height: 8),
-
-        // Footer Labels
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [

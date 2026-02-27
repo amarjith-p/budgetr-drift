@@ -20,6 +20,10 @@ import 'package:budget/features/settings/services/settings_service.dart';
 import 'package:budget/features/dashboard/services/dashboard_service.dart';
 import 'package:budget/features/settlement/services/settlement_service.dart';
 
+// [NEW IMPORTS FOR CALCULATOR & MATH]
+import 'package:budget/features/investments/widgets/compact_calculator_keyboard.dart';
+import 'package:math_expressions/math_expressions.dart';
+
 class RecurringEditorScreen extends StatefulWidget {
   final RecurringPatternModel? pattern;
   const RecurringEditorScreen({super.key, this.pattern});
@@ -31,6 +35,7 @@ class RecurringEditorScreen extends StatefulWidget {
 class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _showCalculator = false; // [NEW] Controls Calculator Visibility
 
   late TextEditingController _nameCtrl;
   late TextEditingController _amountCtrl;
@@ -184,9 +189,6 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                 c.type == (_txnType == 'Transfer' ? 'Expense' : _txnType))
             .toList();
 
-        // CHANGED: Removed default account selection.
-        // _sourceId remains empty until user selects it.
-
         if (_category.isNotEmpty) {
           final match =
               _categories.where((c) => c.name == _category).firstOrNull;
@@ -231,8 +233,9 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
         newBuckets = List.from(_globalFallbackBuckets);
       }
 
-      if (!newBuckets.contains('Out of Bucket'))
+      if (!newBuckets.contains('Out of Bucket')) {
         newBuckets.add('Out of Bucket');
+      }
 
       setState(() {
         _isMonthSettled = false;
@@ -252,11 +255,12 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       _txnType = type;
       _category = '';
       _subCategory = '';
+      _showCalculator = false; // Hide calculator on tab change
       _loadData();
     });
   }
 
-  // --- NEW: Bottom Sheet Helper Function ---
+  // --- Bottom Sheet Helper Function ---
   void _showSelectionBottomSheet<T>({
     required BuildContext context,
     required String title,
@@ -267,6 +271,9 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     Widget Function(T)? customChildBuilder,
     bool Function(T)? isEnabled,
   }) {
+    // Hide calculator when opening any dropdown
+    setState(() => _showCalculator = false);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -353,60 +360,68 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xff0D1B2A),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(
-                child: FuturisticLoader(size: 80, label: "LOADING RULES..."))
-            : Column(
-                children: [
-                  ModernAppBar(
-                    title: widget.pattern == null ? "Create Rule" : "Edit Rule",
-                    subtitle: "RECURRING TRANSACTION",
-                    trailingIcon:
-                        widget.pattern != null ? Icons.delete_outline : null,
-                    onTrailingPressed: widget.pattern != null ? _delete : null,
-                  ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(12),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeaderInput(),
-                            const SizedBox(height: 12),
-                            _sectionHeader("CONFIGURATION"),
-                            _buildTypeSelector(),
-                            const SizedBox(height: 16),
-                            _buildAccountSelectors(),
-                            const SizedBox(height: 12),
-                            if (_txnType != 'Transfer') ...[
-                              _sectionHeader("DETAILS"),
-                              _buildCategoryBuckets(),
+    return GestureDetector(
+      // Tapping anywhere outside hides the calculator and keyboard
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        if (_showCalculator) setState(() => _showCalculator = false);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xff0D1B2A),
+        body: SafeArea(
+          child: _isLoading
+              ? const Center(
+                  child: FuturisticLoader(size: 80, label: "LOADING RULES..."))
+              : Column(
+                  children: [
+                    ModernAppBar(
+                      title:
+                          widget.pattern == null ? "Create Rule" : "Edit Rule",
+                      subtitle: "RECURRING TRANSACTION",
+                      trailingIcon:
+                          widget.pattern != null ? Icons.delete_outline : null,
+                      onTrailingPressed:
+                          widget.pattern != null ? _delete : null,
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(12),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeaderInput(),
                               const SizedBox(height: 12),
+                              _sectionHeader("CONFIGURATION"),
+                              _buildTypeSelector(),
+                              const SizedBox(height: 16),
+                              _buildAccountSelectors(),
+                              const SizedBox(height: 12),
+                              if (_txnType != 'Transfer') ...[
+                                _sectionHeader("DETAILS"),
+                                _buildCategoryBuckets(),
+                                const SizedBox(height: 12),
+                              ],
+                              _sectionHeader("SCHEDULE"),
+                              _buildFeatureRichSchedule(),
+                              const SizedBox(height: 12),
+                              _sectionHeader("ADVANCED"),
+                              _buildAdvancedSettings(),
+                              const SizedBox(height: 40),
                             ],
-                            _sectionHeader("SCHEDULE"),
-                            _buildFeatureRichSchedule(),
-                            const SizedBox(height: 12),
-                            _sectionHeader("ADVANCED"),
-                            _buildAdvancedSettings(),
-                            const SizedBox(height: 40),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  _buildSaveButton(),
-                ],
-              ),
+                    _buildSaveButton(),
+                  ],
+                ),
+        ),
       ),
     );
   }
 
-  // UPDATED METHOD TO USE BOTTOM SHEET
   Widget _labeledDropdown({
     required String label,
     required String value,
@@ -473,6 +488,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       child: Column(children: [
         TextFormField(
           controller: _websiteCtrl,
+          onTap: () => setState(() => _showCalculator = false), // Hide Calc
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
               labelText: "Service Website (Optional)",
@@ -505,8 +521,9 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
           value: _hasEndDate,
           onChanged: (v) {
             setState(() => _hasEndDate = v);
-            if (v && _endDate == null)
+            if (v && _endDate == null) {
               _endDate = DateTime.now().add(const Duration(days: 365));
+            }
           },
           activeColor: Colors.redAccent,
           contentPadding: EdgeInsets.zero,
@@ -514,6 +531,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
         if (_hasEndDate)
           InkWell(
               onTap: () async {
+                setState(() => _showCalculator = false); // Hide calc
                 final d = await showDatePicker(
                     context: context,
                     initialDate: _endDate ?? DateTime.now(),
@@ -569,7 +587,8 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                 _sourceType == 'Bank',
                 () => setState(() {
                       _sourceType = 'Bank';
-                      _sourceId = ''; // CHANGED: Reset to empty, user must pick
+                      _sourceId = '';
+                      _showCalculator = false;
                     })),
             const SizedBox(width: 10),
             _miniTab(
@@ -577,7 +596,8 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                 _sourceType == 'Credit',
                 () => setState(() {
                       _sourceType = 'Credit';
-                      _sourceId = ''; // CHANGED: Reset to empty, user must pick
+                      _sourceId = '';
+                      _showCalculator = false;
                     })),
           ]),
           const SizedBox(height: 10),
@@ -658,7 +678,6 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     );
   }
 
-  // UPDATED METHOD TO USE BOTTOM SHEET
   Widget _dropdown(
       {List<dynamic>? dataItems,
       List<DropdownMenuItem<String>>? customItems,
@@ -748,12 +767,12 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                         color: Colors.orangeAccent.withOpacity(0.3))),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.lock_clock,
+                    Icon(Icons.lock_clock,
                         color: Colors.orangeAccent, size: 16),
-                    const SizedBox(width: 8),
-                    const Expanded(
+                    SizedBox(width: 8),
+                    Expanded(
                       child: Text(
                         "Month Settled: Buckets restricted.",
                         style:
@@ -821,7 +840,12 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                         fontWeight: FontWeight.bold,
                         fontSize: 11),
                     onSelected: (val) {
-                      if (val) setState(() => _frequency = f);
+                      if (val) {
+                        setState(() {
+                          _frequency = f;
+                          _showCalculator = false;
+                        });
+                      }
                     },
                   ),
                 ),
@@ -846,6 +870,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                               color: Colors.white54),
                           onPressed: () => setState(() {
                                 if (_interval > 1) _interval--;
+                                _showCalculator = false;
                               })),
                       Text("$_interval",
                           style: const TextStyle(
@@ -855,7 +880,10 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                       IconButton(
                           icon: const Icon(Icons.add_circle_outline,
                               color: Colors.white54),
-                          onPressed: () => setState(() => _interval++))
+                          onPressed: () => setState(() {
+                                _interval++;
+                                _showCalculator = false;
+                              }))
                     ])
                   ])),
               Container(width: 1, height: 40, color: Colors.white10),
@@ -863,6 +891,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
               Expanded(
                   child: InkWell(
                       onTap: () async {
+                        setState(() => _showCalculator = false);
                         final t = await showTimePicker(
                             context: context,
                             initialTime: _time,
@@ -902,6 +931,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
             if (_scheduleType == 'Fixed')
               InkWell(
                   onTap: () async {
+                    setState(() => _showCalculator = false);
                     final d = await showDatePicker(
                         context: context,
                         initialDate: _startDate,
@@ -930,7 +960,6 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                   ]))
             else
               Row(children: [
-                // UPDATED: Smart Week Dropdown
                 Expanded(
                   child: InkWell(
                     onTap: () {
@@ -966,7 +995,6 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // UPDATED: Smart Day Dropdown
                 Expanded(
                   child: InkWell(
                     onTap: () {
@@ -1006,6 +1034,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
           ] else ...[
             InkWell(
                 onTap: () async {
+                  setState(() => _showCalculator = false);
                   final d = await showDatePicker(
                       context: context,
                       initialDate: _startDate,
@@ -1108,7 +1137,10 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                 activeColor: const Color(0xFF00B4D8),
                 onChanged: _isVariable
                     ? null
-                    : (v) => setState(() => _autoExecute = v))
+                    : (v) => setState(() {
+                          _autoExecute = v;
+                          _showCalculator = false;
+                        }))
           ]),
         ],
       ),
@@ -1119,7 +1151,10 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     final isSelected = _scheduleType == value;
     return Expanded(
         child: GestureDetector(
-            onTap: () => setState(() => _scheduleType = value),
+            onTap: () => setState(() {
+                  _scheduleType = value;
+                  _showCalculator = false;
+                }),
             child: Container(
                 alignment: Alignment.center,
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1153,6 +1188,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
         child: Column(children: [
           TextFormField(
               controller: _nameCtrl,
+              onTap: () => setState(() => _showCalculator = false), // Hide Calc
               style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -1173,7 +1209,10 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                           fontWeight: FontWeight.bold))
                   : TextFormField(
                       controller: _amountCtrl,
-                      keyboardType: TextInputType.number,
+                      readOnly: true, // Hide system keyboard
+                      showCursor: true,
+                      onTap: () =>
+                          setState(() => _showCalculator = true), // Show Calc
                       style: const TextStyle(
                           color: Color(0xFF00B4D8),
                           fontSize: 20,
@@ -1195,10 +1234,20 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
                   activeColor: Colors.orange,
                   onChanged: (v) => setState(() {
                         _isVariable = v;
-                        if (v) _amountCtrl.text = "0.00";
+                        if (v) {
+                          _amountCtrl.text = "0.00";
+                          _showCalculator = false;
+                        }
                       }))
             ])
-          ])
+          ]),
+          // --- NEW: Custom Calculator Injection ---
+          if (!_isVariable && _showCalculator) ...[
+            const SizedBox(height: 16),
+            const Divider(color: Colors.white10),
+            const SizedBox(height: 8),
+            CompactCalculatorKeyboard(controller: _amountCtrl),
+          ]
         ]));
   }
 
@@ -1308,10 +1357,35 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       }
     }
 
+    // --- NEW: BODMAS Mathematical Evaluation ---
+    double finalAmount = 0.0;
+    if (!_isVariable) {
+      try {
+        String expression =
+            _amountCtrl.text.replaceAll('×', '*').replaceAll('÷', '/');
+        if (expression.isNotEmpty) {
+          Parser p = Parser();
+          Expression exp = p.parse(expression);
+          ContextModel cm = ContextModel();
+          finalAmount = exp.evaluate(EvaluationType.REAL, cm);
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                "Please enter a valid mathematical expression for the amount")));
+        return;
+      }
+      if (finalAmount <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Amount must be greater than zero")));
+        return;
+      }
+    }
+
     final pattern = RecurringPatternModel(
       id: widget.pattern?.id ?? const Uuid().v4(),
       name: _nameCtrl.text,
-      amount: double.tryParse(_amountCtrl.text) ?? 0.0,
+      amount: finalAmount, // Updated to use mathematically evaluated amount
       type: _txnType,
       category: _category,
       subCategory: _subCategory,

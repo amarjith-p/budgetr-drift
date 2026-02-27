@@ -20,15 +20,13 @@ class AddInvestmentScreen extends StatefulWidget {
 class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
+  // --- Controllers ---
   late TextEditingController _nameController;
   late TextEditingController _providerController;
   late TextEditingController _websiteController;
   late TextEditingController _amountController;
   late TextEditingController _returnController;
   late TextEditingController _otherTypeController;
-
-  // Additional Info Controllers
   late TextEditingController _folioController;
   late TextEditingController _unitsController;
   late TextEditingController _brokerController;
@@ -37,14 +35,35 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
   late TextEditingController _purposeController;
   late TextEditingController _notesController;
   late TextEditingController _specialIdController;
-  late TextEditingController _targetAmountController; // [NEW]
+  late TextEditingController _targetAmountController;
 
-  // State
+  // --- Focus Nodes (For 'Next' Keyboard Action) ---
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _otherTypeFocus = FocusNode();
+  final FocusNode _providerFocus = FocusNode();
+  final FocusNode _websiteFocus = FocusNode();
+  final FocusNode _specialIdFocus = FocusNode();
+  final FocusNode _amountFocus = FocusNode();
+  final FocusNode _targetFocus = FocusNode();
+  final FocusNode _returnFocus = FocusNode();
+  final FocusNode _folioFocus = FocusNode();
+  final FocusNode _unitsFocus = FocusNode();
+  final FocusNode _brokerFocus = FocusNode();
+  final FocusNode _bankNameFocus = FocusNode();
+  final FocusNode _bankAccFocus = FocusNode();
+  final FocusNode _purposeFocus = FocusNode();
+  final FocusNode _notesFocus = FocusNode();
+
+  // --- State ---
   InvestmentType? _selectedType;
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
   bool _isLoading = false;
   bool _isEditMode = false;
+
+  // [NEW] Smart Warning State
+  bool _userDismissedWarning = false;
+  bool _isProjectionReady = false;
 
   @override
   void initState() {
@@ -60,7 +79,6 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     _returnController =
         TextEditingController(text: item?.expectedReturn?.toString() ?? '');
     _otherTypeController = TextEditingController(text: item?.subType ?? '');
-
     _folioController = TextEditingController(text: item?.folioNumber ?? '');
     _unitsController = TextEditingController(text: item?.units ?? '');
     _brokerController = TextEditingController(text: item?.brokerName ?? '');
@@ -72,17 +90,41 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     _notesController = TextEditingController(text: item?.notes ?? '');
     _specialIdController = TextEditingController(text: item?.specialId ?? '');
     _targetAmountController = TextEditingController(
-        text: item?.targetAmount?.toStringAsFixed(2) ?? ''); // [NEW]
+        text: item?.targetAmount?.toStringAsFixed(2) ?? '');
 
     if (_isEditMode) {
       _selectedType = item!.type;
       _startDate = item.startDate;
       _endDate = item.endDate;
     }
+
+    // [NEW] Attach listeners to instantly check if AI fields are filled
+    _targetAmountController.addListener(_checkProjectionStatus);
+    _returnController.addListener(_checkProjectionStatus);
+
+    // Initial check on load
+    _checkProjectionStatus();
+  }
+
+  // [NEW] Real-time logic to hide/show the warning
+  void _checkProjectionStatus() {
+    bool isReady = _targetAmountController.text.trim().isNotEmpty &&
+        _returnController.text.trim().isNotEmpty &&
+        _endDate != null;
+
+    // Only rebuild the UI if the state actually changes
+    if (isReady != _isProjectionReady) {
+      setState(() {
+        _isProjectionReady = isReady;
+      });
+    }
   }
 
   @override
   void dispose() {
+    _targetAmountController.removeListener(_checkProjectionStatus);
+    _returnController.removeListener(_checkProjectionStatus);
+
     _nameController.dispose();
     _providerController.dispose();
     _websiteController.dispose();
@@ -97,12 +139,32 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     _purposeController.dispose();
     _notesController.dispose();
     _specialIdController.dispose();
-    _targetAmountController.dispose(); // [NEW]
+    _targetAmountController.dispose();
+
+    _nameFocus.dispose();
+    _otherTypeFocus.dispose();
+    _providerFocus.dispose();
+    _websiteFocus.dispose();
+    _specialIdFocus.dispose();
+    _amountFocus.dispose();
+    _targetFocus.dispose();
+    _returnFocus.dispose();
+    _folioFocus.dispose();
+    _unitsFocus.dispose();
+    _brokerFocus.dispose();
+    _bankNameFocus.dispose();
+    _bankAccFocus.dispose();
+    _purposeFocus.dispose();
+    _notesFocus.dispose();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Show warning only if user hasn't dismissed it AND the fields aren't ready yet
+    final showWarningBox = !_userDismissedWarning && !_isProjectionReady;
+
     return Scaffold(
       backgroundColor: BudgetrColors.background,
       body: SafeArea(
@@ -114,21 +176,27 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Section 1: Basic Info
+                      // --- Section 1: Basic Info ---
                       _buildSectionHeader("BASIC DETAILS"),
                       GlassCard(
-                        borderRadius: 12,
-                        padding: const EdgeInsets.all(16),
+                        borderRadius: 16,
+                        padding: const EdgeInsets.all(20),
                         child: Column(
                           children: [
                             _buildTextField(
                               controller: _nameController,
+                              focusNode: _nameFocus,
+                              nextFocusNode:
+                                  _selectedType == InvestmentType.others
+                                      ? _otherTypeFocus
+                                      : _providerFocus,
                               label: "Investment Name",
                               icon: Icons.title,
                               hint: "e.g. Nifty 50 Index Fund",
@@ -139,6 +207,8 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                               const SizedBox(height: 16),
                               _buildTextField(
                                 controller: _otherTypeController,
+                                focusNode: _otherTypeFocus,
+                                nextFocusNode: _providerFocus,
                                 label: "Specify Type",
                                 icon: Icons.category,
                                 hint: "e.g. Crypto, Real Estate",
@@ -147,42 +217,54 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                             const SizedBox(height: 16),
                             _buildTextField(
                               controller: _providerController,
+                              focusNode: _providerFocus,
+                              nextFocusNode: _websiteFocus,
                               label: "Provider / Platform",
                               icon: Icons.business,
-                              hint: "e.g. Zerodha, Groww, SBI",
+                              hint: "e.g. HDFC Mutual Funds",
                             ),
                             const SizedBox(height: 16),
                             _buildTextField(
                               controller: _websiteController,
-                              label: "Provider Website (Optional)",
+                              focusNode: _websiteFocus,
+                              nextFocusNode: _specialIdFocus,
+                              label: "Provider Website",
                               icon: Icons.language,
-                              hint: "e.g. zerodha.com (for icon)",
+                              hint: "e.g. www.hdfcfund.com",
                               isOptional: true,
                             ),
                             const SizedBox(height: 16),
                             _buildTextField(
                               controller: _specialIdController,
-                              label: "Special ID",
+                              focusNode: _specialIdFocus,
+                              nextFocusNode:
+                                  _isEditMode ? _targetFocus : _amountFocus,
+                              label: "Special ID / Tag",
                               icon: Icons.tag,
-                              hint: "e.g. Group A, Personal, Retirement",
+                              hint: "e.g. Retirement",
                               isOptional: true,
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 32),
 
-                      // Section 2: Financials
-                      _buildSectionHeader("FINANCIALS & DATES"),
+                      // --- Section 2: Financials & AI Setup ---
+                      _buildSectionHeader("FINANCIALS & PROJECTIONS"),
+
+                      if (showWarningBox) _buildProjectionWarningBox(),
+
                       GlassCard(
-                        borderRadius: 12,
-                        padding: const EdgeInsets.all(16),
+                        borderRadius: 16,
+                        padding: const EdgeInsets.all(20),
                         child: Column(
                           children: [
                             if (!_isEditMode) ...[
                               _buildTextField(
                                 controller: _amountController,
-                                label: "Initial Amount (Current Value)",
+                                focusNode: _amountFocus,
+                                nextFocusNode: _targetFocus,
+                                label: "Initial Amount",
                                 icon: Icons.currency_rupee,
                                 hint: "0.00",
                                 isNumeric: true,
@@ -190,146 +272,170 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                               const SizedBox(height: 16),
                             ] else ...[
                               Container(
-                                padding: const EdgeInsets.all(12),
+                                padding: const EdgeInsets.all(16),
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.05),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.white10),
+                                  color: Colors.white.withOpacity(0.03),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.white.withOpacity(0.08)),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.lock,
-                                        size: 16, color: Colors.white38),
-                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.05),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                          Icons.lock_outline_rounded,
+                                          size: 16,
+                                          color: Colors.white54),
+                                    ),
+                                    const SizedBox(width: 12),
                                     const Expanded(
-                                        child: Text(
-                                            "Initial Amount cannot be edited. Use 'Log Transaction' to adjust value.",
-                                            style: TextStyle(
-                                                color: Colors.white38,
-                                                fontSize: 12))),
+                                      child: Text(
+                                        "Initial amount is locked. Use 'Log Transaction' on the dashboard to add or withdraw funds.",
+                                        style: TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 12,
+                                            height: 1.4),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
                               const SizedBox(height: 16),
                             ],
-
-                            // [NEW] Target Amount Field
                             _buildTextField(
                               controller: _targetAmountController,
+                              focusNode: _targetFocus,
+                              nextFocusNode: _returnFocus,
                               label: "Target Amount",
                               icon: Icons.track_changes_rounded,
-                              hint: "e.g. 1000000",
+                              hint: "e.g. 1000000.00",
                               isNumeric: true,
                               isOptional: true,
+                              isAiPowered: true,
                             ),
                             const SizedBox(height: 16),
-
                             _buildDatePicker(
                               label: "Start Date",
                               selectedDate: _startDate,
                               onTap: () => _pickDate(true),
                             ),
                             const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildTextField(
-                                    controller: _returnController,
-                                    label: "Exp. Return %",
-                                    icon: Icons.percent,
-                                    hint: "12",
-                                    isNumeric: true,
-                                    isOptional: true,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: _buildDatePicker(
-                                    label: "End Date",
-                                    selectedDate: _endDate,
-                                    isOptional: true,
-                                    onTap: () => _pickDate(false),
-                                  ),
-                                ),
-                              ],
+                            _buildDatePicker(
+                              label: "End Date",
+                              selectedDate: _endDate,
+                              isOptional: true,
+                              isAiPowered: true,
+                              onTap: () => _pickDate(false),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _returnController,
+                              focusNode: _returnFocus,
+                              nextFocusNode: _folioFocus,
+                              label: "Expected Return %",
+                              icon: Icons.percent_rounded,
+                              hint: "e.g. 12",
+                              isNumeric: true,
+                              isOptional: true,
+                              isAiPowered: true,
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 32),
 
-                      // Section 3: Additional Info
+                      // --- Section 3: Additional Info ---
                       _buildSectionHeader("ADDITIONAL DETAILS"),
                       GlassCard(
-                        borderRadius: 12,
-                        padding: const EdgeInsets.all(16),
+                        borderRadius: 16,
+                        padding: const EdgeInsets.all(20),
                         child: Column(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                    child: _buildTextField(
-                                        controller: _folioController,
-                                        label: "Folio No",
-                                        icon: Icons.numbers,
-                                        hint: "",
-                                        isOptional: true)),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                    child: _buildTextField(
-                                        controller: _unitsController,
-                                        label: "Units / Qty",
-                                        icon: Icons.scale,
-                                        hint: "",
-                                        isOptional: true)),
-                              ],
+                            _buildTextField(
+                              controller: _folioController,
+                              focusNode: _folioFocus,
+                              nextFocusNode: _unitsFocus,
+                              label: "Folio / Account No",
+                              icon: Icons.numbers_rounded,
+                              hint: "",
+                              isOptional: true,
                             ),
                             const SizedBox(height: 16),
                             _buildTextField(
-                                controller: _brokerController,
-                                label: "Broker Name",
-                                icon: Icons.person_outline,
-                                hint: "e.g. Zerodha",
-                                isOptional: true),
+                              controller: _unitsController,
+                              focusNode: _unitsFocus,
+                              nextFocusNode: _brokerFocus,
+                              label: "Units / Quantity",
+                              icon: Icons.scale_rounded,
+                              hint: "",
+                              isOptional: true,
+                            ),
                             const SizedBox(height: 16),
                             _buildTextField(
-                                controller: _bankNameController,
-                                label: "Linked Bank Name",
-                                icon: Icons.account_balance,
-                                hint: "e.g. HDFC Bank",
-                                isOptional: true),
+                              controller: _brokerController,
+                              focusNode: _brokerFocus,
+                              nextFocusNode: _bankNameFocus,
+                              label: "Broker Name",
+                              icon: Icons.person_outline_rounded,
+                              hint: "e.g. Zerodha,Groww,ICICI Direct",
+                              isOptional: true,
+                            ),
                             const SizedBox(height: 16),
                             _buildTextField(
-                                controller: _bankAccountController,
-                                label: "Linked Account No",
-                                icon: Icons.numbers,
-                                hint: "xxxx1234",
-                                isOptional: true),
+                              controller: _bankNameController,
+                              focusNode: _bankNameFocus,
+                              nextFocusNode: _bankAccFocus,
+                              label: "Linked Bank Name",
+                              icon: Icons.account_balance_rounded,
+                              hint: "e.g. HDFC Bank,Axis Bank",
+                              isOptional: true,
+                            ),
                             const SizedBox(height: 16),
                             _buildTextField(
-                                controller: _purposeController,
-                                label: "Purpose / Goal",
-                                icon: Icons.flag_outlined,
-                                hint: "e.g. Retirement",
-                                isOptional: true),
+                              controller: _bankAccountController,
+                              focusNode: _bankAccFocus,
+                              nextFocusNode: _purposeFocus,
+                              label: "Linked Account No",
+                              icon: Icons.credit_card_rounded,
+                              hint: "xxxx1234",
+                              isOptional: true,
+                            ),
                             const SizedBox(height: 16),
                             _buildTextField(
-                                controller: _notesController,
-                                label: "Other Notes",
-                                icon: Icons.note_alt_outlined,
-                                hint: "Notes...",
-                                isOptional: true),
+                              controller: _purposeController,
+                              focusNode: _purposeFocus,
+                              nextFocusNode: _notesFocus,
+                              label: "Purpose / Goal",
+                              icon: Icons.flag_outlined,
+                              hint: "e.g. Retirement",
+                              isOptional: true,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _notesController,
+                              focusNode: _notesFocus,
+                              isLast: true,
+                              label: "Other Notes",
+                              icon: Icons.note_alt_outlined,
+                              hint: "Tap to add notes...",
+                              isOptional: true,
+                            ),
                           ],
                         ),
                       ),
 
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 48),
 
                       // Submit Button
                       SizedBox(
                         width: double.infinity,
-                        height: 56,
+                        height: 60,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: BudgetrColors.accent,
@@ -337,13 +443,11 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                             elevation: 8,
-                            shadowColor: BudgetrColors.accent.withOpacity(0.5),
+                            shadowColor: BudgetrColors.accent.withOpacity(0.4),
                           ),
                           onPressed: _isLoading ? null : _saveInvestment,
                           child: _isLoading
-                              ? const FuturisticLoader(
-                                  size: 20,
-                                )
+                              ? const FuturisticLoader(size: 24)
                               : Text(
                                   _isEditMode
                                       ? "UPDATE ASSET"
@@ -351,13 +455,13 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.2,
                                   ),
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 32),
                     ],
                   ),
                 ),
@@ -373,15 +477,75 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12),
+      padding: const EdgeInsets.only(left: 4, bottom: 16),
       child: Text(
         title,
         style: const TextStyle(
-          color: Colors.white38,
+          color: Colors.white54,
           fontSize: 11,
           fontWeight: FontWeight.w900,
-          letterSpacing: 1.5,
+          letterSpacing: 2.0,
         ),
+      ),
+    );
+  }
+
+  Widget _buildProjectionWarningBox() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF4CC9F0).withOpacity(0.15),
+            const Color(0xFF4CC9F0).withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF4CC9F0).withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF4CC9F0).withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.auto_awesome_rounded,
+                color: Color(0xFF4CC9F0), size: 18),
+          ),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Unlock Smart Projections",
+                  style: TextStyle(
+                      color: Color(0xFF4CC9F0),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  "Fill out the Target Amount, End Date, and Exp. Return below to let AI analyze your wealth trajectory.",
+                  style: TextStyle(
+                      color: Colors.white70, fontSize: 12, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => setState(() => _userDismissedWarning = true),
+            child: const Icon(Icons.close_rounded,
+                color: Colors.white38, size: 20),
+          ),
+        ],
       ),
     );
   }
@@ -391,39 +555,74 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     required String label,
     required IconData icon,
     required String hint,
+    FocusNode? focusNode,
+    FocusNode? nextFocusNode,
     bool isNumeric = false,
     bool isOptional = false,
+    bool isLast = false,
+    bool isAiPowered = false,
   }) {
     return TextFormField(
       controller: controller,
-      keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
-      style: const TextStyle(color: Colors.white),
+      focusNode: focusNode,
+      keyboardType: isNumeric
+          ? const TextInputType.numberWithOptions(decimal: true)
+          : TextInputType.text,
+      textInputAction: isLast ? TextInputAction.done : TextInputAction.next,
+      onEditingComplete: () {
+        if (nextFocusNode != null) {
+          FocusScope.of(context).requestFocus(nextFocusNode);
+        } else {
+          FocusScope.of(context).unfocus();
+        }
+      },
+      style: const TextStyle(color: Colors.white, fontSize: 15),
       validator: (value) {
         if (!isOptional && (value == null || value.isEmpty)) {
-          return "Required field";
+          return "This field is required";
         }
         return null;
       },
       decoration: InputDecoration(
-        labelText: label + (isOptional ? "" : " *"),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label + (isOptional ? "" : " *")),
+            if (isAiPowered) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.auto_awesome_rounded,
+                  size: 14, color: Color(0xFF4CC9F0)),
+            ]
+          ],
+        ),
         labelStyle: const TextStyle(color: Colors.white54),
         hintText: hint,
         hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
         prefixIcon:
             Icon(icon, color: BudgetrColors.accent.withOpacity(0.7), size: 20),
         filled: true,
-        fillColor: Colors.black12,
+        fillColor: Colors.white.withOpacity(0.03),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: BudgetrColors.accent.withOpacity(0.5)),
+          borderSide: BorderSide(
+              color: BudgetrColors.accent.withOpacity(0.6), width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              BorderSide(color: Colors.redAccent.withOpacity(0.6), width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
         ),
       ),
     );
@@ -434,20 +633,23 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          onTap: _showTypePicker,
+          onTap: () {
+            FocusScope.of(context).unfocus();
+            _showTypePicker();
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.black12,
+              color: Colors.white.withOpacity(0.03),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                   color: _selectedType == null
-                      ? Colors.transparent
-                      : Colors.white.withOpacity(0.05)),
+                      ? Colors.white.withOpacity(0.08)
+                      : BudgetrColors.accent.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                Icon(Icons.pie_chart,
+                Icon(Icons.pie_chart_rounded,
                     color: BudgetrColors.accent.withOpacity(0.7), size: 20),
                 const SizedBox(width: 12),
                 Expanded(
@@ -458,13 +660,11 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                     style: TextStyle(
                       color:
                           _selectedType == null ? Colors.white54 : Colors.white,
-                      fontWeight: _selectedType == null
-                          ? FontWeight.normal
-                          : FontWeight.bold,
+                      fontSize: 15,
                     ),
                   ),
                 ),
-                Icon(Icons.arrow_drop_down,
+                Icon(Icons.arrow_drop_down_rounded,
                     color: Colors.white.withOpacity(0.5)),
               ],
             ),
@@ -505,7 +705,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                margin: const EdgeInsets.only(top: 8, bottom: 8),
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
@@ -513,7 +713,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                     borderRadius: BorderRadius.circular(2)),
               ),
               const Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(20),
                 child: Text("Select Type",
                     style: TextStyle(
                         color: Colors.white,
@@ -525,8 +725,10 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                   shrinkWrap: true,
                   children: InvestmentType.values.map((type) {
                     return ListTile(
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 24),
                       leading: Icon(Icons.circle,
-                          size: 10,
+                          size: 12,
                           color: _selectedType == type
                               ? BudgetrColors.accent
                               : Colors.white24),
@@ -535,11 +737,17 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                       onTap: () {
                         setState(() => _selectedType = type);
                         Navigator.pop(ctx);
+                        if (type == InvestmentType.others) {
+                          FocusScope.of(context).requestFocus(_otherTypeFocus);
+                        } else {
+                          FocusScope.of(context).requestFocus(_providerFocus);
+                        }
                       },
                     );
                   }).toList(),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -563,30 +771,42 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     required DateTime? selectedDate,
     required VoidCallback onTap,
     bool isOptional = false,
+    bool isAiPowered = false,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        onTap();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.black12,
+          color: Colors.white.withOpacity(0.03),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today,
+            Icon(Icons.calendar_today_rounded,
                 color: BudgetrColors.accent.withOpacity(0.7), size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label + (isOptional ? "" : " *"),
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Text(
+                        label + (isOptional ? "" : " *"),
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 12),
+                      ),
+                      if (isAiPowered) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.auto_awesome_rounded,
+                            size: 12, color: Color(0xFF4CC9F0)),
+                      ]
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -596,10 +816,8 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                     style: TextStyle(
                       color:
                           selectedDate == null ? Colors.white38 : Colors.white,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -637,6 +855,8 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
           _endDate = picked;
         }
       });
+      // [NEW] Check projection readiness when date changes
+      _checkProjectionStatus();
     }
   }
 
@@ -645,7 +865,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     if (_selectedType == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text("Please select an Investment Type"),
-          backgroundColor: Colors.red));
+          backgroundColor: Colors.redAccent));
       return;
     }
 
@@ -662,32 +882,32 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
 
       final dto = InvestmentDto(
         id: widget.investmentToEdit?.id,
-        name: _nameController.text,
+        name: _nameController.text.trim(),
         type: _selectedType!,
         subType: _selectedType == InvestmentType.others
-            ? _otherTypeController.text
+            ? _otherTypeController.text.trim()
             : null,
-        providerName: _providerController.text,
-        providerWebsite: _websiteController.text,
+        providerName: _providerController.text.trim(),
+        providerWebsite: _websiteController.text.trim(),
         startDate: _startDate,
         endDate: _endDate,
         expectedReturn: expectedReturn,
-        folioNumber: _folioController.text,
-        units: _unitsController.text,
-        brokerName: _brokerController.text,
-        linkedBankName: _bankNameController.text,
-        linkedBankAccount: _bankAccountController.text,
-        purpose: _purposeController.text,
-        notes: _notesController.text,
-        specialId: _specialIdController.text,
-        targetAmount: targetAmount, // [NEW]
+        folioNumber: _folioController.text.trim(),
+        units: _unitsController.text.trim(),
+        brokerName: _brokerController.text.trim(),
+        linkedBankName: _bankNameController.text.trim(),
+        linkedBankAccount: _bankAccountController.text.trim(),
+        purpose: _purposeController.text.trim(),
+        notes: _notesController.text.trim(),
+        specialId: _specialIdController.text.trim(),
+        targetAmount: targetAmount,
       );
 
       if (_isEditMode) {
         await GetIt.I<PortfolioService>().updateInvestment(dto);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Investment Updated Successfully")),
+            const SnackBar(content: Text("Asset Updated Successfully")),
           );
         }
       } else {
@@ -695,7 +915,7 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
         await GetIt.I<PortfolioService>().addNewInvestment(dto, amount);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Investment Added to Portfolio")),
+            const SnackBar(content: Text("Asset Added to Portfolio")),
           );
         }
       }
@@ -706,7 +926,8 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text("Error: $e"), backgroundColor: Colors.redAccent),
         );
         setState(() => _isLoading = false);
       }

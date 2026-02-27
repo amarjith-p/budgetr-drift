@@ -24,9 +24,10 @@ class SmartInsight {
 class InvestmentAnalyticsEngine {
   static SmartInsight analyze(InvestmentDto item, List<InvestmentLogDto> logs) {
     final now = DateTime.now();
-    final fmt = NumberFormat.compactCurrency(symbol: '₹', decimalDigits: 2);
+    // [UPDATED] Strict 2-decimal format
+    final fmt =
+        NumberFormat.currency(symbol: '₹', decimalDigits: 2, locale: "en_IN");
 
-    // 1. Missing Target or End Date Check
     if (item.targetAmount == null || item.targetAmount! <= 0) {
       return SmartInsight(
         title: "SET A TARGET",
@@ -40,13 +41,12 @@ class InvestmentAnalyticsEngine {
       return SmartInsight(
         title: "MISSING TIMELINE",
         message:
-            "You have a target of ${fmt.format(item.targetAmount)}. Set an End Date to see if you are on track.",
+            "You have a target of ${fmt.format(item.targetAmount!)}. Set an End Date to see if you are on track.",
         color: Colors.white54,
         icon: Icons.schedule_rounded,
       );
     }
 
-    // 2. Time Calculations
     final elapsedDays = now.difference(item.startDate).inDays;
     final remainingDays = item.endDate!.difference(now).inDays;
 
@@ -62,7 +62,6 @@ class InvestmentAnalyticsEngine {
       );
     }
 
-    // 3. True Velocity Calculation (Last 90 Days)
     final ninetyDaysAgo = now.subtract(const Duration(days: 90));
     double recentInvestments = 0.0;
 
@@ -83,12 +82,9 @@ class InvestmentAnalyticsEngine {
     final monthlyVelocity = max(0.0, recentInvestments / max(1.0, divisor));
     final monthsLeft = remainingDays / 30.44;
 
-    // --- 4. SMART RATE SELECTION HIERARCHY ---
     double annualRate = 0.0;
     bool isZeroGrowthWarning = false;
     bool usingExpectedReturnFallback = false;
-
-    // Check if user has actually logged any real-world gains
     bool hasActualGrowth =
         (item.currentMarketValue - item.totalInvestedAmount).abs() > 1.0;
 
@@ -97,12 +93,10 @@ class InvestmentAnalyticsEngine {
         item.xirr! != 0.0 &&
         item.xirr! > -100 &&
         item.xirr! < 200) {
-      // Primary: XIRR (Use real performance data if available)
       annualRate = item.xirr!;
     } else if (hasActualGrowth &&
         elapsedDays > 30 &&
         item.totalInvestedAmount > 0) {
-      // Fallback 1: Simple CAGR (If XIRR fails but we have real data)
       double years = elapsedDays / 365.25;
       annualRate =
           (pow(item.currentMarketValue / item.totalInvestedAmount, 1 / years) -
@@ -110,23 +104,18 @@ class InvestmentAnalyticsEngine {
               100;
       annualRate = annualRate.clamp(-100.0, 100.0);
     } else if (item.expectedReturn != null && item.expectedReturn! > 0) {
-      // Fallback 2: Expected Return (No real gains logged yet, rely on user's target rate)
       annualRate = item.expectedReturn!;
       usingExpectedReturnFallback = true;
     } else {
-      // Fallback 3: Zero Data Available
       annualRate = 0.0;
       if (!hasActualGrowth) isZeroGrowthWarning = true;
     }
 
     double monthlyRate = annualRate / 12 / 100;
 
-    // --- 5. HIGH-PRECISION FUTURE VALUE PROJECTION ---
     double fvCorpus = item.currentMarketValue;
 
     if (usingExpectedReturnFallback && !hasActualGrowth) {
-      // High-Precision Mode: If we are relying on Expected Return, we must compound
-      // EVERY past transaction individually from its specific date to the End Date.
       fvCorpus = 0.0;
       for (var log in logs) {
         if (log.type == 'invested' || log.type == 'withdrawn') {
@@ -137,18 +126,16 @@ class InvestmentAnalyticsEngine {
             double months = daysToEnd / 30.44;
             fvCorpus += amount * pow((1 + monthlyRate), months);
           } else {
-            fvCorpus += amount; // Past maturity
+            fvCorpus += amount;
           }
         }
       }
     } else {
-      // Standard Mode: Current value is up-to-date, just compound it for the remaining time.
       if (monthlyRate != 0) {
         fvCorpus = item.currentMarketValue * pow((1 + monthlyRate), monthsLeft);
       }
     }
 
-    // Future SIPs
     double fvSips = 0.0;
     if (monthlyRate > 0 && monthlyVelocity > 0) {
       fvSips = monthlyVelocity *
@@ -159,8 +146,6 @@ class InvestmentAnalyticsEngine {
     }
 
     double projectedValue = fvCorpus + fvSips;
-
-    // --- 6. GENERATE INSIGHTS ---
 
     if (isZeroGrowthWarning && projectedValue < item.targetAmount!) {
       return SmartInsight(

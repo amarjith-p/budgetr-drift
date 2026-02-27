@@ -7,7 +7,7 @@ import '../models/goal_loan_models.dart';
 import '../services/goal_loan_service.dart';
 
 class AddGoalSheet extends StatefulWidget {
-  final GoalModel? goalToEdit; // [NEW] Optional goal for editing
+  final GoalModel? goalToEdit;
   const AddGoalSheet({super.key, this.goalToEdit});
 
   @override
@@ -15,7 +15,7 @@ class AddGoalSheet extends StatefulWidget {
 }
 
 class _AddGoalSheetState extends State<AddGoalSheet> {
-  // Controllers
+  // --- Controllers ---
   final _nameCtrl = TextEditingController();
   final _purposeCtrl = TextEditingController();
   final _idNoCtrl = TextEditingController();
@@ -24,7 +24,15 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
   final _returnRateCtrl = TextEditingController();
   String? _validationError;
 
-  // State Variables
+  // --- Focus Nodes (For 'Next' Keyboard Action) ---
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _purposeFocus = FocusNode();
+  final FocusNode _idNoFocus = FocusNode();
+  final FocusNode _currentValueFocus = FocusNode();
+  final FocusNode _targetValueFocus = FocusNode();
+  final FocusNode _returnRateFocus = FocusNode();
+
+  // --- State Variables ---
   String _investmentType = 'Select Type';
   DateTime _startDate = DateTime.now();
   DateTime? _targetDate;
@@ -44,7 +52,6 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
   @override
   void initState() {
     super.initState();
-    // [NEW] Pre-fill if editing
     if (widget.goalToEdit != null) {
       final g = widget.goalToEdit!;
       _nameCtrl.text = g.name;
@@ -57,6 +64,27 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
       _startDate = g.startDate;
       _targetDate = g.deadline;
     }
+  }
+
+  @override
+  void dispose() {
+    // Dispose Controllers
+    _nameCtrl.dispose();
+    _purposeCtrl.dispose();
+    _idNoCtrl.dispose();
+    _currentValueCtrl.dispose();
+    _targetValueCtrl.dispose();
+    _returnRateCtrl.dispose();
+
+    // Dispose Focus Nodes
+    _nameFocus.dispose();
+    _purposeFocus.dispose();
+    _idNoFocus.dispose();
+    _currentValueFocus.dispose();
+    _targetValueFocus.dispose();
+    _returnRateFocus.dispose();
+
+    super.dispose();
   }
 
   @override
@@ -93,16 +121,23 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
                 children: [
                   // Basics
                   _buildTextField(
-                      controller: _nameCtrl,
-                      label: "Goal Name",
-                      hint: "e.g. Retirement Fund",
-                      icon: Icons.flag_outlined),
+                    controller: _nameCtrl,
+                    focusNode: _nameFocus,
+                    nextFocusNode: _purposeFocus,
+                    label: "Goal Name",
+                    hint: "e.g. Retirement Fund",
+                    icon: Icons.flag_outlined,
+                  ),
                   const SizedBox(height: 16),
                   _buildTextField(
-                      controller: _purposeCtrl,
-                      label: "Purpose",
-                      hint: "e.g. Wealth Creation",
-                      icon: Icons.lightbulb_outline),
+                    controller: _purposeCtrl,
+                    focusNode: _purposeFocus,
+                    // If editing, skip 'Current Value', otherwise go to 'ID No'
+                    nextFocusNode: _idNoFocus,
+                    label: "Purpose",
+                    hint: "e.g. Wealth Creation",
+                    icon: Icons.lightbulb_outline,
+                  ),
 
                   const SizedBox(height: 16),
 
@@ -115,10 +150,14 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
 
                   // Identification
                   _buildTextField(
-                      controller: _idNoCtrl,
-                      label: "Identification No",
-                      hint: "Folio No / Account No",
-                      icon: Icons.tag),
+                    controller: _idNoCtrl,
+                    focusNode: _idNoFocus,
+                    nextFocusNode:
+                        isEdit ? _targetValueFocus : _currentValueFocus,
+                    label: "Identification No",
+                    hint: "Folio No / Account No",
+                    icon: Icons.tag,
+                  ),
 
                   const SizedBox(height: 24),
 
@@ -127,12 +166,15 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
                     children: [
                       Expanded(
                         child: _buildTextField(
-                            controller: _currentValueCtrl,
-                            label: "Current Value",
-                            hint: "0.00",
-                            icon: Icons.currency_rupee,
-                            isNumber: true,
-                            enabled: !isEdit), // [NEW] Disabled in Edit Mode
+                          controller: _currentValueCtrl,
+                          focusNode: _currentValueFocus,
+                          nextFocusNode: _targetValueFocus,
+                          label: "Current Value",
+                          hint: "0.00",
+                          icon: Icons.currency_rupee,
+                          isNumber: true,
+                          enabled: !isEdit,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -152,11 +194,14 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
                     children: [
                       Expanded(
                         child: _buildTextField(
-                            controller: _targetValueCtrl,
-                            label: "Target Value",
-                            hint: "Required",
-                            icon: Icons.track_changes,
-                            isNumber: true),
+                          controller: _targetValueCtrl,
+                          focusNode: _targetValueFocus,
+                          nextFocusNode: _returnRateFocus,
+                          label: "Target Value",
+                          hint: "Required",
+                          icon: Icons.track_changes,
+                          isNumber: true,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -173,11 +218,14 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
                   const SizedBox(height: 16),
 
                   _buildTextField(
-                      controller: _returnRateCtrl,
-                      label: "Exp. Return (%)",
-                      hint: "Optional (e.g. 12.5)",
-                      icon: Icons.trending_up,
-                      isNumber: true),
+                    controller: _returnRateCtrl,
+                    focusNode: _returnRateFocus,
+                    isLast: true, // Changes keyboard 'Next' to 'Done'
+                    label: "Exp. Return (%)",
+                    hint: "Optional (e.g. 12.5)",
+                    icon: Icons.trending_up,
+                    isNumber: true,
+                  ),
 
                   const SizedBox(
                       height: 100), // Bottom padding for FAB/Keyboard
@@ -244,8 +292,11 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
     required String label,
     required String hint,
     required IconData icon,
+    FocusNode? focusNode,
+    FocusNode? nextFocusNode,
     bool isNumber = false,
-    bool enabled = true, // [NEW] Added enabled flag
+    bool enabled = true,
+    bool isLast = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,10 +305,19 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          focusNode: focusNode,
           enabled: enabled,
           keyboardType: isNumber
               ? const TextInputType.numberWithOptions(decimal: true)
               : TextInputType.text,
+          textInputAction: isLast ? TextInputAction.done : TextInputAction.next,
+          onEditingComplete: () {
+            if (nextFocusNode != null) {
+              FocusScope.of(context).requestFocus(nextFocusNode);
+            } else {
+              FocusScope.of(context).unfocus();
+            }
+          },
           style: TextStyle(color: enabled ? Colors.white : Colors.white38),
           decoration: InputDecoration(
             hintText: hint,
@@ -283,6 +343,7 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
   Widget _buildTypeSelector() {
     return GestureDetector(
       onTap: () {
+        FocusScope.of(context).unfocus(); // Close keyboard
         showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
@@ -328,6 +389,8 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
                               onTap: () {
                                 setState(() => _investmentType = type);
                                 Navigator.pop(ctx);
+                                // Move focus to the ID Number field after selection
+                                FocusScope.of(context).requestFocus(_idNoFocus);
                               },
                             );
                           },
@@ -369,6 +432,7 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
         const SizedBox(height: 8),
         InkWell(
           onTap: () async {
+            FocusScope.of(context).unfocus(); // Close keyboard
             final d = await showDatePicker(
                 context: context,
                 initialDate: selectedDate ?? DateTime.now(),
@@ -434,38 +498,26 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
     final expReturn = double.tryParse(_returnRateCtrl.text.trim());
 
     final goal = GoalModel(
-      id: widget.goalToEdit?.id ?? '', // Use existing ID if editing
+      id: widget.goalToEdit?.id ?? '',
       name: name,
       purpose: _purposeCtrl.text.trim(),
       investmentType: _investmentType,
       identificationNumber: _idNoCtrl.text.trim(),
-      currentAmount: currentVal, // Ignored in update
+      currentAmount: currentVal,
       targetAmount: targetVal,
       startDate: _startDate,
       deadline: _targetDate,
       expectedReturn: expReturn,
       color: widget.goalToEdit?.color ?? Colors.blueAccent.value,
-      // icon: widget.goalToEdit?.icon ?? Icons.flag.codePoint,
       isCompleted: currentVal >= targetVal,
     );
 
     if (widget.goalToEdit != null) {
-      // [NEW] Update existing
       await GetIt.I<GoalLoanService>().updateGoal(goal);
     } else {
-      // Create new
       await GetIt.I<GoalLoanService>().createGoal(goal);
     }
 
     if (mounted) Navigator.pop(context);
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text(msg),
-          backgroundColor: BudgetrColors.error,
-          behavior: SnackBarBehavior.floating),
-    );
   }
 }

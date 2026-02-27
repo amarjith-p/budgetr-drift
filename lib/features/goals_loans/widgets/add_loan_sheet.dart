@@ -8,7 +8,7 @@ import '../models/goal_loan_models.dart';
 import '../services/goal_loan_service.dart';
 
 class AddLoanSheet extends StatefulWidget {
-  final LoanModel? loanToEdit; // [NEW] Optional loan for editing
+  final LoanModel? loanToEdit;
   const AddLoanSheet({super.key, this.loanToEdit});
 
   @override
@@ -51,6 +51,7 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
     'Others',
   ];
 
+  // --- Controllers ---
   final _nameCtrl = TextEditingController();
   final _accountNoCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
@@ -60,27 +61,30 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
   final _emiCtrl = TextEditingController();
   String? _validationError;
 
+  // --- Focus Nodes (For 'Next' Keyboard Action) ---
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _accountNoFocus = FocusNode();
+  final FocusNode _amountFocus = FocusNode();
+  final FocusNode _rateFocus = FocusNode();
+  final FocusNode _tenureFocus = FocusNode();
+  final FocusNode _totalPayableFocus = FocusNode();
+  final FocusNode _emiFocus = FocusNode();
+
   String _selectedBank = 'Select Issuer';
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 365));
   DateTime _emiDate = DateTime.now().add(const Duration(days: 30));
 
-  // New state to track loan type
   String _type = 'BORROWED';
 
   @override
   void initState() {
     super.initState();
-    // [NEW] Pre-fill if editing
     if (widget.loanToEdit != null) {
       final l = widget.loanToEdit!;
       _nameCtrl.text = l.title;
-      _selectedBank = _banks.contains(l.provider)
-          ? l.provider
-          : 'Others'; // Simplified match
-      if (!_banks.contains(l.provider)) {
-        // Ideally handle "Others" text input, but for now we keep simple
-      }
+      _selectedBank = _banks.contains(l.provider) ? l.provider : 'Others';
+
       _accountNoCtrl.text = l.notes?.replaceAll("Account: ", "") ?? "";
       _amountCtrl.text = l.principalAmount.toString();
       _rateCtrl.text = l.interestRate.toString();
@@ -92,7 +96,6 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
       if (l.nextPaymentDate != null) _emiDate = l.nextPaymentDate!;
       _type = l.type;
 
-      // Calculate tenure approximation for display
       if (l.emiAmount != null && l.emiAmount! > 0) {
         _tenureCtrl.text = (l.totalAmount / l.emiAmount!).round().toString();
       }
@@ -105,17 +108,28 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
 
   @override
   void dispose() {
+    // Dispose Controllers
+    _nameCtrl.dispose();
+    _accountNoCtrl.dispose();
     _amountCtrl.dispose();
     _tenureCtrl.dispose();
     _rateCtrl.dispose();
     _totalPayableCtrl.dispose();
     _emiCtrl.dispose();
+
+    // Dispose Focus Nodes
+    _nameFocus.dispose();
+    _accountNoFocus.dispose();
+    _amountFocus.dispose();
+    _rateFocus.dispose();
+    _tenureFocus.dispose();
+    _totalPayableFocus.dispose();
+    _emiFocus.dispose();
+
     super.dispose();
   }
 
   void _calculateLoanDetails() {
-    // Only calculate if not editing, OR if user explicitly changes values in edit mode
-    // Just using the same logic for simplicity
     final principal = double.tryParse(_amountCtrl.text) ?? 0;
     final tenureMonths = int.tryParse(_tenureCtrl.text) ?? 0;
     final annualRate = double.tryParse(_rateCtrl.text) ?? 0;
@@ -124,7 +138,6 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
       final newEndDate =
           DateTime(_emiDate.year, _emiDate.month + tenureMonths, _emiDate.day);
 
-      // EMI Calculation
       final monthlyRate = annualRate / 12 / 100;
       final emi =
           (principal * monthlyRate * pow(1 + monthlyRate, tenureMonths)) /
@@ -175,37 +188,49 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
                 children: [
                   _buildSectionLabel("LOAN DETAILS"),
                   _buildTextField(
-                      controller: _nameCtrl,
-                      label: "Loan Name",
-                      hint: "e.g. Home Loan",
-                      icon: Icons.title),
+                    controller: _nameCtrl,
+                    focusNode: _nameFocus,
+                    nextFocusNode: _accountNoFocus,
+                    label: "Loan Name",
+                    hint: "e.g. Home Loan",
+                    icon: Icons.title,
+                  ),
                   const SizedBox(height: 16),
                   _buildBankSelector(),
                   const SizedBox(height: 16),
                   _buildTextField(
-                      controller: _accountNoCtrl,
-                      label: "Loan Account No",
-                      hint: "e.g. L-19283746",
-                      icon: Icons.numbers),
+                    controller: _accountNoCtrl,
+                    focusNode: _accountNoFocus,
+                    nextFocusNode: _amountFocus,
+                    label: "Loan Account No",
+                    hint: "e.g. L-19283746",
+                    icon: Icons.numbers,
+                  ),
                   const SizedBox(height: 32),
                   _buildSectionLabel("TERMS & INTEREST"),
                   Row(
                     children: [
                       Expanded(
                           child: _buildTextField(
-                              controller: _amountCtrl,
-                              label: "Loan Amount",
-                              hint: "Principal",
-                              icon: Icons.currency_rupee,
-                              isNumber: true)),
+                        controller: _amountCtrl,
+                        focusNode: _amountFocus,
+                        nextFocusNode: _rateFocus,
+                        label: "Loan Amount",
+                        hint: "Principal",
+                        icon: Icons.currency_rupee,
+                        isNumber: true,
+                      )),
                       const SizedBox(width: 16),
                       Expanded(
                           child: _buildTextField(
-                              controller: _rateCtrl,
-                              label: "Interest Rate",
-                              hint: "% p.a.",
-                              icon: Icons.percent,
-                              isNumber: true)),
+                        controller: _rateCtrl,
+                        focusNode: _rateFocus,
+                        nextFocusNode: _tenureFocus,
+                        label: "Interest Rate",
+                        hint: "% p.a.",
+                        icon: Icons.percent,
+                        isNumber: true,
+                      )),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -213,11 +238,14 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
                     children: [
                       Expanded(
                           child: _buildTextField(
-                              controller: _tenureCtrl,
-                              label: "Tenure",
-                              hint: "Months",
-                              icon: Icons.calendar_view_month,
-                              isNumber: true)),
+                        controller: _tenureCtrl,
+                        focusNode: _tenureFocus,
+                        nextFocusNode: _totalPayableFocus,
+                        label: "Tenure",
+                        hint: "Months",
+                        icon: Icons.calendar_view_month,
+                        isNumber: true,
+                      )),
                       const SizedBox(width: 16),
                       Expanded(
                           child: _buildDatePicker(
@@ -232,21 +260,27 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
                   const SizedBox(height: 32),
                   _buildSectionLabel("REPAYMENT SCHEDULE"),
                   _buildTextField(
-                      controller: _totalPayableCtrl,
-                      label: "Total Payable",
-                      hint: "Auto-calculated",
-                      icon: Icons.account_balance_wallet,
-                      isNumber: true),
+                    controller: _totalPayableCtrl,
+                    focusNode: _totalPayableFocus,
+                    nextFocusNode: _emiFocus,
+                    label: "Total Payable",
+                    hint: "Auto-calculated",
+                    icon: Icons.account_balance_wallet,
+                    isNumber: true,
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
                           child: _buildTextField(
-                              controller: _emiCtrl,
-                              label: "EMI Amount",
-                              hint: "Monthly",
-                              icon: Icons.repeat,
-                              isNumber: true)),
+                        controller: _emiCtrl,
+                        focusNode: _emiFocus,
+                        isLast: true,
+                        label: "EMI Amount",
+                        hint: "Monthly",
+                        icon: Icons.repeat,
+                        isNumber: true,
+                      )),
                       const SizedBox(width: 16),
                       Expanded(
                           child: _buildDatePicker(
@@ -325,12 +359,16 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
     );
   }
 
-  Widget _buildTextField(
-      {required TextEditingController controller,
-      required String label,
-      required String hint,
-      required IconData icon,
-      bool isNumber = false}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    FocusNode? focusNode,
+    FocusNode? nextFocusNode,
+    bool isNumber = false,
+    bool isLast = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -339,9 +377,18 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
+          focusNode: focusNode,
           keyboardType: isNumber
               ? const TextInputType.numberWithOptions(decimal: true)
               : TextInputType.text,
+          textInputAction: isLast ? TextInputAction.done : TextInputAction.next,
+          onEditingComplete: () {
+            if (nextFocusNode != null) {
+              FocusScope.of(context).requestFocus(nextFocusNode);
+            } else {
+              FocusScope.of(context).unfocus();
+            }
+          },
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: hint,
@@ -372,6 +419,8 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
         const SizedBox(height: 8),
         GestureDetector(
           onTap: () {
+            FocusScope.of(context)
+                .unfocus(); // Close keyboard before opening sheet
             showModalBottomSheet(
                 context: context,
                 backgroundColor: Colors.transparent,
@@ -394,6 +443,9 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
                           onTap: () {
                             setState(() => _selectedBank = _banks[i]);
                             Navigator.pop(ctx);
+                            // Jump to account number after selecting bank
+                            FocusScope.of(context)
+                                .requestFocus(_accountNoFocus);
                           },
                         ),
                       ),
@@ -419,10 +471,11 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
     );
   }
 
-  Widget _buildDatePicker(
-      {required String label,
-      required DateTime date,
-      required Function(DateTime) onPick}) {
+  Widget _buildDatePicker({
+    required String label,
+    required DateTime date,
+    required Function(DateTime) onPick,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -431,6 +484,7 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
         const SizedBox(height: 8),
         InkWell(
           onTap: () async {
+            FocusScope.of(context).unfocus(); // Close keyboard
             final d = await showDatePicker(
                 context: context,
                 initialDate: date,
@@ -498,12 +552,12 @@ class _AddLoanSheetState extends State<AddLoanSheet> {
     }
 
     final loan = LoanModel(
-      id: widget.loanToEdit?.id ?? '', // Use existing ID if editing
+      id: widget.loanToEdit?.id ?? '',
       title: _nameCtrl.text,
       provider: _selectedBank,
-      principalAmount: principal ?? 0,
+      principalAmount: principal,
       totalAmount: totalPayable,
-      paidAmount: widget.loanToEdit?.paidAmount ?? 0, // Preserve payments
+      paidAmount: widget.loanToEdit?.paidAmount ?? 0,
       interestRate: rate ?? 0,
       type: _type,
       startDate: _startDate,
