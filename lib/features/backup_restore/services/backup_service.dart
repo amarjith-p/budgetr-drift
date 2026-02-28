@@ -1,22 +1,19 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:restart_app/restart_app.dart';
-import '../../../core/database/app_database.dart';
 
 class BackupService {
   final String _dbName = 'budgetr_local_v2.sqlite';
   static const String _prefLastBackupKey = 'last_backup_timestamp';
-  static const String _staticBackupName = 'BudgetR_Latest.sqlite';
+  static const String _staticBackupName = 'BudgetR_Backup_DataEngine.sqlite';
 
-  // [NEW] Flag to track if app was just restored
+  // Flag to track if app was just restored
   static const String _prefJustRestoredKey = 'is_just_restored';
 
   Future<File> _getDbFile() async {
@@ -56,23 +53,41 @@ class BackupService {
     }
   }
 
+  /// [UPDATED] AUTOMATIC DIRECTORY ROUTING
   Future<String?> saveBackupToDevice() async {
     try {
       final backupFile = await _createTempBackup();
-      final Uint8List fileBytes = await backupFile.readAsBytes();
 
-      String? outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save Backup File',
-        fileName: p.basename(backupFile.path),
-        type: FileType.any,
-        bytes: fileBytes,
-      );
+      // 1. Generate the dynamic folder name: BudGetR/Backups/MMM yyyy
+      final folderDate = DateFormat('MMM yyyy').format(DateTime.now());
+      final folderPath = 'BudGetR/Backups/$folderDate';
 
-      if (outputFile != null) {
-        await _updateLastBackupTime();
+      Directory saveDir;
+      if (Platform.isAndroid) {
+        // Target public Downloads folder for Android
+        saveDir = Directory('/storage/emulated/0/Download/$folderPath');
+      } else {
+        // Target Documents folder for iOS
+        final baseDir = await getApplicationDocumentsDirectory();
+        saveDir = Directory(p.join(baseDir.path, folderPath));
       }
 
-      return outputFile;
+      // 2. Create the entire directory tree if it doesn't exist
+      if (!await saveDir.exists()) {
+        await saveDir.create(recursive: true);
+      }
+
+      // 3. Generate a precise timestamped file name so backups don't overwrite each other
+      final timestamp = DateFormat('dd_MMM_yyyy_HHmm').format(DateTime.now());
+      final fileName = 'BudGetR_Backup_DataEngine.sqlite';
+
+      final exportPath = p.join(saveDir.path, fileName);
+
+      // 4. Save the file
+      await backupFile.copy(exportPath);
+      await _updateLastBackupTime();
+
+      return exportPath; // Return the path to show the user
     } catch (e) {
       debugPrint("Save Error: $e");
       rethrow;
@@ -81,15 +96,13 @@ class BackupService {
 
   Future<bool> restoreBackup() async {
     try {
+      // For restoring, we still want to use FilePicker so the user can select exactly which file to load
       FilePickerResult? result =
           await FilePicker.platform.pickFiles(type: FileType.any);
 
       if (result == null || result.files.single.path == null) return false;
 
       final File selectedFile = File(result.files.single.path!);
-
-      // Close DB connection if possible, or rely on overwrite
-      // await AppDatabase.instance.close();
 
       final dbFile = await _getDbFile();
 
@@ -103,7 +116,7 @@ class BackupService {
 
       await _updateLastBackupTime();
 
-      // [NEW] Set flag before restart so we know to show notification on next launch
+      // Set flag before restart so we know to show notification on next launch
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_prefJustRestoredKey, true);
 
@@ -121,7 +134,6 @@ class BackupService {
     await prefs.setString(_prefLastBackupKey, DateTime.now().toIso8601String());
   }
 
-// [ADD THIS NEW METHOD]
   Future<DateTime?> getLastBackupTime() async {
     final prefs = await SharedPreferences.getInstance();
     final lastStr = prefs.getString(_prefLastBackupKey);
@@ -132,21 +144,20 @@ class BackupService {
   Future<bool> isBackupOverdue() async {
     final prefs = await SharedPreferences.getInstance();
     final lastStr = prefs.getString(_prefLastBackupKey);
-    if (lastStr == null) return true; // Never backed up
+    if (lastStr == null) return true;
 
     final lastBackup = DateTime.parse(lastStr);
     final diff = DateTime.now().difference(lastBackup);
-    // Alert if older than 12 hours (as per your request)
+
     return diff.inHours > 12;
   }
 
-  // [NEW] Check and Clear the Restore Flag
   Future<bool> checkAndResetRestoreFlag() async {
     final prefs = await SharedPreferences.getInstance();
     final wasRestored = prefs.getBool(_prefJustRestoredKey) ?? false;
 
     if (wasRestored) {
-      await prefs.setBool(_prefJustRestoredKey, false); // Reset immediately
+      await prefs.setBool(_prefJustRestoredKey, false);
     }
 
     return wasRestored;

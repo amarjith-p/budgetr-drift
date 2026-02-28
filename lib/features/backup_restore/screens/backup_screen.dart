@@ -1,4 +1,5 @@
-import 'dart:ui'; // Required for ImageFilter
+import 'dart:ui';
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -24,13 +25,13 @@ class _BackupScreenState extends State<BackupScreen> {
   final BackupService _backupService = GetIt.I<BackupService>();
   bool _isLoading = false;
   DateTime? _lastBackupTime;
+
   @override
   void initState() {
     super.initState();
     _loadBackupStatus();
   }
 
-  // [ADD THIS METHOD]
   Future<void> _loadBackupStatus() async {
     final lastTime = await _backupService.getLastBackupTime();
     if (mounted && lastTime != null) {
@@ -41,21 +42,24 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   // ==========================================
-  // ORIGINAL LOGIC (STRICTLY PRESERVED)
+  // UPDATED BACKUP HANDLERS
   // ==========================================
 
   Future<void> _handleSaveToDevice() async {
     setState(() => _isLoading = true);
     try {
+      // This now instantly saves to BudGetR/Backups/{MMM yyyy}
       final path = await _backupService.saveBackupToDevice();
+
       if (path != null && mounted) {
         setState(() => _lastBackupTime = DateTime.now());
+
+        // Show exactly where it was saved in the success sheet
         showStatusSheet(
           context: context,
-          title: "Backup Saved",
-          message:
-              "Your financial data has been successfully saved to your device storage.",
-          icon: Icons.check_circle_rounded,
+          title: "Backup Secured",
+          message: "Your financial data was safely auto-saved to:\n\n$path",
+          icon: Icons.folder_special_rounded,
           color: BudgetrColors.success,
           buttonText: "Awesome",
         );
@@ -215,7 +219,7 @@ class _BackupScreenState extends State<BackupScreen> {
                             "DEVICE SYNC", Icons.devices_rounded),
                         const SizedBox(height: 16),
                         _buildSyncSection(),
-                        const Spacer(), // Pushes footer to bottom
+                        const Spacer(),
                         const Center(
                           child: Text(
                             "BudGetR Data Engine by Amarjith",
@@ -237,7 +241,10 @@ class _BackupScreenState extends State<BackupScreen> {
             Container(
               color: Colors.black54,
               child: const Center(
-                child: CircularProgressIndicator(color: Color(0xFF00B4D8)),
+                child: FuturisticLoader(
+                  size: 80,
+                  label: "INITIALIZING BACKUP...",
+                ),
               ),
             ),
         ],
@@ -245,13 +252,11 @@ class _BackupScreenState extends State<BackupScreen> {
     );
   }
 
-  // --- NEW: Modern Header Implementation ---
   Widget _buildModernHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Back Button
           GestureDetector(
             onTap: () => Navigator.maybePop(context),
             child: GlassCard(
@@ -263,10 +268,7 @@ class _BackupScreenState extends State<BackupScreen> {
                   color: Colors.white70, size: 20),
             ),
           ),
-
           const SizedBox(width: 16),
-
-          // Title Section
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,7 +383,6 @@ class _BackupScreenState extends State<BackupScreen> {
   Widget _buildLocalVaultSection() {
     return Column(
       children: [
-        // Row 1: Backup Actions
         Row(
           children: [
             Expanded(
@@ -406,9 +407,6 @@ class _BackupScreenState extends State<BackupScreen> {
           ],
         ),
         const SizedBox(height: 12),
-
-        // Row 2: Single Restore Action (Design Updated, Logic Original)
-        // This replaces the previous "Split" button with a single, full-width danger button.
         GestureDetector(
           onTap: _handleRestore,
           child: Container(
