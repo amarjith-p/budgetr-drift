@@ -5,6 +5,10 @@ import 'package:budget/features/custom_entry/services/custom_export_service.dart
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+
+import 'package:open_file/open_file.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../../../core/widgets/modern_dropdown.dart';
 import '../../../core/models/custom_data_models.dart';
 import '../screens/template_editor_screen.dart';
@@ -32,6 +36,10 @@ class _CustomDataPageState extends State<CustomDataPage>
   final Color _bgColor = const Color(0xff0D1B2A);
 
   List<FilterCondition> _activeFilters = [];
+
+  // [NEW] State variables for the futuristic loader
+  bool _isExporting = false;
+  String _exportMessage = "";
 
   @override
   bool get wantKeepAlive => true;
@@ -317,6 +325,135 @@ class _CustomDataPageState extends State<CustomDataPage>
     );
   }
 
+  // ============================================================================
+  // EXPORT SUCCESS SHEET
+  // ============================================================================
+  void _showExportSuccessSheet(
+      ExportResult result, Color themeColor, String format) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        decoration: BoxDecoration(
+          color: _bgColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: themeColor.withOpacity(0.15), shape: BoxShape.circle),
+              child:
+                  Icon(Icons.check_circle_rounded, color: themeColor, size: 48),
+            ),
+            const SizedBox(height: 16),
+            Text("$format Export Successful",
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.05)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("File Saved to:",
+                      style: TextStyle(
+                          color: themeColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11)),
+                  const SizedBox(height: 4),
+                  Text(result.publicPath,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 12, height: 1.4)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: themeColor.withOpacity(0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    icon: Icon(Icons.ios_share_rounded, color: themeColor),
+                    label: Text("Share",
+                        style: TextStyle(
+                            color: themeColor, fontWeight: FontWeight.bold)),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Share.shareXFiles([XFile(result.safeCachePath)],
+                          text: "BudGetR $format Export");
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: themeColor,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    icon: const Icon(Icons.file_open_rounded),
+                    label: const Text("Open File",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+
+                      final String mimeType =
+                          format == "PDF" ? "application/pdf" : "text/csv";
+                      final openResult = await OpenFile.open(
+                          result.safeCachePath,
+                          type: mimeType);
+
+                      if (openResult.type != ResultType.done && mounted) {
+                        _showError(
+                            "Cannot open directly due to Android security. Please use the 'Share' button instead to open in Sheets.");
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Dismiss",
+                  style: TextStyle(color: Colors.white54)),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showExportOptions(CustomTemplate template, List<CustomRecord> records,
       Map<String, double> totals) {
     showModalBottomSheet(
@@ -350,23 +487,28 @@ class _CustomDataPageState extends State<CustomDataPage>
                     label: "Save PDF",
                     color: const Color(0xFFE71D36),
                     onTap: () async {
-                      Navigator.pop(ctx);
+                      Navigator.pop(ctx); // Close option sheet immediately
+
+                      // Trigger futuristic loader
+                      setState(() {
+                        _isExporting = true;
+                        _exportMessage = "GENERATING PDF DOCUMENT...";
+                      });
+
                       try {
-                        final path = await CustomExportService()
+                        final result = await CustomExportService()
                             .exportToPdf(template, records, totals);
-                        if (path != null && mounted) {
-                          // [UPDATED] Use Status Sheet for long file paths
-                          showStatusSheet(
-                            context: context,
-                            title: "PDF Saved",
-                            message: "Your document was saved to:\n\n$path",
-                            icon: Icons.check_circle_rounded,
-                            color: const Color(0xFFE71D36),
-                            buttonText: "Done",
-                          );
+
+                        if (mounted) {
+                          setState(() => _isExporting = false); // Hide loader
+                          _showExportSuccessSheet(
+                              result, const Color(0xFFE71D36), "PDF");
                         }
                       } catch (e) {
-                        if (mounted) _showError("Export failed: $e");
+                        if (mounted) {
+                          setState(() => _isExporting = false); // Hide loader
+                          _showError("Export failed: $e");
+                        }
                       }
                     },
                   ),
@@ -378,23 +520,28 @@ class _CustomDataPageState extends State<CustomDataPage>
                     label: "Save CSV",
                     color: const Color(0xFF2EC4B6),
                     onTap: () async {
-                      Navigator.pop(ctx);
+                      Navigator.pop(ctx); // Close option sheet immediately
+
+                      // Trigger futuristic loader
+                      setState(() {
+                        _isExporting = true;
+                        _exportMessage = "PREPARING SPREADSHEET...";
+                      });
+
                       try {
-                        final path = await CustomExportService()
+                        final result = await CustomExportService()
                             .exportToCsv(template, records, totals);
-                        if (path != null && mounted) {
-                          // [UPDATED] Use Status Sheet for long file paths
-                          showStatusSheet(
-                            context: context,
-                            title: "CSV Saved",
-                            message: "Your spreadsheet was saved to:\n\n$path",
-                            icon: Icons.check_circle_rounded,
-                            color: const Color(0xFF2EC4B6),
-                            buttonText: "Done",
-                          );
+
+                        if (mounted) {
+                          setState(() => _isExporting = false); // Hide loader
+                          _showExportSuccessSheet(
+                              result, const Color(0xFF2EC4B6), "CSV");
                         }
                       } catch (e) {
-                        if (mounted) _showError("Export failed: $e");
+                        if (mounted) {
+                          setState(() => _isExporting = false); // Hide loader
+                          _showError("Export failed: $e");
+                        }
                       }
                     },
                   ),
@@ -448,459 +595,513 @@ class _CustomDataPageState extends State<CustomDataPage>
   Widget build(BuildContext context) {
     super.build(context);
 
-    return StreamBuilder<CustomTemplate?>(
-      stream: _service.watchCustomTemplate(widget.template.id),
-      builder: (context, templateSnapshot) {
-        if (templateSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Color(0xff0D1B2A),
-            body:
-                Center(child: FuturisticLoader(size: 80, label: "LOADING...")),
-          );
-        }
+    return Stack(
+      children: [
+        // 1. The Main Content
+        StreamBuilder<CustomTemplate?>(
+          stream: _service.watchCustomTemplate(widget.template.id),
+          builder: (context, templateSnapshot) {
+            if (templateSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                backgroundColor: Color(0xff0D1B2A),
+                body: Center(
+                    child: FuturisticLoader(size: 80, label: "LOADING...")),
+              );
+            }
 
-        if (templateSnapshot.data == null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) Navigator.pop(context);
-          });
-          return const SizedBox();
-        }
+            if (templateSnapshot.data == null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) Navigator.pop(context);
+              });
+              return const SizedBox();
+            }
 
-        final activeTemplate = templateSnapshot.data!;
+            final activeTemplate = templateSnapshot.data!;
 
-        return StreamBuilder<List<CustomRecord>>(
-          stream: _service.getCustomRecords(activeTemplate.id),
-          builder: (context, recordSnapshot) {
-            final rawRecords = recordSnapshot.data ?? [];
-            final records =
-                FilterEngine.applyFilters(rawRecords, _activeFilters);
+            return StreamBuilder<List<CustomRecord>>(
+              stream: _service.getCustomRecords(activeTemplate.id),
+              builder: (context, recordSnapshot) {
+                final rawRecords = recordSnapshot.data ?? [];
+                final records =
+                    FilterEngine.applyFilters(rawRecords, _activeFilters);
 
-            return Scaffold(
-              backgroundColor: Colors.transparent,
-              floatingActionButton: _isSystemTemplate(activeTemplate)
-                  ? null
-                  : Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF3A86FF), Color(0xFF3A86FF)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF3A86FF).withOpacity(0.2),
-                            blurRadius: 30,
-                            offset: const Offset(0, 5),
-                            spreadRadius: 0,
+                return Scaffold(
+                  backgroundColor: Colors.transparent,
+                  floatingActionButton: _isSystemTemplate(activeTemplate)
+                      ? null
+                      : Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF3A86FF), Color(0xFF3A86FF)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF3A86FF).withOpacity(0.2),
+                                blurRadius: 30,
+                                offset: const Offset(0, 5),
+                                spreadRadius: 0,
+                              ),
+                            ],
+                            border: Border.all(
+                                color: Colors.white.withOpacity(0.25),
+                                width: 1.5),
                           ),
-                        ],
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.25), width: 1.5),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => _showEntrySheet(activeTemplate, records),
-                          borderRadius: BorderRadius.circular(12),
-                          splashColor: Colors.white.withOpacity(0.2),
-                          highlightColor: Colors.white.withOpacity(0.1),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 0),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(1),
-                                  decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      shape: BoxShape.circle),
-                                  child: const Icon(Icons.add,
-                                      color: Colors.white, size: 20),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () =>
+                                  _showEntrySheet(activeTemplate, records),
+                              borderRadius: BorderRadius.circular(12),
+                              splashColor: Colors.white.withOpacity(0.2),
+                              highlightColor: Colors.white.withOpacity(0.1),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(1),
+                                      decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          shape: BoxShape.circle),
+                                      child: const Icon(Icons.add,
+                                          color: Colors.white, size: 20),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Text('New Entry',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                            letterSpacing: 1)),
+                                  ],
                                 ),
-                                const SizedBox(width: 12),
-                                const Text('New Entry',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 12,
-                                        letterSpacing: 1)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-              body: Builder(
-                builder: (context) {
-                  if (recordSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(
-                        child: FuturisticLoader(size: 80, label: "LOADING..."));
-                  }
-
-                  if (recordSnapshot.hasError) {
-                    return Center(
-                        child: Text("Error: ${recordSnapshot.error}",
-                            style: const TextStyle(color: Colors.red)));
-                  }
-
-                  Map<String, double> totals = {};
-
-                  if (activeTemplate.name != "Investment Portfolio") {
-                    for (var field in activeTemplate.fields) {
-                      if ((field.type == CustomFieldType.number ||
-                              field.type == CustomFieldType.currency ||
-                              field.type == CustomFieldType.formula) &&
-                          field.isSumRequired) {
-                        totals[field.name] = records.fold(0.0, (sum, r) {
-                          final rawVal = r.data[field.name];
-                          double val = 0.0;
-                          if (rawVal is num)
-                            val = rawVal.toDouble();
-                          else if (rawVal is String)
-                            val = double.tryParse(rawVal) ?? 0.0;
-                          return sum + val;
-                        });
-                      }
-                    }
-                  }
-
-                  return ListView(
-                    padding: const EdgeInsets.fromLTRB(0, 16, 0, 100),
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _glassColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border:
-                              Border.all(color: Colors.white.withOpacity(0.05)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "${records.length} Records",
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.5),
-                                  fontWeight: FontWeight.bold),
-                            ),
-                            Row(
-                              children: [
-                                IconButton(
-                                  onPressed: () => _showExportOptions(
-                                      activeTemplate, records, totals),
-                                  icon: const Icon(Icons.ios_share_rounded,
-                                      color: Colors.white70, size: 20),
-                                  tooltip: 'Export',
-                                ),
-                                IconButton(
-                                  onPressed: () => _showFilterSheet(
-                                      activeTemplate, rawRecords),
-                                  icon: Icon(
-                                    _activeFilters.isNotEmpty
-                                        ? Icons.filter_alt
-                                        : Icons.filter_alt_outlined,
-                                    color: _activeFilters.isNotEmpty
-                                        ? _accentColor
-                                        : Colors.white70,
-                                  ),
-                                  tooltip: 'Filter Table',
-                                ),
-                                IconButton(
-                                  onPressed: () =>
-                                      _editTemplate(activeTemplate),
-                                  icon: const Icon(
-                                      Icons.settings_suggest_outlined,
-                                      color: Colors.white70),
-                                  tooltip: 'Edit Structure',
-                                ),
-                                IconButton(
-                                  onPressed: () => _deleteSheet(activeTemplate),
-                                  icon: const Icon(Icons.delete_outline,
-                                      color: Colors.redAccent),
-                                  tooltip: 'Delete Sheet',
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (activeTemplate.xAxisField != null &&
-                          activeTemplate.yAxisField != null &&
-                          records.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: () => _configureChart(activeTemplate),
-                              icon: const Icon(Icons.tune_rounded, size: 16),
-                              label: const Text("Configure Chart"),
-                              style: TextButton.styleFrom(
-                                foregroundColor: _accentColor,
-                                textStyle: const TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.bold),
-                                visualDensity: VisualDensity.compact,
                               ),
                             ),
                           ),
                         ),
-                        Container(
-                          height: 250,
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          padding: const EdgeInsets.only(
-                              right: 16, top: 24, bottom: 8),
-                          decoration: BoxDecoration(
-                            color: _glassColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.05)),
-                          ),
-                          child: CustomDataChart(
-                            records: records,
-                            xKey: activeTemplate.xAxisField!,
-                            yKey: activeTemplate.yAxisField!,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                      ] else if (records.isNotEmpty) ...[
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Padding(
-                            padding:
-                                const EdgeInsets.only(right: 16, bottom: 8),
-                            child: TextButton.icon(
-                              onPressed: () => _configureChart(activeTemplate),
-                              icon: const Icon(Icons.bar_chart, size: 18),
-                              label: const Text('Add Chart'),
-                              style: TextButton.styleFrom(
-                                  foregroundColor: _accentColor),
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (records.isNotEmpty)
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Container(
+                  body: Builder(
+                    builder: (context) {
+                      if (recordSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                            child: FuturisticLoader(
+                                size: 80, label: "LOADING..."));
+                      }
+
+                      if (recordSnapshot.hasError) {
+                        return Center(
+                            child: Text("Error: ${recordSnapshot.error}",
+                                style: const TextStyle(color: Colors.red)));
+                      }
+
+                      Map<String, double> totals = {};
+
+                      if (activeTemplate.name != "Investment Portfolio") {
+                        for (var field in activeTemplate.fields) {
+                          if ((field.type == CustomFieldType.number ||
+                                  field.type == CustomFieldType.currency ||
+                                  field.type == CustomFieldType.formula) &&
+                              field.isSumRequired) {
+                            totals[field.name] = records.fold(0.0, (sum, r) {
+                              final rawVal = r.data[field.name];
+                              double val = 0.0;
+                              if (rawVal is num)
+                                val = rawVal.toDouble();
+                              else if (rawVal is String)
+                                val = double.tryParse(rawVal) ?? 0.0;
+                              return sum + val;
+                            });
+                          }
+                        }
+                      }
+
+                      return ListView(
+                        padding: const EdgeInsets.fromLTRB(0, 16, 0, 100),
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
                               color: _glassColor,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                   color: Colors.white.withOpacity(0.05)),
                             ),
-                            child: DataTable(
-                              headingRowColor: MaterialStateProperty.all(
-                                  Colors.white.withOpacity(0.05)),
-                              dataRowColor:
-                                  MaterialStateProperty.all(Colors.transparent),
-                              columnSpacing: 24.0,
-                              horizontalMargin: 20,
-                              dividerThickness: 0.5,
-                              border: TableBorder(
-                                  horizontalInside: BorderSide(
-                                      color: Colors.white.withOpacity(0.05),
-                                      width: 1)),
-                              columns: [
-                                ...activeTemplate.fields.map(
-                                  (f) => DataColumn(
-                                    label: Text(
-                                      f.name.toUpperCase(),
-                                      style: TextStyle(
-                                          color: _accentColor,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "${records.length} Records",
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () => _showExportOptions(
+                                          activeTemplate, records, totals),
+                                      icon: const Icon(Icons.ios_share_rounded,
+                                          color: Colors.white70, size: 20),
+                                      tooltip: 'Export',
                                     ),
+                                    IconButton(
+                                      onPressed: () => _showFilterSheet(
+                                          activeTemplate, rawRecords),
+                                      icon: Icon(
+                                        _activeFilters.isNotEmpty
+                                            ? Icons.filter_alt
+                                            : Icons.filter_alt_outlined,
+                                        color: _activeFilters.isNotEmpty
+                                            ? _accentColor
+                                            : Colors.white70,
+                                      ),
+                                      tooltip: 'Filter Table',
+                                    ),
+                                    IconButton(
+                                      onPressed: () =>
+                                          _editTemplate(activeTemplate),
+                                      icon: const Icon(
+                                          Icons.settings_suggest_outlined,
+                                          color: Colors.white70),
+                                      tooltip: 'Edit Structure',
+                                    ),
+                                    IconButton(
+                                      onPressed: () =>
+                                          _deleteSheet(activeTemplate),
+                                      icon: const Icon(Icons.delete_outline,
+                                          color: Colors.redAccent),
+                                      tooltip: 'Delete Sheet',
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (activeTemplate.xAxisField != null &&
+                              activeTemplate.yAxisField != null &&
+                              records.isNotEmpty) ...[
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton.icon(
+                                  onPressed: () =>
+                                      _configureChart(activeTemplate),
+                                  icon:
+                                      const Icon(Icons.tune_rounded, size: 16),
+                                  label: const Text("Configure Chart"),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: _accentColor,
+                                    textStyle: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold),
+                                    visualDensity: VisualDensity.compact,
                                   ),
                                 ),
-                                const DataColumn(label: Text('')),
-                              ],
-                              rows: [
-                                ...records.map((r) {
-                                  bool isStale = _isRowStale(r, activeTemplate);
-                                  return DataRow(
-                                    color: isStale
-                                        ? MaterialStateProperty.all(
-                                            Colors.amber.withOpacity(0.1))
-                                        : null,
-                                    cells: [
-                                      ...activeTemplate.fields.map((f) {
-                                        final val = r.data[f.name];
-                                        String display = '-';
-                                        if (val != null) {
-                                          if (f.type == CustomFieldType.date) {
-                                            final dt = _tryParseDate(val);
-                                            if (dt != null)
-                                              display =
-                                                  DateFormat('dd MMM yyyy')
-                                                      .format(dt);
-                                            else
-                                              display = val.toString();
-                                          } else if (f.type ==
-                                              CustomFieldType.currency) {
-                                            double numVal = 0.0;
-                                            if (val is num)
-                                              numVal = val.toDouble();
-                                            else if (val is String)
-                                              numVal =
-                                                  double.tryParse(val) ?? 0.0;
-                                            display =
-                                                '${f.currencySymbol ?? '₹'}${numVal.toStringAsFixed(2)}';
-                                          } else if (f.type ==
-                                              CustomFieldType.serial) {
-                                            display =
-                                                '${f.serialPrefix ?? ''}$val${f.serialSuffix ?? ''}';
-                                          } else if (f.type ==
-                                              CustomFieldType.number) {
-                                            display = val.toString();
-                                            if (f.serialSuffix != null)
-                                              display += f.serialSuffix!;
-                                          } else {
-                                            display = val.toString();
-                                          }
-                                        }
-
-                                        bool highlightCell = isStale &&
-                                            f.type == CustomFieldType.formula;
-
-                                        return DataCell(
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(display,
-                                                  style: TextStyle(
-                                                      color: highlightCell
-                                                          ? Colors.amberAccent
-                                                          : Colors.white70)),
-                                              if (highlightCell) ...[
-                                                const SizedBox(width: 4),
-                                                const Icon(
-                                                    Icons.warning_amber_rounded,
-                                                    size: 14,
-                                                    color: Colors.amber),
-                                              ],
-                                            ],
-                                          ),
-                                        );
-                                      }),
-                                      DataCell(
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            if (!_isSystemTemplate(
-                                                activeTemplate)) ...[
-                                              IconButton(
-                                                icon: const Icon(Icons.edit,
-                                                    size: 16,
-                                                    color: Colors.white54),
-                                                onPressed: () =>
-                                                    _showEntrySheet(
-                                                        activeTemplate,
-                                                        records,
-                                                        r),
-                                                padding: EdgeInsets.zero,
-                                                constraints:
-                                                    const BoxConstraints(),
-                                              ),
-                                              const SizedBox(width: 12),
-                                            ],
-                                            IconButton(
-                                              icon: const Icon(Icons.delete,
-                                                  size: 16,
-                                                  color: Colors.redAccent),
-                                              onPressed: () =>
-                                                  _deleteRecord(r.id),
-                                              padding: EdgeInsets.zero,
-                                              constraints:
-                                                  const BoxConstraints(),
-                                            ),
-                                          ],
+                              ),
+                            ),
+                            Container(
+                              height: 250,
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              padding: const EdgeInsets.only(
+                                  right: 16, top: 24, bottom: 8),
+                              decoration: BoxDecoration(
+                                color: _glassColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(0.05)),
+                              ),
+                              child: CustomDataChart(
+                                records: records,
+                                xKey: activeTemplate.xAxisField!,
+                                yKey: activeTemplate.yAxisField!,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ] else if (records.isNotEmpty) ...[
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.only(right: 16, bottom: 8),
+                                child: TextButton.icon(
+                                  onPressed: () =>
+                                      _configureChart(activeTemplate),
+                                  icon: const Icon(Icons.bar_chart, size: 18),
+                                  label: const Text('Add Chart'),
+                                  style: TextButton.styleFrom(
+                                      foregroundColor: _accentColor),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (records.isNotEmpty)
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: _glassColor,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                      color: Colors.white.withOpacity(0.05)),
+                                ),
+                                child: DataTable(
+                                  headingRowColor: MaterialStateProperty.all(
+                                      Colors.white.withOpacity(0.05)),
+                                  dataRowColor: MaterialStateProperty.all(
+                                      Colors.transparent),
+                                  columnSpacing: 24.0,
+                                  horizontalMargin: 20,
+                                  dividerThickness: 0.5,
+                                  border: TableBorder(
+                                      horizontalInside: BorderSide(
+                                          color: Colors.white.withOpacity(0.05),
+                                          width: 1)),
+                                  columns: [
+                                    ...activeTemplate.fields.map(
+                                      (f) => DataColumn(
+                                        label: Text(
+                                          f.name.toUpperCase(),
+                                          style: TextStyle(
+                                              color: _accentColor,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12),
                                         ),
                                       ),
-                                    ],
-                                  );
-                                }),
-                                if (totals.isNotEmpty &&
-                                    !_isSystemTemplate(activeTemplate))
-                                  DataRow(
-                                    cells: [
-                                      ...activeTemplate.fields.map((f) {
-                                        if (totals.containsKey(f.name)) {
-                                          String amount = totals[f.name]!
-                                              .toStringAsFixed(2);
-                                          if (f.type ==
-                                              CustomFieldType.currency)
-                                            amount =
-                                                '${f.currencySymbol ?? '₹'}$amount';
-                                          return DataCell(
-                                            Text(amount,
-                                                style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: _accentColor,
-                                                    fontSize: 13)),
-                                          );
-                                        } else if (f ==
-                                            activeTemplate.fields.first) {
-                                          return const DataCell(
-                                            Text('TOTAL',
-                                                style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                    fontSize: 11)),
-                                          );
-                                        }
-                                        return const DataCell(Text(''));
-                                      }),
-                                      const DataCell(Text('')),
-                                    ],
-                                  ),
-                              ],
+                                    ),
+                                    const DataColumn(label: Text('')),
+                                  ],
+                                  rows: [
+                                    ...records.map((r) {
+                                      bool isStale =
+                                          _isRowStale(r, activeTemplate);
+                                      return DataRow(
+                                        color: isStale
+                                            ? MaterialStateProperty.all(
+                                                Colors.amber.withOpacity(0.1))
+                                            : null,
+                                        cells: [
+                                          ...activeTemplate.fields.map((f) {
+                                            final val = r.data[f.name];
+                                            String display = '-';
+                                            if (val != null) {
+                                              if (f.type ==
+                                                  CustomFieldType.date) {
+                                                final dt = _tryParseDate(val);
+                                                if (dt != null)
+                                                  display =
+                                                      DateFormat('dd MMM yyyy')
+                                                          .format(dt);
+                                                else
+                                                  display = val.toString();
+                                              } else if (f.type ==
+                                                  CustomFieldType.currency) {
+                                                double numVal = 0.0;
+                                                if (val is num)
+                                                  numVal = val.toDouble();
+                                                else if (val is String)
+                                                  numVal =
+                                                      double.tryParse(val) ??
+                                                          0.0;
+                                                display =
+                                                    '${f.currencySymbol ?? '₹'}${numVal.toStringAsFixed(2)}';
+                                              } else if (f.type ==
+                                                  CustomFieldType.serial) {
+                                                display =
+                                                    '${f.serialPrefix ?? ''}$val${f.serialSuffix ?? ''}';
+                                              } else if (f.type ==
+                                                  CustomFieldType.number) {
+                                                display = val.toString();
+                                                if (f.serialSuffix != null)
+                                                  display += f.serialSuffix!;
+                                              } else {
+                                                display = val.toString();
+                                              }
+                                            }
+
+                                            bool highlightCell = isStale &&
+                                                f.type ==
+                                                    CustomFieldType.formula;
+
+                                            return DataCell(
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(display,
+                                                      style: TextStyle(
+                                                          color: highlightCell
+                                                              ? Colors
+                                                                  .amberAccent
+                                                              : Colors
+                                                                  .white70)),
+                                                  if (highlightCell) ...[
+                                                    const SizedBox(width: 4),
+                                                    const Icon(
+                                                        Icons
+                                                            .warning_amber_rounded,
+                                                        size: 14,
+                                                        color: Colors.amber),
+                                                  ],
+                                                ],
+                                              ),
+                                            );
+                                          }),
+                                          DataCell(
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                if (!_isSystemTemplate(
+                                                    activeTemplate)) ...[
+                                                  IconButton(
+                                                    icon: const Icon(Icons.edit,
+                                                        size: 16,
+                                                        color: Colors.white54),
+                                                    onPressed: () =>
+                                                        _showEntrySheet(
+                                                            activeTemplate,
+                                                            records,
+                                                            r),
+                                                    padding: EdgeInsets.zero,
+                                                    constraints:
+                                                        const BoxConstraints(),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                ],
+                                                IconButton(
+                                                  icon: const Icon(Icons.delete,
+                                                      size: 16,
+                                                      color: Colors.redAccent),
+                                                  onPressed: () =>
+                                                      _deleteRecord(r.id),
+                                                  padding: EdgeInsets.zero,
+                                                  constraints:
+                                                      const BoxConstraints(),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }),
+                                    if (totals.isNotEmpty &&
+                                        !_isSystemTemplate(activeTemplate))
+                                      DataRow(
+                                        cells: [
+                                          ...activeTemplate.fields.map((f) {
+                                            if (totals.containsKey(f.name)) {
+                                              String amount = totals[f.name]!
+                                                  .toStringAsFixed(2);
+                                              if (f.type ==
+                                                  CustomFieldType.currency)
+                                                amount =
+                                                    '${f.currencySymbol ?? '₹'}$amount';
+                                              return DataCell(
+                                                Text(amount,
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: _accentColor,
+                                                        fontSize: 13)),
+                                              );
+                                            } else if (f ==
+                                                activeTemplate.fields.first) {
+                                              return const DataCell(
+                                                Text('TOTAL',
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.white,
+                                                        fontSize: 11)),
+                                              );
+                                            }
+                                            return const DataCell(Text(''));
+                                          }),
+                                          const DataCell(Text('')),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            Padding(
+                              padding: const EdgeInsets.only(top: 80),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.filter_list_off,
+                                        size: 48,
+                                        color: Colors.white.withOpacity(0.1)),
+                                    const SizedBox(height: 16),
+                                    Text("No matching records",
+                                        style: TextStyle(
+                                            color:
+                                                Colors.white.withOpacity(0.3))),
+                                    if (_activeFilters.isNotEmpty)
+                                      TextButton(
+                                        onPressed: () {
+                                          setState(
+                                              () => _activeFilters.clear());
+                                        },
+                                        child: Text("Clear Filters",
+                                            style:
+                                                TextStyle(color: _accentColor)),
+                                      )
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        )
-                      else
-                        Padding(
-                          padding: const EdgeInsets.only(top: 80),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(Icons.filter_list_off,
-                                    size: 48,
-                                    color: Colors.white.withOpacity(0.1)),
-                                const SizedBox(height: 16),
-                                Text("No matching records",
-                                    style: TextStyle(
-                                        color: Colors.white.withOpacity(0.3))),
-                                if (_activeFilters.isNotEmpty)
-                                  TextButton(
-                                    onPressed: () {
-                                      setState(() => _activeFilters.clear());
-                                    },
-                                    child: Text("Clear Filters",
-                                        style: TextStyle(color: _accentColor)),
-                                  )
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
+                        ],
+                      );
+                    },
+                  ),
+                );
+              },
             );
           },
-        );
-      },
+        ),
+
+        // 2. The Full-Screen Export Loader (Matches Factory Reset design)
+        if (_isExporting)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.90),
+              child: Center(
+                child: Material(
+                  color: Colors.transparent,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const FuturisticLoader(),
+                      const SizedBox(height: 32),
+                      Text(
+                        _exportMessage,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            letterSpacing: 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

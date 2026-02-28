@@ -1,13 +1,19 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:budget/core/models/custom_data_models.dart';
 import 'package:csv/csv.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart'; // [NEW] For direct path routing
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path/path.dart' as p;
+
+class ExportResult {
+  final String publicPath;
+  final String safeCachePath;
+
+  ExportResult({required this.publicPath, required this.safeCachePath});
+}
 
 class CustomExportService {
   // --- FORMATTING HELPER ---
@@ -27,11 +33,9 @@ class CustomExportService {
       }
     } else if (field.type == CustomFieldType.currency) {
       double numVal = 0.0;
-      if (val is num) {
+      if (val is num)
         numVal = val.toDouble();
-      } else if (val is String) {
-        numVal = double.tryParse(val) ?? 0.0;
-      }
+      else if (val is String) numVal = double.tryParse(val) ?? 0.0;
       return '${field.currencySymbol ?? '₹'}${numVal.toStringAsFixed(2)}';
     } else if (field.type == CustomFieldType.serial) {
       return '${field.serialPrefix ?? ''}$val${field.serialSuffix ?? ''}';
@@ -44,51 +48,51 @@ class CustomExportService {
     return val.toString();
   }
 
-  // --- SAVE HELPER (AUTOMATIC PATH ROUTING) ---
-  Future<String?> _saveFile(
-      String defaultFileName, List<int> bytes, String formatFolder) async {
+  // --- SAVE HELPER (Handles both Strings and Bytes) ---
+  Future<ExportResult> _saveFile(
+      String defaultFileName, dynamic content, String formatFolder) async {
     try {
-      // 1. Generate dynamic folder structure: BudGetR/Sheets/MMM yyyy/PDF (or CSV)
       final folderDate = DateFormat('MMM yyyy').format(DateTime.now());
       final folderPath = 'BudGetR/Sheets/$folderDate/$formatFolder';
 
-      Directory saveDir;
+      Directory publicDir;
       if (Platform.isAndroid) {
-        // Target public Downloads folder for Android
-        saveDir = Directory('/storage/emulated/0/Download/$folderPath');
+        publicDir = Directory('/storage/emulated/0/Download/$folderPath');
       } else {
-        // Target Documents folder for iOS
         final baseDir = await getApplicationDocumentsDirectory();
-        saveDir = Directory(p.join(baseDir.path, folderPath));
+        publicDir = Directory(p.join(baseDir.path, folderPath));
       }
 
-      // 2. Create the entire directory tree if it doesn't exist
-      if (!await saveDir.exists()) {
-        await saveDir.create(recursive: true);
+      if (!await publicDir.exists()) await publicDir.create(recursive: true);
+      final publicPath = p.join(publicDir.path, defaultFileName);
+      final publicFile = File(publicPath);
+
+      final tempDir = await getTemporaryDirectory();
+      final safeCachePath = p.join(tempDir.path, defaultFileName);
+      final tempFile = File(safeCachePath);
+
+      // [FIXED] Write natively based on content type to prevent encoding corruption
+      if (content is String) {
+        await publicFile.writeAsString(content, flush: true);
+        await tempFile.writeAsString(content, flush: true);
+      } else if (content is Uint8List || content is List<int>) {
+        await publicFile.writeAsBytes(content as List<int>, flush: true);
+        await tempFile.writeAsBytes(content as List<int>, flush: true);
       }
 
-      final exportPath = p.join(saveDir.path, defaultFileName);
-
-      // 3. Save the file directly
-      final file = File(exportPath);
-      await file.writeAsBytes(bytes);
-
-      return exportPath; // Return path for UI notification
+      return ExportResult(publicPath: publicPath, safeCachePath: safeCachePath);
     } catch (e) {
-      throw Exception(
-          "Permission denied or path error. Ensure Storage Permission is enabled: $e");
+      throw Exception("Storage Permission Error: $e");
     }
   }
 
   // --- CSV EXPORT ---
-  Future<String?> exportToCsv(CustomTemplate template,
+  Future<ExportResult> exportToCsv(CustomTemplate template,
       List<CustomRecord> records, Map<String, double> totals) async {
     List<List<dynamic>> rows = [];
 
-    // 1. Headers
     rows.add(template.fields.map((f) => f.name.toUpperCase()).toList());
 
-    // 2. Data Rows
     for (var record in records) {
       List<dynamic> row = [];
       for (var field in template.fields) {
@@ -97,7 +101,6 @@ class CustomExportService {
       rows.add(row);
     }
 
-    // 3. Totals Row
     if (totals.isNotEmpty) {
       List<dynamic> totalRow = [];
       bool firstLabelSet = false;
@@ -105,9 +108,8 @@ class CustomExportService {
       for (var field in template.fields) {
         if (totals.containsKey(field.name)) {
           String val = totals[field.name]!.toStringAsFixed(2);
-          if (field.type == CustomFieldType.currency) {
+          if (field.type == CustomFieldType.currency)
             val = '${field.currencySymbol ?? '₹'}$val';
-          }
           totalRow.add(val);
         } else if (!firstLabelSet) {
           totalRow.add('TOTAL');
@@ -119,31 +121,27 @@ class CustomExportService {
       rows.add(totalRow);
     }
 
-    // 4. Generate CSV Data with UTF-8 BOM
+    // [FIXED] Pure UTF-8 String, no BOM, standard line endings. Google Sheets loves this.
     String csvString = const ListToCsvConverter().convert(rows);
-    final List<int> bom = [0xEF, 0xBB, 0xBF];
-    List<int> csvBytes = bom + utf8.encode(csvString);
 
-    // 5. Save (Route to 'CSV' subfolder)
     String defaultName =
         "${template.name.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv";
-    return await _saveFile(defaultName, csvBytes, 'CSV');
+    return await _saveFile(defaultName, csvString, 'CSV');
   }
 
   // --- PDF EXPORT ---
-  Future<String?> exportToPdf(CustomTemplate template,
+  Future<ExportResult> exportToPdf(CustomTemplate template,
       List<CustomRecord> records, Map<String, double> totals) async {
     final pdf = pw.Document();
-
     final fontData = await rootBundle.load("assets/fonts/Roboto-Regular.ttf");
     final ttf = pw.Font.ttf(fontData);
 
     final headers = template.fields.map((f) => f.name.toUpperCase()).toList();
-    final data = records.map((record) {
-      return template.fields.map((field) {
-        return _formatValue(record.data[field.name], field);
-      }).toList();
-    }).toList();
+    final data = records
+        .map((record) => template.fields
+            .map((field) => _formatValue(record.data[field.name], field))
+            .toList())
+        .toList();
 
     final List<String> totalsRow = [];
     if (totals.isNotEmpty) {
@@ -151,9 +149,8 @@ class CustomExportService {
       for (var field in template.fields) {
         if (totals.containsKey(field.name)) {
           String val = totals[field.name]!.toStringAsFixed(2);
-          if (field.type == CustomFieldType.currency) {
+          if (field.type == CustomFieldType.currency)
             val = '${field.currencySymbol ?? '₹'}$val';
-          }
           totalsRow.add(val);
         } else if (!firstLabelSet) {
           totalsRow.add('TOTAL');
@@ -177,13 +174,12 @@ class CustomExportService {
             child: pw.Transform.rotate(
               angle: -0.5,
               child: pw.Opacity(
-                opacity: 0.05,
-                child: pw.Text("BudGetR",
-                    style: pw.TextStyle(
-                        fontSize: 100,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.grey)),
-              ),
+                  opacity: 0.05,
+                  child: pw.Text("BudGetR",
+                      style: pw.TextStyle(
+                          fontSize: 100,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey))),
             ),
           ),
         );
@@ -276,7 +272,6 @@ class CustomExportService {
       ),
     );
 
-    // Save (Route to 'PDF' subfolder)
     String defaultName =
         "${template.name.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf";
     return await _saveFile(defaultName, await pdf.save(), 'PDF');
