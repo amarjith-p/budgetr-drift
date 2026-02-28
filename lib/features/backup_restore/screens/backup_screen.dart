@@ -243,7 +243,7 @@ class _BackupScreenState extends State<BackupScreen> {
               child: const Center(
                 child: FuturisticLoader(
                   size: 80,
-                  label: "INITIALIZING BACKUP...",
+                  label: "LOADING BACKUP ENGINE...",
                 ),
               ),
             ),

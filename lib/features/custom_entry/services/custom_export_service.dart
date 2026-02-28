@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/services.dart'; // Required for rootBundle
+import 'package:flutter/services.dart';
 import 'package:budget/core/models/custom_data_models.dart';
 import 'package:csv/csv.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart'; // [NEW] For direct path routing
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path/path.dart' as p;
@@ -14,7 +14,6 @@ class CustomExportService {
   String _formatValue(dynamic val, CustomFieldConfig field) {
     if (val == null) return '';
 
-    // Handle both DateTime objects and ISO Strings
     if (field.type == CustomFieldType.date) {
       if (val is DateTime) {
         return DateFormat('dd MMM yyyy').format(val);
@@ -45,36 +44,40 @@ class CustomExportService {
     return val.toString();
   }
 
-  // --- SAVE HELPER ---
-  Future<String?> _saveFile(String defaultFileName, List<int> bytes) async {
-    String? outputFile;
+  // --- SAVE HELPER (AUTOMATIC PATH ROUTING) ---
+  Future<String?> _saveFile(
+      String defaultFileName, List<int> bytes, String formatFolder) async {
+    try {
+      // 1. Generate dynamic folder structure: BudGetR/Sheets/MMM yyyy/PDF (or CSV)
+      final folderDate = DateFormat('MMM yyyy').format(DateTime.now());
+      final folderPath = 'BudGetR/Sheets/$folderDate/$formatFolder';
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      String? directory = await FilePicker.platform.getDirectoryPath(
-        dialogTitle: 'Select Folder to Save File',
-      );
-
-      if (directory != null) {
-        outputFile = p.join(directory, defaultFileName);
+      Directory saveDir;
+      if (Platform.isAndroid) {
+        // Target public Downloads folder for Android
+        saveDir = Directory('/storage/emulated/0/Download/$folderPath');
+      } else {
+        // Target Documents folder for iOS
+        final baseDir = await getApplicationDocumentsDirectory();
+        saveDir = Directory(p.join(baseDir.path, folderPath));
       }
-    } else {
-      outputFile = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save Export',
-        fileName: defaultFileName,
-      );
-    }
 
-    if (outputFile != null) {
-      try {
-        final file = File(outputFile);
-        await file.writeAsBytes(bytes);
-        return outputFile;
-      } catch (e) {
-        throw Exception(
-            "Permission denied. Ensure Storage Permission is enabled.");
+      // 2. Create the entire directory tree if it doesn't exist
+      if (!await saveDir.exists()) {
+        await saveDir.create(recursive: true);
       }
+
+      final exportPath = p.join(saveDir.path, defaultFileName);
+
+      // 3. Save the file directly
+      final file = File(exportPath);
+      await file.writeAsBytes(bytes);
+
+      return exportPath; // Return path for UI notification
+    } catch (e) {
+      throw Exception(
+          "Permission denied or path error. Ensure Storage Permission is enabled: $e");
     }
-    return null;
   }
 
   // --- CSV EXPORT ---
@@ -117,15 +120,14 @@ class CustomExportService {
     }
 
     // 4. Generate CSV Data with UTF-8 BOM
-    // The BOM (Byte Order Mark) helps Excel recognize special chars like ₹
     String csvString = const ListToCsvConverter().convert(rows);
     final List<int> bom = [0xEF, 0xBB, 0xBF];
     List<int> csvBytes = bom + utf8.encode(csvString);
 
-    // 5. Save
+    // 5. Save (Route to 'CSV' subfolder)
     String defaultName =
         "${template.name.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv";
-    return await _saveFile(defaultName, csvBytes);
+    return await _saveFile(defaultName, csvBytes, 'CSV');
   }
 
   // --- PDF EXPORT ---
@@ -133,8 +135,6 @@ class CustomExportService {
       List<CustomRecord> records, Map<String, double> totals) async {
     final pdf = pw.Document();
 
-    // 1. Load Custom Font (Required for Rupee Symbol)
-    // Ensure 'assets/fonts/Roboto-Regular.ttf' is in pubspec.yaml
     final fontData = await rootBundle.load("assets/fonts/Roboto-Regular.ttf");
     final ttf = pw.Font.ttf(fontData);
 
@@ -165,10 +165,9 @@ class CustomExportService {
       data.add(totalsRow);
     }
 
-    // 2. Apply Font to Theme
     final pageTheme = pw.PageTheme(
       pageFormat: PdfPageFormat.a4.landscape,
-      theme: pw.ThemeData.withFont(base: ttf), // <--- Critical Fix
+      theme: pw.ThemeData.withFont(base: ttf),
       margin: const pw.EdgeInsets.all(40),
       buildBackground: (pw.Context context) {
         return pw.FullPage(
@@ -179,14 +178,11 @@ class CustomExportService {
               angle: -0.5,
               child: pw.Opacity(
                 opacity: 0.05,
-                child: pw.Text(
-                  "BudGetR",
-                  style: pw.TextStyle(
-                    fontSize: 100,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.grey,
-                  ),
-                ),
+                child: pw.Text("BudGetR",
+                    style: pw.TextStyle(
+                        fontSize: 100,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.grey)),
               ),
             ),
           ),
@@ -239,9 +235,9 @@ class CustomExportService {
             alignment: pw.Alignment.centerRight,
             margin: const pw.EdgeInsets.only(top: 20),
             child: pw.Text(
-              "Page ${context.pageNumber} of ${context.pagesCount}",
-              style: const pw.TextStyle(color: PdfColors.grey500, fontSize: 10),
-            ),
+                "Page ${context.pageNumber} of ${context.pagesCount}",
+                style:
+                    const pw.TextStyle(color: PdfColors.grey500, fontSize: 10)),
           );
         },
         build: (pw.Context context) {
@@ -260,7 +256,7 @@ class CustomExportService {
               cellHeight: 30,
               cellAlignments: {
                 for (int i = 0; i < headers.length; i++)
-                  i: pw.Alignment.centerLeft,
+                  i: pw.Alignment.centerLeft
               },
               oddRowDecoration:
                   const pw.BoxDecoration(color: PdfColor.fromInt(0xFFF1F5F9)),
@@ -280,8 +276,9 @@ class CustomExportService {
       ),
     );
 
+    // Save (Route to 'PDF' subfolder)
     String defaultName =
         "${template.name.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf";
-    return await _saveFile(defaultName, await pdf.save());
+    return await _saveFile(defaultName, await pdf.save(), 'PDF');
   }
 }

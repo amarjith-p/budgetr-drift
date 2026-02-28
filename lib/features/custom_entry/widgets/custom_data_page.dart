@@ -1,6 +1,5 @@
 import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:budget/core/widgets/futuristic_loader.dart';
-import 'package:budget/core/widgets/modern_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/custom_entry/services/custom_export_service.dart';
 import 'package:flutter/material.dart';
@@ -37,11 +36,9 @@ class _CustomDataPageState extends State<CustomDataPage>
   @override
   bool get wantKeepAlive => true;
 
-  // Helper to identify System Templates
   bool _isSystemTemplate(CustomTemplate t) =>
       t.name.endsWith('AutoTracker') || t.name == "Investment Portfolio";
 
-  // --- DATE HELPER ---
   DateTime? _tryParseDate(dynamic val) {
     if (val is DateTime) return val;
     if (val is String) return DateTime.tryParse(val);
@@ -80,10 +77,8 @@ class _CustomDataPageState extends State<CustomDataPage>
   }
 
   void _showEntrySheet(
-    CustomTemplate template,
-    List<CustomRecord> existingRecords, [
-    CustomRecord? recordToEdit,
-  ]) {
+      CustomTemplate template, List<CustomRecord> existingRecords,
+      [CustomRecord? recordToEdit]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -117,11 +112,9 @@ class _CustomDataPageState extends State<CustomDataPage>
 
   void _editTemplate(CustomTemplate template) {
     Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (c) => TemplateEditorScreen(templateToEdit: template),
-      ),
-    );
+        context,
+        MaterialPageRoute(
+            builder: (c) => TemplateEditorScreen(templateToEdit: template)));
   }
 
   void _configureChart(CustomTemplate template) {
@@ -129,20 +122,16 @@ class _CustomDataPageState extends State<CustomDataPage>
     String? yField = template.yAxisField;
 
     final validX = template.fields
-        .where(
-          (f) =>
-              f.type == CustomFieldType.string ||
-              f.type == CustomFieldType.date ||
-              f.type == CustomFieldType.serial,
-        )
+        .where((f) =>
+            f.type == CustomFieldType.string ||
+            f.type == CustomFieldType.date ||
+            f.type == CustomFieldType.serial)
         .toList();
     final validY = template.fields
-        .where(
-          (f) =>
-              f.type == CustomFieldType.number ||
-              f.type == CustomFieldType.currency ||
-              f.type == CustomFieldType.formula,
-        )
+        .where((f) =>
+            f.type == CustomFieldType.number ||
+            f.type == CustomFieldType.currency ||
+            f.type == CustomFieldType.formula)
         .toList();
 
     showModalBottomSheet(
@@ -159,33 +148,26 @@ class _CustomDataPageState extends State<CustomDataPage>
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                 decoration: BoxDecoration(
                   color: _bgColor,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
                   border: Border(
-                    top: BorderSide(color: Colors.white.withOpacity(0.1)),
-                  ),
+                      top: BorderSide(color: Colors.white.withOpacity(0.1))),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(2))),
                     const SizedBox(height: 20),
-                    const Text(
-                      'Configure Chart',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    const Text('Configure Chart',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold)),
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
@@ -228,14 +210,11 @@ class _CustomDataPageState extends State<CustomDataPage>
                     ),
                     if (errorMessage != null) ...[
                       const SizedBox(height: 16),
-                      Text(
-                        errorMessage!,
-                        style: const TextStyle(
-                          color: Colors.redAccent,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text(errorMessage!,
+                          style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold)),
                     ],
                     const SizedBox(height: 32),
                     Row(
@@ -249,26 +228,19 @@ class _CustomDataPageState extends State<CustomDataPage>
                                   final navigator = Navigator.of(context);
                                   template.xAxisField = null;
                                   template.yAxisField = null;
-                                  await _service.updateCustomTemplate(
-                                    template,
-                                  );
+                                  await _service.updateCustomTemplate(template);
                                   navigator.pop();
                                 },
                                 style: OutlinedButton.styleFrom(
                                   side: BorderSide(
-                                    color: Colors.redAccent.withOpacity(0.5),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
+                                      color: Colors.redAccent.withOpacity(0.5)),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
+                                      borderRadius: BorderRadius.circular(16)),
                                 ),
-                                child: const Text(
-                                  'Remove',
-                                  style: TextStyle(color: Colors.redAccent),
-                                ),
+                                child: const Text('Remove',
+                                    style: TextStyle(color: Colors.redAccent)),
                               ),
                             ),
                           ),
@@ -277,18 +249,14 @@ class _CustomDataPageState extends State<CustomDataPage>
                           child: ElevatedButton(
                             onPressed: () async {
                               if (xField == null || yField == null) {
-                                setInnerState(() {
-                                  errorMessage =
-                                      "Please select both X and Y axes";
-                                });
+                                setInnerState(() => errorMessage =
+                                    "Please select both X and Y axes");
                                 return;
                               }
                               final navigator = Navigator.of(context);
                               template.xAxisField = xField;
                               template.yAxisField = yField;
-                              await _service.updateCustomTemplate(
-                                template,
-                              );
+                              await _service.updateCustomTemplate(template);
                               navigator.pop();
                             },
                             style: ElevatedButton.styleFrom(
@@ -297,13 +265,10 @@ class _CustomDataPageState extends State<CustomDataPage>
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
+                                  borderRadius: BorderRadius.circular(16)),
                             ),
-                            child: const Text(
-                              'Save Configuration',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                            child: const Text('Save Configuration',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -331,7 +296,6 @@ class _CustomDataPageState extends State<CustomDataPage>
       buttonText: "Delete",
       onDismiss: () async {
         await _service.deleteCustomTemplate(template.id);
-        // Navigation pop is handled by the StreamBuilder in build()
       },
     );
   }
@@ -369,19 +333,14 @@ class _CustomDataPageState extends State<CustomDataPage>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Export Data",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text("Export Data",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text(
-              "Save '${template.name}' to device",
-              style: TextStyle(color: Colors.white.withOpacity(0.5)),
-            ),
+            Text("Save '${template.name}' to device storage",
+                style: TextStyle(color: Colors.white.withOpacity(0.5))),
             const SizedBox(height: 24),
             Row(
               children: [
@@ -395,24 +354,19 @@ class _CustomDataPageState extends State<CustomDataPage>
                       try {
                         final path = await CustomExportService()
                             .exportToPdf(template, records, totals);
-
                         if (path != null && mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("PDF Saved to: $path"),
-                              backgroundColor: const Color(0xFF2EC4B6),
-                              duration: const Duration(seconds: 4),
-                            ),
+                          // [UPDATED] Use Status Sheet for long file paths
+                          showStatusSheet(
+                            context: context,
+                            title: "PDF Saved",
+                            message: "Your document was saved to:\n\n$path",
+                            icon: Icons.check_circle_rounded,
+                            color: const Color(0xFFE71D36),
+                            buttonText: "Done",
                           );
                         }
                       } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text("Error: $e"),
-                                backgroundColor: Colors.red),
-                          );
-                        }
+                        if (mounted) _showError("Export failed: $e");
                       }
                     },
                   ),
@@ -426,29 +380,21 @@ class _CustomDataPageState extends State<CustomDataPage>
                     onTap: () async {
                       Navigator.pop(ctx);
                       try {
-                        final path = await CustomExportService().exportToCsv(
-                          template,
-                          records,
-                          totals,
-                        );
-
+                        final path = await CustomExportService()
+                            .exportToCsv(template, records, totals);
                         if (path != null && mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("CSV Saved to: $path"),
-                              backgroundColor: const Color(0xFF2EC4B6),
-                              duration: const Duration(seconds: 4),
-                            ),
+                          // [UPDATED] Use Status Sheet for long file paths
+                          showStatusSheet(
+                            context: context,
+                            title: "CSV Saved",
+                            message: "Your spreadsheet was saved to:\n\n$path",
+                            icon: Icons.check_circle_rounded,
+                            color: const Color(0xFF2EC4B6),
+                            buttonText: "Done",
                           );
                         }
                       } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text("Error: $e"),
-                                backgroundColor: Colors.red),
-                          );
-                        }
+                        if (mounted) _showError("Export failed: $e");
                       }
                     },
                   ),
@@ -462,12 +408,21 @@ class _CustomDataPageState extends State<CustomDataPage>
     );
   }
 
-  Widget _buildExportOption({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  void _showError(String errorMsg) {
+    showStatusSheet(
+      context: context,
+      title: "Error",
+      message: errorMsg,
+      icon: Icons.error_outline_rounded,
+      color: Colors.redAccent,
+    );
+  }
+
+  Widget _buildExportOption(
+      {required IconData icon,
+      required String label,
+      required Color color,
+      required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -481,13 +436,8 @@ class _CustomDataPageState extends State<CustomDataPage>
           children: [
             Icon(icon, color: color, size: 32),
             const SizedBox(height: 12),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text(label,
+                style: TextStyle(color: color, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -498,11 +448,9 @@ class _CustomDataPageState extends State<CustomDataPage>
   Widget build(BuildContext context) {
     super.build(context);
 
-    // 1. WATCH THE TEMPLATE STREAM (For Column/Name Changes)
     return StreamBuilder<CustomTemplate?>(
       stream: _service.watchCustomTemplate(widget.template.id),
       builder: (context, templateSnapshot) {
-        // Handle Template Loading
         if (templateSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Color(0xff0D1B2A),
@@ -511,8 +459,6 @@ class _CustomDataPageState extends State<CustomDataPage>
           );
         }
 
-        // Handle Deletion (Auto-Exit)
-        // If data is null, the template was deleted.
         if (templateSnapshot.data == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) Navigator.pop(context);
@@ -520,10 +466,8 @@ class _CustomDataPageState extends State<CustomDataPage>
           return const SizedBox();
         }
 
-        // Use the FRESH template from the stream
         final activeTemplate = templateSnapshot.data!;
 
-        // 2. WATCH THE RECORDS STREAM (For Data Changes)
         return StreamBuilder<List<CustomRecord>>(
           stream: _service.getCustomRecords(activeTemplate.id),
           builder: (context, recordSnapshot) {
@@ -536,33 +480,24 @@ class _CustomDataPageState extends State<CustomDataPage>
               floatingActionButton: _isSystemTemplate(activeTemplate)
                   ? null
                   : Container(
-                      height: 56, // Slightly taller for presence
+                      height: 56,
                       decoration: BoxDecoration(
-                        // 1. The Shape: Modern rounded rectangle (Squircle-ish)
                         borderRadius: BorderRadius.circular(12),
-                        // 2. The Electric Gradient
                         gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF3A86FF), // Your Brand Blue
-                            Color(0xFF3A86FF), // Vibrant Cyan/Light Blue
-                          ],
+                          colors: [Color(0xFF3A86FF), Color(0xFF3A86FF)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        // 3. The "Bloom" Glow (Colored Shadow)
                         boxShadow: [
                           BoxShadow(
                             color: const Color(0xFF3A86FF).withOpacity(0.2),
                             blurRadius: 30,
-                            offset: const Offset(0, 5), // Pushes glow down
+                            offset: const Offset(0, 5),
                             spreadRadius: 0,
                           ),
                         ],
-                        // 4. The "Frost" Border (Glass edge effect)
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.25),
-                          width: 1.5,
-                        ),
+                            color: Colors.white.withOpacity(0.25), width: 1.5),
                       ),
                       child: Material(
                         color: Colors.transparent,
@@ -578,31 +513,21 @@ class _CustomDataPageState extends State<CustomDataPage>
                               mainAxisSize: MainAxisSize.min,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                // Icon with a slight backdrop for contrast
                                 Container(
                                   padding: const EdgeInsets.all(1),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.add,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
+                                      color: Colors.white.withOpacity(0.2),
+                                      shape: BoxShape.circle),
+                                  child: const Icon(Icons.add,
+                                      color: Colors.white, size: 20),
                                 ),
                                 const SizedBox(width: 12),
-                                // Text with spacing
-                                const Text(
-                                  'New Entry',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800, // Extra Bold
-                                    fontSize: 12,
-                                    letterSpacing:
-                                        1, // Wide spacing for "Tech" look
-                                  ),
-                                ),
+                                const Text('New Entry',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12,
+                                        letterSpacing: 1)),
                               ],
                             ),
                           ),
@@ -619,14 +544,10 @@ class _CustomDataPageState extends State<CustomDataPage>
 
                   if (recordSnapshot.hasError) {
                     return Center(
-                      child: Text(
-                        "Error: ${recordSnapshot.error}",
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    );
+                        child: Text("Error: ${recordSnapshot.error}",
+                            style: const TextStyle(color: Colors.red)));
                   }
 
-                  // --- CALCULATE TOTALS ---
                   Map<String, double> totals = {};
 
                   if (activeTemplate.name != "Investment Portfolio") {
@@ -638,11 +559,10 @@ class _CustomDataPageState extends State<CustomDataPage>
                         totals[field.name] = records.fold(0.0, (sum, r) {
                           final rawVal = r.data[field.name];
                           double val = 0.0;
-                          if (rawVal is num) {
+                          if (rawVal is num)
                             val = rawVal.toDouble();
-                          } else if (rawVal is String) {
+                          else if (rawVal is String)
                             val = double.tryParse(rawVal) ?? 0.0;
-                          }
                           return sum + val;
                         });
                       }
@@ -669,20 +589,16 @@ class _CustomDataPageState extends State<CustomDataPage>
                             Text(
                               "${records.length} Records",
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontWeight: FontWeight.bold,
-                              ),
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontWeight: FontWeight.bold),
                             ),
                             Row(
                               children: [
                                 IconButton(
                                   onPressed: () => _showExportOptions(
                                       activeTemplate, records, totals),
-                                  icon: const Icon(
-                                    Icons.ios_share_rounded,
-                                    color: Colors.white70,
-                                    size: 20,
-                                  ),
+                                  icon: const Icon(Icons.ios_share_rounded,
+                                      color: Colors.white70, size: 20),
                                   tooltip: 'Export',
                                 ),
                                 IconButton(
@@ -702,17 +618,14 @@ class _CustomDataPageState extends State<CustomDataPage>
                                   onPressed: () =>
                                       _editTemplate(activeTemplate),
                                   icon: const Icon(
-                                    Icons.settings_suggest_outlined,
-                                    color: Colors.white70,
-                                  ),
+                                      Icons.settings_suggest_outlined,
+                                      color: Colors.white70),
                                   tooltip: 'Edit Structure',
                                 ),
                                 IconButton(
                                   onPressed: () => _deleteSheet(activeTemplate),
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.redAccent,
-                                  ),
+                                  icon: const Icon(Icons.delete_outline,
+                                      color: Colors.redAccent),
                                   tooltip: 'Delete Sheet',
                                 ),
                               ],
@@ -734,9 +647,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                               style: TextButton.styleFrom(
                                 foregroundColor: _accentColor,
                                 textStyle: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                    fontSize: 12, fontWeight: FontWeight.bold),
                                 visualDensity: VisualDensity.compact,
                               ),
                             ),
@@ -772,8 +683,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                               icon: const Icon(Icons.bar_chart, size: 18),
                               label: const Text('Add Chart'),
                               style: TextButton.styleFrom(
-                                foregroundColor: _accentColor,
-                              ),
+                                  foregroundColor: _accentColor),
                             ),
                           ),
                         ),
@@ -791,30 +701,25 @@ class _CustomDataPageState extends State<CustomDataPage>
                             ),
                             child: DataTable(
                               headingRowColor: MaterialStateProperty.all(
-                                Colors.white.withOpacity(0.05),
-                              ),
-                              dataRowColor: MaterialStateProperty.all(
-                                Colors.transparent,
-                              ),
+                                  Colors.white.withOpacity(0.05)),
+                              dataRowColor:
+                                  MaterialStateProperty.all(Colors.transparent),
                               columnSpacing: 24.0,
                               horizontalMargin: 20,
                               dividerThickness: 0.5,
                               border: TableBorder(
-                                horizontalInside: BorderSide(
-                                  color: Colors.white.withOpacity(0.05),
-                                  width: 1,
-                                ),
-                              ),
+                                  horizontalInside: BorderSide(
+                                      color: Colors.white.withOpacity(0.05),
+                                      width: 1)),
                               columns: [
                                 ...activeTemplate.fields.map(
                                   (f) => DataColumn(
                                     label: Text(
                                       f.name.toUpperCase(),
                                       style: TextStyle(
-                                        color: _accentColor,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
+                                          color: _accentColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12),
                                     ),
                                   ),
                                 ),
@@ -826,8 +731,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                                   return DataRow(
                                     color: isStale
                                         ? MaterialStateProperty.all(
-                                            Colors.amber.withOpacity(0.1),
-                                          )
+                                            Colors.amber.withOpacity(0.1))
                                         : null,
                                     cells: [
                                       ...activeTemplate.fields.map((f) {
@@ -836,22 +740,20 @@ class _CustomDataPageState extends State<CustomDataPage>
                                         if (val != null) {
                                           if (f.type == CustomFieldType.date) {
                                             final dt = _tryParseDate(val);
-                                            if (dt != null) {
+                                            if (dt != null)
                                               display =
                                                   DateFormat('dd MMM yyyy')
                                                       .format(dt);
-                                            } else {
+                                            else
                                               display = val.toString();
-                                            }
                                           } else if (f.type ==
                                               CustomFieldType.currency) {
                                             double numVal = 0.0;
-                                            if (val is num) {
+                                            if (val is num)
                                               numVal = val.toDouble();
-                                            } else if (val is String) {
+                                            else if (val is String)
                                               numVal =
                                                   double.tryParse(val) ?? 0.0;
-                                            }
                                             display =
                                                 '${f.currencySymbol ?? '₹'}${numVal.toStringAsFixed(2)}';
                                           } else if (f.type ==
@@ -861,9 +763,8 @@ class _CustomDataPageState extends State<CustomDataPage>
                                           } else if (f.type ==
                                               CustomFieldType.number) {
                                             display = val.toString();
-                                            if (f.serialSuffix != null) {
+                                            if (f.serialSuffix != null)
                                               display += f.serialSuffix!;
-                                            }
                                           } else {
                                             display = val.toString();
                                           }
@@ -876,21 +777,17 @@ class _CustomDataPageState extends State<CustomDataPage>
                                           Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Text(
-                                                display,
-                                                style: TextStyle(
-                                                  color: highlightCell
-                                                      ? Colors.amberAccent
-                                                      : Colors.white70,
-                                                ),
-                                              ),
+                                              Text(display,
+                                                  style: TextStyle(
+                                                      color: highlightCell
+                                                          ? Colors.amberAccent
+                                                          : Colors.white70)),
                                               if (highlightCell) ...[
                                                 const SizedBox(width: 4),
                                                 const Icon(
-                                                  Icons.warning_amber_rounded,
-                                                  size: 14,
-                                                  color: Colors.amber,
-                                                ),
+                                                    Icons.warning_amber_rounded,
+                                                    size: 14,
+                                                    color: Colors.amber),
                                               ],
                                             ],
                                           ),
@@ -900,15 +797,12 @@ class _CustomDataPageState extends State<CustomDataPage>
                                         Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            // Hide Edit if System Template
                                             if (!_isSystemTemplate(
                                                 activeTemplate)) ...[
                                               IconButton(
-                                                icon: const Icon(
-                                                  Icons.edit,
-                                                  size: 16,
-                                                  color: Colors.white54,
-                                                ),
+                                                icon: const Icon(Icons.edit,
+                                                    size: 16,
+                                                    color: Colors.white54),
                                                 onPressed: () =>
                                                     _showEntrySheet(
                                                         activeTemplate,
@@ -921,11 +815,9 @@ class _CustomDataPageState extends State<CustomDataPage>
                                               const SizedBox(width: 12),
                                             ],
                                             IconButton(
-                                              icon: const Icon(
-                                                Icons.delete,
-                                                size: 16,
-                                                color: Colors.redAccent,
-                                              ),
+                                              icon: const Icon(Icons.delete,
+                                                  size: 16,
+                                                  color: Colors.redAccent),
                                               onPressed: () =>
                                                   _deleteRecord(r.id),
                                               padding: EdgeInsets.zero,
@@ -947,31 +839,24 @@ class _CustomDataPageState extends State<CustomDataPage>
                                           String amount = totals[f.name]!
                                               .toStringAsFixed(2);
                                           if (f.type ==
-                                              CustomFieldType.currency) {
+                                              CustomFieldType.currency)
                                             amount =
                                                 '${f.currencySymbol ?? '₹'}$amount';
-                                          }
                                           return DataCell(
-                                            Text(
-                                              amount,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: _accentColor,
-                                                fontSize: 13,
-                                              ),
-                                            ),
+                                            Text(amount,
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: _accentColor,
+                                                    fontSize: 13)),
                                           );
                                         } else if (f ==
                                             activeTemplate.fields.first) {
                                           return const DataCell(
-                                            Text(
-                                              'TOTAL',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                                fontSize: 11,
-                                              ),
-                                            ),
+                                            Text('TOTAL',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                    fontSize: 11)),
                                           );
                                         }
                                         return const DataCell(Text(''));
@@ -989,18 +874,13 @@ class _CustomDataPageState extends State<CustomDataPage>
                           child: Center(
                             child: Column(
                               children: [
-                                Icon(
-                                  Icons.filter_list_off,
-                                  size: 48,
-                                  color: Colors.white.withOpacity(0.1),
-                                ),
+                                Icon(Icons.filter_list_off,
+                                    size: 48,
+                                    color: Colors.white.withOpacity(0.1)),
                                 const SizedBox(height: 16),
-                                Text(
-                                  "No matching records",
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.3),
-                                  ),
-                                ),
+                                Text("No matching records",
+                                    style: TextStyle(
+                                        color: Colors.white.withOpacity(0.3))),
                                 if (_activeFilters.isNotEmpty)
                                   TextButton(
                                     onPressed: () {
