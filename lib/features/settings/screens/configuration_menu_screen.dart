@@ -1,6 +1,7 @@
 import 'package:budget/core/services/biometric_service.dart';
 import 'package:budget/features/backup_restore/screens/backup_screen.dart';
 import 'package:budget/features/database_viewer/screens/database_viewer_screen.dart';
+import 'package:budget/features/factory_reset/screens/factory_reset_screen.dart';
 import 'package:budget/features/investment/screens/investment_screen.dart';
 import 'package:budget/features/notifications/screens/notification_manager_screen.dart';
 import 'package:budget/features/qr_sync/screens/qr_generate_screen.dart';
@@ -188,6 +189,21 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                               context,
                               MaterialPageRoute(
                                   builder: (_) => const BackupScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _buildMenuCard(
+                          context,
+                          title: "Factory Data Reset",
+                          subtitle: "Wipe device and start fresh",
+                          icon: Icons.power_settings_new_rounded,
+                          color: Colors.redAccent,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const FactoryResetScreen()),
                             );
                           },
                         ),

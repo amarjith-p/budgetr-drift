@@ -200,14 +200,14 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
           ),
 
           // Action Button (Glass)
-          GlassCard(
-            borderRadius: 12,
-            padding: const EdgeInsets.all(10),
-            margin: EdgeInsets.zero,
-            color: Colors.white.withOpacity(0.05),
-            child: const Icon(Icons.more_horiz_rounded,
-                color: Colors.white70, size: 20),
-          ),
+          // GlassCard(
+          //   borderRadius: 12,
+          //   padding: const EdgeInsets.all(10),
+          //   margin: EdgeInsets.zero,
+          //   color: Colors.white.withOpacity(0.05),
+          //   child: const Icon(Icons.more_horiz_rounded,
+          //       color: Colors.white70, size: 20),
+          // ),
         ],
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:budget/core/database/app_database.dart';
 import 'package:budget/features/recurring/services/recurring_service.dart';
 import 'package:get_it/get_it.dart';
 
@@ -24,6 +25,7 @@ final locator = GetIt.instance;
 
 class ServiceLocator {
   static Future<void> init() async {
+    locator.registerSingleton<AppDatabase>(AppDatabase.instance);
     // 1. Core Services
     final categoryService = CategoryService();
     locator.registerSingleton<CategoryService>(categoryService);
