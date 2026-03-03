@@ -1091,6 +1091,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                       Text(
                         _exportMessage,
                         style: const TextStyle(
+                            color: Colors.cyanAccent,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                             letterSpacing: 2),
