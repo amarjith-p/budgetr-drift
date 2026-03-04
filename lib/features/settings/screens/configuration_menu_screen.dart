@@ -108,38 +108,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                         const SizedBox(height: 10),
 
                         // SECTION: PREFERENCES
-                        _buildSectionLabel("PREFERENCES"),
-                        _buildStartupToggle(),
-                        const SizedBox(height: 16),
-                        _buildMenuCard(
-                          context,
-                          title: "Notification Manager",
-                          subtitle: "Triggers, Limits & Schedule",
-                          icon: Icons.notifications_active_rounded,
-                          color: const Color(0xFF00B4D8),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const NotificationManagerScreen(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildMenuCard(
-                          context,
-                          title: "Transaction Categories",
-                          subtitle: "Manage Income & Expense types",
-                          icon: Icons.category_outlined,
-                          color: const Color(0xFFF72585),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const CategoryManagerScreen(),
-                            ),
-                          ),
-                        ),
-                        // [NEW] Recurring Payments Module Entry
-                        const SizedBox(height: 16),
+                        _buildSectionLabel("OTHER TOOLS"),
                         _buildMenuCard(
                           context,
                           title: "Recurring Transactions",
@@ -171,9 +140,38 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                         const SizedBox(height: 32),
 
                         // SECTION: SECURITY
-                        _buildSectionLabel("SECURITY"),
+                        _buildSectionLabel("PREFERENCES & SECURITY"),
                         _buildBiometricToggle(),
-
+                        const SizedBox(height: 16),
+                        _buildStartupToggle(),
+                        const SizedBox(height: 16),
+                        _buildMenuCard(
+                          context,
+                          title: "Transaction Categories",
+                          subtitle: "Manage Income & Expense types",
+                          icon: Icons.category_outlined,
+                          color: const Color(0xFFF72585),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CategoryManagerScreen(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildMenuCard(
+                          context,
+                          title: "Notification Manager",
+                          subtitle: "Triggers, Limits & Schedule",
+                          icon: Icons.notifications_active_rounded,
+                          color: const Color(0xFF00B4D8),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const NotificationManagerScreen(),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 32),
 
                         // SECTION: DATA
@@ -279,7 +277,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "Configuration",
+                  "More Tools & Configurations",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,

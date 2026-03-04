@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/widgets/modern_loader.dart';
-import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
+import '../../../core/widgets/glass_card.dart';
 import '../../../core/models/transaction_category_model.dart';
 import '../../../core/services/category_service.dart';
 import '../../../core/constants/icon_constants.dart';
@@ -92,7 +92,27 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
 
         return Scaffold(
           backgroundColor: _bgColor,
-          // [FIX] Removed AppBar, using SafeArea + Column
+
+          // --- NEW: Floating Action Button to add quick transaction ---
+          floatingActionButton: FloatingActionButton(
+            backgroundColor: _accentColor,
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (c) => NewCreditTransactionScreen(
+                  preSelectedCard: widget.card, // Passes the active card
+                ),
+              );
+            },
+            child: const Icon(Icons.add, color: Colors.white, size: 28),
+          ),
+
           body: SafeArea(
             child: Column(
               children: [
@@ -187,7 +207,11 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                           ),
                           Expanded(
                             child: ListView(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.only(
+                                  left: 16,
+                                  right: 16,
+                                  top: 16,
+                                  bottom: 80), // Extra padding for FAB
                               children: [
                                 if (currentCycleSpends.isNotEmpty) ...[
                                   _buildSectionHeader(
@@ -296,7 +320,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                                               left: 16, top: 8, bottom: 8),
                                           child: Row(
                                             children: [
-                                              Icon(
+                                              const Icon(
                                                   Icons
                                                       .subdirectory_arrow_right,
                                                   color: Colors.greenAccent,
@@ -348,7 +372,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     );
   }
 
-  // --- NEW: Modern Header (Replicating ModernAppBar style with Custom Logic) ---
+  // --- NEW: Modern Header ---
   Widget _buildModernHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -590,8 +614,6 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     );
   }
 
-  // ... (Existing Methods: verify, defer, markAsRepayment, etc. remain unchanged) ...
-
   Future<void> _handleVerifySettlement(CreditTransactionModel txn) async {
     try {
       final updatedTxn = CreditTransactionModel(
@@ -792,16 +814,11 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
 
       // 1. The "Cancel" Button
       cancelButtonText: "Cancel",
-      onCancel: () {
-        // The sheet closes automatically, so we don't need extra code here
-        // unless you want to log the cancellation.
-      },
+      onCancel: () {},
 
       // 2. The "Delete" Action
       buttonText: "Delete",
       onDismiss: () async {
-        // The sheet has already closed here (Navigator.pop is built-in),
-        // so we immediately start the loading state on the screen behind it.
         setState(() => _isLoading = true);
 
         await GetIt.I<CreditService>().deleteTransaction(txn.id);

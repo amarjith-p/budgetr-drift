@@ -1271,8 +1271,11 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
 class _EmbeddedCalculator extends StatelessWidget {
   final TextEditingController controller;
   final Color typeColor;
-  const _EmbeddedCalculator(
-      {required this.controller, required this.typeColor});
+
+  const _EmbeddedCalculator({
+    required this.controller,
+    required this.typeColor,
+  });
 
   void _onKey(String value) {
     final text = controller.text;
@@ -1313,95 +1316,141 @@ class _EmbeddedCalculator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Soft, professional tinted background for operators
+    final operatorBgColor = typeColor.withOpacity(0.1);
+
     return Padding(
-      padding: const EdgeInsets.only(left: 8, right: 8, top: 12, bottom: 8),
+      // Tightened top padding so it sticks closer to the fields above
+      padding: const EdgeInsets.only(left: 12, right: 12, top: 8, bottom: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(children: [
-            _key('C', color: Colors.redAccent, onTap: controller.clear),
-            _key('(', color: Colors.white54),
-            _key(')', color: Colors.white54),
-            _key('÷', color: Colors.blueAccent)
+            _buildKey('C',
+                textColor: Colors.redAccent,
+                bgColor: Colors.redAccent.withOpacity(0.1),
+                onTap: controller.clear),
+            _buildKey('(', textColor: typeColor, bgColor: operatorBgColor),
+            _buildKey(')', textColor: typeColor, bgColor: operatorBgColor),
+            _buildKey('÷', textColor: typeColor, bgColor: operatorBgColor),
           ]),
+          const SizedBox(height: 6),
           Row(children: [
-            _key('7'),
-            _key('8'),
-            _key('9'),
-            _key('×', color: Colors.blueAccent)
+            _buildKey('7'),
+            _buildKey('8'),
+            _buildKey('9'),
+            _buildKey('×', textColor: typeColor, bgColor: operatorBgColor),
           ]),
+          const SizedBox(height: 6),
           Row(children: [
-            _key('4'),
-            _key('5'),
-            _key('6'),
-            _key('-', color: Colors.blueAccent)
+            _buildKey('4'),
+            _buildKey('5'),
+            _buildKey('6'),
+            _buildKey('-', textColor: typeColor, bgColor: operatorBgColor),
           ]),
+          const SizedBox(height: 6),
           Row(children: [
-            _key('1'),
-            _key('2'),
-            _key('3'),
-            _key('+', color: Colors.blueAccent)
+            _buildKey('1'),
+            _buildKey('2'),
+            _buildKey('3'),
+            _buildKey('+', textColor: typeColor, bgColor: operatorBgColor),
           ]),
+          const SizedBox(height: 6),
           Row(children: [
-            _key('.', color: Colors.white70),
-            _key('0'),
-            _backspaceKey(),
-            _equalsKey(typeColor)
+            _buildKey('.', textColor: Colors.white54),
+            _buildKey('0'),
+            _buildBackspaceKey(),
+            _buildEqualsKey(),
           ]),
         ],
       ),
     );
   }
 
-  Widget _key(String label, {Color? color, VoidCallback? onTap}) {
+  // Generic key builder with compact styling
+  Widget _buildKey(String label,
+      {Color? textColor, Color? bgColor, VoidCallback? onTap}) {
     return Expanded(
-        child: InkWell(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: 3), // Tighter gap between keys
+        child: Material(
+          color: bgColor ??
+              Colors.white.withOpacity(0.04), // Clean, flat background
+          borderRadius:
+              BorderRadius.circular(12), // Professional, subtle corners
+          child: InkWell(
             onTap: onTap ?? () => _onKey(label),
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(12),
+            splashColor: (textColor ?? Colors.white).withOpacity(0.1),
+            highlightColor: Colors.transparent,
             child: Container(
-                height: 48,
-                alignment: Alignment.center,
-                margin: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.02),
-                    shape: BoxShape.circle),
-                child: Text(label,
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w400,
-                        color: color ?? Colors.white)))));
+              height: 52, // Reduced height for a more compact footprint
+              alignment: Alignment.center,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 20, // Clean typography
+                  fontWeight: FontWeight.w500,
+                  color: textColor ?? Colors.white.withOpacity(0.9),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
-  Widget _backspaceKey() {
+  Widget _buildBackspaceKey() {
     return Expanded(
-        child: InkWell(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: Material(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
             onTap: _onBackspace,
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(12),
+            splashColor: Colors.white.withOpacity(0.1),
             child: Container(
-                height: 48,
-                margin: const EdgeInsets.all(4),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.02),
-                    shape: BoxShape.circle),
-                child: const Icon(Icons.backspace_outlined,
-                    size: 20, color: Colors.white54))));
+              height: 55,
+              alignment: Alignment.center,
+              child: const Icon(Icons.backspace_rounded,
+                  size: 20, color: Colors.white54),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
-  Widget _equalsKey(Color color) {
+  Widget _buildEqualsKey() {
     return Expanded(
-        child: InkWell(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: Material(
+          color: typeColor,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
             onTap: _onEquals,
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(12),
+            splashColor: Colors.black.withOpacity(0.1),
             child: Container(
-                height: 48,
-                margin: const EdgeInsets.all(4),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: const Text('=',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)))));
+              height: 48,
+              alignment: Alignment.center,
+              child: const Text(
+                '=',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
