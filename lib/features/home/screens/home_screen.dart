@@ -1,6 +1,8 @@
 import 'package:budget/features/investments/screens/portfolio_dashboard.dart';
+import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
 import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:budget/features/settlement/screens/settlement_screen.dart';
+import 'package:budget/features/trip_mode/screens/trip_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
@@ -46,6 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _needsBackup = false;
   bool _isBudgetMode = false;
   DateTime? _lastBackPressTime;
+  final PageController _toolsPageController = PageController();
+  int _currentToolPage = 0;
 
   @override
   void initState() {
@@ -257,65 +261,114 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- COMPACT 3-COLUMN BOTTOM GRID ---
   Widget _buildCompactQuickActionGrid(BuildContext context) {
+    // Group your tools into pages (6 items per page max for a 3x2 grid)
+    final List<Widget> page1 = [
+      _buildVerticalActionChip(
+          context,
+          "Goals & Loans",
+          Icons.rocket_launch_rounded,
+          const Color(0xFF7209B7),
+          const GoalsLoansDashboard()),
+      _buildVerticalActionChip(context, "Investments", Icons.insights_rounded,
+          const Color(0xFF3F37C9), const PortfolioDashboard()),
+      _buildVerticalActionChip(context, "Net Worth", Icons.diamond_rounded,
+          const Color(0xFF4CC9F0), const NetWorthScreen()),
+      _buildVerticalActionChip(context, "Budget Buckets", Icons.widgets_rounded,
+          const Color(0xFFF72585), const SettingsScreen()),
+      _buildVerticalActionChip(context, "Settlements", Icons.fact_check_rounded,
+          const Color(0xFFFF9F1C), const SettlementScreen()),
+      _buildVerticalActionChip(
+          context,
+          "Recurring Txns",
+          Icons.autorenew_rounded,
+          Color.fromARGB(255, 194, 193, 193),
+          const RecurringDashboard()),
+    ];
+
+    // You can easily add a second page of tools here!
+    final List<Widget> page2 = [
+      _buildVerticalActionChip(
+          context,
+          "Trip Mode",
+          Icons.flight_takeoff_rounded,
+          const Color(0xFFF72585),
+          const TripDashboardScreen()), // Replace Container with actual screen
+
+      _buildVerticalActionChip(context, "Live Portfolio",
+          Icons.bar_chart_rounded, Colors.blueGrey, const InvestmentScreen()),
+      _buildVerticalActionChip(context, "Settings", Icons.tune_rounded,
+          const Color(0xFFADB5BD), const ConfigurationMenuScreen()),
+      // Empty placeholders to maintain grid shape if less than 6 items
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+      const SizedBox.shrink(),
+    ];
+
+    final pages = [
+      page1,
+      page2
+    ]; // Add more pages to this list as your app grows
+
     return Column(
-      mainAxisSize: MainAxisSize.min, // Takes minimal space needed
+      mainAxisSize: MainAxisSize.min,
       children: [
-        // Row 1
-        Row(
-          children: [
-            Expanded(
-                child: _buildVerticalActionChip(
-                    context,
-                    "Goals & Loans",
-                    Icons.rocket_launch_rounded,
-                    const Color(0xFF7209B7),
-                    const GoalsLoansDashboard())),
-            const SizedBox(width: 12),
-            Expanded(
-                child: _buildVerticalActionChip(
-                    context,
-                    "Investments",
-                    Icons.insights_rounded,
-                    const Color(0xFF3F37C9),
-                    const PortfolioDashboard())),
-            const SizedBox(width: 12),
-            Expanded(
-                child: _buildVerticalActionChip(
-                    context,
-                    "Net Worth",
-                    Icons.diamond_rounded,
-                    const Color(0xFF4CC9F0),
-                    const NetWorthScreen())),
-          ],
+        SizedBox(
+          height: 160, // Fixed height to prevent scrolling, enough for 2 rows
+          child: PageView.builder(
+            controller: _toolsPageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentToolPage = index;
+              });
+            },
+            itemCount: pages.length,
+            itemBuilder: (context, pageIndex) {
+              final items = pages[pageIndex];
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: items[0]),
+                      const SizedBox(width: 12),
+                      Expanded(child: items[1]),
+                      const SizedBox(width: 12),
+                      Expanded(child: items[2]),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: items[3]),
+                      const SizedBox(width: 12),
+                      Expanded(child: items[4]),
+                      const SizedBox(width: 12),
+                      Expanded(child: items[5]),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
         ),
-        const SizedBox(height: 12),
-        // Row 2
+        const SizedBox(height: 8),
+        // Modern Dot Indicators
         Row(
-          children: [
-            Expanded(
-                child: _buildVerticalActionChip(
-                    context,
-                    "Budget Buckets",
-                    Icons.widgets_rounded,
-                    const Color(0xFFF72585),
-                    const SettingsScreen())),
-            const SizedBox(width: 12),
-            Expanded(
-                child: _buildVerticalActionChip(
-                    context,
-                    "Settlements",
-                    Icons.fact_check_rounded,
-                    const Color(0xFFFF9F1C),
-                    const SettlementScreen())),
-            const SizedBox(width: 12),
-            Expanded(
-                child: _buildVerticalActionChip(
-                    context,
-                    "Settings",
-                    Icons.tune_rounded,
-                    const Color(0xFFADB5BD),
-                    const ConfigurationMenuScreen())),
-          ],
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            pages.length,
+            (index) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              height: 6,
+              width: _currentToolPage == index ? 16 : 6,
+              decoration: BoxDecoration(
+                color: _currentToolPage == index
+                    ? const Color(0xFF4361EE)
+                    : Colors.white24,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
         ),
       ],
     );

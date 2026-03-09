@@ -99,52 +99,52 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                       children: [
                         const SizedBox(height: 10),
 
-                        // SECTION: PREFERENCES
-                        _buildSectionLabel("OTHER TOOLS"),
-                        // [NEW] Trip Mode Card
-                        _buildMenuCard(
-                          context,
-                          title: "Trip Mode",
-                          subtitle: "Isolate & track travel expenses",
-                          icon: Icons.flight_takeoff_rounded,
-                          color: const Color(0xFFF72585),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const TripDashboardScreen(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildMenuCard(
-                          context,
-                          title: "Recurring Transactions",
-                          subtitle: "Manage subscriptions & auto-pay",
-                          icon: Icons.autorenew_rounded,
-                          color: const Color(0xFF4CC9F0),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RecurringDashboard(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildMenuCard(
-                          context,
-                          title: "Portfolio Live Tracker",
-                          subtitle: "Stocks, Mutual Funds & Assets",
-                          icon: Icons.show_chart_rounded,
-                          color: const Color(0xFF3A86FF),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const InvestmentScreen(),
-                            ),
-                          ),
-                        ),
+                        // // SECTION: PREFERENCES
+                        // _buildSectionLabel("OTHER TOOLS"),
+                        // // [NEW] Trip Mode Card
+                        // _buildMenuCard(
+                        //   context,
+                        //   title: "Trip Mode",
+                        //   subtitle: "Isolate & track travel expenses",
+                        //   icon: Icons.flight_takeoff_rounded,
+                        //   color: const Color(0xFFF72585),
+                        //   onTap: () => Navigator.push(
+                        //     context,
+                        //     MaterialPageRoute(
+                        //       builder: (_) => const TripDashboardScreen(),
+                        //     ),
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 16),
+                        // _buildMenuCard(
+                        //   context,
+                        //   title: "Recurring Transactions",
+                        //   subtitle: "Manage subscriptions & auto-pay",
+                        //   icon: Icons.autorenew_rounded,
+                        //   color: const Color(0xFF4CC9F0),
+                        //   onTap: () => Navigator.push(
+                        //     context,
+                        //     MaterialPageRoute(
+                        //       builder: (_) => const RecurringDashboard(),
+                        //     ),
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 16),
+                        // _buildMenuCard(
+                        //   context,
+                        //   title: "Portfolio Live Tracker",
+                        //   subtitle: "Stocks, Mutual Funds & Assets",
+                        //   icon: Icons.show_chart_rounded,
+                        //   color: const Color(0xFF3A86FF),
+                        //   onTap: () => Navigator.push(
+                        //     context,
+                        //     MaterialPageRoute(
+                        //       builder: (_) => const InvestmentScreen(),
+                        //     ),
+                        //   ),
+                        // ),
 
-                        const SizedBox(height: 32),
+                        // const SizedBox(height: 32),
 
                         // SECTION: SECURITY
                         _buildSectionLabel("PREFERENCES & SECURITY"),
@@ -157,7 +157,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                           title: "Transaction Categories",
                           subtitle: "Manage Income & Expense types",
                           icon: Icons.category_outlined,
-                          color: const Color(0xFFFF9F1C),
+                          color: const Color.fromARGB(255, 232, 47, 1),
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -282,7 +282,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                 ),
                 const SizedBox(height: 2),
                 const Text(
-                  "More Tools & Configurations",
+                  "Configurations",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
