@@ -4,20 +4,17 @@ import 'package:budget/features/database_viewer/screens/database_viewer_screen.d
 import 'package:budget/features/factory_reset/screens/factory_reset_screen.dart';
 import 'package:budget/features/investment/screens/investment_screen.dart';
 import 'package:budget/features/notifications/screens/notification_manager_screen.dart';
-import 'package:budget/features/qr_sync/screens/qr_generate_screen.dart';
-import 'package:budget/features/qr_sync/screens/qr_scan_screen.dart';
-// [NEW IMPORT] Recurring Dashboard
+// [NEW IMPORT] Trip Mode Dashboard
+import 'package:budget/features/trip_mode/screens/trip_dashboard_screen.dart';
 import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
-import 'package:budget/features/investments/screens/portfolio_dashboard.dart';
 import 'package:budget/features/settings/services/settings_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:google_fonts/google_fonts.dart'; // Added for typography
+import 'package:google_fonts/google_fonts.dart';
 import 'package:local_auth/local_auth.dart';
-import '../../settings/screens/settings_screen.dart';
 import 'category_manager_screen.dart';
 import '../../../core/widgets/glass_card.dart';
-import '../../../core/design/budgetr_colors.dart'; // Added for Glows
+import '../../../core/design/budgetr_colors.dart';
 
 class ConfigurationMenuScreen extends StatefulWidget {
   const ConfigurationMenuScreen({super.key});
@@ -86,19 +83,14 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
       backgroundColor: bgColor,
       body: Stack(
         children: [
-          // [DESIGN UPGRADE] Ambient Glows
           _buildAmbientGlow(
               Alignment.topRight, BudgetrColors.accent.withOpacity(0.15)),
           _buildAmbientGlow(
               Alignment.bottomLeft, const Color(0xFF4361EE).withOpacity(0.1)),
-
           SafeArea(
             child: Column(
               children: [
-                // 1. MODERN HEADER
                 _buildModernHeader(),
-
-                // 2. SCROLLABLE CONTENT
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -109,6 +101,21 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
 
                         // SECTION: PREFERENCES
                         _buildSectionLabel("OTHER TOOLS"),
+                        // [NEW] Trip Mode Card
+                        _buildMenuCard(
+                          context,
+                          title: "Trip Mode",
+                          subtitle: "Isolate & track travel expenses",
+                          icon: Icons.flight_takeoff_rounded,
+                          color: const Color(0xFFF72585),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TripDashboardScreen(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         _buildMenuCard(
                           context,
                           title: "Recurring Transactions",
@@ -150,7 +157,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                           title: "Transaction Categories",
                           subtitle: "Manage Income & Expense types",
                           icon: Icons.category_outlined,
-                          color: const Color(0xFFF72585),
+                          color: const Color(0xFFFF9F1C),
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -227,8 +234,6 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
     );
   }
 
-  // --- WIDGETS ---
-
   Widget _buildSectionLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, left: 4),
@@ -266,7 +271,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                const Text(
                   "SETTINGS",
                   style: TextStyle(
                     color: Colors.white38,
@@ -276,7 +281,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                const Text(
                   "More Tools & Configurations",
                   style: TextStyle(
                     color: Colors.white,
@@ -482,9 +487,6 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
   }
 }
 
-// ==============================================================================
-//  [HELPER] TACTILE BOUNCE EFFECT (Same as Home Screen)
-// ==============================================================================
 class _BouncyButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

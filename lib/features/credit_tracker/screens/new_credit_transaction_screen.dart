@@ -1050,7 +1050,7 @@ class _EmbeddedCalculator extends StatelessWidget {
             splashColor: (textColor ?? Colors.white).withOpacity(0.1),
             highlightColor: Colors.transparent,
             child: Container(
-              height: 52, // Reduced height for a more compact footprint
+              height: 48, // Reduced height for a more compact footprint
               alignment: Alignment.center,
               child: Text(
                 label,
@@ -1079,7 +1079,7 @@ class _EmbeddedCalculator extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             splashColor: Colors.white.withOpacity(0.1),
             child: Container(
-              height: 55,
+              height: 48,
               alignment: Alignment.center,
               child: const Icon(Icons.backspace_rounded,
                   size: 20, color: Colors.white54),

@@ -7,6 +7,7 @@ import 'tables.dart';
 import '../../features/notifications/database/notification_tables.dart';
 import 'package:budget/features/investments/database/investment_tables.dart';
 import 'package:budget/features/investments/database/passive_income_tables.dart';
+import 'package:budget/features/trip_mode/database/trip_tables.dart';
 
 part 'app_database.g.dart';
 
@@ -35,7 +36,9 @@ part 'app_database.g.dart';
     RecurringLogs,
     Investments,
     InvestmentTransactions,
-    PassiveIncomeLogs
+    PassiveIncomeLogs,
+    TripRecords,
+    TripExclusions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -45,7 +48,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
@@ -53,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        if (from < 13) {
+        if (from < 14) {
           await m.deleteTable(netWorthSplits.actualTableName);
           await m.createTable(netWorthSplits);
           await m.createTable(heatmapLimits);
@@ -67,6 +70,8 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(passiveIncomeLogs);
           await m.createTable(investmentTransactions);
           await m.addColumn(investments, investments.targetAmount);
+          await m.createTable(tripRecords);
+          await m.createTable(tripExclusions);
         }
       },
     );
