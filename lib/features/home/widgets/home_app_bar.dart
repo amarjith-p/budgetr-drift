@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// [NEW] Imports for Trip Mode integration
+import '../../../core/services/service_locator.dart';
+import '../../../core/database/app_database.dart';
+import '../../trip_mode/services/trip_service.dart';
+import '../../trip_mode/screens/trip_dashboard_screen.dart';
+
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   const HomeAppBar({super.key});
 
@@ -11,6 +17,9 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the TripService from the service locator
+    final tripService = locator<TripService>();
+
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -47,9 +56,9 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
               style: GoogleFonts.robotoSlab(
                 fontSize: 24,
                 letterSpacing: 3.2, // Tighter, more cohesive spacing
-                color: Color.fromARGB(255, 255, 255, 255),
+                color: const Color.fromARGB(255, 255, 255, 255),
               ),
-              children: [
+              children: const [
                 TextSpan(
                   text: 'Bud',
                   style:
@@ -76,10 +85,37 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
-        // IconButton(
-        //   onPressed: () {},
-        //   icon: const Icon(Icons.notifications_outlined, color: Colors.white70),
-        // ),
+        // [NEW] Active Trip Mode Indicator
+        StreamBuilder<TripRecord?>(
+          stream: tripService.getActiveTrip(),
+          builder: (context, snapshot) {
+            final hasActiveTrip = snapshot.hasData && snapshot.data != null;
+
+            if (hasActiveTrip) {
+              return IconButton(
+                tooltip: 'Trip Mode Active',
+                icon: const Icon(
+                  Icons.flight_takeoff_rounded,
+                  color: Color(
+                      0xFFF72585), // App accent color indicating it's active
+                ),
+                onPressed: () {
+                  // Optional: tapping the icon quickly opens the trip dashboard
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TripDashboardScreen(),
+                    ),
+                  );
+                },
+              );
+            }
+
+            // Return nothing if no trip is active
+            return const SizedBox.shrink();
+          },
+        ),
+
         const NotificationBell(),
       ],
     );
