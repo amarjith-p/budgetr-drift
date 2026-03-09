@@ -51,6 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _toolsPageController = PageController();
   int _currentToolPage = 0;
 
+  // [NEW] Controls the custom top banner visibility
+  bool _showTopBanner = false;
+
   @override
   void initState() {
     super.initState();
@@ -60,7 +63,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _checkBackupStatus() async {
     final overdue = await _backupService.isBackupOverdue();
     if (mounted && overdue != _needsBackup) {
-      setState(() => _needsBackup = overdue);
+      setState(() {
+        _needsBackup = overdue;
+        _showTopBanner = overdue; // Show banner if backup is overdue
+      });
+
+      // [NEW] Slide the banner away after exactly 5 seconds
+      if (_needsBackup) {
+        Future.delayed(const Duration(seconds: 8), () {
+          if (mounted) {
+            setState(() => _showTopBanner = false);
+          }
+        });
+      }
     }
   }
 
@@ -113,15 +128,23 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Scaffold(
           backgroundColor: const Color(0xFF0A0E12),
           extendBodyBehindAppBar: true,
-          appBar: const HomeAppBar(),
+          appBar: HomeAppBar(
+            needsBackup: _needsBackup,
+            onBackupTap: () async {
+              // Hide banner instantly if they tap the icon before 5s is up
+              setState(() => _showTopBanner = false);
+              await _backupService.shareBackup();
+              _checkBackupStatus();
+            },
+          ),
           body: Stack(
             children: [
               _buildAmbientGlow(
                   Alignment.topRight, BudgetrColors.accent.withOpacity(0.15)),
               _buildAmbientGlow(Alignment.bottomLeft,
                   const Color(0xFF4361EE).withOpacity(0.1)),
+
               SafeArea(
-                // [DESIGN FIX] Using Column with Expanded sections for perfect fit
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
@@ -129,55 +152,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const SizedBox(height: 10),
 
-                      // 1. BANNER (Optional)
-                      if (_needsBackup)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 15),
-                          child: InkWell(
-                            onTap: () async {
-                              await _backupService.shareBackup();
-                              _checkBackupStatus();
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.redAccent.withOpacity(0.15),
-                                border: Border.all(
-                                    color: Colors.redAccent.withOpacity(0.3)),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.warning_amber_rounded,
-                                      color: Colors.redAccent, size: 20),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      "Tap to Backup data Now!",
-                                      style: GoogleFonts.robotoSlab(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ),
-                                  const Icon(Icons.arrow_forward_ios,
-                                      color: Colors.white30, size: 12),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      // 2. FINANCIAL OVERVIEW (Fixed Height)
+                      // 2. FINANCIAL OVERVIEW
                       _buildFinancialOverview(),
 
                       const SizedBox(height: 20),
 
-                      // 3. FINANCE TODAY (EXPANDED ENGINE)
-                      // This section will grow to fill all available space in the middle
+                      // 3. FINANCE TODAY
                       _buildSectionHeader("Finance Today"),
                       const SizedBox(height: 12),
                       Expanded(
@@ -186,14 +166,65 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 20),
 
-                      // 4. MORE TOOLS (COMPACT 3-COL GRID)
-                      // Fixed at the bottom, accessible without scrolling
+                      // 4. MORE TOOLS
                       _buildSectionHeader("More Tools"),
                       const SizedBox(height: 12),
                       _buildCompactQuickActionGrid(context),
 
-                      const SizedBox(height: 12), // Bottom padding
+                      const SizedBox(height: 12),
                     ],
+                  ),
+                ),
+              ),
+
+              // [NEW] Custom Top Drop-Down Banner
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.elasticOut, // Gives it a nice bouncy drop effect
+                // Slides right below the AppBar when active, hides above screen when inactive
+                top: _showTopBanner
+                    ? MediaQuery.of(context).padding.top + 55
+                    : -120,
+                left: 20,
+                right: 20,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.redAccent.withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        )
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // const Icon(Icons.arrow_upward_rounded,
+                        //     color: Colors.white, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "Data Backup Overdue! Click the ⚠️ icon above to backup now.",
+                            style: GoogleFonts.robotoSlab(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => _showTopBanner = false),
+                          child: const Icon(Icons.close_rounded,
+                              color: Colors.white70, size: 24),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -202,11 +233,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ));
   }
 
-  // --- 100% RESPONSIVE MIDDLE SECTION ---
   Widget _buildFlexibleFeatureGrid(BuildContext context) {
     return Column(
       children: [
-        // Top Row
         Expanded(
           child: Row(
             children: [
@@ -231,7 +260,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        // Bottom Row
         Expanded(
           child: Row(
             children: [
@@ -259,9 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- COMPACT 3-COLUMN BOTTOM GRID ---
   Widget _buildCompactQuickActionGrid(BuildContext context) {
-    // Group your tools into pages (6 items per page max for a 3x2 grid)
     final List<Widget> page1 = [
       _buildVerticalActionChip(
           context,
@@ -281,39 +307,33 @@ class _HomeScreenState extends State<HomeScreen> {
           context,
           "Recurring Txns",
           Icons.autorenew_rounded,
-          Color.fromARGB(255, 194, 193, 193),
+          const Color.fromARGB(255, 194, 193, 193),
           const RecurringDashboard()),
     ];
 
-    // You can easily add a second page of tools here!
     final List<Widget> page2 = [
       _buildVerticalActionChip(
           context,
           "Trip Mode",
           Icons.flight_takeoff_rounded,
           const Color(0xFFF72585),
-          const TripDashboardScreen()), // Replace Container with actual screen
-
+          const TripDashboardScreen()),
       _buildVerticalActionChip(context, "Live Portfolio",
           Icons.bar_chart_rounded, Colors.blueGrey, const InvestmentScreen()),
       _buildVerticalActionChip(context, "Settings", Icons.tune_rounded,
           const Color(0xFFADB5BD), const ConfigurationMenuScreen()),
-      // Empty placeholders to maintain grid shape if less than 6 items
       const SizedBox.shrink(),
       const SizedBox.shrink(),
       const SizedBox.shrink(),
     ];
 
-    final pages = [
-      page1,
-      page2
-    ]; // Add more pages to this list as your app grows
+    final pages = [page1, page2];
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: 160, // Fixed height to prevent scrolling, enough for 2 rows
+          height: 160,
           child: PageView.builder(
             controller: _toolsPageController,
             onPageChanged: (index) {
@@ -351,7 +371,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        // Modern Dot Indicators
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
@@ -374,7 +393,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // [UPDATED] Using _BouncyButton for Tactile Feedback
   Widget _buildVerticalActionChip(BuildContext context, String label,
       IconData icon, Color iconColor, Widget page) {
     return _BouncyButton(
@@ -396,9 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
               label,
               textAlign: TextAlign.center,
               style: GoogleFonts.robotoSlab(
-                  color: Colors.white70,
-                  fontSize: 11, // Slightly smaller font to fit 3 cols
-                  height: 1.1),
+                  color: Colors.white70, fontSize: 11, height: 1.1),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -408,23 +424,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // [UPDATED] Using _BouncyButton for Tactile Feedback
   Widget _buildCompactCard(BuildContext context, String title, IconData icon,
       Color color, Widget page) {
     return _BouncyButton(
       onTap: () => Navigator.push(
           context, MaterialPageRoute(builder: (context) => page)),
       child: Container(
-        // Removed hardcoded constraints, relies on parent Expanded
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(8), // Smoother corners
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.white.withOpacity(0.2)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 36), // Slightly larger icon
+            Icon(icon, color: color, size: 36),
             const SizedBox(height: 10),
             Text(title,
                 textAlign: TextAlign.center,
@@ -436,15 +450,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ... [UNCHANGED HELPERS BELOW] ...
-
   Widget _buildSectionHeader(String title) {
     return Text(title,
         style: GoogleFonts.robotoSlab(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight:
-                FontWeight.bold)); // Slightly smaller header to save space
+            color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold));
   }
 
   Widget _buildAmbientGlow(Alignment alignment, Color color) {
@@ -527,9 +536,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20), // Reduced padding slightly
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8), // Match rounded look
+            borderRadius: BorderRadius.circular(8),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -646,7 +655,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1)),
-              const SizedBox(height: 16), // Reduced gap
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -735,9 +744,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ==============================================================================
-//  [NEW] PRIVATE HELPER FOR TACTILE BOUNCE EFFECT
-// ==============================================================================
 class _BouncyButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

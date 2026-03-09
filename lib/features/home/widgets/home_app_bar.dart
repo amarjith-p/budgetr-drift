@@ -3,21 +3,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// [NEW] Imports for Trip Mode integration
 import '../../../core/services/service_locator.dart';
 import '../../../core/database/app_database.dart';
 import '../../trip_mode/services/trip_service.dart';
 import '../../trip_mode/screens/trip_dashboard_screen.dart';
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const HomeAppBar({super.key});
+  // [NEW] Added parameters for the backup warning icon
+  final bool needsBackup;
+  final VoidCallback? onBackupTap;
+
+  const HomeAppBar({
+    super.key,
+    this.needsBackup = false,
+    this.onBackupTap,
+  });
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) {
-    // Get the TripService from the service locator
     final tripService = locator<TripService>();
 
     return AppBar(
@@ -55,28 +61,26 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
             text: TextSpan(
               style: GoogleFonts.robotoSlab(
                 fontSize: 24,
-                letterSpacing: 3.2, // Tighter, more cohesive spacing
+                letterSpacing: 3.2,
                 color: const Color.fromARGB(255, 255, 255, 255),
               ),
               children: const [
                 TextSpan(
                   text: 'Bud',
-                  style:
-                      TextStyle(fontWeight: FontWeight.w800), // Lighter start
+                  style: TextStyle(fontWeight: FontWeight.w800),
                 ),
                 TextSpan(
                   text: 'Get',
                   style: TextStyle(
-                    fontWeight: FontWeight.w800, // Emphasize the action "Get"
-                    color: Color.fromARGB(255, 255, 255,
-                        255), // Use your app's accent color (Cyan/Blue)
+                    fontWeight: FontWeight.w800,
+                    color: Color.fromARGB(255, 255, 255, 255),
                   ),
                 ),
                 TextSpan(
                   text: 'R',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: Color.fromARGB(255, 255, 255, 255), // Anchor the end
+                    color: Color.fromARGB(255, 255, 255, 255),
                   ),
                 ),
               ],
@@ -85,7 +89,18 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
-        // [NEW] Active Trip Mode Indicator
+        // [NEW] Backup Overdue Warning Icon
+        if (needsBackup)
+          IconButton(
+            tooltip: 'Backup Overdue!',
+            icon: const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.redAccent,
+            ),
+            onPressed: onBackupTap,
+          ),
+
+        // Active Trip Mode Indicator
         StreamBuilder<TripRecord?>(
           stream: tripService.getActiveTrip(),
           builder: (context, snapshot) {
@@ -96,11 +111,9 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 tooltip: 'Trip Mode Active',
                 icon: const Icon(
                   Icons.flight_takeoff_rounded,
-                  color: Color(
-                      0xFFF72585), // App accent color indicating it's active
+                  color: Color(0xFF00B4D8),
                 ),
                 onPressed: () {
-                  // Optional: tapping the icon quickly opens the trip dashboard
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -110,8 +123,6 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 },
               );
             }
-
-            // Return nothing if no trip is active
             return const SizedBox.shrink();
           },
         ),
