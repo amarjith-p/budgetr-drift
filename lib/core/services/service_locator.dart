@@ -2,6 +2,8 @@ import 'package:budget/core/database/app_database.dart';
 import 'package:budget/features/recurring/services/recurring_service.dart';
 import 'package:budget/features/trip_mode/services/trip_report_service.dart';
 import 'package:budget/features/trip_mode/services/trip_service.dart';
+import 'package:budget/features/vault/services/vault_auth_service.dart';
+import 'package:budget/features/vault/services/vault_encryption_service.dart';
 import 'package:get_it/get_it.dart';
 
 // Feature Service Imports
@@ -52,6 +54,9 @@ class ServiceLocator {
     locator.registerLazySingleton<PortfolioService>(() => PortfolioService());
     locator.registerLazySingleton<TripService>(() => TripService());
     locator.registerLazySingleton<TripReportService>(() => TripReportService());
+    locator.registerLazySingleton<VaultEncryptionService>(
+        () => VaultEncryptionService());
+    locator.registerLazySingleton<VaultAuthService>(() => VaultAuthService());
     // 3. Notification Services
 
     // [NEW] Register System Notification Service & Init

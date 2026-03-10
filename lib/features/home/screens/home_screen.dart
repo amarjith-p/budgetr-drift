@@ -3,6 +3,7 @@ import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
 import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:budget/features/settlement/screens/settlement_screen.dart';
 import 'package:budget/features/trip_mode/screens/trip_dashboard_screen.dart';
+import 'package:budget/features/vault/screens/vault_auth_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
@@ -320,9 +321,11 @@ class _HomeScreenState extends State<HomeScreen> {
           const TripDashboardScreen()),
       _buildVerticalActionChip(context, "Live Portfolio",
           Icons.bar_chart_rounded, Colors.blueGrey, const InvestmentScreen()),
+      _buildVerticalActionChip(context, "Secure Vault", Icons.lock_sharp,
+          const Color.fromARGB(255, 215, 187, 0), const VaultAuthScreen()),
       _buildVerticalActionChip(context, "Settings", Icons.tune_rounded,
           const Color(0xFFADB5BD), const ConfigurationMenuScreen()),
-      const SizedBox.shrink(),
+      // const SizedBox.shrink(),
       const SizedBox.shrink(),
       const SizedBox.shrink(),
     ];

@@ -38,6 +38,7 @@ part 'app_database.g.dart';
     PassiveIncomeLogs,
     TripRecords,
     TripExclusions,
+    VaultRecords,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -47,7 +48,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration {
@@ -72,7 +73,7 @@ class AppDatabase extends _$AppDatabase {
           }
         }
 
-        if (from < 14) {
+        if (from < 15) {
           // Safely drop and recreate netWorthSplits
           await customStatement(
               'DROP TABLE IF EXISTS ${netWorthSplits.actualTableName}');
@@ -91,6 +92,7 @@ class AppDatabase extends _$AppDatabase {
           await safeCreateTable(investmentTransactions);
           await safeCreateTable(tripRecords);
           await safeCreateTable(tripExclusions);
+          await safeCreateTable(vaultRecords);
 
           // 3. Safely add columns if the table existed but the column did not
           if (existingTables.contains(investments.actualTableName)) {

@@ -13223,6 +13223,388 @@ class TripExclusionsCompanion extends UpdateCompanion<TripExclusion> {
   }
 }
 
+class $VaultRecordsTable extends VaultRecords
+    with TableInfo<$VaultRecordsTable, VaultRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $VaultRecordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+      'type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _encryptedPayloadMeta =
+      const VerificationMeta('encryptedPayload');
+  @override
+  late final GeneratedColumn<String> encryptedPayload = GeneratedColumn<String>(
+      'encrypted_payload', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _ivMeta = const VerificationMeta('iv');
+  @override
+  late final GeneratedColumn<String> iv = GeneratedColumn<String>(
+      'iv', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, type, title, encryptedPayload, iv, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'vault_records';
+  @override
+  VerificationContext validateIntegrity(Insertable<VaultRecord> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+          _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('encrypted_payload')) {
+      context.handle(
+          _encryptedPayloadMeta,
+          encryptedPayload.isAcceptableOrUnknown(
+              data['encrypted_payload']!, _encryptedPayloadMeta));
+    } else if (isInserting) {
+      context.missing(_encryptedPayloadMeta);
+    }
+    if (data.containsKey('iv')) {
+      context.handle(_ivMeta, iv.isAcceptableOrUnknown(data['iv']!, _ivMeta));
+    } else if (isInserting) {
+      context.missing(_ivMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  VaultRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return VaultRecord(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      type: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      encryptedPayload: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}encrypted_payload'])!,
+      iv: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}iv'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $VaultRecordsTable createAlias(String alias) {
+    return $VaultRecordsTable(attachedDatabase, alias);
+  }
+}
+
+class VaultRecord extends DataClass implements Insertable<VaultRecord> {
+  final String id;
+  final String type;
+  final String title;
+  final String encryptedPayload;
+  final String iv;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const VaultRecord(
+      {required this.id,
+      required this.type,
+      required this.title,
+      required this.encryptedPayload,
+      required this.iv,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['type'] = Variable<String>(type);
+    map['title'] = Variable<String>(title);
+    map['encrypted_payload'] = Variable<String>(encryptedPayload);
+    map['iv'] = Variable<String>(iv);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  VaultRecordsCompanion toCompanion(bool nullToAbsent) {
+    return VaultRecordsCompanion(
+      id: Value(id),
+      type: Value(type),
+      title: Value(title),
+      encryptedPayload: Value(encryptedPayload),
+      iv: Value(iv),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory VaultRecord.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return VaultRecord(
+      id: serializer.fromJson<String>(json['id']),
+      type: serializer.fromJson<String>(json['type']),
+      title: serializer.fromJson<String>(json['title']),
+      encryptedPayload: serializer.fromJson<String>(json['encryptedPayload']),
+      iv: serializer.fromJson<String>(json['iv']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'type': serializer.toJson<String>(type),
+      'title': serializer.toJson<String>(title),
+      'encryptedPayload': serializer.toJson<String>(encryptedPayload),
+      'iv': serializer.toJson<String>(iv),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  VaultRecord copyWith(
+          {String? id,
+          String? type,
+          String? title,
+          String? encryptedPayload,
+          String? iv,
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      VaultRecord(
+        id: id ?? this.id,
+        type: type ?? this.type,
+        title: title ?? this.title,
+        encryptedPayload: encryptedPayload ?? this.encryptedPayload,
+        iv: iv ?? this.iv,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  VaultRecord copyWithCompanion(VaultRecordsCompanion data) {
+    return VaultRecord(
+      id: data.id.present ? data.id.value : this.id,
+      type: data.type.present ? data.type.value : this.type,
+      title: data.title.present ? data.title.value : this.title,
+      encryptedPayload: data.encryptedPayload.present
+          ? data.encryptedPayload.value
+          : this.encryptedPayload,
+      iv: data.iv.present ? data.iv.value : this.iv,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('VaultRecord(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('title: $title, ')
+          ..write('encryptedPayload: $encryptedPayload, ')
+          ..write('iv: $iv, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, type, title, encryptedPayload, iv, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is VaultRecord &&
+          other.id == this.id &&
+          other.type == this.type &&
+          other.title == this.title &&
+          other.encryptedPayload == this.encryptedPayload &&
+          other.iv == this.iv &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class VaultRecordsCompanion extends UpdateCompanion<VaultRecord> {
+  final Value<String> id;
+  final Value<String> type;
+  final Value<String> title;
+  final Value<String> encryptedPayload;
+  final Value<String> iv;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const VaultRecordsCompanion({
+    this.id = const Value.absent(),
+    this.type = const Value.absent(),
+    this.title = const Value.absent(),
+    this.encryptedPayload = const Value.absent(),
+    this.iv = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  VaultRecordsCompanion.insert({
+    required String id,
+    required String type,
+    required String title,
+    required String encryptedPayload,
+    required String iv,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        type = Value(type),
+        title = Value(title),
+        encryptedPayload = Value(encryptedPayload),
+        iv = Value(iv);
+  static Insertable<VaultRecord> custom({
+    Expression<String>? id,
+    Expression<String>? type,
+    Expression<String>? title,
+    Expression<String>? encryptedPayload,
+    Expression<String>? iv,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (type != null) 'type': type,
+      if (title != null) 'title': title,
+      if (encryptedPayload != null) 'encrypted_payload': encryptedPayload,
+      if (iv != null) 'iv': iv,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  VaultRecordsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? type,
+      Value<String>? title,
+      Value<String>? encryptedPayload,
+      Value<String>? iv,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return VaultRecordsCompanion(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      title: title ?? this.title,
+      encryptedPayload: encryptedPayload ?? this.encryptedPayload,
+      iv: iv ?? this.iv,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (encryptedPayload.present) {
+      map['encrypted_payload'] = Variable<String>(encryptedPayload.value);
+    }
+    if (iv.present) {
+      map['iv'] = Variable<String>(iv.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('VaultRecordsCompanion(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('title: $title, ')
+          ..write('encryptedPayload: $encryptedPayload, ')
+          ..write('iv: $iv, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -13263,6 +13645,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PassiveIncomeLogsTable(this);
   late final $TripRecordsTable tripRecords = $TripRecordsTable(this);
   late final $TripExclusionsTable tripExclusions = $TripExclusionsTable(this);
+  late final $VaultRecordsTable vaultRecords = $VaultRecordsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -13292,7 +13675,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         investmentTransactions,
         passiveIncomeLogs,
         tripRecords,
-        tripExclusions
+        tripExclusions,
+        vaultRecords
       ];
 }
 
@@ -20579,6 +20963,211 @@ typedef $$TripExclusionsTableProcessedTableManager = ProcessedTableManager<
     ),
     TripExclusion,
     PrefetchHooks Function()>;
+typedef $$VaultRecordsTableCreateCompanionBuilder = VaultRecordsCompanion
+    Function({
+  required String id,
+  required String type,
+  required String title,
+  required String encryptedPayload,
+  required String iv,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+typedef $$VaultRecordsTableUpdateCompanionBuilder = VaultRecordsCompanion
+    Function({
+  Value<String> id,
+  Value<String> type,
+  Value<String> title,
+  Value<String> encryptedPayload,
+  Value<String> iv,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$VaultRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $VaultRecordsTable> {
+  $$VaultRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get encryptedPayload => $composableBuilder(
+      column: $table.encryptedPayload,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iv => $composableBuilder(
+      column: $table.iv, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$VaultRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $VaultRecordsTable> {
+  $$VaultRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get encryptedPayload => $composableBuilder(
+      column: $table.encryptedPayload,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get iv => $composableBuilder(
+      column: $table.iv, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$VaultRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $VaultRecordsTable> {
+  $$VaultRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get encryptedPayload => $composableBuilder(
+      column: $table.encryptedPayload, builder: (column) => column);
+
+  GeneratedColumn<String> get iv =>
+      $composableBuilder(column: $table.iv, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$VaultRecordsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $VaultRecordsTable,
+    VaultRecord,
+    $$VaultRecordsTableFilterComposer,
+    $$VaultRecordsTableOrderingComposer,
+    $$VaultRecordsTableAnnotationComposer,
+    $$VaultRecordsTableCreateCompanionBuilder,
+    $$VaultRecordsTableUpdateCompanionBuilder,
+    (
+      VaultRecord,
+      BaseReferences<_$AppDatabase, $VaultRecordsTable, VaultRecord>
+    ),
+    VaultRecord,
+    PrefetchHooks Function()> {
+  $$VaultRecordsTableTableManager(_$AppDatabase db, $VaultRecordsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$VaultRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$VaultRecordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$VaultRecordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> type = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String> encryptedPayload = const Value.absent(),
+            Value<String> iv = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              VaultRecordsCompanion(
+            id: id,
+            type: type,
+            title: title,
+            encryptedPayload: encryptedPayload,
+            iv: iv,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String type,
+            required String title,
+            required String encryptedPayload,
+            required String iv,
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              VaultRecordsCompanion.insert(
+            id: id,
+            type: type,
+            title: title,
+            encryptedPayload: encryptedPayload,
+            iv: iv,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$VaultRecordsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $VaultRecordsTable,
+    VaultRecord,
+    $$VaultRecordsTableFilterComposer,
+    $$VaultRecordsTableOrderingComposer,
+    $$VaultRecordsTableAnnotationComposer,
+    $$VaultRecordsTableCreateCompanionBuilder,
+    $$VaultRecordsTableUpdateCompanionBuilder,
+    (
+      VaultRecord,
+      BaseReferences<_$AppDatabase, $VaultRecordsTable, VaultRecord>
+    ),
+    VaultRecord,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -20634,4 +21223,6 @@ class $AppDatabaseManager {
       $$TripRecordsTableTableManager(_db, _db.tripRecords);
   $$TripExclusionsTableTableManager get tripExclusions =>
       $$TripExclusionsTableTableManager(_db, _db.tripExclusions);
+  $$VaultRecordsTableTableManager get vaultRecords =>
+      $$VaultRecordsTableTableManager(_db, _db.vaultRecords);
 }
