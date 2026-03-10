@@ -1,5 +1,7 @@
+import 'package:budget/features/backup_restore/screens/backup_screen.dart';
 import 'package:budget/features/investments/screens/portfolio_dashboard.dart';
 import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
+import 'package:budget/features/settings/screens/category_manager_screen.dart';
 import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:budget/features/settlement/screens/settlement_screen.dart';
 import 'package:budget/features/trip_mode/screens/trip_dashboard_screen.dart';
@@ -294,21 +296,21 @@ class _HomeScreenState extends State<HomeScreen> {
           context,
           "Goals & Loans",
           Icons.rocket_launch_rounded,
-          const Color(0xFF7209B7),
+          const Color(0xFFE63946),
           const GoalsLoansDashboard()),
       _buildVerticalActionChip(context, "Investments", Icons.insights_rounded,
-          const Color(0xFF3F37C9), const PortfolioDashboard()),
+          const Color(0xFFFF7F11), const PortfolioDashboard()),
       _buildVerticalActionChip(context, "Net Worth", Icons.diamond_rounded,
-          const Color(0xFF4CC9F0), const NetWorthScreen()),
+          const Color(0xFFFFB703), const NetWorthScreen()),
       _buildVerticalActionChip(context, "Budget Buckets", Icons.widgets_rounded,
-          const Color(0xFFF72585), const SettingsScreen()),
+          const Color(0xFFFFE066), const SettingsScreen()),
       _buildVerticalActionChip(context, "Settlements", Icons.fact_check_rounded,
-          const Color(0xFFFF9F1C), const SettlementScreen()),
+          const Color(0xFF2DC653), const SettlementScreen()),
       _buildVerticalActionChip(
           context,
           "Recurring Txns",
           Icons.autorenew_rounded,
-          const Color.fromARGB(255, 194, 193, 193),
+          const Color(0xFF2EC4B6),
           const RecurringDashboard()),
     ];
 
@@ -317,17 +319,30 @@ class _HomeScreenState extends State<HomeScreen> {
           context,
           "Trip Mode",
           Icons.flight_takeoff_rounded,
-          const Color(0xFFF72585),
+          const Color(0xFF00B4D8),
           const TripDashboardScreen()),
       _buildVerticalActionChip(context, "Live Portfolio",
-          Icons.bar_chart_rounded, Colors.blueGrey, const InvestmentScreen()),
-      _buildVerticalActionChip(context, "Secure Vault", Icons.lock_sharp,
-          const Color.fromARGB(255, 215, 187, 0), const VaultAuthScreen()),
-      _buildVerticalActionChip(context, "Settings", Icons.tune_rounded,
-          const Color(0xFFADB5BD), const ConfigurationMenuScreen()),
+          Icons.bar_chart_rounded, Color(0xFF4361EE), const InvestmentScreen()),
+      _buildVerticalActionChip(context, "Secure Vault", Icons.security_rounded,
+          const Color(0xFFF72585), const VaultAuthScreen()),
+      _buildVerticalActionChip(context, "Categories", Icons.category_outlined,
+          const Color(0xFF9D4EDD), const CategoryManagerScreen()),
+      _buildVerticalActionChip(
+          context,
+          "Backup & Restore",
+          Icons.settings_backup_restore_rounded,
+          const Color(0xFF9C6644),
+          const BackupScreen()),
+      _buildVerticalActionChip(
+          context,
+          "Settings",
+          Icons.tune_rounded,
+          const Color.fromARGB(255, 252, 252, 252),
+          const ConfigurationMenuScreen()),
+
       // const SizedBox.shrink(),
-      const SizedBox.shrink(),
-      const SizedBox.shrink(),
+      // const SizedBox.shrink(),
+      // const SizedBox.shrink(),
     ];
 
     final pages = [page1, page2];

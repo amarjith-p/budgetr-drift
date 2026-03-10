@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart'; // [NEW] Required for swipe to delete
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/widgets/modern_app_bar.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../core/services/service_locator.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/widgets/status_bottom_sheet.dart'; // [NEW] Required for delete confirmation
 import '../services/vault_auth_service.dart';
 import '../services/vault_encryption_service.dart';
 import '../widgets/add_vault_item_sheet.dart';
@@ -33,7 +35,6 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
   void initState() {
     super.initState();
 
-    // [FIX] Re-affirm security lock on the dashboard
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _auth.enableSecureMode();
     });
@@ -56,7 +57,7 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _auth.lockVault();
-      _auth.disableSecureMode(); // [NEW] Unblock screenshots on force close
+      _auth.disableSecureMode();
 
       if (mounted) {
         Navigator.popUntil(context, (route) => route.isFirst);
@@ -121,6 +122,32 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
     );
   }
 
+  // [NEW] Handles the physical deletion from the Drift database
+  Future<void> _deleteRecord(String recordId) async {
+    await (_db.delete(_db.vaultRecords)
+          ..where((tbl) => tbl.id.equals(recordId)))
+        .go();
+    _loadAndDecryptData(); // Refresh the list
+  }
+
+  // [NEW] Shows the confirmation bottom sheet (Same as PassiveIncomeHistorySheet)
+  void _showDeleteSheet(BuildContext context, String recordId) {
+    showStatusSheet(
+      context: context,
+      title: "Delete Record?",
+      message:
+          "This will permanently remove this encrypted record from your vault.",
+      icon: Icons.delete_forever_rounded,
+      color: Colors.redAccent,
+      buttonText: "Delete",
+      cancelButtonText: "Cancel",
+      onCancel: () {},
+      onDismiss: () async {
+        await _deleteRecord(recordId);
+      },
+    );
+  }
+
   Widget _buildEmptyState() {
     return Container(
       padding: const EdgeInsets.all(40),
@@ -164,7 +191,6 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    // [NEW] WillPopScope to catch device back buttons and Appbar backs
     return WillPopScope(
       onWillPop: () async {
         _auth.lockVault();
@@ -206,8 +232,7 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
                     trailingIcon: Icons.lock_outline_rounded,
                     onTrailingPressed: () async {
                       _auth.lockVault();
-                      await _auth
-                          .disableSecureMode(); // [NEW] Unblock screenshots on Lock
+                      await _auth.disableSecureMode();
                       if (mounted) Navigator.pop(context);
                     },
                   ),
@@ -272,125 +297,169 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
                   Expanded(
                     child: _filteredRecords.isEmpty
                         ? _buildEmptyState()
-                        : ListView.builder(
-                            // [FIXED] Added `bottom: 100` padding to prevent FAB overlap!
-                            padding: const EdgeInsets.only(
-                                left: 20, right: 20, top: 16, bottom: 100),
-                            itemCount: _filteredRecords.length,
-                            itemBuilder: (context, index) {
-                              final item = _filteredRecords[index];
-                              final isCard = item['type'] == 'CARD';
-                              final data = item['data'] as Map<String, dynamic>;
+                        // [NEW] Wrapped in SlidableAutoCloseBehavior
+                        : SlidableAutoCloseBehavior(
+                            child: ListView.separated(
+                              padding: const EdgeInsets.only(
+                                  left: 20, right: 20, top: 16, bottom: 100),
+                              itemCount: _filteredRecords.length,
+                              // [NEW] Handled spacing with separatorBuilder instead of margins on cards
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 16),
+                              itemBuilder: (context, index) {
+                                final item = _filteredRecords[index];
+                                final isCard = item['type'] == 'CARD';
+                                final data =
+                                    item['data'] as Map<String, dynamic>;
 
-                              return GlassCard(
-                                borderRadius: 16,
-                                margin: const EdgeInsets.only(bottom: 16),
-                                padding: EdgeInsets.zero,
-                                child: Theme(
-                                  data: Theme.of(context).copyWith(
-                                      dividerColor: Colors.transparent),
-                                  child: ExpansionTile(
-                                    tilePadding: const EdgeInsets.symmetric(
-                                        horizontal: 20, vertical: 8),
-                                    leading: Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: BudgetrColors.accent
-                                            .withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                            color: BudgetrColors.accent
-                                                .withOpacity(0.2)),
-                                      ),
-                                      child: Icon(
-                                          isCard
-                                              ? Icons.credit_card_rounded
-                                              : Icons.vpn_key_rounded,
-                                          color: BudgetrColors.accent,
-                                          size: 22),
-                                    ),
-                                    title: Text(item['title'],
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16)),
-                                    subtitle: Padding(
-                                      padding: const EdgeInsets.only(top: 4.0),
-                                      child: Text(
-                                          isCard
-                                              ? "Card Details"
-                                              : "Account Credentials",
-                                          style: TextStyle(
-                                              color:
-                                                  Colors.white.withOpacity(0.5),
-                                              fontSize: 12)),
-                                    ),
-                                    iconColor: Colors.white,
-                                    collapsedIconColor: Colors.white54,
+                                return Slidable(
+                                  key: ValueKey(item['id']),
+
+                                  // [NEW] Right-side delete action pane
+                                  endActionPane: ActionPane(
+                                    motion: const ScrollMotion(),
+                                    extentRatio: 0.25,
                                     children: [
-                                      Container(
-                                        margin: const EdgeInsets.only(
-                                            left: 20, right: 20, bottom: 20),
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black26,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: Colors.white
-                                                  .withOpacity(0.05)),
-                                        ),
-                                        child: Column(
-                                          children: data.entries.map((e) {
-                                            if (e.value.toString().isEmpty)
-                                              return const SizedBox.shrink();
-                                            return Padding(
-                                              padding: const EdgeInsets.only(
-                                                  bottom: 12),
-                                              child: Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  SizedBox(
-                                                    width: 110,
-                                                    child: Text(
-                                                        e
-                                                            .key
-                                                            .replaceAll(
-                                                                '_', ' ')
-                                                            .toUpperCase(),
-                                                        style: TextStyle(
-                                                            color: BudgetrColors
-                                                                .accent
-                                                                .withOpacity(
-                                                                    0.8),
-                                                            fontSize: 10,
-                                                            fontWeight:
-                                                                FontWeight.w900,
-                                                            letterSpacing:
-                                                                0.5)),
-                                                  ),
-                                                  Expanded(
-                                                    child: SelectableText(
-                                                        e.value.toString(),
-                                                        style: const TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w500)),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          }).toList(),
-                                        ),
-                                      )
+                                      const SizedBox(
+                                          width: 8), // Padding spacer
+                                      SlidableAction(
+                                        onPressed: (_) => _showDeleteSheet(
+                                            context, item['id']),
+                                        backgroundColor:
+                                            const Color(0xFFFE4A49),
+                                        foregroundColor: Colors.white,
+                                        icon: Icons.delete_rounded,
+                                        label: 'Delete',
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 8),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
                                     ],
                                   ),
-                                ),
-                              );
-                            },
+
+                                  child: GlassCard(
+                                    borderRadius: 16,
+                                    margin: EdgeInsets
+                                        .zero, // Removed bottom margin here
+                                    padding: EdgeInsets.zero,
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                          dividerColor: Colors.transparent),
+                                      child: ExpansionTile(
+                                        tilePadding: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 8),
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: BudgetrColors.accent
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
+                                                color: BudgetrColors.accent
+                                                    .withOpacity(0.2)),
+                                          ),
+                                          child: Icon(
+                                              isCard
+                                                  ? Icons.credit_card_rounded
+                                                  : Icons.vpn_key_rounded,
+                                              color: BudgetrColors.accent,
+                                              size: 22),
+                                        ),
+                                        title: Text(item['title'],
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16)),
+                                        subtitle: Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 4.0),
+                                          child: Text(
+                                              isCard
+                                                  ? "Card Details"
+                                                  : "Account Credentials",
+                                              style: TextStyle(
+                                                  color: Colors.white
+                                                      .withOpacity(0.5),
+                                                  fontSize: 12)),
+                                        ),
+                                        iconColor: Colors.white,
+                                        collapsedIconColor: Colors.white54,
+                                        children: [
+                                          Container(
+                                            margin: const EdgeInsets.only(
+                                                left: 20,
+                                                right: 20,
+                                                bottom: 20),
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black26,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                  color: Colors.white
+                                                      .withOpacity(0.05)),
+                                            ),
+                                            child: Column(
+                                              children: data.entries.map((e) {
+                                                if (e.value
+                                                    .toString()
+                                                    .isEmpty) {
+                                                  return const SizedBox
+                                                      .shrink();
+                                                }
+                                                return Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          bottom: 12),
+                                                  child: Row(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      SizedBox(
+                                                        width: 110,
+                                                        child: Text(
+                                                            e.key
+                                                                .replaceAll(
+                                                                    '_', ' ')
+                                                                .toUpperCase(),
+                                                            style: TextStyle(
+                                                                color: BudgetrColors
+                                                                    .accent
+                                                                    .withOpacity(
+                                                                        0.8),
+                                                                fontSize: 10,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w900,
+                                                                letterSpacing:
+                                                                    0.5)),
+                                                      ),
+                                                      Expanded(
+                                                        child: SelectableText(
+                                                            e.value.toString(),
+                                                            style: const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500)),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              }).toList(),
+                                            ),
+                                          )
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                   ),
                 ],

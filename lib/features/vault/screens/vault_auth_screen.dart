@@ -112,14 +112,14 @@ class _VaultAuthScreenState extends State<VaultAuthScreen>
           _isLoading = false;
           _isConfigured = false;
           _errorMessage =
-              "Vault permanently erased due to 8 failed attempts.\nStart fresh with a new password.";
+              "Vault Permanently Erased due to 8 Failed Attempts.\nStart Fresh by Setting Up a New Master Password.";
           _passwordController.clear();
         });
       } else {
         setState(() {
           _isLoading = false;
           _errorMessage =
-              "Incorrect Password!. ${8 - attempts} attempts remaining. After 8 failed attempts, the vault will be permanently erased.";
+              "Incorrect Password!. ${8 - attempts} Attempts Remaining. After 8 Failed Attempts, THE VAULT WILL BE PERMANENTLY ERASED.";
         });
       }
     }
@@ -164,11 +164,11 @@ class _VaultAuthScreenState extends State<VaultAuthScreen>
                   _isLoading = false;
                   _isConfigured = false;
                   _errorMessage =
-                      "Vault erased. Please set up a new master password.";
+                      "Vault Erased. Please set up a new M aster Password.";
                   _passwordController.clear();
                 });
               },
-              child: const Text('Erase Vault',
+              child: const Text('ERASE & RESET',
                   style: TextStyle(
                       color: Colors.redAccent, fontWeight: FontWeight.bold)),
             ),
@@ -301,8 +301,8 @@ class _VaultAuthScreenState extends State<VaultAuthScreen>
                         const SizedBox(height: 8),
                         Text(
                             _isConfigured
-                                ? "Enter your Master Password to decrypt data."
-                                : "Create a Master Password to encrypt your data.",
+                                ? "Enter Master Password to Decrypt Your Data."
+                                : "Create a Master Password to Encrypt Your Data.",
                             style: const TextStyle(
                                 color: Colors.white54, fontSize: 13),
                             textAlign: TextAlign.center),

@@ -157,7 +157,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                           title: "Transaction Categories",
                           subtitle: "Manage Income & Expense types",
                           icon: Icons.category_outlined,
-                          color: const Color.fromARGB(255, 232, 47, 1),
+                          color: const Color(0xFF9D4EDD),
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -188,7 +188,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                           title: "Backup & Restore",
                           subtitle: "Export or Import your data",
                           icon: Icons.settings_backup_restore_rounded,
-                          color: const Color.fromARGB(255, 110, 255, 14),
+                          color: const Color(0xFF9C6644),
                           onTap: () {
                             Navigator.push(
                               context,
