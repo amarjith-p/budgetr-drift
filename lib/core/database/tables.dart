@@ -494,3 +494,22 @@ class RecurringLogs extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+// --- 14. VAULT (SECURE STORAGE) ---
+class VaultRecords extends Table {
+  TextColumn get id => text()();
+  TextColumn get type => text()(); // 'CREDENTIAL' or 'CARD'
+  TextColumn get title => text()(); // Plaintext for Dashboard Search
+
+  // Encrypted JSON String containing all sensitive fields
+  TextColumn get encryptedPayload => text()();
+
+  // Initialization Vector for AES-GCM (Ensures identical data encrypts differently)
+  TextColumn get iv => text()();
+
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
