@@ -318,8 +318,8 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
                                       padding: const EdgeInsets.only(top: 4.0),
                                       child: Text(
                                           isCard
-                                              ? "Payment Card"
-                                              : "Account Credential",
+                                              ? "Card Details"
+                                              : "Account Credentials",
                                           style: TextStyle(
                                               color:
                                                   Colors.white.withOpacity(0.5),
@@ -402,7 +402,7 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
           backgroundColor: BudgetrColors.accent,
           elevation: 8,
           icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text("NEW SECRET",
+          label: const Text("Add New",
               style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,

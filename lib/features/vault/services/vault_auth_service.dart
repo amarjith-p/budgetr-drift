@@ -3,7 +3,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:local_auth/local_auth.dart';
-import 'package:screen_protector/screen_protector.dart'; // [NEW IMPORT]
+import 'package:screen_protector/screen_protector.dart';
+import '../../../core/services/service_locator.dart'; // [NEW] Needed for database access
+import '../../../core/database/app_database.dart'; // [NEW] Needed for database access
 import 'vault_encryption_service.dart';
 
 class VaultAuthService {
@@ -60,6 +62,7 @@ class VaultAuthService {
     await prefs.setString('vault_iv', iv.base64);
     await prefs.setString('vault_encrypted_key', encryptedVaultKey);
     await prefs.setBool('vault_biometrics_enabled', enableBiometrics);
+    await resetFailedAttempts(); // [NEW] Ensure attempts are 0 on fresh setup
 
     if (enableBiometrics) {
       await _secureStorage.write(key: 'vault_raw_key', value: vaultKey.base64);
@@ -101,6 +104,7 @@ class VaultAuthService {
 
         if (didAuthenticate) {
           _activeVaultKey = enc.Key.fromBase64(rawKeyBase64);
+          await resetFailedAttempts(); // [NEW] Reset attempts on successful biometric unlock
           return true;
         }
       }
@@ -109,6 +113,43 @@ class VaultAuthService {
       pauseAutoLock = false;
       return false;
     }
+  }
+
+  // --- SECURITY ENFORCEMENT LOGIC [NEW] ---
+  Future<int> getFailedAttempts() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('vault_failed_attempts') ?? 0;
+  }
+
+  Future<void> incrementFailedAttempts() async {
+    final prefs = await SharedPreferences.getInstance();
+    int current = prefs.getInt('vault_failed_attempts') ?? 0;
+    await prefs.setInt('vault_failed_attempts', current + 1);
+  }
+
+  Future<void> resetFailedAttempts() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('vault_failed_attempts');
+  }
+
+  Future<void> wipeVault() async {
+    // 1. Clear SharedPreferences Auth Data
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('vault_salt');
+    await prefs.remove('vault_iv');
+    await prefs.remove('vault_encrypted_key');
+    await prefs.remove('vault_biometrics_enabled');
+    await prefs.remove('vault_failed_attempts');
+
+    // 2. Clear Secure Storage
+    await _secureStorage.delete(key: 'vault_raw_key');
+
+    // 3. Clear Active Session
+    _activeVaultKey = null;
+
+    // 4. Wipe Drift Database Records
+    final db = locator<AppDatabase>();
+    await db.delete(db.vaultRecords).go();
   }
 
   // --- SETTINGS LOGIC ---

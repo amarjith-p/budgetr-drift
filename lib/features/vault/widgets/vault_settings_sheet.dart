@@ -184,7 +184,7 @@ class _VaultSettingsSheetState extends State<VaultSettingsSheet> {
                       hint: "Enter new password"),
                   SecureTextField(
                       controller: _confirmPwdController,
-                      label: "Confirm New",
+                      label: "Confirm New Password",
                       icon: Icons.lock_outline_rounded,
                       hint: "Re-enter new password"),
                   if (_message.isNotEmpty)

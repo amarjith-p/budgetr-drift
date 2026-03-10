@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/widgets/glass_card.dart';
@@ -9,6 +10,25 @@ import '../services/vault_auth_service.dart';
 import '../services/vault_encryption_service.dart';
 import 'secure_text_field.dart';
 
+class ExpiryDateFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    String newText = newValue.text;
+    if (oldValue.text.length > newValue.text.length) return newValue;
+    newText = newText.replaceAll(RegExp(r'[^0-9]'), '');
+    if (newText.length > 4) newText = newText.substring(0, 4);
+    String formattedText = newText;
+    if (newText.length > 2) {
+      formattedText = '${newText.substring(0, 2)}/${newText.substring(2)}';
+    }
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: formattedText.length),
+    );
+  }
+}
+
 class AddVaultItemSheet extends StatefulWidget {
   const AddVaultItemSheet({super.key});
 
@@ -17,19 +37,19 @@ class AddVaultItemSheet extends StatefulWidget {
 }
 
 class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
-  bool _isCredential = true; // true = Credential, false = Card
+  bool _isCredential = true;
 
-  // Shared
+  // [NEW] Field-Specific Error States
+  String? _titleError;
+  String? _credError;
+  String? _cardNoError;
+
   final _titleController = TextEditingController();
-
-  // Credential
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _secPasswordController = TextEditingController();
   final _notesController = TextEditingController();
   final _urlController = TextEditingController();
-
-  // Card
   final _bankController = TextEditingController();
   final _cardNoController = TextEditingController();
   final _expiryController = TextEditingController();
@@ -37,8 +57,81 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
   final _pinController = TextEditingController();
   final _cardDetailsController = TextEditingController();
 
+  final _titleFocus = FocusNode();
+  final _usernameFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _secPasswordFocus = FocusNode();
+  final _urlFocus = FocusNode();
+  final _notesFocus = FocusNode();
+  final _bankFocus = FocusNode();
+  final _cardNoFocus = FocusNode();
+  final _expiryFocus = FocusNode();
+  final _cvvFocus = FocusNode();
+  final _pinFocus = FocusNode();
+  final _cardDetailsFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _secPasswordController.dispose();
+    _notesController.dispose();
+    _urlController.dispose();
+    _bankController.dispose();
+    _cardNoController.dispose();
+    _expiryController.dispose();
+    _cvvController.dispose();
+    _pinController.dispose();
+    _cardDetailsController.dispose();
+
+    _titleFocus.dispose();
+    _usernameFocus.dispose();
+    _passwordFocus.dispose();
+    _secPasswordFocus.dispose();
+    _urlFocus.dispose();
+    _notesFocus.dispose();
+    _bankFocus.dispose();
+    _cardNoFocus.dispose();
+    _expiryFocus.dispose();
+    _cvvFocus.dispose();
+    _pinFocus.dispose();
+    _cardDetailsFocus.dispose();
+
+    super.dispose();
+  }
+
   Future<void> _saveData() async {
-    if (_titleController.text.trim().isEmpty) return;
+    // Reset errors
+    setState(() {
+      _titleError = null;
+      _credError = null;
+      _cardNoError = null;
+    });
+
+    bool hasError = false;
+
+    // [UPDATED] Attach errors to specific fields and request focus
+    if (_titleController.text.trim().isEmpty) {
+      setState(() => _titleError = "Record Name is required");
+      hasError = true;
+      FocusScope.of(context).requestFocus(_titleFocus);
+    } else if (_isCredential) {
+      if (_usernameController.text.trim().isEmpty &&
+          _passwordController.text.trim().isEmpty) {
+        setState(() => _credError = "Either Username or Password is required");
+        hasError = true;
+        FocusScope.of(context).requestFocus(_usernameFocus);
+      }
+    } else {
+      if (_cardNoController.text.trim().isEmpty) {
+        setState(() => _cardNoError = "Card Number is required");
+        hasError = true;
+        FocusScope.of(context).requestFocus(_cardNoFocus);
+      }
+    }
+
+    if (hasError) return; // Stop execution if validation failed
 
     final vaultAuth = locator<VaultAuthService>();
     final encryption = locator<VaultEncryptionService>();
@@ -86,7 +179,15 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
   Widget _buildToggle(String label, bool isTarget) {
     final isSelected = _isCredential == isTarget;
     return GestureDetector(
-      onTap: () => setState(() => _isCredential = isTarget),
+      onTap: () {
+        setState(() {
+          _isCredential = isTarget;
+          // Clear errors when toggling tabs
+          _titleError = null;
+          _credError = null;
+          _cardNoError = null;
+        });
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
@@ -133,7 +234,6 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Handle & Header
             Center(
               child: Container(
                 margin: const EdgeInsets.only(bottom: 20),
@@ -153,8 +253,6 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
                   letterSpacing: 1.5),
             ),
             const SizedBox(height: 20),
-
-            // Premium Toggle Bar
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(4),
@@ -171,7 +269,6 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
               ),
             ),
             const SizedBox(height: 24),
-
             GlassCard(
               borderRadius: 16,
               padding: const EdgeInsets.all(20),
@@ -179,85 +276,161 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
                 children: [
                   SecureTextField(
                       controller: _titleController,
+                      focusNode: _titleFocus,
+                      errorText: _titleError, // [NEW] Bind Error
+                      onChanged: (_) => setState(
+                          () => _titleError = null), // [NEW] Clear on type
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) => FocusScope.of(context).requestFocus(
+                          _isCredential ? _usernameFocus : _bankFocus),
                       label: "Record Name",
                       icon: Icons.title,
                       hint: "e.g. Netflix, HDFC Bank",
                       isSecureByDefault: false),
                   if (_isCredential) ...[
                     SecureTextField(
+                        key: const ValueKey('cred_user'),
                         controller: _usernameController,
-                        label: "Username / Email",
+                        focusNode: _usernameFocus,
+                        errorText: _credError, // [NEW] Bind Error
+                        onChanged: (_) => setState(() => _credError = null),
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) =>
+                            FocusScope.of(context).requestFocus(_passwordFocus),
+                        label: "Username",
                         icon: Icons.person_outline,
-                        hint: "Email or User ID"),
+                        hint: "Username or Email",
+                        isSecureByDefault: false),
                     SecureTextField(
+                        key: const ValueKey('cred_pass'),
                         controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        errorText: _credError, // [NEW] Bind Error
+                        onChanged: (_) => setState(() => _credError = null),
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => FocusScope.of(context)
+                            .requestFocus(_secPasswordFocus),
                         label: "Password",
                         icon: Icons.password,
-                        hint: "Account Password"),
+                        hint: "Account Password",
+                        isSecureByDefault: true),
                     SecureTextField(
+                        key: const ValueKey('cred_sec_pass'),
                         controller: _secPasswordController,
+                        focusNode: _secPasswordFocus,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) =>
+                            FocusScope.of(context).requestFocus(_urlFocus),
                         label: "Secondary Password",
                         icon: Icons.lock_outline,
-                        hint: "PIN or Backup Password"),
+                        hint: "Transaction / Profile Passwords",
+                        isSecureByDefault: true),
                     SecureTextField(
+                        key: const ValueKey('cred_url'),
                         controller: _urlController,
+                        focusNode: _urlFocus,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) =>
+                            FocusScope.of(context).requestFocus(_notesFocus),
                         label: "URL / App Name",
                         icon: Icons.language,
-                        hint: "e.g. netflix.com",
-                        isSecureByDefault: false),
+                        hint: "e.g. hdfc.bank.in",
+                        isSecureByDefault: true),
                     SecureTextField(
+                        key: const ValueKey('cred_notes'),
                         controller: _notesController,
+                        focusNode: _notesFocus,
+                        textInputAction: TextInputAction.done,
+                        // onSubmitted: (_) => _saveData(),
                         label: "Notes",
                         icon: Icons.note_alt_outlined,
-                        hint: "Any extra details"),
+                        hint: "Any extra details",
+                        isSecureByDefault: true),
                   ] else ...[
                     SecureTextField(
+                        key: const ValueKey('card_bank'),
                         controller: _bankController,
+                        focusNode: _bankFocus,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) =>
+                            FocusScope.of(context).requestFocus(_cardNoFocus),
                         label: "Bank / Issuer",
                         icon: Icons.account_balance,
-                        hint: "e.g. HDFC",
+                        hint: "e.g. HDFC Bank",
                         isSecureByDefault: false),
                     SecureTextField(
+                        key: const ValueKey('card_no'),
                         controller: _cardNoController,
+                        focusNode: _cardNoFocus,
+                        errorText: _cardNoError, // [NEW] Bind Error
+                        onChanged: (_) => setState(() => _cardNoError = null),
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) =>
+                            FocusScope.of(context).requestFocus(_expiryFocus),
                         label: "Card Number",
                         icon: Icons.credit_card,
                         hint: "XXXX XXXX XXXX XXXX",
-                        isNumeric: true),
+                        isNumeric: true,
+                        isSecureByDefault: true),
                     Row(
                       children: [
                         Expanded(
                             child: SecureTextField(
+                                key: const ValueKey('card_exp'),
                                 controller: _expiryController,
+                                focusNode: _expiryFocus,
+                                textInputAction: TextInputAction.next,
+                                inputFormatters: [ExpiryDateFormatter()],
+                                onSubmitted: (_) => FocusScope.of(context)
+                                    .requestFocus(_cvvFocus),
                                 label: "Expiry",
                                 icon: Icons.date_range,
-                                hint: "MM/YY")),
+                                hint: "MM/YY",
+                                isNumeric: true,
+                                isSecureByDefault: true)),
                         const SizedBox(width: 12),
                         Expanded(
                             child: SecureTextField(
+                                key: const ValueKey('card_cvv'),
                                 controller: _cvvController,
+                                focusNode: _cvvFocus,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => FocusScope.of(context)
+                                    .requestFocus(_pinFocus),
                                 label: "CVV",
                                 icon: Icons.security,
                                 hint: "123",
-                                isNumeric: true)),
+                                isNumeric: true,
+                                isSecureByDefault: true)),
                       ],
                     ),
                     SecureTextField(
+                        key: const ValueKey('card_pin'),
                         controller: _pinController,
+                        focusNode: _pinFocus,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => FocusScope.of(context)
+                            .requestFocus(_cardDetailsFocus),
                         label: "PIN",
                         icon: Icons.pin_outlined,
                         hint: "Card PIN",
-                        isNumeric: true),
+                        isNumeric: true,
+                        isSecureByDefault: true),
                     SecureTextField(
+                        key: const ValueKey('card_details'),
                         controller: _cardDetailsController,
+                        focusNode: _cardDetailsFocus,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _saveData(),
                         label: "Other Details",
                         icon: Icons.info_outline,
-                        hint: "Name on card, etc."),
+                        hint: "Name on card, etc.",
+                        isSecureByDefault: true),
                   ],
                 ],
               ),
             ),
             const SizedBox(height: 32),
-
             SizedBox(
               width: double.infinity,
               height: 56,

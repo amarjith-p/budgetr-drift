@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/design/budgetr_colors.dart';
 
 class SecureTextField extends StatefulWidget {
@@ -10,6 +11,15 @@ class SecureTextField extends StatefulWidget {
   final bool isSecureByDefault;
   final bool isNumeric;
 
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final void Function(String)? onSubmitted;
+  final List<TextInputFormatter>? inputFormatters;
+
+  // [NEW] Added errorText and onChanged for inline validation
+  final String? errorText;
+  final void Function(String)? onChanged;
+
   const SecureTextField({
     super.key,
     required this.controller,
@@ -19,6 +29,12 @@ class SecureTextField extends StatefulWidget {
     this.keyboardType = TextInputType.text,
     this.isSecureByDefault = true,
     this.isNumeric = false,
+    this.focusNode,
+    this.textInputAction,
+    this.onSubmitted,
+    this.inputFormatters,
+    this.errorText, // [NEW]
+    this.onChanged, // [NEW]
   });
 
   @override
@@ -40,7 +56,12 @@ class _SecureTextFieldState extends State<SecureTextField> {
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
         controller: widget.controller,
+        focusNode: widget.focusNode,
+        textInputAction: widget.textInputAction,
+        onFieldSubmitted: widget.onSubmitted,
+        onChanged: widget.onChanged, // [NEW] Bind onChanged
         obscureText: _isObscured,
+        inputFormatters: widget.inputFormatters,
         keyboardType: widget.isNumeric
             ? const TextInputType.numberWithOptions(decimal: true)
             : widget.keyboardType,
@@ -54,6 +75,12 @@ class _SecureTextFieldState extends State<SecureTextField> {
               color: BudgetrColors.accent.withOpacity(0.7), size: 20),
           filled: true,
           fillColor: Colors.white.withOpacity(0.03),
+
+          // [NEW] Setup Error Styling
+          errorText: widget.errorText,
+          errorStyle: const TextStyle(
+              color: Colors.redAccent, fontWeight: FontWeight.w600),
+
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -66,6 +93,14 @@ class _SecureTextFieldState extends State<SecureTextField> {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
                 color: BudgetrColors.accent.withOpacity(0.6), width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 2),
           ),
           suffixIcon: widget.isSecureByDefault
               ? IconButton(

@@ -32,7 +32,6 @@ class _VaultAuthScreenState extends State<VaultAuthScreen>
   void initState() {
     super.initState();
 
-    // [FIX] Ensure the screen is built before locking the OS
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _auth.enableSecureMode();
     });
@@ -90,6 +89,7 @@ class _VaultAuthScreenState extends State<VaultAuthScreen>
     if (mounted) _navigateToDashboard();
   }
 
+  // [UPDATED] Implemented 5-attempt lockout logic
   Future<void> _handleUnlock() async {
     setState(() {
       _isLoading = true;
@@ -98,18 +98,87 @@ class _VaultAuthScreenState extends State<VaultAuthScreen>
 
     final success = await _auth.unlockWithPassword(_passwordController.text);
 
-    if (success && mounted) {
-      _navigateToDashboard();
+    if (success) {
+      await _auth.resetFailedAttempts(); // Clear history on success
+      if (mounted) _navigateToDashboard();
     } else {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = "Incorrect Master Password.";
-      });
+      await _auth.incrementFailedAttempts();
+      int attempts = await _auth.getFailedAttempts();
+
+      if (attempts >= 8) {
+        // Enforce zero-knowledge wipe
+        await _auth.wipeVault();
+        setState(() {
+          _isLoading = false;
+          _isConfigured = false;
+          _errorMessage =
+              "Vault permanently erased due to 8 failed attempts.\nStart fresh with a new password.";
+          _passwordController.clear();
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage =
+              "Incorrect Password!. ${8 - attempts} attempts remaining. After 8 failed attempts, the vault will be permanently erased.";
+        });
+      }
     }
   }
 
+  // [NEW] Minimal warning dialog for forgotten passwords
+  void _showForgotPasswordDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1B263B),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.white.withOpacity(0.05))),
+          icon:
+              Icon(Icons.warning_rounded, color: Colors.amberAccent, size: 40),
+          title: const Text('Reset Vault?',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: const Text(
+            'For your security, We cannot recover a forgotten master password. '
+            'To set a new password, you must RESET the VAULT.\n\n'
+            'This action is irreversible and will PERMANENTLY DELETE ALL STORED DATA.',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(), // Cancel
+              child: const Text('Cancel / Try Again',
+                  style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                setState(() => _isLoading = true);
+
+                await _auth.wipeVault();
+
+                setState(() {
+                  _isLoading = false;
+                  _isConfigured = false;
+                  _errorMessage =
+                      "Vault erased. Please set up a new master password.";
+                  _passwordController.clear();
+                });
+              },
+              child: const Text('Erase Vault',
+                  style: TextStyle(
+                      color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _navigateToDashboard() {
-    // Note: We DO NOT turn off secure mode here because we want it active in the Dashboard
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const VaultDashboardScreen()),
@@ -152,10 +221,9 @@ class _VaultAuthScreenState extends State<VaultAuthScreen>
               child: FuturisticLoader(label: "AUTHENTICATING...")));
     }
 
-    // [NEW] WillPopScope handles physical back buttons
     return WillPopScope(
       onWillPop: () async {
-        await _auth.disableSecureMode(); // Unblock screenshots on exit
+        await _auth.disableSecureMode();
         return true;
       },
       child: Scaffold(
@@ -191,8 +259,7 @@ class _VaultAuthScreenState extends State<VaultAuthScreen>
                 icon: const Icon(Icons.arrow_back_ios_new_rounded,
                     color: Colors.white70),
                 onPressed: () async {
-                  await _auth
-                      .disableSecureMode(); // Unblock screenshots on UI back press
+                  await _auth.disableSecureMode();
                   if (mounted) Navigator.pop(context);
                 },
               ),
@@ -320,8 +387,20 @@ class _VaultAuthScreenState extends State<VaultAuthScreen>
                                           letterSpacing: 1.5)),
                                 ),
                               ),
+                              // [NEW] Forgot Password Option
+                              if (_isConfigured) ...[
+                                const SizedBox(height: 12),
+                                TextButton(
+                                  onPressed: _showForgotPasswordDialog,
+                                  child: const Text("Forgot Password?",
+                                      style: TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600)),
+                                ),
+                              ],
                               if (_isConfigured && _savedBiometricsEnabled) ...[
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 4),
                                 TextButton.icon(
                                   onPressed: _tryBiometricUnlock,
                                   icon: Icon(Icons.fingerprint_rounded,
