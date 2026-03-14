@@ -1,6 +1,7 @@
 import 'package:budget/features/credit_tracker/models/credit_models.dart';
 import 'package:budget/features/credit_tracker/services/credit_service.dart';
 import 'package:budget/features/daily_expense/models/filter_criteria.dart';
+import 'package:budget/features/trip_mode/services/trip_service.dart';
 // import 'package:budget/features/daily_expense/models/filter_criteria.dart';
 import 'package:drift/drift.dart';
 import 'package:get_it/get_it.dart';
@@ -192,7 +193,7 @@ class ExpenseService {
       final String? dbAccountId =
           (txn.accountId.isEmpty) ? null : txn.accountId;
 
-      // [FIX] Auto-detect Linked Credit Card
+      // Auto-detect Linked Credit Card
       String? finalLinkedCardId = txn.linkedCreditCardId;
       if (finalLinkedCardId == null && txn.transferAccountId != null) {
         final card = await (_db.select(_db.creditCards)
@@ -214,24 +215,30 @@ class ExpenseService {
             subCategory: Value(txn.subCategory),
             notes: Value(txn.notes),
             transferAccountId: Value(txn.transferAccountId),
-            transferAccountName:
-                Value(txn.transferAccountName), // Reverted: Use UI value
-            transferAccountBankName:
-                Value(txn.transferAccountBankName), // Reverted: Use UI value
-            linkedCreditCardId: Value(finalLinkedCardId), // Use detected ID
+            transferAccountName: Value(txn.transferAccountName),
+            transferAccountBankName: Value(txn.transferAccountBankName),
+            linkedCreditCardId: Value(finalLinkedCardId),
           ));
+
+      // --- 🔴 NEW: Intercept & Exclude from Paused Trip ---
+      try {
+        final tripService = GetIt.I<TripService>();
+        final activeTrip = await tripService.getActiveTripFuture();
+        if (activeTrip != null && activeTrip.isPaused) {
+          await tripService.excludeTransaction(activeTrip.id, docId);
+        }
+      } catch (_) {}
+      // ----------------------------------------------------
 
       if (dbAccountId != null) {
         await _updateAccountBalance(dbAccountId, txn.amount, txn.type,
             isAdding: true);
       }
 
-      // [FIXED] Credit Transaction Logic
       if (finalLinkedCardId != null) {
         final isPayment = txn.type == 'Transfer Out' &&
             txn.transferAccountId == finalLinkedCardId;
 
-        // Context-Aware Note for Credit Entry: "Transfer from Bank - Account"
         String creditNote = txn.notes;
         if (isPayment && dbAccountId != null) {
           final sourceName = await _resolveAccountName(dbAccountId);
@@ -248,7 +255,7 @@ class ExpenseService {
         await _addCreditTransaction(txn, docId, isPayment,
             categoryOverride: creditCategoryOverride,
             subCategoryOverride: creditSubCategoryOverride,
-            noteOverride: creditNote, // Pass note override
+            noteOverride: creditNote,
             targetCardId: finalLinkedCardId);
       }
 
@@ -257,6 +264,7 @@ class ExpenseService {
           txn.transferAccountId != finalLinkedCardId) {
         final partnerType =
             txn.type == 'Transfer Out' ? 'Transfer In' : 'Transfer Out';
+        final partnerTxnId = _uuid.v4(); // Generate ID for partner txn
 
         String sourceName = "Linked Account";
         String sourceBank = "";
@@ -272,7 +280,7 @@ class ExpenseService {
         await _db
             .into(_db.expenseTransactions)
             .insert(db.ExpenseTransactionsCompanion.insert(
-              id: _uuid.v4(),
+              id: partnerTxnId,
               accountId: Value(txn.transferAccountId),
               amount: txn.amount,
               date: txn.date,
@@ -286,6 +294,16 @@ class ExpenseService {
               transferAccountBankName: Value(sourceBank),
               linkedCreditCardId: Value(finalLinkedCardId),
             ));
+
+        // --- 🔴 NEW: Intercept Partner Transfer Txn ---
+        try {
+          final tripService = GetIt.I<TripService>();
+          final activeTrip = await tripService.getActiveTripFuture();
+          if (activeTrip != null && activeTrip.isPaused) {
+            await tripService.excludeTransaction(activeTrip.id, partnerTxnId);
+          }
+        } catch (_) {}
+        // ----------------------------------------------
 
         await _updateAccountBalance(
             txn.transferAccountId!, txn.amount, partnerType,
@@ -559,16 +577,12 @@ class ExpenseService {
     }
   }
 
-  // [MODIFIED] Helper to add credit transaction with overrides
   Future<void> _addCreditTransaction(
       ExpenseTransactionModel txn, String expenseId, bool isPayment,
       {String? categoryOverride,
       String? subCategoryOverride,
-      String? noteOverride, // [NEW]
+      String? noteOverride,
       String? targetCardId}) async {
-    // [NEW]
-
-    // [LOGIC] Force defaults for Transfer/Payment
     final effectiveCategory =
         isPayment ? 'Payment' : (categoryOverride ?? txn.category);
     final effectiveSubCategory = isPayment
@@ -580,10 +594,12 @@ class ExpenseService {
         ? effectiveNote
         : (txn.notes.isEmpty ? txn.category : txn.notes);
 
+    final creditTxnId = _uuid.v4(); // Capture ID explicitly
+
     await _db
         .into(_db.creditTransactions)
         .insert(db.CreditTransactionsCompanion.insert(
-          id: _uuid.v4(),
+          id: creditTxnId,
           cardId: targetCardId ?? txn.linkedCreditCardId!,
           amount: txn.amount,
           date: txn.date,
@@ -595,6 +611,16 @@ class ExpenseService {
           notes: effectiveNote,
           linkedExpenseId: Value(expenseId),
         ));
+
+    // --- 🔴 NEW: Intercept Linked Credit Txn ---
+    try {
+      final tripService = GetIt.I<TripService>();
+      final activeTrip = await tripService.getActiveTripFuture();
+      if (activeTrip != null && activeTrip.isPaused) {
+        await tripService.excludeTransaction(activeTrip.id, creditTxnId);
+      }
+    } catch (_) {}
+    // -------------------------------------------
   }
 
   Future<ExpenseTransactionModel?> findLinkedTransfer(

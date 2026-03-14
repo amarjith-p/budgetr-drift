@@ -12,6 +12,7 @@ class TripModeToggle extends StatelessWidget {
   const TripModeToggle({super.key});
 
   void _showStartTripDialog(BuildContext context) {
+    // [Keep your existing _showStartTripDialog logic here]
     final nameController = TextEditingController();
     final budgetController = TextEditingController();
 
@@ -90,14 +91,16 @@ class TripModeToggle extends StatelessWidget {
       builder: (context, snapshot) {
         final activeTrip = snapshot.data;
 
+        // Visual logic based on pause status
+        final isPaused = activeTrip?.isPaused ?? false;
+        final baseColor = isPaused ? Colors.orangeAccent : BudgetrColors.accent;
+
         return GlassCard(
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           padding: const EdgeInsets.all(16),
-          color:
-              activeTrip != null ? BudgetrColors.accent.withOpacity(0.1) : null,
+          color: activeTrip != null ? baseColor.withOpacity(0.1) : null,
           border: activeTrip != null
-              ? Border.all(
-                  color: BudgetrColors.accent.withOpacity(0.5), width: 1)
+              ? Border.all(color: baseColor.withOpacity(0.5), width: 1)
               : null,
           child: Row(
             children: [
@@ -105,17 +108,17 @@ class TripModeToggle extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: activeTrip != null
-                      ? BudgetrColors.accent.withOpacity(0.2)
+                      ? baseColor.withOpacity(0.2)
                       : Colors.white.withOpacity(0.05),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   activeTrip != null
-                      ? Icons.flight_takeoff_rounded
+                      ? (isPaused
+                          ? Icons.pause_rounded
+                          : Icons.flight_takeoff_rounded)
                       : Icons.flight_rounded,
-                  color: activeTrip != null
-                      ? BudgetrColors.accent
-                      : Colors.white54,
+                  color: activeTrip != null ? baseColor : Colors.white54,
                   size: 24,
                 ),
               ),
@@ -147,11 +150,13 @@ class TripModeToggle extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         activeTrip != null
-                            ? "Tracking active expenses..."
+                            ? (isPaused
+                                ? "Trip Paused"
+                                : "Tracking active expenses...")
                             : "Isolate travel expenses",
                         style: TextStyle(
                           color: activeTrip != null
-                              ? BudgetrColors.accent.withOpacity(0.8)
+                              ? baseColor.withOpacity(0.8)
                               : Colors.white54,
                           fontSize: 12,
                         ),

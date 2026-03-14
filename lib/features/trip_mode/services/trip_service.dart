@@ -45,6 +45,7 @@ class TripService {
             budget: drift.Value(budget),
             startDate: DateTime.now(),
             isActive: const drift.Value(true),
+            isPaused: const drift.Value(false),
           ),
         );
   }
@@ -55,8 +56,21 @@ class TripService {
       TripRecordsCompanion(
         endDate: drift.Value(DateTime.now()),
         isActive: const drift.Value(false),
+        isPaused: const drift.Value(false), // Ensure it unpauses on end
       ),
     );
+  }
+
+  // [NEW] Pause Trip
+  Future<void> pauseTrip(String tripId) async {
+    await (_db.update(_db.tripRecords)..where((t) => t.id.equals(tripId)))
+        .write(const TripRecordsCompanion(isPaused: drift.Value(true)));
+  }
+
+  // [NEW] Resume Trip
+  Future<void> resumeTrip(String tripId) async {
+    await (_db.update(_db.tripRecords)..where((t) => t.id.equals(tripId)))
+        .write(const TripRecordsCompanion(isPaused: drift.Value(false)));
   }
 
   Future<void> excludeTransaction(String tripId, String transactionId) async {
@@ -118,9 +132,6 @@ class TripService {
         final List<TripTransactionDto> combined = [];
 
         for (var e in expenses) {
-          // [FIX]: Prevent Double Entry!
-          // If this expense is linked to a Credit Card, we skip it here.
-          // The system will automatically add the matching CreditTransaction in the loop below.
           if (e.linkedCreditCardId != null &&
               e.linkedCreditCardId!.isNotEmpty) {
             continue;
@@ -157,7 +168,6 @@ class TripService {
           }
         }
 
-        // Sort by newest date first
         combined.sort((a, b) => b.date.compareTo(a.date));
         return combined;
       },

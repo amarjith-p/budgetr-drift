@@ -9,6 +9,9 @@ class TripRecords extends Table {
   DateTimeColumn get endDate => dateTime().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
+  // [NEW] Pause flag to temporarily stop tracking expenses
+  BoolColumn get isPaused => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

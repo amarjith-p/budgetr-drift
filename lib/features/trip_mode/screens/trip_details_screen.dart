@@ -39,6 +39,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   List<TripTransactionDto> _currentTransactions = [];
   bool _isGeneratingPdf = false;
 
+  // [NEW] Local state variable for instant UI updates
+  late bool _isPaused;
+
   // MULTI-SELECTION STATE
   final Set<String> _selectedCategories = {};
 
@@ -50,6 +53,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    // [NEW] Initialize local state with the passed trip data
+    _isPaused = widget.trip.isPaused;
     _loadMetaData();
   }
 
@@ -120,8 +125,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         }
 
                         final rawTxns = snapshot.data!;
-                        final txns =
-                            rawTxns.where((t) => t.type != 'Transfer').toList();
+                        final txns = rawTxns
+                            .where((t) =>
+                                t.type == 'Income' || t.type == 'Expense')
+                            .toList();
 
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (mounted &&
@@ -375,10 +382,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  (isTripActive ? "ACTIVE TRIP" : "COMPLETED TRIP")
+                  // [UPDATED] Uses local _isPaused state
+                  (isTripActive
+                          ? (_isPaused ? "PAUSED TRIP" : "ACTIVE TRIP")
+                          : "COMPLETED TRIP")
                       .toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white38,
+                  style: TextStyle(
+                    color: _isPaused ? Colors.orangeAccent : Colors.white38,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 2.0,
@@ -416,7 +426,35 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               ),
             ),
           if (isTripActive) ...[
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
+            // [UPDATED] Pause / Resume Toggle uses local state and bottom sheets
+            GestureDetector(
+              onTap: () {
+                if (_isPaused) {
+                  _confirmResumeTrip();
+                } else {
+                  _confirmPauseTrip();
+                }
+              },
+              child: GlassCard(
+                borderRadius: 12,
+                padding: const EdgeInsets.all(10),
+                margin: EdgeInsets.zero,
+                color: _isPaused
+                    ? Colors.orangeAccent.withOpacity(0.15)
+                    : BudgetrColors.accent.withOpacity(0.15),
+                border: Border.all(
+                    color: _isPaused
+                        ? Colors.orangeAccent.withOpacity(0.5)
+                        : BudgetrColors.accent.withOpacity(0.5)),
+                child: Icon(
+                    _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                    color:
+                        _isPaused ? Colors.orangeAccent : BudgetrColors.accent,
+                    size: 20),
+              ),
+            ),
+            const SizedBox(width: 8),
             GestureDetector(
               onTap: () => _confirmEndTrip(),
               child: GlassCard(
@@ -434,6 +472,48 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           ]
         ],
       ),
+    );
+  }
+
+  // [NEW] Pause Confirmation Sheet
+  void _confirmPauseTrip() {
+    showStatusSheet(
+      context: context,
+      title: "Pause Trip?",
+      message:
+          "Are you sure you want to pause '${widget.trip.tripName}'? Your expenses will not be tracked under this trip until you resume.",
+      icon: Icons.pause_circle_filled_rounded,
+      color: Colors.orangeAccent,
+      buttonText: "Pause Trip",
+      onDismiss: () async {
+        await _tripService.pauseTrip(widget.trip.id);
+        if (mounted) {
+          setState(() => _isPaused = true); // Instantly update UI
+        }
+      },
+      cancelButtonText: "Cancel",
+      onCancel: () {},
+    );
+  }
+
+  // [NEW] Resume Confirmation Sheet
+  void _confirmResumeTrip() {
+    showStatusSheet(
+      context: context,
+      title: "Resume Trip?",
+      message:
+          "Are you sure you want to resume '${widget.trip.tripName}'? New expenses will now automatically be tracked under this trip.",
+      icon: Icons.play_circle_fill_rounded,
+      color: BudgetrColors.accent,
+      buttonText: "Resume Trip",
+      onDismiss: () async {
+        await _tripService.resumeTrip(widget.trip.id);
+        if (mounted) {
+          setState(() => _isPaused = false); // Instantly update UI
+        }
+      },
+      cancelButtonText: "Cancel",
+      onCancel: () {},
     );
   }
 

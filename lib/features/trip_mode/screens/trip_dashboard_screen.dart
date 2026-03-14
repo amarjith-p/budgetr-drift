@@ -314,7 +314,13 @@ class _TripDashboardScreenState extends State<TripDashboardScreen> {
   }
 
   Widget _buildTripCard(TripRecord trip, {required bool isActive}) {
-    final color = isActive ? const Color(0xFFF72585) : Colors.white54;
+    // [NEW] Check pause status
+    final isPaused = trip.isPaused;
+
+    // [NEW] Change color dynamically based on pause state
+    final color = isActive
+        ? (isPaused ? Colors.orangeAccent : const Color(0xFFF72585))
+        : Colors.white54;
 
     return GestureDetector(
       onTap: () => Navigator.push(context,
@@ -343,7 +349,9 @@ class _TripDashboardScreenState extends State<TripDashboardScreen> {
               ),
               child: Icon(
                   isActive
-                      ? Icons.flight_takeoff_rounded
+                      ? (isPaused
+                          ? Icons.pause_circle_filled_rounded
+                          : Icons.flight_takeoff_rounded)
                       : Icons.flight_land_rounded,
                   color: color,
                   size: 24),
@@ -363,7 +371,9 @@ class _TripDashboardScreenState extends State<TripDashboardScreen> {
                   const SizedBox(height: 4),
                   Text(
                     isActive
-                        ? "Tracking active expenses..."
+                        ? (isPaused
+                            ? "Trip paused. Not tracking expenses."
+                            : "Tracking active expenses...")
                         : "${dateFormat.format(trip.startDate)} - ${trip.endDate != null ? dateFormat.format(trip.endDate!) : ''}",
                     style: TextStyle(
                         color: isActive ? color : Colors.white.withOpacity(0.5),
@@ -372,8 +382,23 @@ class _TripDashboardScreenState extends State<TripDashboardScreen> {
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios_rounded,
-                color: Colors.white.withOpacity(0.2), size: 14),
+            // [NEW] Pause/Resume Quick Action inside the card
+            if (isActive)
+              IconButton(
+                icon: Icon(
+                    isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                    color: color),
+                onPressed: () {
+                  if (isPaused) {
+                    _confirmResumeTrip(trip);
+                  } else {
+                    _confirmPauseTrip(trip);
+                  }
+                },
+              ),
+            if (!isActive)
+              Icon(Icons.arrow_forward_ios_rounded,
+                  color: Colors.white.withOpacity(0.2), size: 14),
           ],
         ),
       ),
@@ -391,6 +416,38 @@ class _TripDashboardScreenState extends State<TripDashboardScreen> {
             fontWeight: FontWeight.w800,
             letterSpacing: 1.5),
       ),
+    );
+  }
+
+  // --- CONFIRMATION SHEETS ---
+
+  void _confirmPauseTrip(TripRecord trip) {
+    showStatusSheet(
+      context: context,
+      title: "Pause Trip?",
+      message:
+          "Are you sure you want to pause '${trip.tripName}'? Your daily expenses will not be tracked under this trip until you resume.",
+      icon: Icons.pause_circle_filled_rounded,
+      color: Colors.orangeAccent,
+      buttonText: "Pause Trip",
+      onDismiss: () => service.pauseTrip(trip.id),
+      cancelButtonText: "Cancel",
+      onCancel: () {},
+    );
+  }
+
+  void _confirmResumeTrip(TripRecord trip) {
+    showStatusSheet(
+      context: context,
+      title: "Resume Trip?",
+      message:
+          "Are you sure you want to resume '${trip.tripName}'? New expenses will now automatically be tracked under this trip.",
+      icon: Icons.play_circle_fill_rounded,
+      color: BudgetrColors.accent,
+      buttonText: "Resume Trip",
+      onDismiss: () => service.resumeTrip(trip.id),
+      cancelButtonText: "Cancel",
+      onCancel: () {},
     );
   }
 

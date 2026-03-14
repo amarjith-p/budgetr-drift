@@ -12721,9 +12721,19 @@ class $TripRecordsTable extends TripRecords
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_active" IN (0, 1))'),
       defaultValue: const Constant(true));
+  static const VerificationMeta _isPausedMeta =
+      const VerificationMeta('isPaused');
+  @override
+  late final GeneratedColumn<bool> isPaused = GeneratedColumn<bool>(
+      'is_paused', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_paused" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns =>
-      [id, tripName, budget, startDate, endDate, isActive];
+      [id, tripName, budget, startDate, endDate, isActive, isPaused];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -12763,6 +12773,10 @@ class $TripRecordsTable extends TripRecords
       context.handle(_isActiveMeta,
           isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta));
     }
+    if (data.containsKey('is_paused')) {
+      context.handle(_isPausedMeta,
+          isPaused.isAcceptableOrUnknown(data['is_paused']!, _isPausedMeta));
+    }
     return context;
   }
 
@@ -12784,6 +12798,8 @@ class $TripRecordsTable extends TripRecords
           .read(DriftSqlType.dateTime, data['${effectivePrefix}end_date']),
       isActive: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_active'])!,
+      isPaused: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_paused'])!,
     );
   }
 
@@ -12800,13 +12816,15 @@ class TripRecord extends DataClass implements Insertable<TripRecord> {
   final DateTime startDate;
   final DateTime? endDate;
   final bool isActive;
+  final bool isPaused;
   const TripRecord(
       {required this.id,
       required this.tripName,
       this.budget,
       required this.startDate,
       this.endDate,
-      required this.isActive});
+      required this.isActive,
+      required this.isPaused});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -12820,6 +12838,7 @@ class TripRecord extends DataClass implements Insertable<TripRecord> {
       map['end_date'] = Variable<DateTime>(endDate);
     }
     map['is_active'] = Variable<bool>(isActive);
+    map['is_paused'] = Variable<bool>(isPaused);
     return map;
   }
 
@@ -12834,6 +12853,7 @@ class TripRecord extends DataClass implements Insertable<TripRecord> {
           ? const Value.absent()
           : Value(endDate),
       isActive: Value(isActive),
+      isPaused: Value(isPaused),
     );
   }
 
@@ -12847,6 +12867,7 @@ class TripRecord extends DataClass implements Insertable<TripRecord> {
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      isPaused: serializer.fromJson<bool>(json['isPaused']),
     );
   }
   @override
@@ -12859,6 +12880,7 @@ class TripRecord extends DataClass implements Insertable<TripRecord> {
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
       'isActive': serializer.toJson<bool>(isActive),
+      'isPaused': serializer.toJson<bool>(isPaused),
     };
   }
 
@@ -12868,7 +12890,8 @@ class TripRecord extends DataClass implements Insertable<TripRecord> {
           Value<double?> budget = const Value.absent(),
           DateTime? startDate,
           Value<DateTime?> endDate = const Value.absent(),
-          bool? isActive}) =>
+          bool? isActive,
+          bool? isPaused}) =>
       TripRecord(
         id: id ?? this.id,
         tripName: tripName ?? this.tripName,
@@ -12876,6 +12899,7 @@ class TripRecord extends DataClass implements Insertable<TripRecord> {
         startDate: startDate ?? this.startDate,
         endDate: endDate.present ? endDate.value : this.endDate,
         isActive: isActive ?? this.isActive,
+        isPaused: isPaused ?? this.isPaused,
       );
   TripRecord copyWithCompanion(TripRecordsCompanion data) {
     return TripRecord(
@@ -12885,6 +12909,7 @@ class TripRecord extends DataClass implements Insertable<TripRecord> {
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      isPaused: data.isPaused.present ? data.isPaused.value : this.isPaused,
     );
   }
 
@@ -12896,14 +12921,15 @@ class TripRecord extends DataClass implements Insertable<TripRecord> {
           ..write('budget: $budget, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('isPaused: $isPaused')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, tripName, budget, startDate, endDate, isActive);
+      Object.hash(id, tripName, budget, startDate, endDate, isActive, isPaused);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -12913,7 +12939,8 @@ class TripRecord extends DataClass implements Insertable<TripRecord> {
           other.budget == this.budget &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
-          other.isActive == this.isActive);
+          other.isActive == this.isActive &&
+          other.isPaused == this.isPaused);
 }
 
 class TripRecordsCompanion extends UpdateCompanion<TripRecord> {
@@ -12923,6 +12950,7 @@ class TripRecordsCompanion extends UpdateCompanion<TripRecord> {
   final Value<DateTime> startDate;
   final Value<DateTime?> endDate;
   final Value<bool> isActive;
+  final Value<bool> isPaused;
   final Value<int> rowid;
   const TripRecordsCompanion({
     this.id = const Value.absent(),
@@ -12931,6 +12959,7 @@ class TripRecordsCompanion extends UpdateCompanion<TripRecord> {
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.isPaused = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TripRecordsCompanion.insert({
@@ -12940,6 +12969,7 @@ class TripRecordsCompanion extends UpdateCompanion<TripRecord> {
     required DateTime startDate,
     this.endDate = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.isPaused = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         tripName = Value(tripName),
@@ -12951,6 +12981,7 @@ class TripRecordsCompanion extends UpdateCompanion<TripRecord> {
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<bool>? isActive,
+    Expression<bool>? isPaused,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -12960,6 +12991,7 @@ class TripRecordsCompanion extends UpdateCompanion<TripRecord> {
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (isActive != null) 'is_active': isActive,
+      if (isPaused != null) 'is_paused': isPaused,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -12971,6 +13003,7 @@ class TripRecordsCompanion extends UpdateCompanion<TripRecord> {
       Value<DateTime>? startDate,
       Value<DateTime?>? endDate,
       Value<bool>? isActive,
+      Value<bool>? isPaused,
       Value<int>? rowid}) {
     return TripRecordsCompanion(
       id: id ?? this.id,
@@ -12979,6 +13012,7 @@ class TripRecordsCompanion extends UpdateCompanion<TripRecord> {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       isActive: isActive ?? this.isActive,
+      isPaused: isPaused ?? this.isPaused,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -13004,6 +13038,9 @@ class TripRecordsCompanion extends UpdateCompanion<TripRecord> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (isPaused.present) {
+      map['is_paused'] = Variable<bool>(isPaused.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -13019,6 +13056,7 @@ class TripRecordsCompanion extends UpdateCompanion<TripRecord> {
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('isActive: $isActive, ')
+          ..write('isPaused: $isPaused, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -20659,6 +20697,7 @@ typedef $$TripRecordsTableCreateCompanionBuilder = TripRecordsCompanion
   required DateTime startDate,
   Value<DateTime?> endDate,
   Value<bool> isActive,
+  Value<bool> isPaused,
   Value<int> rowid,
 });
 typedef $$TripRecordsTableUpdateCompanionBuilder = TripRecordsCompanion
@@ -20669,6 +20708,7 @@ typedef $$TripRecordsTableUpdateCompanionBuilder = TripRecordsCompanion
   Value<DateTime> startDate,
   Value<DateTime?> endDate,
   Value<bool> isActive,
+  Value<bool> isPaused,
   Value<int> rowid,
 });
 
@@ -20698,6 +20738,9 @@ class $$TripRecordsTableFilterComposer
 
   ColumnFilters<bool> get isActive => $composableBuilder(
       column: $table.isActive, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isPaused => $composableBuilder(
+      column: $table.isPaused, builder: (column) => ColumnFilters(column));
 }
 
 class $$TripRecordsTableOrderingComposer
@@ -20726,6 +20769,9 @@ class $$TripRecordsTableOrderingComposer
 
   ColumnOrderings<bool> get isActive => $composableBuilder(
       column: $table.isActive, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isPaused => $composableBuilder(
+      column: $table.isPaused, builder: (column) => ColumnOrderings(column));
 }
 
 class $$TripRecordsTableAnnotationComposer
@@ -20754,6 +20800,9 @@ class $$TripRecordsTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPaused =>
+      $composableBuilder(column: $table.isPaused, builder: (column) => column);
 }
 
 class $$TripRecordsTableTableManager extends RootTableManager<
@@ -20785,6 +20834,7 @@ class $$TripRecordsTableTableManager extends RootTableManager<
             Value<DateTime> startDate = const Value.absent(),
             Value<DateTime?> endDate = const Value.absent(),
             Value<bool> isActive = const Value.absent(),
+            Value<bool> isPaused = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               TripRecordsCompanion(
@@ -20794,6 +20844,7 @@ class $$TripRecordsTableTableManager extends RootTableManager<
             startDate: startDate,
             endDate: endDate,
             isActive: isActive,
+            isPaused: isPaused,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -20803,6 +20854,7 @@ class $$TripRecordsTableTableManager extends RootTableManager<
             required DateTime startDate,
             Value<DateTime?> endDate = const Value.absent(),
             Value<bool> isActive = const Value.absent(),
+            Value<bool> isPaused = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               TripRecordsCompanion.insert(
@@ -20812,6 +20864,7 @@ class $$TripRecordsTableTableManager extends RootTableManager<
             startDate: startDate,
             endDate: endDate,
             isActive: isActive,
+            isPaused: isPaused,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

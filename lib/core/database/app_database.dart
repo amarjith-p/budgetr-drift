@@ -48,7 +48,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration {
@@ -73,7 +73,7 @@ class AppDatabase extends _$AppDatabase {
           }
         }
 
-        if (from < 15) {
+        if (from < 16) {
           // Safely drop and recreate netWorthSplits
           await customStatement(
               'DROP TABLE IF EXISTS ${netWorthSplits.actualTableName}');
@@ -105,6 +105,18 @@ class AppDatabase extends _$AppDatabase {
 
             if (!existingColumns.contains('target_amount')) {
               await m.addColumn(investments, investments.targetAmount);
+            }
+          }
+          if (existingTables.contains(tripRecords.actualTableName)) {
+            final tableInfo = await customSelect(
+              "PRAGMA table_info('${tripRecords.actualTableName}')",
+            ).get();
+
+            final existingColumns =
+                tableInfo.map((row) => row.read<String>('name')).toSet();
+
+            if (!existingColumns.contains('is_paused')) {
+              await m.addColumn(tripRecords, tripRecords.isPaused);
             }
           }
         }

@@ -1,4 +1,5 @@
 import 'package:budget/features/daily_expense/services/expense_service.dart';
+import 'package:budget/features/trip_mode/services/trip_service.dart';
 import 'package:drift/drift.dart';
 import 'package:get_it/get_it.dart';
 import 'package:uuid/uuid.dart';
@@ -154,6 +155,16 @@ class CreditService {
             isSettlementVerified: Value(txn.isSettlementVerified),
             description: txn.category,
           ));
+
+      // --- 🔴 NEW: Intercept & Exclude from Paused Trip ---
+      try {
+        final tripService = GetIt.I<TripService>();
+        final activeTrip = await tripService.getActiveTripFuture();
+        if (activeTrip != null && activeTrip.isPaused) {
+          await tripService.excludeTransaction(activeTrip.id, newId);
+        }
+      } catch (_) {}
+      // ----------------------------------------------------
 
       final double balanceChange =
           txn.type == 'Expense' ? txn.amount : -txn.amount;

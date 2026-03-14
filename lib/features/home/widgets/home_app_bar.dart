@@ -9,7 +9,6 @@ import '../../trip_mode/services/trip_service.dart';
 import '../../trip_mode/screens/trip_dashboard_screen.dart';
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
-  // [NEW] Added parameters for the backup warning icon
   final bool needsBackup;
   final VoidCallback? onBackupTap;
 
@@ -89,7 +88,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
-        // [NEW] Backup Overdue Warning Icon
+        // Backup Overdue Warning Icon
         if (needsBackup)
           IconButton(
             tooltip: 'Backup Overdue!',
@@ -100,18 +99,25 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
             onPressed: onBackupTap,
           ),
 
-        // Active Trip Mode Indicator
+        // Active / Paused Trip Mode Indicator
         StreamBuilder<TripRecord?>(
           stream: tripService.getActiveTrip(),
           builder: (context, snapshot) {
-            final hasActiveTrip = snapshot.hasData && snapshot.data != null;
+            final activeTrip = snapshot.data;
 
-            if (hasActiveTrip) {
+            if (activeTrip != null) {
+              // [NEW] Dynamic Icon and Color based on Pause status
+              final isPaused = activeTrip.isPaused;
+
               return IconButton(
-                tooltip: 'Trip Mode Active',
-                icon: const Icon(
-                  Icons.flight_takeoff_rounded,
-                  color: Color(0xFF00B4D8),
+                tooltip: isPaused ? 'Trip Mode Paused' : 'Trip Mode Active',
+                icon: Icon(
+                  isPaused
+                      ? Icons.flight_land_rounded
+                      : Icons.flight_takeoff_rounded,
+                  color: isPaused
+                      ? Colors.orangeAccent
+                      : const Color.fromARGB(255, 5, 146, 0),
                 ),
                 onPressed: () {
                   Navigator.push(
