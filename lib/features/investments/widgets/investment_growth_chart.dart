@@ -35,6 +35,11 @@ class InvestmentGrowthChart extends StatelessWidget {
     final double minX = spots.first.x;
     final double maxX = spots.last.x;
 
+    // [NEW] X-Axis Range & Buffer Calculations to prevent edge clipping
+    final double xRange = maxX - minX;
+    // Provide a 1-day fallback (86.4M ms) if the dates are somehow identical, otherwise use 5% of the total time range
+    final double xBuffer = xRange == 0 ? 86400000 : xRange * 0.05;
+
     final double minY = spots.map((e) => e.y).reduce(min);
     final double maxY = spots.map((e) => e.y).reduce(max);
 
@@ -88,17 +93,17 @@ class InvestmentGrowthChart extends StatelessWidget {
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    // Reduced reserved space since we are using compact forms (K/L/Cr)
                     reservedSize: 45,
                     getTitlesWidget: (value, meta) {
-                      if (value == meta.max || value == meta.min)
+                      // Prevent drawing titles for our invisible buffer lines
+                      if (value == meta.max || value == meta.min) {
                         return const SizedBox.shrink();
+                      }
 
                       return Padding(
                         padding: const EdgeInsets.only(right: 8.0),
                         child: Text(
-                          _formatAxisCurrency(
-                              value), // [NEW] Compact format for axis
+                          _formatAxisCurrency(value),
                           style: const TextStyle(
                             color: Colors.white38,
                             fontSize: 10,
@@ -116,8 +121,10 @@ class InvestmentGrowthChart extends StatelessWidget {
                     showTitles: true,
                     reservedSize: 30,
                     getTitlesWidget: (value, meta) {
-                      if (value == meta.min || value == meta.max)
+                      // Prevent drawing dates for the invisible edge buffers
+                      if (value == meta.min || value == meta.max) {
                         return const SizedBox.shrink();
+                      }
 
                       final date =
                           DateTime.fromMillisecondsSinceEpoch(value.toInt());
@@ -137,16 +144,18 @@ class InvestmentGrowthChart extends StatelessWidget {
                 ),
               ),
               borderData: FlBorderData(show: false),
-              minX: minX,
-              maxX: maxX,
+              // [UPDATED] Apply the X-axis buffers here
+              minX: minX - (xBuffer * 0.5), // A slight buffer on the left
+              maxX: maxX +
+                  xBuffer, // A full buffer on the right so the last point is clearly visible
               minY: minY - yBottomBuffer,
               maxY: maxY + yTopBuffer,
               lineBarsData: [
                 LineChartBarData(
                   spots: spots,
                   isCurved: true,
-                  curveSmoothness: 0.35,
-                  // [NEW] Professional Gradient Line
+                  preventCurveOverShooting: true,
+                  curveSmoothness: 0.20,
                   gradient: LinearGradient(
                     colors: [
                       BudgetrColors.accent.withOpacity(0.5),
@@ -156,7 +165,6 @@ class InvestmentGrowthChart extends StatelessWidget {
                   barWidth: 3,
                   isStrokeCapRound: true,
                   dotData: const FlDotData(show: false),
-                  // [NEW] Glowing neon shadow effect
                   shadow: Shadow(
                     color: BudgetrColors.accent.withOpacity(0.4),
                     blurRadius: 8,
@@ -178,10 +186,8 @@ class InvestmentGrowthChart extends StatelessWidget {
               lineTouchData: LineTouchData(
                 handleBuiltInTouches: true,
                 touchTooltipData: LineTouchTooltipData(
-                  // [NEW] Prevents tooltips from clipping out of the screen
                   fitInsideHorizontally: true,
                   fitInsideVertically: true,
-                  // [NEW] Premium Glass Tooltip Design
                   getTooltipColor: (_) =>
                       const Color(0xFF1B263B).withOpacity(0.9),
                   tooltipRoundedRadius: 12,
@@ -202,8 +208,7 @@ class InvestmentGrowthChart extends StatelessWidget {
                         ),
                         children: [
                           TextSpan(
-                            text: _formatExactCurrency(
-                                spot.y), // [NEW] Exact 2 decimal value on touch
+                            text: _formatExactCurrency(spot.y),
                             style: const TextStyle(
                               color: BudgetrColors.accent,
                               fontSize: 15,
@@ -216,7 +221,6 @@ class InvestmentGrowthChart extends StatelessWidget {
                     }).toList();
                   },
                 ),
-                // [NEW] Professional crosshair dot indicator
                 getTouchedSpotIndicator:
                     (LineChartBarData barData, List<int> spotIndexes) {
                   return spotIndexes.map((spotIndex) {
@@ -229,9 +233,9 @@ class InvestmentGrowthChart extends StatelessWidget {
                         getDotPainter: (spot, percent, barData, index) {
                           return FlDotCirclePainter(
                             radius: 5,
-                            color: const Color(0xFF1B263B), // Hollow center
+                            color: const Color(0xFF1B263B),
                             strokeWidth: 2,
-                            strokeColor: BudgetrColors.accent, // Colored rim
+                            strokeColor: BudgetrColors.accent,
                           );
                         },
                       ),
@@ -258,13 +262,12 @@ class InvestmentGrowthChart extends StatelessWidget {
 
   // --- FORMATTERS ---
 
-  // Exact 2-decimal format for the Tooltip
   String _formatExactCurrency(double value) {
-    return NumberFormat.currency(symbol: '₹', decimalDigits: 2, locale: 'en_IN')
+    return NumberFormat.currency(
+            symbol: '₹ ', decimalDigits: 2, locale: 'en_IN')
         .format(value);
   }
 
-  // Smart compact format for the Y-Axis (e.g. 1.5L, 50k)
   String _formatAxisCurrency(double value) {
     if (value >= 10000000) {
       return '₹${(value / 10000000).toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}Cr';
