@@ -108,7 +108,7 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                               icon: Icons.delete_rounded,
                               label: 'Delete',
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 8),
+                                  horizontal: 6, vertical: 6),
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ],

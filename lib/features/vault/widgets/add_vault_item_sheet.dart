@@ -10,6 +10,7 @@ import '../services/vault_auth_service.dart';
 import '../services/vault_encryption_service.dart';
 import 'secure_text_field.dart';
 
+// [EXISTING] Formats Expiry as MM/YY
 class ExpiryDateFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -29,6 +30,40 @@ class ExpiryDateFormatter extends TextInputFormatter {
   }
 }
 
+// [NEW] Formats Card Number as XXXX XXXX XXXX XXXX
+class CardNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    String newText = newValue.text;
+
+    // Allow normal backspace behavior
+    if (oldValue.text.length > newValue.text.length) return newValue;
+
+    // Remove any existing spaces or non-digit characters
+    newText = newText.replaceAll(RegExp(r'[^0-9]'), '');
+
+    // Cap at 19 digits (max length for standard credit cards)
+    if (newText.length > 19) newText = newText.substring(0, 19);
+
+    // Insert a space after every 4th character
+    StringBuffer buffer = StringBuffer();
+    for (int i = 0; i < newText.length; i++) {
+      buffer.write(newText[i]);
+      int nonZeroIndex = i + 1;
+      if (nonZeroIndex % 4 == 0 && nonZeroIndex != newText.length) {
+        buffer.write(' ');
+      }
+    }
+
+    String formattedText = buffer.toString();
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: formattedText.length),
+    );
+  }
+}
+
 class AddVaultItemSheet extends StatefulWidget {
   const AddVaultItemSheet({super.key});
 
@@ -39,7 +74,7 @@ class AddVaultItemSheet extends StatefulWidget {
 class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
   bool _isCredential = true;
 
-  // [NEW] Field-Specific Error States
+  // Field-Specific Error States
   String? _titleError;
   String? _credError;
   String? _cardNoError;
@@ -111,7 +146,6 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
 
     bool hasError = false;
 
-    // [UPDATED] Attach errors to specific fields and request focus
     if (_titleController.text.trim().isEmpty) {
       setState(() => _titleError = "Record Name is required");
       hasError = true;
@@ -131,7 +165,7 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
       }
     }
 
-    if (hasError) return; // Stop execution if validation failed
+    if (hasError) return;
 
     final vaultAuth = locator<VaultAuthService>();
     final encryption = locator<VaultEncryptionService>();
@@ -151,7 +185,8 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
     } else {
       payloadMap = {
         'bank': _bankController.text,
-        'card_no': _cardNoController.text,
+        // [UPDATED] Strip spaces before saving to DB so it's a clean number under the hood
+        'card_no': _cardNoController.text.replaceAll(' ', ''),
         'expiry': _expiryController.text,
         'cvv': _cvvController.text,
         'pin': _pinController.text,
@@ -182,7 +217,6 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
       onTap: () {
         setState(() {
           _isCredential = isTarget;
-          // Clear errors when toggling tabs
           _titleError = null;
           _credError = null;
           _cardNoError = null;
@@ -277,9 +311,8 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
                   SecureTextField(
                       controller: _titleController,
                       focusNode: _titleFocus,
-                      errorText: _titleError, // [NEW] Bind Error
-                      onChanged: (_) => setState(
-                          () => _titleError = null), // [NEW] Clear on type
+                      errorText: _titleError,
+                      onChanged: (_) => setState(() => _titleError = null),
                       textInputAction: TextInputAction.next,
                       onSubmitted: (_) => FocusScope.of(context).requestFocus(
                           _isCredential ? _usernameFocus : _bankFocus),
@@ -292,7 +325,7 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
                         key: const ValueKey('cred_user'),
                         controller: _usernameController,
                         focusNode: _usernameFocus,
-                        errorText: _credError, // [NEW] Bind Error
+                        errorText: _credError,
                         onChanged: (_) => setState(() => _credError = null),
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) =>
@@ -300,12 +333,12 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
                         label: "Username",
                         icon: Icons.person_outline,
                         hint: "Username or Email",
-                        isSecureByDefault: false),
+                        isSecureByDefault: true),
                     SecureTextField(
                         key: const ValueKey('cred_pass'),
                         controller: _passwordController,
                         focusNode: _passwordFocus,
-                        errorText: _credError, // [NEW] Bind Error
+                        errorText: _credError,
                         onChanged: (_) => setState(() => _credError = null),
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => FocusScope.of(context)
@@ -341,7 +374,6 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
                         controller: _notesController,
                         focusNode: _notesFocus,
                         textInputAction: TextInputAction.done,
-                        // onSubmitted: (_) => _saveData(),
                         label: "Notes",
                         icon: Icons.note_alt_outlined,
                         hint: "Any extra details",
@@ -362,9 +394,11 @@ class _AddVaultItemSheetState extends State<AddVaultItemSheet> {
                         key: const ValueKey('card_no'),
                         controller: _cardNoController,
                         focusNode: _cardNoFocus,
-                        errorText: _cardNoError, // [NEW] Bind Error
+                        errorText: _cardNoError,
                         onChanged: (_) => setState(() => _cardNoError = null),
                         textInputAction: TextInputAction.next,
+                        // [NEW] Added CardNumberFormatter here
+                        inputFormatters: [CardNumberFormatter()],
                         onSubmitted: (_) =>
                             FocusScope.of(context).requestFocus(_expiryFocus),
                         label: "Card Number",

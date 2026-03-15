@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart'; // [NEW] Required for swipe to delete
+import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/widgets/modern_app_bar.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../core/services/service_locator.dart';
 import '../../../core/database/app_database.dart';
-import '../../../core/widgets/status_bottom_sheet.dart'; // [NEW] Required for delete confirmation
+import '../../../core/widgets/status_bottom_sheet.dart';
 import '../services/vault_auth_service.dart';
 import '../services/vault_encryption_service.dart';
 import '../widgets/add_vault_item_sheet.dart';
@@ -63,6 +63,14 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
         Navigator.popUntil(context, (route) => route.isFirst);
       }
     }
+  }
+
+  // [NEW] Helper to format raw card number with spaces every 4 digits
+  String _formatDisplayCardNumber(String rawCardNo) {
+    final cleanString = rawCardNo.replaceAll(' ', '');
+    return cleanString
+        .replaceAllMapped(RegExp(r".{4}"), (match) => "${match.group(0)} ")
+        .trim();
   }
 
   Future<void> _loadAndDecryptData() async {
@@ -122,15 +130,13 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
     );
   }
 
-  // [NEW] Handles the physical deletion from the Drift database
   Future<void> _deleteRecord(String recordId) async {
     await (_db.delete(_db.vaultRecords)
           ..where((tbl) => tbl.id.equals(recordId)))
         .go();
-    _loadAndDecryptData(); // Refresh the list
+    _loadAndDecryptData();
   }
 
-  // [NEW] Shows the confirmation bottom sheet (Same as PassiveIncomeHistorySheet)
   void _showDeleteSheet(BuildContext context, String recordId) {
     showStatusSheet(
       context: context,
@@ -297,13 +303,11 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
                   Expanded(
                     child: _filteredRecords.isEmpty
                         ? _buildEmptyState()
-                        // [NEW] Wrapped in SlidableAutoCloseBehavior
                         : SlidableAutoCloseBehavior(
                             child: ListView.separated(
                               padding: const EdgeInsets.only(
                                   left: 20, right: 20, top: 16, bottom: 100),
                               itemCount: _filteredRecords.length,
-                              // [NEW] Handled spacing with separatorBuilder instead of margins on cards
                               separatorBuilder: (context, index) =>
                                   const SizedBox(height: 16),
                               itemBuilder: (context, index) {
@@ -314,14 +318,11 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
 
                                 return Slidable(
                                   key: ValueKey(item['id']),
-
-                                  // [NEW] Right-side delete action pane
                                   endActionPane: ActionPane(
                                     motion: const ScrollMotion(),
                                     extentRatio: 0.25,
                                     children: [
-                                      const SizedBox(
-                                          width: 8), // Padding spacer
+                                      const SizedBox(width: 8),
                                       SlidableAction(
                                         onPressed: (_) => _showDeleteSheet(
                                             context, item['id']),
@@ -336,11 +337,9 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
                                       ),
                                     ],
                                   ),
-
                                   child: GlassCard(
                                     borderRadius: 16,
-                                    margin: EdgeInsets
-                                        .zero, // Removed bottom margin here
+                                    margin: EdgeInsets.zero,
                                     padding: EdgeInsets.zero,
                                     child: Theme(
                                       data: Theme.of(context).copyWith(
@@ -438,11 +437,23 @@ class _VaultDashboardScreenState extends State<VaultDashboardScreen>
                                                       ),
                                                       Expanded(
                                                         child: SelectableText(
-                                                            e.value.toString(),
-                                                            style: const TextStyle(
+                                                            // [NEW] Use formatting helper if the key is 'card_no'
+                                                            e.key == 'card_no'
+                                                                ? _formatDisplayCardNumber(e
+                                                                    .value
+                                                                    .toString())
+                                                                : e.value
+                                                                    .toString(),
+                                                            style: TextStyle(
                                                                 color: Colors
                                                                     .white,
-                                                                fontSize: 14,
+                                                                fontSize: 12,
+                                                                // [NEW] Add letter spacing to card numbers for a premium feel
+                                                                letterSpacing: e
+                                                                            .key ==
+                                                                        'card_no'
+                                                                    ? 2.0
+                                                                    : null,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w500)),
