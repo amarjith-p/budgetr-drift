@@ -8,12 +8,19 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
-class InvestmentHistoryList extends StatelessWidget {
+class InvestmentHistoryList extends StatefulWidget {
   final List<InvestmentLogDto> logs;
 
   const InvestmentHistoryList({super.key, required this.logs});
 
-  // [NEW] Helper method to ensure UI consistency with Indian Number System
+  @override
+  State<InvestmentHistoryList> createState() => _InvestmentHistoryListState();
+}
+
+class _InvestmentHistoryListState extends State<InvestmentHistoryList> {
+  // [NEW] Pagination State
+  int _displayLimit = 5;
+
   String _formatAmount(double amount, {bool showPlusSign = false}) {
     final format =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
@@ -29,7 +36,7 @@ class InvestmentHistoryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (logs.isEmpty) {
+    if (widget.logs.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
@@ -41,224 +48,257 @@ class InvestmentHistoryList extends StatelessWidget {
       );
     }
 
-    return SlidableAutoCloseBehavior(
-      child: ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: logs.length,
-        itemBuilder: (context, index) {
-          final log = logs[index];
-          final isInvested = log.type == 'invested';
-          final isWithdrawal = log.type == 'withdrawn';
-          final isValueUpdate = log.type == 'valueUpdate';
+    // [NEW] Slice the logs based on the current limit
+    final displayedLogs = widget.logs.take(_displayLimit).toList();
+    final hasMore = widget.logs.length > _displayLimit;
 
-          // [NEW] Calculate incremental change from the previous transaction
-          double incrementalChange = 0.0;
-          if (isValueUpdate) {
-            if (index < logs.length - 1) {
-              // The list is descending (newest first). The previous log is at index + 1
-              incrementalChange =
-                  log.currentValue - logs[index + 1].currentValue;
-            } else {
-              // Fallback for the very first transaction ever
-              incrementalChange = log.gainLoss;
-            }
-          }
+    return Column(
+      children: [
+        SlidableAutoCloseBehavior(
+          child: ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: displayedLogs.length,
+            itemBuilder: (context, index) {
+              final log = displayedLogs[index];
+              final isInvested = log.type == 'invested';
+              final isWithdrawal = log.type == 'withdrawn';
+              final isValueUpdate = log.type == 'valueUpdate';
 
-          return Slidable(
-            key: ValueKey(log.id),
+              double incrementalChange = 0.0;
+              if (isValueUpdate) {
+                // Calculate against the FULL widget.logs list, not just the displayed slice,
+                // so the last visible item still knows its previous value.
+                if (index < widget.logs.length - 1) {
+                  incrementalChange =
+                      log.currentValue - widget.logs[index + 1].currentValue;
+                } else {
+                  incrementalChange = log.gainLoss;
+                }
+              }
 
-            // --- SWIPE RIGHT: EDIT ACTION ---
-            startActionPane: ActionPane(
-              motion: const ScrollMotion(),
-              extentRatio: 0.25,
-              children: [
-                SlidableAction(
-                  onPressed: (_) => _showEditSheet(context, log),
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                  icon: Icons.edit_rounded,
-                  label: 'Edit',
+              return Slidable(
+                key: ValueKey(log.id),
+                startActionPane: ActionPane(
+                  motion: const ScrollMotion(),
+                  extentRatio: 0.25,
+                  children: [
+                    SlidableAction(
+                      onPressed: (_) => _showEditSheet(context, log),
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      icon: Icons.edit_rounded,
+                      label: 'Edit',
+                    ),
+                  ],
                 ),
-              ],
-            ),
-
-            // --- SWIPE LEFT: DELETE ACTION ---
-            endActionPane: ActionPane(
-              motion: const ScrollMotion(),
-              extentRatio: 0.25,
-              children: [
-                SlidableAction(
-                  onPressed: (_) => _showDeleteSheet(context, log.id),
-                  backgroundColor: const Color(0xFFFE4A49),
-                  foregroundColor: Colors.white,
-                  icon: Icons.delete_rounded,
-                  label: 'Delete',
+                endActionPane: ActionPane(
+                  motion: const ScrollMotion(),
+                  extentRatio: 0.25,
+                  children: [
+                    SlidableAction(
+                      onPressed: (_) => _showDeleteSheet(context, log.id),
+                      backgroundColor: const Color(0xFFFE4A49),
+                      foregroundColor: Colors.white,
+                      icon: Icons.delete_rounded,
+                      label: 'Delete',
+                    ),
+                  ],
                 ),
-              ],
-            ),
-
-            // --- MAIN CONTENT ---
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                border: Border(
-                    bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
-              ),
-              child: Row(
-                children: [
-                  // Date
-                  Container(
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.all(4),
-                    child: Column(
-                      children: [
-                        Text(
-                          DateFormat('dd').format(log.date),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Text(
-                          DateFormat('MMM').format(log.date).toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          DateFormat('yyyy').format(log.date),
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 8,
-                            fontWeight: FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    border: Border(
+                        bottom:
+                            BorderSide(color: Colors.white.withOpacity(0.05))),
                   ),
-                  const SizedBox(width: 16),
-
-                  // Description
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isWithdrawal
-                              ? "Capital Withdrawn"
-                              : (isInvested
-                                  ? "Investment Added"
-                                  : "Market Valuation"),
-                          style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.w500),
-                        ),
-                        Text(
-                          isWithdrawal
-                              ? "Payout / Booking Profit"
-                              : (isInvested
-                                  ? "SIP / Lumpsum"
-                                  : "Gain/Loss Updated"),
-                          style: TextStyle(
-                              color: Colors.white.withOpacity(0.4),
-                              fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Amount / Gain
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  child: Row(
                     children: [
-                      if (isValueUpdate) ...[
-                        Text(
-                          _formatAmount(log.currentValue),
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13),
+                      // Date
+                      Container(
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        const SizedBox(height: 4),
-                        // Total Gain
-                        Text(
-                          "Total: ${_formatAmount(log.gainLoss, showPlusSign: true)}",
-                          style: TextStyle(
-                            color: log.gainLoss >= 0
-                                ? BudgetrColors.success
-                                : BudgetrColors.error,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        padding: const EdgeInsets.all(4),
+                        child: Column(
+                          children: [
+                            Text(
+                              DateFormat('dd').format(log.date),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              DateFormat('MMM').format(log.date).toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              DateFormat('yyyy').format(log.date),
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 8,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        // [NEW] Incremental Change Pill
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: (incrementalChange >= 0
-                                    ? BudgetrColors.success
-                                    : BudgetrColors.error)
-                                .withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                incrementalChange >= 0
-                                    ? Icons.arrow_upward_rounded
-                                    : Icons.arrow_downward_rounded,
-                                size: 10,
-                                color: incrementalChange >= 0
+                      ),
+                      const SizedBox(width: 16),
+
+                      // Description
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isWithdrawal
+                                  ? "Capital Withdrawn"
+                                  : (isInvested
+                                      ? "Investment Added"
+                                      : "Market Valuation"),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                            Text(
+                              isWithdrawal
+                                  ? "Payout / Booking Profit"
+                                  : (isInvested
+                                      ? "SIP / Lumpsum"
+                                      : "Gain/Loss Updated"),
+                              style: TextStyle(
+                                  color: Colors.white.withOpacity(0.4),
+                                  fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Amount / Gain
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (isValueUpdate) ...[
+                            Text(
+                              _formatAmount(log.currentValue),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13),
+                            ),
+                            const SizedBox(height: 4),
+                            // Total Gain
+                            Text(
+                              "Total: ${_formatAmount(log.gainLoss, showPlusSign: true)}",
+                              style: TextStyle(
+                                color: log.gainLoss >= 0
                                     ? BudgetrColors.success
                                     : BudgetrColors.error,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
                               ),
-                              const SizedBox(width: 2),
-                              Text(
-                                _formatAmount(incrementalChange
-                                    .abs()), // Icon handles the +/- indication natively
-                                style: TextStyle(
-                                  color: incrementalChange >= 0
-                                      ? BudgetrColors.success
-                                      : BudgetrColors.error,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            // Incremental Change Pill
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: (incrementalChange >= 0
+                                        ? BudgetrColors.success
+                                        : BudgetrColors.error)
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                            ],
-                          ),
-                        ),
-                      ] else ...[
-                        // Invested OR Withdrawn
-                        Text(
-                          _formatAmount(log.amountInvested,
-                              showPlusSign: !isWithdrawal),
-                          style: TextStyle(
-                            color: isWithdrawal
-                                ? Colors.redAccent
-                                : BudgetrColors.accent,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      ]
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    incrementalChange >= 0
+                                        ? Icons.arrow_upward_rounded
+                                        : Icons.arrow_downward_rounded,
+                                    size: 10,
+                                    color: incrementalChange >= 0
+                                        ? BudgetrColors.success
+                                        : BudgetrColors.error,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    _formatAmount(incrementalChange.abs()),
+                                    style: TextStyle(
+                                      color: incrementalChange >= 0
+                                          ? BudgetrColors.success
+                                          : BudgetrColors.error,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else ...[
+                            // Invested OR Withdrawn
+                            Text(
+                              _formatAmount(log.amountInvested,
+                                  showPlusSign: !isWithdrawal),
+                              style: TextStyle(
+                                color: isWithdrawal
+                                    ? Colors.redAccent
+                                    : BudgetrColors.accent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          ]
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
+              );
+            },
+          ),
+        ),
+
+        // [NEW] Load More Button
+        if (hasMore)
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _displayLimit += 5; // Reveal 5 more items per tap
+                });
+              },
+              icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                  color: BudgetrColors.accent),
+              label: const Text(
+                "Show Older History",
+                style: TextStyle(
+                  color: BudgetrColors.accent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                backgroundColor: BudgetrColors.accent.withOpacity(0.1),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
-          );
-        },
-      ),
+          ),
+      ],
     );
   }
 
@@ -272,16 +312,14 @@ class InvestmentHistoryList extends StatelessWidget {
       color: Colors.redAccent,
       buttonText: "Delete",
       cancelButtonText: "Cancel",
-      onCancel: () {}, // Just closes sheet
+      onCancel: () {},
       onDismiss: () async {
-        // Perform deletion
         await GetIt.I<PortfolioService>().deleteTransaction(transactionId);
       },
     );
   }
 
   void _showEditSheet(BuildContext context, InvestmentLogDto log) {
-    // Determine type for sheet
     LogType initialType =
         log.type == 'valueUpdate' ? LogType.valueUpdate : LogType.invested;
 
