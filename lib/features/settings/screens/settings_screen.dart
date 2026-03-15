@@ -379,7 +379,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(
-                      child: FuturisticLoader(size: 80, label: "LOADING..."))
+                      child: FuturisticLoader(
+                          size: 80, label: "FETCHING BUDGET STRUCTURE..."))
                   : Column(
                       children: [
                         if (!_isEditing)

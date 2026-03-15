@@ -127,7 +127,8 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
                             child: FuturisticLoader(
-                                size: 80, label: "LOADING TRANSACTIONS..."));
+                                size: 80,
+                                label: "FETCHING STATEMENT HISTORY..."));
                       }
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {
                         return _buildEmptyState("No transactions found.");

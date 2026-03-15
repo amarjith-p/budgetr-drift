@@ -381,7 +381,8 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-              child: FuturisticLoader(size: 80, label: "LOADING GOALS..."));
+              child: FuturisticLoader(
+                  size: 80, label: "RETRIEVING TARGET MATRICES..."));
         }
 
         if (snapshot.hasError) {
@@ -428,7 +429,8 @@ class _GoalsLoansDashboardState extends State<GoalsLoansDashboard>
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-              child: FuturisticLoader(size: 80, label: "LOADING LOANS..."));
+              child: FuturisticLoader(
+                  size: 80, label: "ANALYZING LIABILITIES MATRIX..."));
         }
 
         if (snapshot.hasError) {

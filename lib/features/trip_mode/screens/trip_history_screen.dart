@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -36,8 +37,9 @@ class TripHistoryScreen extends StatelessWidget {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                        child: CircularProgressIndicator(
-                            color: BudgetrColors.accent));
+                        child: FuturisticLoader(
+                            label: "FETCHING HISTORICAL MATRICES...",
+                            size: 80));
                   }
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return Center(

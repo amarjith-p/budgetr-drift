@@ -194,7 +194,8 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                                   return const Center(
                                       child: FuturisticLoader(
                                           size: 80,
-                                          label: "LOADING TRANSACTIONS..."));
+                                          label:
+                                              "ANALYZING TRANSACTION FLOW..."));
                                 }
                                 if (snapshot.hasError) {
                                   return Center(

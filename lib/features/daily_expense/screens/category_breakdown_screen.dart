@@ -419,7 +419,8 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                     return const Center(
                                         child: FuturisticLoader(
                                             size: 80,
-                                            label: "LOADING TRANSACTIONS..."));
+                                            label:
+                                                "GENERATING FINANCIAL INSIGHTS..."));
 
                                   final expenses = expenseSnapshot.data ?? [];
                                   final credits = creditSnapshot.data ?? [];

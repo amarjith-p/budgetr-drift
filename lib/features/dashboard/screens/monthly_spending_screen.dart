@@ -122,7 +122,7 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
               child: _isLoadingInfo
                   ? const Center(
                       child: FuturisticLoader(
-                          size: 80, label: "LOADING TRANSACTIONS..."))
+                          size: 80, label: "RETRIEVING MONTHLY ARCHIVE..."))
                   : StreamBuilder<List<DashboardTransaction>>(
                       stream: _dashboardService.getMonthlyTransactions(
                         widget.record.year,
@@ -133,7 +133,8 @@ class _MonthlySpendingScreenState extends State<MonthlySpendingScreen> {
                             ConnectionState.waiting) {
                           return const Center(
                               child: FuturisticLoader(
-                                  size: 80, label: "LOADING TRANSACTIONS..."));
+                                  size: 80,
+                                  label: "SYNCING MONTHLY ACTIVITY..."));
                         }
 
                         var transactions = snapshot.data ?? [];

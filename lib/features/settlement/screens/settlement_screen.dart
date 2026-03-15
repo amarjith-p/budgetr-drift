@@ -289,8 +289,8 @@ class _SettlementScreenState extends State<SettlementScreen> {
   Widget _buildContentArea() {
     if (_isLoading) {
       return const Center(
-          child:
-              FuturisticLoader(size: 80, label: "LOADING SETTLEMENT DATA..."));
+          child: FuturisticLoader(
+              size: 80, label: "ANALYZING BUDGET DEVIATIONS..."));
     }
     if (_settlementData == null) {
       return Center(

@@ -133,7 +133,8 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
             Expanded(
               child: _isLoadingLimit
                   ? const Center(
-                      child: FuturisticLoader(size: 80, label: "LOADING..."))
+                      child: FuturisticLoader(
+                          size: 80, label: "ISOLATING BUCKET TELEMETRY..."))
                   : StreamBuilder<List<DashboardTransaction>>(
                       stream: _dashboardService.getBucketTransactions(
                         widget.year,
@@ -145,7 +146,8 @@ class _BucketDetailsScreenState extends State<BucketDetailsScreen> {
                             ConnectionState.waiting) {
                           return const Center(
                               child: FuturisticLoader(
-                                  size: 80, label: "LOADING TRANSACTIONS..."));
+                                  size: 80,
+                                  label: "ANALYZING BUCKET SPENDING..."));
                         }
 
                         var transactions = snapshot.data ?? [];

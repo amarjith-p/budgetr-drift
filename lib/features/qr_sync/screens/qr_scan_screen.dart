@@ -63,14 +63,14 @@ class _QrScanScreenState extends State<QrScanScreen>
       final String url =
           'http://${data['ip']}:${data['port']}/download?token=${data['token']}';
 
-      setState(() => _statusText = "Downloading Database...");
+      setState(() => _statusText = "EXTRACTING REMOTE MATRIX...");
       final response =
           await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200)
         throw "Sync failed (${response.statusCode})";
 
-      setState(() => _statusText = "Installing Data...");
+      setState(() => _statusText = "INITIALIZING RESTORE PROTOCOL...");
       final dbFolder = await getApplicationDocumentsDirectory();
       final dbFile = File(p.join(dbFolder.path, 'budgetr_local_v2.sqlite'));
       await dbFile.writeAsBytes(response.bodyBytes, flush: true);

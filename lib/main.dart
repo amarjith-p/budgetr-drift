@@ -1,7 +1,9 @@
+import 'dart:math';
+
 import 'package:budget/features/recurring/services/recurring_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:workmanager/workmanager.dart'; // [ADDED]
+import 'package:workmanager/workmanager.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/home/screens/home_screen.dart';
@@ -12,7 +14,6 @@ import 'core/widgets/biometric_gate.dart';
 import 'core/widgets/futuristic_loader.dart';
 import 'core/services/biometric_service.dart';
 
-// [ADDED] Import Background Worker
 import 'features/notifications/services/background_worker.dart';
 import 'features/notifications/services/system_notification_service.dart';
 import 'features/notifications/services/notification_service.dart';
@@ -22,13 +23,10 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Initialize Biometric
   await BiometricService.instance.init();
 
-  // 2. Initialize Workmanager [ADDED]
   await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
 
-  // 3. Register Periodic Task (Every 1 hour) [ADDED]
   await Workmanager().registerPeriodicTask(
     "1",
     kBackgroundCheckTask,
@@ -42,8 +40,72 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  DateTime? _backgroundedTime;
+
+  // Set to 30 minutes
+  final int _inactivityTimeoutMinutes = 30;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _backgroundedTime ??= DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_backgroundedTime != null) {
+        final timeAway = DateTime.now().difference(_backgroundedTime!);
+        debugPrint("App resumed. Time away: ${timeAway.inMinutes} minutes.");
+
+        if (timeAway.inMinutes >= _inactivityTimeoutMinutes) {
+          debugPrint("Timeout reached! Running silent background sync.");
+
+          // 1. Run the logic silently without disrupting the user
+          _runSilentStartupChecks();
+
+          // 2. (Optional Security) Instantly pop back to the Home Route
+          // so sensitive screens like Vault/Net Worth are hidden, but NO loading screen is shown!
+          navigatorKey.currentState?.popUntil((route) => route.isFirst);
+        }
+
+        _backgroundedTime = null;
+      }
+    }
+  }
+
+  // [NEW] Runs the exact same checks as AppStartupScreen, but totally invisible to the user
+  Future<void> _runSilentStartupChecks() async {
+    try {
+      await GetIt.I<NotificationService>().runStartupChecks();
+    } catch (e) {
+      debugPrint("Silent Notification Check Failed: $e");
+    }
+
+    try {
+      await GetIt.I<RecurringService>().processDuePayments();
+    } catch (e) {
+      debugPrint("Silent Recurring Error: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +123,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// ... Keep your existing AppStartupScreen exactly as it is ...
 class AppStartupScreen extends StatefulWidget {
   const AppStartupScreen({super.key});
 
@@ -69,9 +132,22 @@ class AppStartupScreen extends StatefulWidget {
 }
 
 class _AppStartupScreenState extends State<AppStartupScreen> {
+  final List<String> _loadingMessages = [
+    "CRUNCHING NUMBERS...",
+    "SYNCING FINANCIAL DATA...",
+    "AUTHENTICATING USER DATA...",
+    "ANALYZING CASH FLOW...",
+    "PREPARING DASHBOARD...",
+    "ESTABLISHING SECURE CONNECTION...",
+    "POWERING UP ENGINE..."
+  ];
+  late String _randomMessage;
+
   @override
   void initState() {
     super.initState();
+    _randomMessage =
+        _loadingMessages[Random().nextInt(_loadingMessages.length)];
     _initializeApp();
   }
 
@@ -79,7 +155,6 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
     try {
       await ServiceLocator.init();
 
-      // Initialize Notification Permissions [ADDED]
       final systemService = GetIt.I<SystemNotificationService>();
       await systemService.init();
       await systemService.requestPermissions();
@@ -89,8 +164,7 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
       } catch (e) {
         debugPrint("Notification Check Failed: $e");
       }
-      // [NEW] INDEPENDENT RECURRING CHECK ON STARTUP
-      // This ensures payments are processed even if background worker is disabled/failed
+
       try {
         await GetIt.I<RecurringService>().processDuePayments();
       } catch (e) {
@@ -130,7 +204,7 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Color(0xff0D1B2A),
       body: Center(
         child: Column(
@@ -138,7 +212,7 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
           children: [
             FuturisticLoader(
               size: 80,
-              label: "INITIALIZING CORE...",
+              label: _randomMessage,
             ),
           ],
         ),

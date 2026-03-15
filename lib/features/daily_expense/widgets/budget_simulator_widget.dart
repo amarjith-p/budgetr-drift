@@ -100,7 +100,8 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
       return const SizedBox(
           height: 250,
           child: Center(
-              child: FuturisticLoader(size: 80, label: "ANALYZING DATA...")));
+              child: FuturisticLoader(
+                  size: 80, label: "RUNNING PREDICTIVE SIMULATIONS...")));
 
     final currencyFmt =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);

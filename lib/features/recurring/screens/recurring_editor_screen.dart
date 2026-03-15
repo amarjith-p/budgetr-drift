@@ -371,7 +371,8 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
         body: SafeArea(
           child: _isLoading
               ? const Center(
-                  child: FuturisticLoader(size: 80, label: "LOADING RULES..."))
+                  child: FuturisticLoader(
+                      size: 80, label: "FETCHING CONFIGURATION MATRICES..."))
               : Column(
                   children: [
                     ModernAppBar(
@@ -1417,7 +1418,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
           builder: (_) => const Center(
                 child: FuturisticLoader(
                   size: 80,
-                  label: "SAVING RULE...",
+                  label: "COMPILING AUTOMATION PROTOCOL...",
                 ),
               ));
       await GetIt.I<RecurringService>().savePattern(pattern);

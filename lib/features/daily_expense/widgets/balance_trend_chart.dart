@@ -82,7 +82,7 @@ class _BalanceTrendChartState extends State<BalanceTrendChart> {
                   height: 200,
                   child: Center(
                       child: FuturisticLoader(
-                          size: 80, label: "ANALYZING DATA...")));
+                          size: 80, label: "ANALYZING LIQUIDITY TRENDS...")));
             }
 
             final allTxns = txnSnapshot.data!;

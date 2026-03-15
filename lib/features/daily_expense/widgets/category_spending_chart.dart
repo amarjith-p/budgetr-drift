@@ -122,7 +122,7 @@ class _CategorySpendingChartState extends State<CategorySpendingChart> {
                     if (!expenseSnapshot.hasData && !creditSnapshot.hasData) {
                       return const Center(
                           child: FuturisticLoader(
-                              size: 80, label: "ANALYZING DATA..."));
+                              size: 80, label: "RENDERING VISUAL MATRICES..."));
                     }
 
                     final expenses = expenseSnapshot.data ?? [];

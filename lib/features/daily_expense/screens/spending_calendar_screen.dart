@@ -282,7 +282,9 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: FuturisticLoader(size: 80, label: "LOADING..."))
+          ? const Center(
+              child: FuturisticLoader(
+                  size: 80, label: "GENERATING SPEND HEATMAP..."))
           : Column(
               children: [
                 SizedBox(
@@ -939,79 +941,128 @@ class _SpendingCalendarScreenState extends State<SpendingCalendarScreen> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          left: 20,
-          right: 20,
-          top: 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.tune, color: Color(0xFF00B4D8)),
-                const SizedBox(width: 8),
-                const Text(
-                  "Heatmap Sensitivity",
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Configuring limits for $monthName only.",
-              style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 13,
-                  fontStyle: FontStyle.italic),
-            ),
-            const SizedBox(height: 24),
-            _buildLimitInput(
-                "Safe Limit (Green)", greenCtrl, const Color(0xFF2EC4B6)),
-            const SizedBox(height: 16),
-            _buildLimitInput(
-                "Caution Limit (Yellow)", yellowCtrl, const Color(0xFFFF9F1C)),
-            const SizedBox(height: 16),
-            _buildLimitInput(
-                "Warning Limit (Orange)", orangeCtrl, const Color(0xFFFF5400)),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00B4D8),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () {
-                  final g = double.tryParse(greenCtrl.text) ?? 500;
-                  final y = double.tryParse(yellowCtrl.text) ?? 2000;
-                  final o = double.tryParse(orangeCtrl.text) ?? 5000;
+      builder: (context) {
+        // [NEW] Local variable to hold the error message for the bottom sheet
+        String? errorMessage;
 
-                  if (g < y && y < o) {
-                    _saveMonthLimits(g, y, o);
-                    Navigator.pop(context);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text(
-                            "Limits must be in ascending order: Green < Yellow < Orange")));
-                  }
-                },
-                child: const Text("Save for this Month",
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
+        // [NEW] StatefulBuilder allows us to call setModalState to update ONLY the bottom sheet UI
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                left: 20,
+                right: 20,
+                top: 20,
               ),
-            ),
-          ],
-        ),
-      ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.tune, color: Color(0xFF00B4D8)),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "Heatmap Sensitivity",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Configuring limits for $monthName only.",
+                    style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildLimitInput(
+                      "Safe Limit (Green)", greenCtrl, const Color(0xFF2EC4B6)),
+                  const SizedBox(height: 16),
+                  _buildLimitInput("Caution Limit (Yellow)", yellowCtrl,
+                      const Color(0xFFFF9F1C)),
+                  const SizedBox(height: 16),
+                  _buildLimitInput("Warning Limit (Orange)", orangeCtrl,
+                      const Color(0xFFFF5400)),
+
+                  // [NEW] Inline Error Message Display
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: Colors.redAccent.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline,
+                              color: Colors.redAccent, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: const TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00B4D8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        // Clear previous error on new attempt
+                        setModalState(() => errorMessage = null);
+
+                        final g = double.tryParse(greenCtrl.text) ?? 500;
+                        final y = double.tryParse(yellowCtrl.text) ?? 2000;
+                        final o = double.tryParse(orangeCtrl.text) ?? 5000;
+
+                        if (g < y && y < o) {
+                          _saveMonthLimits(g, y, o);
+                          Navigator.pop(context);
+                        } else {
+                          // [NEW] Use setModalState instead of SnackBar
+                          setModalState(() {
+                            errorMessage =
+                                "Limits must be in ascending order: Green < Yellow < Orange";
+                          });
+                        }
+                      },
+                      child: const Text("Save for this Month",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

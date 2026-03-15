@@ -95,7 +95,7 @@ class _NetWorthDashboardTabState extends State<NetWorthDashboardTab> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
               child: FuturisticLoader(
-                  size: 80, label: "LOADING NET WORTH DATA..."));
+                  size: 80, label: "AGGREGATING WEALTH MATRICES..."));
         }
 
         final records = snapshot.data ?? [];

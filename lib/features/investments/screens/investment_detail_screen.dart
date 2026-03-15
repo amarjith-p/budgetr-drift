@@ -116,7 +116,7 @@ class InvestmentDetailScreen extends StatelessWidget {
                           return const Center(
                               child: FuturisticLoader(
                             size: 80,
-                            label: "LOADING...",
+                            label: "ANALYZING ASSET TELEMETRY...",
                           ));
                         }
                         return InvestmentHistoryList(logs: snapshot.data!);

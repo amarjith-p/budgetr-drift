@@ -492,7 +492,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                       // Trigger futuristic loader
                       setState(() {
                         _isExporting = true;
-                        _exportMessage = "GENERATING PDF DOCUMENT...";
+                        _exportMessage = "COMPILING SECURE PDF ARCHIVE...";
                       });
 
                       try {
@@ -525,7 +525,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                       // Trigger futuristic loader
                       setState(() {
                         _isExporting = true;
-                        _exportMessage = "PREPARING SPREADSHEET...";
+                        _exportMessage = "EXTRACTING DATA TO SPREADSHEET...";
                       });
 
                       try {
@@ -605,7 +605,8 @@ class _CustomDataPageState extends State<CustomDataPage>
               return const Scaffold(
                 backgroundColor: Color(0xff0D1B2A),
                 body: Center(
-                    child: FuturisticLoader(size: 80, label: "LOADING...")),
+                    child: FuturisticLoader(
+                        size: 80, label: "CONFIGURING DATATABLE ENGINE...")),
               );
             }
 
@@ -692,7 +693,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                           ConnectionState.waiting) {
                         return const Center(
                             child: FuturisticLoader(
-                                size: 80, label: "LOADING..."));
+                                size: 80, label: "COMPILING ROW DATA..."));
                       }
 
                       if (recordSnapshot.hasError) {

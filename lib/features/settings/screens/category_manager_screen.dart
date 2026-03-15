@@ -66,7 +66,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen>
             barrierDismissible: false,
             builder: (ctx) => const Center(
                 child: FuturisticLoader(
-                    size: 80, label: "RESETTING CATEGORIES...")),
+                    size: 80, label: "RESTORING SYSTEM DEFAULTS...")),
           );
         }
 

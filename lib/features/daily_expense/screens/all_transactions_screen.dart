@@ -139,7 +139,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                           ConnectionState.waiting) {
                         return const Center(
                             child: FuturisticLoader(
-                                size: 80, label: "LOADING TRANSACTIONS..."));
+                                size: 80, label: "COMPILING GLOBAL LEDGER..."));
                       }
 
                       final transactions = txnSnapshot.data ?? [];

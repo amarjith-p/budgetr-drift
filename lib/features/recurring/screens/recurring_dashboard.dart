@@ -44,7 +44,7 @@ class RecurringDashboard extends StatelessWidget {
                     return const Center(
                       child: FuturisticLoader(
                         size: 80,
-                        label: "LOADING TRANSACTIONS...",
+                        label: "SYNCING AUTOMATION PROTOCOLS...",
                       ),
                     );
                   }

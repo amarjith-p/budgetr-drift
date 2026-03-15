@@ -69,8 +69,9 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                 if (!_hasLoaded)
                   const Expanded(
                       child: Center(
-                          child:
-                              FuturisticLoader(size: 80, label: "LOADING...")))
+                          child: FuturisticLoader(
+                              size: 80,
+                              label: "ASSEMBLING ACCOUNT PORTFOLIO...")))
                 else if (_accounts.isEmpty)
                   Expanded(child: _buildEmptyState())
                 else

@@ -309,7 +309,8 @@ class _AddRecordSheetState extends State<AddRecordSheet> {
   Widget build(BuildContext context) {
     if (_config == null)
       return const Center(
-          child: FuturisticLoader(size: 80, label: "LOADING..."));
+          child: FuturisticLoader(
+              size: 80, label: "FETCHING ALLOCATION PROTOCOLS..."));
 
     return Container(
       padding: EdgeInsets.only(

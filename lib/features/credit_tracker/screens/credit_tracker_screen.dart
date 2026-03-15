@@ -74,7 +74,8 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
                             child: FuturisticLoader(
-                                size: 80, label: "LOADING ACCOUNTS..."));
+                                size: 80,
+                                label: "DECRYPTING CREDIT PROFILES..."));
                       }
 
                       if (snapshot.hasError) {

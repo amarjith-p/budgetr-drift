@@ -121,7 +121,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         if (!snapshot.hasData) {
                           return const Center(
                               child: FuturisticLoader(
-                                  label: "LOADING TRIP...", size: 80));
+                                  label: "ANALYZING TRIP TELEMETRY...",
+                                  size: 80));
                         }
 
                         final rawTxns = snapshot.data!;

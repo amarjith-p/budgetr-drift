@@ -1,3 +1,4 @@
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -43,7 +44,9 @@ class _NetWorthSplitsTabState extends State<NetWorthSplitsTab> {
         stream: GetIt.I<NetWorthService>().getSplits(),
         builder: (context, snapshot) {
           if (!snapshot.hasData)
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+                child: FuturisticLoader(
+                    size: 80, label: "DECRYPTING WEALTH SPLITS..."));
           final splits = snapshot.data!;
 
           if (splits.isEmpty) {

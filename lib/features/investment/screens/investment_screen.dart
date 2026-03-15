@@ -623,7 +623,8 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                               ConnectionState.waiting) {
                             return const Center(
                                 child: FuturisticLoader(
-                                    size: 80, label: "LOADING INVESTMENTS..."));
+                                    size: 80,
+                                    label: "EVALUATING FINANCIAL HOLDINGS..."));
                           }
 
                           var records = snapshot.data ?? [];

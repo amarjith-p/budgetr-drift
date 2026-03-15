@@ -272,7 +272,8 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-              child: FuturisticLoader(size: 80, label: "LOADING ACCOUNTS..."));
+              child:
+                  FuturisticLoader(size: 80, label: "RETRIEVING ACCOUNTS..."));
         }
 
         final accounts = snapshot.data ?? [];

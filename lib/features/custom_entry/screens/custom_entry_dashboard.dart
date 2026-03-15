@@ -71,7 +71,8 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard> {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
                             child: FuturisticLoader(
-                                size: 80, label: "LOADING..."));
+                                size: 80,
+                                label: "ASSEMBLING CUSTOM SHEETS..."));
                       }
 
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {

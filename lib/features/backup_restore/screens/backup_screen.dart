@@ -24,6 +24,7 @@ class BackupScreen extends StatefulWidget {
 class _BackupScreenState extends State<BackupScreen> {
   final BackupService _backupService = GetIt.I<BackupService>();
   bool _isLoading = false;
+  String _loadingLabel = "LOADING BACKUP ENGINE...";
   DateTime? _lastBackupTime;
 
   @override
@@ -46,7 +47,10 @@ class _BackupScreenState extends State<BackupScreen> {
   // ==========================================
 
   Future<void> _handleSaveToDevice() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _loadingLabel = "COMPILING DATA MATRIX TO DEVICE..."; // [NEW]
+      _isLoading = true;
+    });
     try {
       // This now instantly saves to BudGetR/Backups/{MMM yyyy}
       final path = await _backupService.saveBackupToDevice();
@@ -72,7 +76,10 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   Future<void> _handleShare() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _loadingLabel = "PREPARING SECURE EXPORT PACKAGE..."; // [NEW]
+      _isLoading = true;
+    });
     try {
       await _backupService.shareBackup();
       if (mounted) setState(() => _lastBackupTime = DateTime.now());
@@ -99,7 +106,10 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   Future<void> _performRestore() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _loadingLabel = "DECRYPTING & OVERWRITING LOCAL MATRIX..."; // [NEW]
+      _isLoading = true;
+    });
     try {
       final success = await _backupService.restoreBackup();
       if (success && mounted) {
@@ -240,10 +250,10 @@ class _BackupScreenState extends State<BackupScreen> {
           if (_isLoading)
             Container(
               color: Colors.black54,
-              child: const Center(
+              child: Center(
                 child: FuturisticLoader(
                   size: 80,
-                  label: "LOADING BACKUP ENGINE...",
+                  label: _loadingLabel, // [UPDATED] Uses dynamic text!
                 ),
               ),
             ),

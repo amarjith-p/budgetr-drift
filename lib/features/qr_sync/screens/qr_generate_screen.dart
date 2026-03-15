@@ -14,7 +14,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen>
     with SingleTickerProviderStateMixin {
   final QrSyncService _service = QrSyncService();
   String? _qrData;
-  String _statusMessage = "Initializing secure link...";
+  String _statusMessage = "CONFIGURING LOCAL SERVER...";
 
   // Design Constants
   final Color _bgColor = const Color(0xff0D1B2A);

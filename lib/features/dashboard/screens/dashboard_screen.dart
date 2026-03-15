@@ -179,8 +179,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       context: context,
                       barrierDismissible: false,
                       builder: (c) => const Center(
-                          child:
-                              FuturisticLoader(size: 80, label: "LOADING...")),
+                          child: FuturisticLoader(
+                              size: 80,
+                              label: "AGGREGATING FINANCIAL METRICS...")),
                     );
 
                     final spendingMap = await _dashboardService
@@ -368,7 +369,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
                             child: FuturisticLoader(
-                                size: 80, label: "LOADING..."));
+                                size: 80,
+                                label: "SYNCING MONTHLY BLUEPRINT..."));
                       }
 
                       final records = snapshot.data ?? [];

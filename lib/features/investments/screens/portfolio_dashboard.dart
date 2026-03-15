@@ -134,7 +134,8 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                        child: FuturisticLoader(label: "LOADING ASSETS..."));
+                        child: FuturisticLoader(
+                            label: "COMPILING WEALTH LEDGER..."));
                   }
 
                   if (snapshot.hasError) {

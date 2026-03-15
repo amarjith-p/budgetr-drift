@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -49,7 +50,9 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
           if (!loanSnapshot.hasData && loanSnapshot.data == null) {
             return const Scaffold(
                 backgroundColor: Color(0xFF0F172A),
-                body: Center(child: CircularProgressIndicator()));
+                body: Center(
+                    child: FuturisticLoader(
+                        size: 80, label: "DECRYPTING LEDGER...")));
           }
 
           final liveLoan = loanSnapshot.data ?? widget.loan;
