@@ -3,6 +3,7 @@ import 'package:budget/core/widgets/glass_card.dart';
 import 'package:budget/features/investments/models/investment_dto.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // [NEW] Import intl for formatting
 
 class PortfolioSummaryCard extends StatefulWidget {
   final double totalInvested;
@@ -28,6 +29,21 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
   bool _showChart = false;
   int _touchedIndex = -1;
 
+  // [NEW] Helper method to format currency to Indian format (e.g., ₹ 1,00,000.00)
+  String _formatAmount(double amount, {bool showPlusSign = false}) {
+    // Uses 'en_IN' to format according to the Indian numbering system (Lakhs, Crores)
+    final format =
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
+    final formattedStr = format.format(amount.abs());
+
+    if (amount < 0) {
+      return "-$formattedStr";
+    } else if (showPlusSign && amount > 0) {
+      return "+$formattedStr";
+    }
+    return formattedStr;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isPositive = widget.totalGainLoss >= 0;
@@ -38,7 +54,6 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
 
     return GlassCard(
       borderRadius: 16,
-      // [OPTIMIZED] Reduced padding from 20 to 16
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -79,8 +94,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                     if (!_showChart)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4), // [OPTIMIZED] Tighter pill
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(20),
@@ -96,7 +110,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                               style: TextStyle(
                                 color: statusColor,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 11, // [OPTIMIZED]
+                                fontSize: 11,
                               ),
                             ),
                           ],
@@ -128,41 +142,39 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Main Value
+        // Main Value [UPDATED WITH FORMATTER]
         Text(
-          "₹${widget.currentValue.toStringAsFixed(2)}",
+          _formatAmount(widget.currentValue),
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 28, // [OPTIMIZED] Reduced from 32
+            fontSize: 28,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 16), // [OPTIMIZED] Reduced from 24
+        const SizedBox(height: 16),
 
         Container(height: 1, color: Colors.white10),
 
-        const SizedBox(height: 12), // [OPTIMIZED] Reduced from 16
+        const SizedBox(height: 12),
 
         // Bottom Row
         Row(
           children: [
             Expanded(
               child: _buildMiniStat(
-                "INVESTED", // [OPTIMIZED] Shorter text
-                "₹${widget.totalInvested.toStringAsFixed(2)}",
+                "INVESTED",
+                _formatAmount(widget.totalInvested), // [UPDATED]
                 Colors.white70,
               ),
             ),
-            Container(
-                width: 1,
-                height: 30,
-                color: Colors.white10), // [OPTIMIZED] Height 40 -> 30
+            Container(width: 1, height: 30, color: Colors.white10),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(left: 20),
                 child: _buildMiniStat(
-                  "GAIN/LOSS", // [OPTIMIZED] Shorter text
-                  "${isPositive ? '+' : ''}₹${widget.totalGainLoss.toStringAsFixed(2)}",
+                  "GAIN/LOSS",
+                  _formatAmount(widget.totalGainLoss,
+                      showPlusSign: true), // [UPDATED]
                   statusColor,
                 ),
               ),
@@ -213,7 +225,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
     ];
 
     return Container(
-      height: 130, // [OPTIMIZED] Reduced height from 180 -> 130
+      height: 130,
       padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: [
@@ -237,11 +249,10 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                 ),
                 borderData: FlBorderData(show: false),
                 sectionsSpace: 2,
-                centerSpaceRadius: 20, // [OPTIMIZED] Smaller center
+                centerSpaceRadius: 20,
                 sections: List.generate(sortedKeys.length, (i) {
                   final isTouched = i == _touchedIndex;
-                  final radius =
-                      isTouched ? 35.0 : 25.0; // [OPTIMIZED] Smaller radii
+                  final radius = isTouched ? 35.0 : 25.0;
                   final key = sortedKeys[i];
                   final value = dataMap[key]!;
                   final percentage = (value / totalValue) * 100;
@@ -271,8 +282,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                 children: List.generate(sortedKeys.length, (i) {
                   final key = sortedKeys[i];
                   return Padding(
-                    padding: const EdgeInsets.only(
-                        bottom: 4), // [OPTIMIZED] Tighter spacing
+                    padding: const EdgeInsets.only(bottom: 4),
                     child: Row(
                       children: [
                         Container(
@@ -287,8 +297,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                           child: Text(
                             key,
                             style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 10), // [OPTIMIZED]
+                                color: Colors.white70, fontSize: 10),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -312,7 +321,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
           label,
           style: const TextStyle(
             color: Colors.white30,
-            fontSize: 9, // [OPTIMIZED]
+            fontSize: 9,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.5,
           ),
@@ -322,7 +331,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
           value,
           style: TextStyle(
             color: valueColor,
-            fontSize: 15, // [OPTIMIZED]
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
