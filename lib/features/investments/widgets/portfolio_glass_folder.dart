@@ -4,6 +4,7 @@ import 'package:budget/features/investments/models/investment_dto.dart';
 import 'package:budget/features/investments/screens/investment_detail_screen.dart';
 import 'package:budget/features/investments/widgets/portfolio_item_card.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // [NEW] Import intl for formatting
 
 class PortfolioGlassFolder extends StatelessWidget {
   final String groupName;
@@ -14,6 +15,13 @@ class PortfolioGlassFolder extends StatelessWidget {
     required this.groupName,
     required this.investments,
   });
+
+  // [NEW] Helper method to format currency to Indian format
+  String _formatAmount(double amount) {
+    final format =
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
+    return format.format(amount.abs());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +106,7 @@ class PortfolioGlassFolder extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      "₹${folderTotalValue.toStringAsFixed(2)}",
+                      _formatAmount(folderTotalValue), // [UPDATED]
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -117,7 +125,7 @@ class PortfolioGlassFolder extends StatelessWidget {
                           size: 16,
                         ),
                         Text(
-                          "₹${gain.abs().toStringAsFixed(2)}",
+                          _formatAmount(gain.abs()), // [UPDATED]
                           style: TextStyle(
                             color: gainColor,
                             fontWeight: FontWeight.w600,

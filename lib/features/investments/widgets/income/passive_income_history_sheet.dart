@@ -5,13 +5,27 @@ import 'package:budget/features/investments/database/passive_income_tables.dart'
 import 'package:budget/features/investments/services/passive_income_service.dart';
 import 'package:budget/features/investments/widgets/income/passive_income_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart'; // [Required]
-import 'package:intl/intl.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:intl/intl.dart'; // [NEW] Import intl
 
 class PassiveIncomeHistorySheet extends StatelessWidget {
   final int investmentId;
 
   const PassiveIncomeHistorySheet({super.key, required this.investmentId});
+
+  // [NEW] Helper method to format currency to Indian format
+  String _formatAmount(double amount, {bool showPlusSign = false}) {
+    final format =
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
+    final formattedStr = format.format(amount.abs());
+
+    if (amount < 0) {
+      return "-$formattedStr";
+    } else if (showPlusSign && amount > 0) {
+      return "+$formattedStr";
+    }
+    return formattedStr;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,13 +82,12 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                   );
                 }
 
-                // Modern List with Auto-Close behavior
                 return SlidableAutoCloseBehavior(
                   child: ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: snapshot.data!.length,
                     separatorBuilder: (context, index) =>
-                        const SizedBox(height: 8), // Clean spacing
+                        const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final log = snapshot.data![index];
 
@@ -86,10 +99,7 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                           motion: const ScrollMotion(),
                           extentRatio: 0.25,
                           children: [
-                            SizedBox(
-                              width: 6,
-                            ), // Spacer to prevent accidental taps
-                            // Spacer to prevent accidental taps
+                            const SizedBox(width: 6),
                             SlidableAction(
                               onPressed: (_) =>
                                   _showDeleteSheet(context, log.id),
@@ -99,15 +109,13 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                               label: 'Delete',
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 8),
-                              borderRadius: BorderRadius.circular(
-                                  12), // Matches card style
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ],
                         ),
 
                         // --- MAIN CONTENT ---
                         child: Container(
-                          // Note: Margin removed here, handled by separatorBuilder for better sliding
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.05),
@@ -148,7 +156,8 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                "+ ₹${log.amount.toStringAsFixed(2)}",
+                                _formatAmount(log.amount,
+                                    showPlusSign: true), // [UPDATED]
                                 style: const TextStyle(
                                     color: Colors.amber,
                                     fontWeight: FontWeight.bold,

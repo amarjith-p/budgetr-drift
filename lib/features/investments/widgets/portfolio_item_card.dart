@@ -2,6 +2,7 @@ import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:budget/core/widgets/glass_card.dart';
 import 'package:budget/features/investments/models/investment_dto.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // [NEW] Import intl for formatting
 
 class PortfolioItemCard extends StatelessWidget {
   final InvestmentDto investment;
@@ -12,6 +13,13 @@ class PortfolioItemCard extends StatelessWidget {
     required this.investment,
     required this.onTap,
   });
+
+  // [NEW] Helper method to format currency to Indian format
+  String _formatAmount(double amount) {
+    final format =
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
+    return format.format(amount.abs());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +121,7 @@ class PortfolioItemCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  "₹${investment.currentMarketValue.toStringAsFixed(2)}",
+                  _formatAmount(investment.currentMarketValue), // [UPDATED]
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -130,7 +138,7 @@ class PortfolioItemCard extends StatelessWidget {
                       size: 16,
                     ),
                     Text(
-                      "₹${investment.totalGainLoss.abs().toStringAsFixed(2)}",
+                      _formatAmount(investment.totalGainLoss), // [UPDATED]
                       style: TextStyle(
                         color: gainColor,
                         fontWeight: FontWeight.w600,

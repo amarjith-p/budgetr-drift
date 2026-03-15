@@ -16,17 +16,20 @@ class PassiveIncomeCard extends StatelessWidget {
     required this.onTap,
   });
 
+  // [NEW] Standardized helper method for Indian currency format
+  String _formatAmount(double amount) {
+    final format =
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
+    return format.format(amount.abs());
+  }
+
   @override
   Widget build(BuildContext context) {
     final service = PassiveIncomeService();
-    final currency =
-        NumberFormat.currency(symbol: '₹', decimalDigits: 2, locale: "en_IN");
 
     return StreamBuilder<PassiveIncomeMetrics>(
       stream: service.watchMetrics(investmentId, totalInvested),
       builder: (context, snapshot) {
-        // If no income ever, show a collapsed "Add" hint or nothing?
-        // Let's show the card but empty state if 0, to encourage adding it.
         final metrics = snapshot.data ??
             PassiveIncomeMetrics(
                 totalEarned: 0, yieldPercentage: 0, transactionCount: 0);
@@ -69,7 +72,7 @@ class PassiveIncomeCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            currency.format(metrics.totalEarned),
+                            _formatAmount(metrics.totalEarned), // [UPDATED]
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
