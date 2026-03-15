@@ -4,7 +4,7 @@ import 'package:budget/features/investments/models/investment_log_dto.dart';
 import 'package:budget/features/investments/services/portfolio_service.dart';
 import 'package:budget/features/investments/widgets/log_transaction_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart'; // [NEW IMPORT]
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
@@ -12,6 +12,20 @@ class InvestmentHistoryList extends StatelessWidget {
   final List<InvestmentLogDto> logs;
 
   const InvestmentHistoryList({super.key, required this.logs});
+
+  // [NEW] Helper method to ensure UI consistency with Indian Number System
+  String _formatAmount(double amount, {bool showPlusSign = false}) {
+    final format =
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
+    final formattedStr = format.format(amount.abs());
+
+    if (amount < 0) {
+      return "-$formattedStr";
+    } else if (showPlusSign && amount > 0) {
+      return "+$formattedStr";
+    }
+    return formattedStr;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +41,6 @@ class InvestmentHistoryList extends StatelessWidget {
       );
     }
 
-    // [NEW] Wraps the list to ensure only one slidable item is open at a time
     return SlidableAutoCloseBehavior(
       child: ListView.builder(
         shrinkWrap: true,
@@ -38,6 +51,19 @@ class InvestmentHistoryList extends StatelessWidget {
           final isInvested = log.type == 'invested';
           final isWithdrawal = log.type == 'withdrawn';
           final isValueUpdate = log.type == 'valueUpdate';
+
+          // [NEW] Calculate incremental change from the previous transaction
+          double incrementalChange = 0.0;
+          if (isValueUpdate) {
+            if (index < logs.length - 1) {
+              // The list is descending (newest first). The previous log is at index + 1
+              incrementalChange =
+                  log.currentValue - logs[index + 1].currentValue;
+            } else {
+              // Fallback for the very first transaction ever
+              incrementalChange = log.gainLoss;
+            }
+          }
 
           return Slidable(
             key: ValueKey(log.id),
@@ -155,15 +181,16 @@ class InvestmentHistoryList extends StatelessWidget {
                     children: [
                       if (isValueUpdate) ...[
                         Text(
-                          "₹${log.currentValue.toStringAsFixed(2)}",
+                          _formatAmount(log.currentValue),
                           style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12),
+                              fontSize: 13),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
+                        // Total Gain
                         Text(
-                          "${log.gainLoss >= 0 ? '+' : ''}₹${log.gainLoss.toStringAsFixed(2)}",
+                          "Total: ${_formatAmount(log.gainLoss, showPlusSign: true)}",
                           style: TextStyle(
                             color: log.gainLoss >= 0
                                 ? BudgetrColors.success
@@ -172,10 +199,50 @@ class InvestmentHistoryList extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        // [NEW] Incremental Change Pill
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (incrementalChange >= 0
+                                    ? BudgetrColors.success
+                                    : BudgetrColors.error)
+                                .withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                incrementalChange >= 0
+                                    ? Icons.arrow_upward_rounded
+                                    : Icons.arrow_downward_rounded,
+                                size: 10,
+                                color: incrementalChange >= 0
+                                    ? BudgetrColors.success
+                                    : BudgetrColors.error,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                _formatAmount(incrementalChange
+                                    .abs()), // Icon handles the +/- indication natively
+                                style: TextStyle(
+                                  color: incrementalChange >= 0
+                                      ? BudgetrColors.success
+                                      : BudgetrColors.error,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ] else ...[
                         // Invested OR Withdrawn
                         Text(
-                          "${isWithdrawal ? '' : '+'}₹${log.amountInvested.toStringAsFixed(2)}",
+                          _formatAmount(log.amountInvested,
+                              showPlusSign: !isWithdrawal),
                           style: TextStyle(
                             color: isWithdrawal
                                 ? Colors.redAccent
