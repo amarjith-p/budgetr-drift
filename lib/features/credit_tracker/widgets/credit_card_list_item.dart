@@ -34,7 +34,7 @@ class CreditCardListItem extends StatelessWidget {
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        height: 160,
+        height: 130,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
@@ -75,8 +75,8 @@ class CreditCardListItem extends StatelessWidget {
                       Row(
                         children: [
                           Container(
-                            width: 36,
-                            height: 36,
+                            width: 25,
+                            height: 25,
                             padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
                               color: Colors.white,
@@ -106,7 +106,7 @@ class CreditCardListItem extends StatelessWidget {
                             card.bankName.toUpperCase(),
                             style: const TextStyle(
                               color: Colors.white70,
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.2,
                             ),
@@ -131,7 +131,7 @@ class CreditCardListItem extends StatelessWidget {
                           child: const Icon(
                             Icons.more_horiz,
                             color: Colors.white70,
-                            size: 18,
+                            size: 15,
                           ),
                         ),
                       ),
@@ -142,7 +142,7 @@ class CreditCardListItem extends StatelessWidget {
                     card.name,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
                     ),
@@ -170,7 +170,7 @@ class CreditCardListItem extends StatelessWidget {
                               color: isSurplus
                                   ? const Color(0xFF4CC9F0)
                                   : Colors.white,
-                              fontSize: 22,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
