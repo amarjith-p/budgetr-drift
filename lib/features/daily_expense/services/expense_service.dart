@@ -741,7 +741,8 @@ class ExpenseService {
 // --- UPDATE THIS METHOD in ExpenseService ---
   Stream<List<ExpenseTransactionModel>> getFilteredTransactions(
       FilterCriteria criteria) {
-    final query = _db.select(_db.expenseTransactions);
+    final query = _db.select(_db.expenseTransactions)
+      ..where((t) => t.accountId.isNotNull() & t.accountId.equals('').not());
 
     // 1. Date Filter
     if (criteria.startDate != null && criteria.endDate != null) {

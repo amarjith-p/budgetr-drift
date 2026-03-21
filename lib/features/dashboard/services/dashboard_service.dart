@@ -119,17 +119,19 @@ class DashboardService {
         (List<db.ExpenseTransaction> exps, List<db.CreditTransaction> crds) {
       final list = <DashboardTransaction>[];
 
-      list.addAll(exps.map((e) => DashboardTransaction(
-          id: e.id,
-          amount: e.amount,
-          date: e.date,
-          type: e.type,
-          category: e.category,
-          subCategory: e.subCategory,
-          notes: e.notes,
-          bucket: e.bucket,
-          sourceId: e.accountId ?? '',
-          sourceType: TransactionSourceType.bankAccount)));
+      list.addAll(exps
+          .where((e) => e.accountId != null && e.accountId!.isNotEmpty)
+          .map((e) => DashboardTransaction(
+              id: e.id,
+              amount: e.amount,
+              date: e.date,
+              type: e.type,
+              category: e.category,
+              subCategory: e.subCategory,
+              notes: e.notes,
+              bucket: e.bucket,
+              sourceId: e.accountId ?? '',
+              sourceType: TransactionSourceType.bankAccount)));
 
       list.addAll(crds.map((c) => DashboardTransaction(
           id: c.id,
@@ -170,17 +172,19 @@ class DashboardService {
     return Rx.combineLatest2(expenseStream, creditStream,
         (List<db.ExpenseTransaction> exps, List<db.CreditTransaction> crds) {
       final list = <DashboardTransaction>[];
-      list.addAll(exps.map((e) => DashboardTransaction(
-          id: e.id,
-          amount: e.amount,
-          date: e.date,
-          category: e.category,
-          subCategory: e.subCategory,
-          notes: e.notes,
-          type: e.type,
-          bucket: e.bucket,
-          sourceId: e.accountId ?? '',
-          sourceType: TransactionSourceType.bankAccount)));
+      list.addAll(exps
+          .where((e) => e.accountId != null && e.accountId!.isNotEmpty)
+          .map((e) => DashboardTransaction(
+              id: e.id,
+              amount: e.amount,
+              date: e.date,
+              category: e.category,
+              subCategory: e.subCategory,
+              notes: e.notes,
+              type: e.type,
+              bucket: e.bucket,
+              sourceId: e.accountId ?? '',
+              sourceType: TransactionSourceType.bankAccount)));
 
       list.addAll(crds.map((c) => DashboardTransaction(
           id: c.id,
@@ -224,17 +228,19 @@ class DashboardService {
     return Rx.combineLatest2(expenseStream, creditStream,
         (List<db.ExpenseTransaction> exps, List<db.CreditTransaction> crds) {
       final list = <DashboardTransaction>[];
-      list.addAll(exps.map((e) => DashboardTransaction(
-          id: e.id,
-          amount: e.amount,
-          date: e.date,
-          type: e.type,
-          category: e.category,
-          subCategory: e.subCategory,
-          notes: e.notes,
-          bucket: e.bucket,
-          sourceId: e.accountId ?? '',
-          sourceType: TransactionSourceType.bankAccount)));
+      list.addAll(exps
+          .where((e) => e.accountId != null && e.accountId!.isNotEmpty)
+          .map((e) => DashboardTransaction(
+              id: e.id,
+              amount: e.amount,
+              date: e.date,
+              type: e.type,
+              category: e.category,
+              subCategory: e.subCategory,
+              notes: e.notes,
+              bucket: e.bucket,
+              sourceId: e.accountId ?? '',
+              sourceType: TransactionSourceType.bankAccount)));
 
       list.addAll(crds.map((c) => DashboardTransaction(
           id: c.id,

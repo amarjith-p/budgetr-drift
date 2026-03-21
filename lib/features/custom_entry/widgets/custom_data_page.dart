@@ -35,14 +35,34 @@ class _CustomDataPageState extends State<CustomDataPage>
   final Color _accentColor = const Color(0xFF3A86FF);
   final Color _bgColor = const Color(0xff0D1B2A);
 
+  late Stream<CustomTemplate?> _templateStream;
+  late Stream<List<CustomRecord>> _recordsStream;
+
   List<FilterCondition> _activeFilters = [];
 
-  // [NEW] State variables for the futuristic loader
+  int? _sortColumnIndex;
+  bool _sortAscending = false;
+  final TextEditingController _quickSearchController = TextEditingController();
+  String _quickSearchQuery = "";
+
   bool _isExporting = false;
   String _exportMessage = "";
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _templateStream = _service.watchCustomTemplate(widget.template.id);
+    _recordsStream = _service.getCustomRecords(widget.template.id);
+  }
+
+  @override
+  void dispose() {
+    _quickSearchController.dispose();
+    super.dispose();
+  }
 
   bool _isSystemTemplate(CustomTemplate t) =>
       t.name.endsWith('AutoTracker') || t.name == "Investment Portfolio";
@@ -63,9 +83,11 @@ class _CustomDataPageState extends State<CustomDataPage>
           if (expr.contains(placeholder)) {
             var val = record.data[inputField.name];
             double numVal = 0.0;
-            if (val is num)
+            if (val is num) {
               numVal = val.toDouble();
-            else if (val is String) numVal = double.tryParse(val) ?? 0.0;
+            } else if (val is String) {
+              numVal = double.tryParse(val) ?? 0.0;
+            }
             String replacement = numVal < 0 ? "($numVal)" : numVal.toString();
             expr = expr.replaceAll(placeholder, replacement);
           }
@@ -82,6 +104,42 @@ class _CustomDataPageState extends State<CustomDataPage>
       }
     }
     return false;
+  }
+
+  List<CustomRecord> _applySmartSorting(
+      List<CustomRecord> records, CustomTemplate template) {
+    if (_sortColumnIndex != null &&
+        _sortColumnIndex! < template.fields.length) {
+      final sortField = template.fields[_sortColumnIndex!];
+
+      records.sort((a, b) {
+        dynamic valA = a.data[sortField.name];
+        dynamic valB = b.data[sortField.name];
+
+        if (valA == null && valB == null) return 0;
+        if (valA == null) return -1;
+        if (valB == null) return 1;
+
+        int comparison = 0;
+
+        if (valA is num && valB is num) {
+          comparison = valA.compareTo(valB);
+        } else if (sortField.type == CustomFieldType.date) {
+          DateTime? dateA = _tryParseDate(valA);
+          DateTime? dateB = _tryParseDate(valB);
+          if (dateA != null && dateB != null) {
+            comparison = dateA.compareTo(dateB);
+          }
+        } else {
+          comparison = valA.toString().compareTo(valB.toString());
+        }
+
+        return _sortAscending ? comparison : -comparison;
+      });
+      return records;
+    } else {
+      return records.reversed.toList();
+    }
   }
 
   void _showEntrySheet(
@@ -325,9 +383,6 @@ class _CustomDataPageState extends State<CustomDataPage>
     );
   }
 
-  // ============================================================================
-  // EXPORT SUCCESS SHEET
-  // ============================================================================
   void _showExportSuccessSheet(
       ExportResult result, Color themeColor, String format) {
     showModalBottomSheet(
@@ -487,9 +542,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                     label: "Save PDF",
                     color: const Color(0xFFE71D36),
                     onTap: () async {
-                      Navigator.pop(ctx); // Close option sheet immediately
-
-                      // Trigger futuristic loader
+                      Navigator.pop(ctx);
                       setState(() {
                         _isExporting = true;
                         _exportMessage = "COMPILING SECURE PDF ARCHIVE...";
@@ -500,13 +553,13 @@ class _CustomDataPageState extends State<CustomDataPage>
                             .exportToPdf(template, records, totals);
 
                         if (mounted) {
-                          setState(() => _isExporting = false); // Hide loader
+                          setState(() => _isExporting = false);
                           _showExportSuccessSheet(
                               result, const Color(0xFFE71D36), "PDF");
                         }
                       } catch (e) {
                         if (mounted) {
-                          setState(() => _isExporting = false); // Hide loader
+                          setState(() => _isExporting = false);
                           _showError("Export failed: $e");
                         }
                       }
@@ -520,9 +573,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                     label: "Save CSV",
                     color: const Color(0xFF2EC4B6),
                     onTap: () async {
-                      Navigator.pop(ctx); // Close option sheet immediately
-
-                      // Trigger futuristic loader
+                      Navigator.pop(ctx);
                       setState(() {
                         _isExporting = true;
                         _exportMessage = "EXTRACTING DATA TO SPREADSHEET...";
@@ -533,13 +584,13 @@ class _CustomDataPageState extends State<CustomDataPage>
                             .exportToCsv(template, records, totals);
 
                         if (mounted) {
-                          setState(() => _isExporting = false); // Hide loader
+                          setState(() => _isExporting = false);
                           _showExportSuccessSheet(
                               result, const Color(0xFF2EC4B6), "CSV");
                         }
                       } catch (e) {
                         if (mounted) {
-                          setState(() => _isExporting = false); // Hide loader
+                          setState(() => _isExporting = false);
                           _showError("Export failed: $e");
                         }
                       }
@@ -597,9 +648,8 @@ class _CustomDataPageState extends State<CustomDataPage>
 
     return Stack(
       children: [
-        // 1. The Main Content
         StreamBuilder<CustomTemplate?>(
-          stream: _service.watchCustomTemplate(widget.template.id),
+          stream: _templateStream,
           builder: (context, templateSnapshot) {
             if (templateSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
@@ -620,11 +670,25 @@ class _CustomDataPageState extends State<CustomDataPage>
             final activeTemplate = templateSnapshot.data!;
 
             return StreamBuilder<List<CustomRecord>>(
-              stream: _service.getCustomRecords(activeTemplate.id),
+              stream: _recordsStream,
               builder: (context, recordSnapshot) {
                 final rawRecords = recordSnapshot.data ?? [];
-                final records =
+
+                var records =
                     FilterEngine.applyFilters(rawRecords, _activeFilters);
+
+                if (_quickSearchQuery.isNotEmpty) {
+                  records = records.where((r) {
+                    return r.data.values.any((val) =>
+                        val != null &&
+                        val
+                            .toString()
+                            .toLowerCase()
+                            .contains(_quickSearchQuery.toLowerCase()));
+                  }).toList();
+                }
+
+                records = _applySmartSorting(records, activeTemplate);
 
                 return Scaffold(
                   backgroundColor: Colors.transparent,
@@ -713,10 +777,11 @@ class _CustomDataPageState extends State<CustomDataPage>
                             totals[field.name] = records.fold(0.0, (sum, r) {
                               final rawVal = r.data[field.name];
                               double val = 0.0;
-                              if (rawVal is num)
+                              if (rawVal is num) {
                                 val = rawVal.toDouble();
-                              else if (rawVal is String)
+                              } else if (rawVal is String) {
                                 val = double.tryParse(rawVal) ?? 0.0;
+                              }
                               return sum + val;
                             });
                           }
@@ -848,6 +913,51 @@ class _CustomDataPageState extends State<CustomDataPage>
                               ),
                             ),
                           ],
+                          if (rawRecords.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              child: Container(
+                                height: 45,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.white.withOpacity(0.1)),
+                                ),
+                                child: TextField(
+                                  controller: _quickSearchController,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 14),
+                                  onChanged: (val) =>
+                                      setState(() => _quickSearchQuery = val),
+                                  decoration: InputDecoration(
+                                    hintText: "Quick search any field...",
+                                    hintStyle: TextStyle(
+                                        color: Colors.white.withOpacity(0.3),
+                                        fontSize: 14),
+                                    prefixIcon: Icon(Icons.search,
+                                        color: Colors.white.withOpacity(0.3),
+                                        size: 20),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    suffixIcon: _quickSearchQuery.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(Icons.close,
+                                                color: Colors.white54,
+                                                size: 18),
+                                            onPressed: () {
+                                              _quickSearchController.clear();
+                                              setState(
+                                                  () => _quickSearchQuery = "");
+                                            },
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                            ),
                           if (records.isNotEmpty)
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
@@ -861,6 +971,8 @@ class _CustomDataPageState extends State<CustomDataPage>
                                       color: Colors.white.withOpacity(0.05)),
                                 ),
                                 child: DataTable(
+                                  sortColumnIndex: _sortColumnIndex,
+                                  sortAscending: _sortAscending,
                                   headingRowColor: MaterialStateProperty.all(
                                       Colors.white.withOpacity(0.05)),
                                   dataRowColor: MaterialStateProperty.all(
@@ -873,17 +985,46 @@ class _CustomDataPageState extends State<CustomDataPage>
                                           color: Colors.white.withOpacity(0.05),
                                           width: 1)),
                                   columns: [
-                                    ...activeTemplate.fields.map(
-                                      (f) => DataColumn(
-                                        label: Text(
-                                          f.name.toUpperCase(),
-                                          style: TextStyle(
-                                              color: _accentColor,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 12),
+                                    ...activeTemplate.fields
+                                        .asMap()
+                                        .entries
+                                        .map((entry) {
+                                      int index = entry.key;
+                                      var f = entry.value;
+                                      // --- [NEW] Check if this column is the active sort ---
+                                      bool isSortedColumn =
+                                          _sortColumnIndex == index;
+
+                                      return DataColumn(
+                                        tooltip: "Tap to sort",
+                                        onSort: (columnIndex, ascending) {
+                                          setState(() {
+                                            _sortColumnIndex = columnIndex;
+                                            _sortAscending = ascending;
+                                          });
+                                        },
+                                        label: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              f.name.toUpperCase(),
+                                              style: TextStyle(
+                                                  color: _accentColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12),
+                                            ),
+                                            // --- [NEW] Add subtle icon for unsorted columns to indicate they are clickable ---
+                                            if (!isSortedColumn) ...[
+                                              const SizedBox(width: 4),
+                                              Icon(Icons.unfold_more_rounded,
+                                                  size: 14,
+                                                  color: _accentColor
+                                                      .withOpacity(0.5)),
+                                            ]
+                                          ],
                                         ),
-                                      ),
-                                    ),
+                                      );
+                                    }),
                                     const DataColumn(label: Text('')),
                                   ],
                                   rows: [
@@ -903,21 +1044,23 @@ class _CustomDataPageState extends State<CustomDataPage>
                                               if (f.type ==
                                                   CustomFieldType.date) {
                                                 final dt = _tryParseDate(val);
-                                                if (dt != null)
+                                                if (dt != null) {
                                                   display =
                                                       DateFormat('dd MMM yyyy')
                                                           .format(dt);
-                                                else
+                                                } else {
                                                   display = val.toString();
+                                                }
                                               } else if (f.type ==
                                                   CustomFieldType.currency) {
                                                 double numVal = 0.0;
-                                                if (val is num)
+                                                if (val is num) {
                                                   numVal = val.toDouble();
-                                                else if (val is String)
+                                                } else if (val is String) {
                                                   numVal =
                                                       double.tryParse(val) ??
                                                           0.0;
+                                                }
                                                 display =
                                                     '${f.currencySymbol ?? '₹'}${numVal.toStringAsFixed(2)}';
                                               } else if (f.type ==
@@ -927,8 +1070,9 @@ class _CustomDataPageState extends State<CustomDataPage>
                                               } else if (f.type ==
                                                   CustomFieldType.number) {
                                                 display = val.toString();
-                                                if (f.serialSuffix != null)
+                                                if (f.serialSuffix != null) {
                                                   display += f.serialSuffix!;
+                                                }
                                               } else {
                                                 display = val.toString();
                                               }
@@ -1007,9 +1151,10 @@ class _CustomDataPageState extends State<CustomDataPage>
                                               String amount = totals[f.name]!
                                                   .toStringAsFixed(2);
                                               if (f.type ==
-                                                  CustomFieldType.currency)
+                                                  CustomFieldType.currency) {
                                                 amount =
                                                     '${f.currencySymbol ?? '₹'}$amount';
+                                              }
                                               return DataCell(
                                                 Text(amount,
                                                     style: TextStyle(
@@ -1048,17 +1193,21 @@ class _CustomDataPageState extends State<CustomDataPage>
                                         size: 48,
                                         color: Colors.white.withOpacity(0.1)),
                                     const SizedBox(height: 16),
-                                    Text("No matching records",
+                                    Text("No matching records found",
                                         style: TextStyle(
                                             color:
                                                 Colors.white.withOpacity(0.3))),
-                                    if (_activeFilters.isNotEmpty)
+                                    if (_activeFilters.isNotEmpty ||
+                                        _quickSearchQuery.isNotEmpty)
                                       TextButton(
                                         onPressed: () {
-                                          setState(
-                                              () => _activeFilters.clear());
+                                          setState(() {
+                                            _activeFilters.clear();
+                                            _quickSearchController.clear();
+                                            _quickSearchQuery = "";
+                                          });
                                         },
-                                        child: Text("Clear Filters",
+                                        child: Text("Clear Search & Filters",
                                             style:
                                                 TextStyle(color: _accentColor)),
                                       )
@@ -1075,8 +1224,6 @@ class _CustomDataPageState extends State<CustomDataPage>
             );
           },
         ),
-
-        // 2. The Full-Screen Export Loader (Matches Factory Reset design)
         if (_isExporting)
           Positioned.fill(
             child: Container(
