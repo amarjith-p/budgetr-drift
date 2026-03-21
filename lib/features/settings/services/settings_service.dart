@@ -72,7 +72,7 @@ class SettingsService {
     _cachedLaunchDailyExpense = value;
   }
 
-  // --- [UPDATED] Multiple Credit Payable Accounts Sync ---
+  // --- Multiple Credit Payable Accounts Sync ---
 
   Future<List<String>> getCreditPayableAccountIds() async {
     final row = await (_db.select(_db.settings)
@@ -87,6 +87,22 @@ class SettingsService {
     } catch (e) {
       return [];
     }
+  }
+
+  // [NEW STREAM] Watch for live changes to the selected accounts list
+  Stream<List<String>> watchCreditPayableAccountIds() {
+    return (_db.select(_db.settings)
+          ..where((t) => t.key.equals('credit_payable_account_ids')))
+        .watchSingleOrNull()
+        .map((row) {
+      if (row?.value == null || row!.value.isEmpty) return [];
+      try {
+        final List<dynamic> decoded = jsonDecode(row.value);
+        return decoded.map((e) => e.toString()).toList();
+      } catch (e) {
+        return [];
+      }
+    });
   }
 
   Future<void> setCreditPayableAccountIds(List<String> accountIds) async {

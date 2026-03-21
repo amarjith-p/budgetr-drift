@@ -18,10 +18,14 @@ import '../../../core/services/service_locator.dart';
 import '../../daily_expense/services/expense_service.dart';
 import '../../dashboard/services/dashboard_service.dart';
 import '../../backup_restore/services/backup_service.dart';
+import '../../credit_tracker/services/credit_service.dart'; // [NEW IMPORT]
+import '../../settings/services/settings_service.dart'; // [NEW IMPORT]
 
 // Models
 import '../../dashboard/models/dashboard_transaction.dart';
 import '../../../core/models/financial_record_model.dart';
+import '../../credit_tracker/models/credit_models.dart'; // [NEW IMPORT]
+import '../../daily_expense/models/expense_models.dart'; // [NEW IMPORT]
 
 // Screens
 import '../../dashboard/screens/dashboard_screen.dart';
@@ -45,6 +49,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final expenseService = locator<ExpenseService>();
   final dashboardService = locator<DashboardService>();
+  final creditService = locator<CreditService>();
+  final settingsService = locator<SettingsService>();
 
   bool _isBalanceVisible = false;
   final BackupService _backupService = BackupService();
@@ -54,13 +60,32 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _toolsPageController = PageController();
   int _currentToolPage = 0;
 
-  // [NEW] Controls the custom top banner visibility
   bool _showTopBanner = false;
+
+  // [NEW] Reactive Stream to calculate Credit Shortfall Live
+  late Stream<bool> _creditShortfallStream;
 
   @override
   void initState() {
     super.initState();
     _checkBackupStatus();
+
+    // [NEW] Combine the Live Cards Data with the Live Linked Bank Accounts Data
+    _creditShortfallStream = Rx.combineLatest2(
+        creditService.getCreditCards(),
+        settingsService.watchCreditPayableAccountIds().switchMap((ids) {
+          return expenseService.watchAccountsByIds(ids);
+        }), (List<CreditCardModel> cards,
+            List<ExpenseAccountModel> linkedAccounts) {
+      double totalDebt = cards
+          .where((c) => c.currentBalance > 0)
+          .fold(0.0, (sum, c) => sum + c.currentBalance);
+      double allocatedFunds =
+          linkedAccounts.fold(0.0, (sum, acc) => sum + acc.currentBalance);
+
+      // Return true if there's a shortfall and there's actually a debt
+      return (allocatedFunds - totalDebt < 0) && (totalDebt > 0.01);
+    });
   }
 
   Future<void> _checkBackupStatus() async {
@@ -68,10 +93,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted && overdue != _needsBackup) {
       setState(() {
         _needsBackup = overdue;
-        _showTopBanner = overdue; // Show banner if backup is overdue
+        _showTopBanner = overdue;
       });
 
-      // [NEW] Slide the banner away after exactly 5 seconds
       if (_needsBackup) {
         Future.delayed(const Duration(seconds: 8), () {
           if (mounted) {
@@ -134,7 +158,6 @@ class _HomeScreenState extends State<HomeScreen> {
           appBar: HomeAppBar(
             needsBackup: _needsBackup,
             onBackupTap: () async {
-              // Hide banner instantly if they tap the icon before 5s is up
               setState(() => _showTopBanner = false);
               await _backupService.shareBackup();
               _checkBackupStatus();
@@ -146,7 +169,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   Alignment.topRight, BudgetrColors.accent.withOpacity(0.15)),
               _buildAmbientGlow(Alignment.bottomLeft,
                   const Color(0xFF4361EE).withOpacity(0.1)),
-
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -179,12 +201,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-
-              // [NEW] Custom Top Drop-Down Banner
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 600),
-                curve: Curves.elasticOut, // Gives it a nice bouncy drop effect
-                // Slides right below the AppBar when active, hides above screen when inactive
+                curve: Curves.elasticOut,
                 top: _showTopBanner
                     ? MediaQuery.of(context).padding.top + 55
                     : -120,
@@ -267,12 +286,14 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             children: [
               Expanded(
+                // [UPDATED] Passed the Shortfall Stream specifically to the Credit Card Tile
                 child: _buildCompactCard(
                     context,
                     "Credit Tracker",
                     Icons.credit_card_rounded,
                     const Color(0xFFEF476F),
-                    const CreditTrackerScreen()),
+                    const CreditTrackerScreen(),
+                    warningStream: _creditShortfallStream),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -321,8 +342,12 @@ class _HomeScreenState extends State<HomeScreen> {
           Icons.flight_takeoff_rounded,
           const Color(0xFF00B4D8),
           const TripDashboardScreen()),
-      _buildVerticalActionChip(context, "Live Portfolio",
-          Icons.bar_chart_rounded, Color(0xFF4361EE), const InvestmentScreen()),
+      _buildVerticalActionChip(
+          context,
+          "Live Portfolio",
+          Icons.bar_chart_rounded,
+          const Color(0xFF4361EE),
+          const InvestmentScreen()),
       _buildVerticalActionChip(context, "Secure Vault", Icons.security_rounded,
           const Color(0xFFF72585), const VaultAuthScreen()),
       _buildVerticalActionChip(context, "Categories", Icons.category_outlined,
@@ -339,7 +364,6 @@ class _HomeScreenState extends State<HomeScreen> {
           Icons.tune_rounded,
           const Color.fromARGB(255, 252, 252, 252),
           const ConfigurationMenuScreen()),
-
       // const SizedBox.shrink(),
       // const SizedBox.shrink(),
       // const SizedBox.shrink(),
@@ -442,8 +466,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // [UPDATED] Re-engineered to support an optional warning badge overlay
   Widget _buildCompactCard(BuildContext context, String title, IconData icon,
-      Color color, Widget page) {
+      Color color, Widget page,
+      {Stream<bool>? warningStream}) {
     return _BouncyButton(
       onTap: () => Navigator.push(
           context, MaterialPageRoute(builder: (context) => page)),
@@ -453,15 +479,46 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.white.withOpacity(0.2)),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            Icon(icon, color: color, size: 36),
-            const SizedBox(height: 10),
-            Text(title,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.robotoSlab(
-                    color: Colors.white, fontWeight: FontWeight.w500)),
+            Positioned.fill(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: color, size: 36),
+                  const SizedBox(height: 10),
+                  Text(title,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.robotoSlab(
+                          color: Colors.white, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+
+            // The Dynamic Warning Badge
+            if (warningStream != null)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: StreamBuilder<bool>(
+                  stream: warningStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data == true) {
+                      return Container(
+                        padding: const EdgeInsets.all(6),
+                        // decoration: BoxDecoration(
+                        //   color: const Color.fromARGB(255, 252, 213, 217)
+                        //       .withOpacity(0.1), // Light Red glow
+                        //   shape: BoxShape.circle,
+                        // ),
+                        child: const Icon(Icons.warning_rounded,
+                            color: Color(0xFFE71D36), size: 14),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
           ],
         ),
       ),
