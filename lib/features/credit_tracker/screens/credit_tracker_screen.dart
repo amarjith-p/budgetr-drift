@@ -7,11 +7,15 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
-import '../../../core/widgets/modern_app_bar.dart'; // [IMPORT NEW WIDGET]
+import '../../../core/widgets/modern_app_bar.dart';
+import '../../daily_expense/models/expense_models.dart';
+import '../../daily_expense/services/expense_service.dart';
+import '../../settings/services/settings_service.dart';
 import '../models/credit_models.dart';
 import '../services/credit_service.dart';
 import '../widgets/add_credit_card_sheet.dart';
-import '../widgets/credit_status_header.dart';
+import '../widgets/credit_bal_summary_card.dart';
+import '../widgets/payable_account_selection_sheet.dart';
 import '../widgets/credit_card_list_item.dart';
 
 class CreditTrackerScreen extends StatefulWidget {
@@ -23,32 +27,44 @@ class CreditTrackerScreen extends StatefulWidget {
 
 class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
   final CreditService _service = GetIt.I<CreditService>();
+  final ExpenseService _expenseService = GetIt.I<ExpenseService>();
+  final SettingsService _settingsService = GetIt.I<SettingsService>();
+
   final NumberFormat _currency = NumberFormat.currency(
     locale: 'en_IN',
     symbol: '₹',
   );
   final Color _accentColor = const Color(0xFF3A86FF);
 
-  // State to manage loading overlay instead of Dialogs
   bool _isLoading = false;
 
   late Stream<List<CreditCardModel>> _cardsStream;
+
+  // [UPDATED] Streams for multiple Payable Accounts
+  Stream<List<ExpenseAccountModel>>? _payableAccountsStream;
 
   @override
   void initState() {
     super.initState();
     _cardsStream = _service.getCreditCards();
+    _loadPayableAccounts();
+  }
+
+  // [UPDATED] Fetches IDs and builds the stream for a list
+  Future<void> _loadPayableAccounts() async {
+    final ids = await _settingsService.getCreditPayableAccountIds();
+    setState(() {
+      _payableAccountsStream = _expenseService.watchAccountsByIds(ids);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xff0D1B2A),
-      // [FIX] Removed standard AppBar property
       body: SafeArea(
         child: Column(
           children: [
-            // 1. NEW MODERN APP BAR
             ModernAppBar(
               title: "Credit Cards",
               subtitle: "Transaction Tracker",
@@ -62,12 +78,9 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                 );
               },
             ),
-
-            // 2. MAIN CONTENT AREA
             Expanded(
               child: Stack(
                 children: [
-                  // Main Data Stream
                   StreamBuilder<List<CreditCardModel>>(
                     stream: _cardsStream,
                     builder: (context, snapshot) {
@@ -99,31 +112,34 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                           .where((c) => c.currentBalance < 0)
                           .fold(0.0, (sum, c) => sum + c.currentBalance);
 
-                      double displayAmount = 0;
-                      String label = "STATUS";
-                      Color valueColor = const Color(0xFF00B4D8);
-
-                      if (totalDebt > 0.01) {
-                        label = "TOTAL PAYABLE";
-                        displayAmount = -totalDebt;
-                        valueColor = Colors.white;
-                      } else if (totalSurplus.abs() > 0.01) {
-                        label = "TOTAL SURPLUS";
-                        displayAmount = -totalSurplus;
-                        valueColor = const Color(0xFF4CC9F0);
-                      }
-
-                      // Inner Stack for List + FAB
                       return Stack(
                         children: [
                           Column(
                             children: [
-                              CreditStatusHeader(
-                                label: label,
-                                amount: displayAmount,
-                                color: valueColor,
-                                currency: _currency,
-                              ),
+                              // [UPDATED] Nested Stream expects a List now
+                              StreamBuilder<List<ExpenseAccountModel>>(
+                                  stream: _payableAccountsStream ??
+                                      Stream.value([]),
+                                  builder: (context, accountSnapshot) {
+                                    return CreditSummaryCard(
+                                      totalPayable: totalDebt,
+                                      totalSurplus: -totalSurplus,
+                                      linkedAccounts:
+                                          accountSnapshot.data ?? [],
+                                      currencyFormat: _currency,
+                                      onLinkAccountTapped: () async {
+                                        await showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (ctx) =>
+                                              const PayableAccountSelectionSheet(),
+                                        );
+                                        // Reload stream once user has made selections
+                                        _loadPayableAccounts();
+                                      },
+                                    );
+                                  }),
                               Expanded(
                                 child: ListView.builder(
                                   padding:
@@ -213,8 +229,6 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                       );
                     },
                   ),
-
-                  // Loading Overlay (Global for this screen)
                   if (_isLoading)
                     Container(
                       color: Colors.black54,
@@ -255,14 +269,8 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
           "Are you sure you want to delete '${card.name}'? This will permanently remove the account and all its associated transactions.",
       icon: Icons.delete_forever,
       color: Colors.redAccent,
-
-      // 1. The "Cancel" Button
       cancelButtonText: "Cancel",
-      onCancel: () {
-        // The sheet closes automatically
-      },
-
-      // 2. The "Delete" Action
+      onCancel: () {},
       buttonText: "Delete",
       onDismiss: () async {
         setState(() {

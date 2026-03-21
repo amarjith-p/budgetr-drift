@@ -2,7 +2,6 @@ import 'package:budget/features/credit_tracker/models/credit_models.dart';
 import 'package:budget/features/credit_tracker/services/credit_service.dart';
 import 'package:budget/features/daily_expense/models/filter_criteria.dart';
 import 'package:budget/features/trip_mode/services/trip_service.dart';
-// import 'package:budget/features/daily_expense/models/filter_criteria.dart';
 import 'package:drift/drift.dart';
 import 'package:get_it/get_it.dart';
 import 'package:uuid/uuid.dart';
@@ -67,6 +66,14 @@ class ExpenseService {
                 expression: t.dashboardOrder, mode: OrderingMode.asc)
           ])
           ..limit(6))
+        .watch()
+        .map((rows) => rows.map(_mapAccount).toList());
+  }
+
+  // [UPDATED] Watches Multiple Accounts for Credit Summary
+  Stream<List<ExpenseAccountModel>> watchAccountsByIds(List<String> ids) {
+    if (ids.isEmpty) return Stream.value([]);
+    return (_db.select(_db.expenseAccounts)..where((t) => t.id.isIn(ids)))
         .watch()
         .map((rows) => rows.map(_mapAccount).toList());
   }
@@ -157,7 +164,6 @@ class ExpenseService {
         .map((rows) => rows.map(_mapTransaction).toList());
   }
 
-  // [NEW] Get distinct notes for suggestions
   Future<List<String>> getDistinctNotes() async {
     final query = _db.selectOnly(_db.expenseTransactions, distinct: true)
       ..addColumns([_db.expenseTransactions.notes])
@@ -170,7 +176,6 @@ class ExpenseService {
         .toList();
   }
 
-  // [HELPER] Resolve Account Name
   Future<String> _resolveAccountName(String id) async {
     final bank = await (_db.select(_db.expenseAccounts)
           ..where((a) => a.id.equals(id)))
@@ -193,7 +198,6 @@ class ExpenseService {
       final String? dbAccountId =
           (txn.accountId.isEmpty) ? null : txn.accountId;
 
-      // Auto-detect Linked Credit Card
       String? finalLinkedCardId = txn.linkedCreditCardId;
       if (finalLinkedCardId == null && txn.transferAccountId != null) {
         final card = await (_db.select(_db.creditCards)
@@ -220,7 +224,6 @@ class ExpenseService {
             linkedCreditCardId: Value(finalLinkedCardId),
           ));
 
-      // --- 🔴 NEW: Intercept & Exclude from Paused Trip ---
       try {
         final tripService = GetIt.I<TripService>();
         final activeTrip = await tripService.getActiveTripFuture();
@@ -228,7 +231,6 @@ class ExpenseService {
           await tripService.excludeTransaction(activeTrip.id, docId);
         }
       } catch (_) {}
-      // ----------------------------------------------------
 
       if (dbAccountId != null) {
         await _updateAccountBalance(dbAccountId, txn.amount, txn.type,
@@ -264,7 +266,7 @@ class ExpenseService {
           txn.transferAccountId != finalLinkedCardId) {
         final partnerType =
             txn.type == 'Transfer Out' ? 'Transfer In' : 'Transfer Out';
-        final partnerTxnId = _uuid.v4(); // Generate ID for partner txn
+        final partnerTxnId = _uuid.v4();
 
         String sourceName = "Linked Account";
         String sourceBank = "";
@@ -295,7 +297,6 @@ class ExpenseService {
               linkedCreditCardId: Value(finalLinkedCardId),
             ));
 
-        // --- 🔴 NEW: Intercept Partner Transfer Txn ---
         try {
           final tripService = GetIt.I<TripService>();
           final activeTrip = await tripService.getActiveTripFuture();
@@ -303,7 +304,6 @@ class ExpenseService {
             await tripService.excludeTransaction(activeTrip.id, partnerTxnId);
           }
         } catch (_) {}
-        // ----------------------------------------------
 
         await _updateAccountBalance(
             txn.transferAccountId!, txn.amount, partnerType,
@@ -361,7 +361,6 @@ class ExpenseService {
 
       final isNewTransfer = newTxn.type.contains('Transfer');
 
-      // [FIX] Auto-detect Linked Card
       String? finalLinkedCardId = newTxn.linkedCreditCardId;
       if (finalLinkedCardId == null && newTxn.transferAccountId != null) {
         final card = await (_db.select(_db.creditCards)
@@ -384,11 +383,10 @@ class ExpenseService {
             notes: Value(newTxn.notes),
             transferAccountId:
                 Value(isNewTransfer ? newTxn.transferAccountId : null),
-            transferAccountName: Value(
-                isNewTransfer ? newTxn.transferAccountName : null), // Reverted
-            transferAccountBankName: Value(isNewTransfer
-                ? newTxn.transferAccountBankName
-                : null), // Reverted
+            transferAccountName:
+                Value(isNewTransfer ? newTxn.transferAccountName : null),
+            transferAccountBankName:
+                Value(isNewTransfer ? newTxn.transferAccountBankName : null),
             linkedCreditCardId: Value(finalLinkedCardId),
           ));
 
@@ -401,7 +399,6 @@ class ExpenseService {
         final isPayment = newTxn.type == 'Transfer Out' &&
             newTxn.transferAccountId == finalLinkedCardId;
 
-        // [FIX] Context-Aware Note
         String creditNote = newTxn.notes;
         if (isPayment && newAccountId != null) {
           final sourceName = await _resolveAccountName(newAccountId);
@@ -494,7 +491,6 @@ class ExpenseService {
     });
   }
 
-  // [RESTORED] Missing Method - Fixes compilation error
   Future<void> deleteTransactionSingle(ExpenseTransactionModel txn) async {
     await _db.transaction(() async {
       await (_db.delete(_db.expenseTransactions)
@@ -563,7 +559,6 @@ class ExpenseService {
     });
   }
 
-  // --- INTERNAL HELPERS ---
   Future<void> _updateCreditBalance(String cardId, double amount,
       {required bool isExpense}) async {
     final card = await (_db.select(_db.creditCards)
@@ -594,7 +589,7 @@ class ExpenseService {
         ? effectiveNote
         : (txn.notes.isEmpty ? txn.category : txn.notes);
 
-    final creditTxnId = _uuid.v4(); // Capture ID explicitly
+    final creditTxnId = _uuid.v4();
 
     await _db
         .into(_db.creditTransactions)
@@ -612,7 +607,6 @@ class ExpenseService {
           linkedExpenseId: Value(expenseId),
         ));
 
-    // --- 🔴 NEW: Intercept Linked Credit Txn ---
     try {
       final tripService = GetIt.I<TripService>();
       final activeTrip = await tripService.getActiveTripFuture();
@@ -620,7 +614,6 @@ class ExpenseService {
         await tripService.excludeTransaction(activeTrip.id, creditTxnId);
       }
     } catch (_) {}
-    // -------------------------------------------
   }
 
   Future<ExpenseTransactionModel?> findLinkedTransfer(
@@ -673,7 +666,6 @@ class ExpenseService {
     }
   }
 
-  // 1. Get Limits for a specific month
   Future<db.HeatmapLimit> getMonthLimits(DateTime date) async {
     final id = "${date.year}${date.month.toString().padLeft(2, '0')}";
 
@@ -681,7 +673,6 @@ class ExpenseService {
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
 
-    // Return found limits or Defaults
     return result ??
         db.HeatmapLimit(
             id: id,
@@ -690,7 +681,6 @@ class ExpenseService {
             severeLimit: 5000.0);
   }
 
-// 2. Save Limits
   Future<void> saveMonthLimits(
       String monthId, double safe, double caution, double severe) async {
     await _db.into(_db.heatmapLimits).insertOnConflictUpdate(
@@ -703,20 +693,6 @@ class ExpenseService {
         );
   }
 
-  // Future<double> getTotalBalance() async {
-  //   // 1. Fetch all expense accounts from the database
-  //   final List<db.ExpenseAccount> accounts =
-  //       await _db.select(_db.expenseAccounts).get();
-
-  //   // 2. Sum up the currentBalance of each account
-  //   double total = 0.0;
-  //   for (var account in accounts) {
-  //     total += account.currentBalance;
-  //   }
-  //   return total;
-  // }
-
-  // [NEW] Added for real-time updates on HomeScreen
   Stream<double> watchTotalBalance() {
     return _db.select(_db.expenseAccounts).watch().map((accounts) {
       double total = 0.0;
@@ -738,40 +714,33 @@ class ExpenseService {
     return total;
   }
 
-// --- UPDATE THIS METHOD in ExpenseService ---
   Stream<List<ExpenseTransactionModel>> getFilteredTransactions(
       FilterCriteria criteria) {
     final query = _db.select(_db.expenseTransactions)
       ..where((t) => t.accountId.isNotNull() & t.accountId.equals('').not());
 
-    // 1. Date Filter
     if (criteria.startDate != null && criteria.endDate != null) {
       query.where((t) =>
           t.date.isBetweenValues(criteria.startDate!, criteria.endDate!));
     }
 
-    // 2. Amount Filter
     if (criteria.amountRange != null) {
       query.where((t) => t.amount.isBetweenValues(
           criteria.amountRange!.start, criteria.amountRange!.end));
     }
 
-    // 3. Category Filter
     if (criteria.selectedCategories.isNotEmpty) {
       query.where((t) => t.category.isIn(criteria.selectedCategories));
     }
 
-    // 4. Type Filter
     if (criteria.transactionTypes.isNotEmpty) {
       query.where((t) => t.type.isIn(criteria.transactionTypes));
     }
 
-    // 5. Bucket Filter [NEW]
     if (criteria.selectedBuckets.isNotEmpty) {
       query.where((t) => t.bucket.isIn(criteria.selectedBuckets));
     }
 
-    // 6. Sorting
     switch (criteria.sortOption) {
       case SortOption.newest:
         query.orderBy(

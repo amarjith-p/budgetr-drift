@@ -16,9 +16,8 @@ class SettingsService {
     if (row != null) {
       try {
         final Map<String, dynamic> json = jsonDecode(row.value);
-        return PercentageConfig.fromMap(json); // Uses your existing model logic
+        return PercentageConfig.fromMap(json);
       } catch (e) {
-        // Fallback if JSON is corrupt
         return PercentageConfig.defaultConfig();
       }
     } else {
@@ -31,13 +30,10 @@ class SettingsService {
         .into(_db.settings)
         .insertOnConflictUpdate(db.SettingsCompanion.insert(
           key: 'percentages',
-          value: jsonEncode(
-              config.toMap()), // Uses your existing serialization logic
+          value: jsonEncode(config.toMap()),
         ));
   }
 
-  /// Checks if a Financial Record exists for the current month.
-  /// Replaces the Firestore query: collection('financial_records').where('year').where('month')
   Future<bool> hasCurrentMonthBudget() async {
     final now = DateTime.now();
 
@@ -52,31 +48,53 @@ class SettingsService {
 
     return count > 0;
   }
-  // --- [NEW] Startup Preference Logic ---
+
+  // --- Startup Preference Logic ---
 
   Future<bool> getLaunchToDailyExpense() async {
-    // If we have a cache, return it (Fast Path)
     if (_cachedLaunchDailyExpense != null) return _cachedLaunchDailyExpense!;
 
     final row = await (_db.select(_db.settings)
           ..where((t) => t.key.equals('launch_daily_expense')))
         .getSingleOrNull();
 
-    // Update Cache
     _cachedLaunchDailyExpense = (row?.value == 'true');
     return _cachedLaunchDailyExpense!;
   }
 
   Future<void> setLaunchToDailyExpense(bool value) async {
-    // Update DB
     await _db
         .into(_db.settings)
         .insertOnConflictUpdate(db.SettingsCompanion.insert(
           key: 'launch_daily_expense',
           value: value.toString(),
         ));
-
-    // Update Cache
     _cachedLaunchDailyExpense = value;
+  }
+
+  // --- [UPDATED] Multiple Credit Payable Accounts Sync ---
+
+  Future<List<String>> getCreditPayableAccountIds() async {
+    final row = await (_db.select(_db.settings)
+          ..where((t) => t.key.equals('credit_payable_account_ids')))
+        .getSingleOrNull();
+
+    if (row?.value == null || row!.value.isEmpty) return [];
+
+    try {
+      final List<dynamic> decoded = jsonDecode(row.value);
+      return decoded.map((e) => e.toString()).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<void> setCreditPayableAccountIds(List<String> accountIds) async {
+    await _db
+        .into(_db.settings)
+        .insertOnConflictUpdate(db.SettingsCompanion.insert(
+          key: 'credit_payable_account_ids',
+          value: jsonEncode(accountIds),
+        ));
   }
 }
