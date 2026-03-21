@@ -1,4 +1,5 @@
 import 'package:budget/features/backup_restore/screens/backup_screen.dart';
+import 'package:budget/features/balance_sheet/screens/balance_sheet_screen.dart';
 import 'package:budget/features/investments/screens/portfolio_dashboard.dart';
 import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
 import 'package:budget/features/settings/screens/category_manager_screen.dart';
@@ -350,8 +351,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const InvestmentScreen()),
       _buildVerticalActionChip(context, "Secure Vault", Icons.security_rounded,
           const Color(0xFFF72585), const VaultAuthScreen()),
-      _buildVerticalActionChip(context, "Categories", Icons.category_outlined,
-          const Color(0xFF9D4EDD), const CategoryManagerScreen()),
+      _buildVerticalActionChip(context, "Balance Sheet", Icons.balance_sharp,
+          const Color(0xFF9D4EDD), const BalanceSheetScreen()),
       _buildVerticalActionChip(
           context,
           "Backup & Restore",

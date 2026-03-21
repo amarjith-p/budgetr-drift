@@ -1,4 +1,5 @@
 import 'package:budget/core/database/app_database.dart';
+import 'package:budget/features/balance_sheet/services/balance_sheet_service.dart';
 import 'package:budget/features/recurring/services/recurring_service.dart';
 import 'package:budget/features/trip_mode/services/trip_report_service.dart';
 import 'package:budget/features/trip_mode/services/trip_service.dart';
@@ -57,7 +58,8 @@ class ServiceLocator {
     locator.registerLazySingleton<VaultEncryptionService>(
         () => VaultEncryptionService());
     locator.registerLazySingleton<VaultAuthService>(() => VaultAuthService());
-    // 3. Notification Services
+    locator.registerLazySingleton<BalanceSheetService>(
+        () => BalanceSheetService());
 
     // [NEW] Register System Notification Service & Init
     final systemNotifService = SystemNotificationService();

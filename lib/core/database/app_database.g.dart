@@ -13643,6 +13643,514 @@ class VaultRecordsCompanion extends UpdateCompanion<VaultRecord> {
   }
 }
 
+class $BalanceSheetEntriesTable extends BalanceSheetEntries
+    with TableInfo<$BalanceSheetEntriesTable, BalanceSheetEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BalanceSheetEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+      'amount', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _entryTypeMeta =
+      const VerificationMeta('entryType');
+  @override
+  late final GeneratedColumn<String> entryType = GeneratedColumn<String>(
+      'entry_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+      'date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _contactNameMeta =
+      const VerificationMeta('contactName');
+  @override
+  late final GeneratedColumn<String> contactName = GeneratedColumn<String>(
+      'contact_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _dueDateMeta =
+      const VerificationMeta('dueDate');
+  @override
+  late final GeneratedColumn<DateTime> dueDate = GeneratedColumn<DateTime>(
+      'due_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _isSettledMeta =
+      const VerificationMeta('isSettled');
+  @override
+  late final GeneratedColumn<bool> isSettled = GeneratedColumn<bool>(
+      'is_settled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_settled" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        title,
+        amount,
+        entryType,
+        category,
+        date,
+        notes,
+        contactName,
+        dueDate,
+        isSettled
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'balance_sheet_entries';
+  @override
+  VerificationContext validateIntegrity(Insertable<BalanceSheetEntry> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(_amountMeta,
+          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('entry_type')) {
+      context.handle(_entryTypeMeta,
+          entryType.isAcceptableOrUnknown(data['entry_type']!, _entryTypeMeta));
+    } else if (isInserting) {
+      context.missing(_entryTypeMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('contact_name')) {
+      context.handle(
+          _contactNameMeta,
+          contactName.isAcceptableOrUnknown(
+              data['contact_name']!, _contactNameMeta));
+    }
+    if (data.containsKey('due_date')) {
+      context.handle(_dueDateMeta,
+          dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta));
+    }
+    if (data.containsKey('is_settled')) {
+      context.handle(_isSettledMeta,
+          isSettled.isAcceptableOrUnknown(data['is_settled']!, _isSettledMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BalanceSheetEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BalanceSheetEntry(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      amount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
+      entryType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}entry_type'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category'])!,
+      date: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      contactName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}contact_name']),
+      dueDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}due_date']),
+      isSettled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_settled'])!,
+    );
+  }
+
+  @override
+  $BalanceSheetEntriesTable createAlias(String alias) {
+    return $BalanceSheetEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class BalanceSheetEntry extends DataClass
+    implements Insertable<BalanceSheetEntry> {
+  final String id;
+  final String title;
+  final double amount;
+  final String entryType;
+  final String category;
+  final DateTime date;
+  final String? notes;
+  final String? contactName;
+  final DateTime? dueDate;
+  final bool isSettled;
+  const BalanceSheetEntry(
+      {required this.id,
+      required this.title,
+      required this.amount,
+      required this.entryType,
+      required this.category,
+      required this.date,
+      this.notes,
+      this.contactName,
+      this.dueDate,
+      required this.isSettled});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['amount'] = Variable<double>(amount);
+    map['entry_type'] = Variable<String>(entryType);
+    map['category'] = Variable<String>(category);
+    map['date'] = Variable<DateTime>(date);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || contactName != null) {
+      map['contact_name'] = Variable<String>(contactName);
+    }
+    if (!nullToAbsent || dueDate != null) {
+      map['due_date'] = Variable<DateTime>(dueDate);
+    }
+    map['is_settled'] = Variable<bool>(isSettled);
+    return map;
+  }
+
+  BalanceSheetEntriesCompanion toCompanion(bool nullToAbsent) {
+    return BalanceSheetEntriesCompanion(
+      id: Value(id),
+      title: Value(title),
+      amount: Value(amount),
+      entryType: Value(entryType),
+      category: Value(category),
+      date: Value(date),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      contactName: contactName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contactName),
+      dueDate: dueDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDate),
+      isSettled: Value(isSettled),
+    );
+  }
+
+  factory BalanceSheetEntry.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BalanceSheetEntry(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      amount: serializer.fromJson<double>(json['amount']),
+      entryType: serializer.fromJson<String>(json['entryType']),
+      category: serializer.fromJson<String>(json['category']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      contactName: serializer.fromJson<String?>(json['contactName']),
+      dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
+      isSettled: serializer.fromJson<bool>(json['isSettled']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'amount': serializer.toJson<double>(amount),
+      'entryType': serializer.toJson<String>(entryType),
+      'category': serializer.toJson<String>(category),
+      'date': serializer.toJson<DateTime>(date),
+      'notes': serializer.toJson<String?>(notes),
+      'contactName': serializer.toJson<String?>(contactName),
+      'dueDate': serializer.toJson<DateTime?>(dueDate),
+      'isSettled': serializer.toJson<bool>(isSettled),
+    };
+  }
+
+  BalanceSheetEntry copyWith(
+          {String? id,
+          String? title,
+          double? amount,
+          String? entryType,
+          String? category,
+          DateTime? date,
+          Value<String?> notes = const Value.absent(),
+          Value<String?> contactName = const Value.absent(),
+          Value<DateTime?> dueDate = const Value.absent(),
+          bool? isSettled}) =>
+      BalanceSheetEntry(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        amount: amount ?? this.amount,
+        entryType: entryType ?? this.entryType,
+        category: category ?? this.category,
+        date: date ?? this.date,
+        notes: notes.present ? notes.value : this.notes,
+        contactName: contactName.present ? contactName.value : this.contactName,
+        dueDate: dueDate.present ? dueDate.value : this.dueDate,
+        isSettled: isSettled ?? this.isSettled,
+      );
+  BalanceSheetEntry copyWithCompanion(BalanceSheetEntriesCompanion data) {
+    return BalanceSheetEntry(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      entryType: data.entryType.present ? data.entryType.value : this.entryType,
+      category: data.category.present ? data.category.value : this.category,
+      date: data.date.present ? data.date.value : this.date,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      contactName:
+          data.contactName.present ? data.contactName.value : this.contactName,
+      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      isSettled: data.isSettled.present ? data.isSettled.value : this.isSettled,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BalanceSheetEntry(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('amount: $amount, ')
+          ..write('entryType: $entryType, ')
+          ..write('category: $category, ')
+          ..write('date: $date, ')
+          ..write('notes: $notes, ')
+          ..write('contactName: $contactName, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('isSettled: $isSettled')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, title, amount, entryType, category, date,
+      notes, contactName, dueDate, isSettled);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BalanceSheetEntry &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.amount == this.amount &&
+          other.entryType == this.entryType &&
+          other.category == this.category &&
+          other.date == this.date &&
+          other.notes == this.notes &&
+          other.contactName == this.contactName &&
+          other.dueDate == this.dueDate &&
+          other.isSettled == this.isSettled);
+}
+
+class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<double> amount;
+  final Value<String> entryType;
+  final Value<String> category;
+  final Value<DateTime> date;
+  final Value<String?> notes;
+  final Value<String?> contactName;
+  final Value<DateTime?> dueDate;
+  final Value<bool> isSettled;
+  final Value<int> rowid;
+  const BalanceSheetEntriesCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.entryType = const Value.absent(),
+    this.category = const Value.absent(),
+    this.date = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.contactName = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.isSettled = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BalanceSheetEntriesCompanion.insert({
+    required String id,
+    required String title,
+    required double amount,
+    required String entryType,
+    required String category,
+    required DateTime date,
+    this.notes = const Value.absent(),
+    this.contactName = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.isSettled = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        title = Value(title),
+        amount = Value(amount),
+        entryType = Value(entryType),
+        category = Value(category),
+        date = Value(date);
+  static Insertable<BalanceSheetEntry> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<double>? amount,
+    Expression<String>? entryType,
+    Expression<String>? category,
+    Expression<DateTime>? date,
+    Expression<String>? notes,
+    Expression<String>? contactName,
+    Expression<DateTime>? dueDate,
+    Expression<bool>? isSettled,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (amount != null) 'amount': amount,
+      if (entryType != null) 'entry_type': entryType,
+      if (category != null) 'category': category,
+      if (date != null) 'date': date,
+      if (notes != null) 'notes': notes,
+      if (contactName != null) 'contact_name': contactName,
+      if (dueDate != null) 'due_date': dueDate,
+      if (isSettled != null) 'is_settled': isSettled,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BalanceSheetEntriesCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? title,
+      Value<double>? amount,
+      Value<String>? entryType,
+      Value<String>? category,
+      Value<DateTime>? date,
+      Value<String?>? notes,
+      Value<String?>? contactName,
+      Value<DateTime?>? dueDate,
+      Value<bool>? isSettled,
+      Value<int>? rowid}) {
+    return BalanceSheetEntriesCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      amount: amount ?? this.amount,
+      entryType: entryType ?? this.entryType,
+      category: category ?? this.category,
+      date: date ?? this.date,
+      notes: notes ?? this.notes,
+      contactName: contactName ?? this.contactName,
+      dueDate: dueDate ?? this.dueDate,
+      isSettled: isSettled ?? this.isSettled,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (entryType.present) {
+      map['entry_type'] = Variable<String>(entryType.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (contactName.present) {
+      map['contact_name'] = Variable<String>(contactName.value);
+    }
+    if (dueDate.present) {
+      map['due_date'] = Variable<DateTime>(dueDate.value);
+    }
+    if (isSettled.present) {
+      map['is_settled'] = Variable<bool>(isSettled.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BalanceSheetEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('amount: $amount, ')
+          ..write('entryType: $entryType, ')
+          ..write('category: $category, ')
+          ..write('date: $date, ')
+          ..write('notes: $notes, ')
+          ..write('contactName: $contactName, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('isSettled: $isSettled, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -13684,6 +14192,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TripRecordsTable tripRecords = $TripRecordsTable(this);
   late final $TripExclusionsTable tripExclusions = $TripExclusionsTable(this);
   late final $VaultRecordsTable vaultRecords = $VaultRecordsTable(this);
+  late final $BalanceSheetEntriesTable balanceSheetEntries =
+      $BalanceSheetEntriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -13714,7 +14224,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         passiveIncomeLogs,
         tripRecords,
         tripExclusions,
-        vaultRecords
+        vaultRecords,
+        balanceSheetEntries
       ];
 }
 
@@ -21221,6 +21732,259 @@ typedef $$VaultRecordsTableProcessedTableManager = ProcessedTableManager<
     ),
     VaultRecord,
     PrefetchHooks Function()>;
+typedef $$BalanceSheetEntriesTableCreateCompanionBuilder
+    = BalanceSheetEntriesCompanion Function({
+  required String id,
+  required String title,
+  required double amount,
+  required String entryType,
+  required String category,
+  required DateTime date,
+  Value<String?> notes,
+  Value<String?> contactName,
+  Value<DateTime?> dueDate,
+  Value<bool> isSettled,
+  Value<int> rowid,
+});
+typedef $$BalanceSheetEntriesTableUpdateCompanionBuilder
+    = BalanceSheetEntriesCompanion Function({
+  Value<String> id,
+  Value<String> title,
+  Value<double> amount,
+  Value<String> entryType,
+  Value<String> category,
+  Value<DateTime> date,
+  Value<String?> notes,
+  Value<String?> contactName,
+  Value<DateTime?> dueDate,
+  Value<bool> isSettled,
+  Value<int> rowid,
+});
+
+class $$BalanceSheetEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $BalanceSheetEntriesTable> {
+  $$BalanceSheetEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get entryType => $composableBuilder(
+      column: $table.entryType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get contactName => $composableBuilder(
+      column: $table.contactName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get dueDate => $composableBuilder(
+      column: $table.dueDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isSettled => $composableBuilder(
+      column: $table.isSettled, builder: (column) => ColumnFilters(column));
+}
+
+class $$BalanceSheetEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $BalanceSheetEntriesTable> {
+  $$BalanceSheetEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get entryType => $composableBuilder(
+      column: $table.entryType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get contactName => $composableBuilder(
+      column: $table.contactName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get dueDate => $composableBuilder(
+      column: $table.dueDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isSettled => $composableBuilder(
+      column: $table.isSettled, builder: (column) => ColumnOrderings(column));
+}
+
+class $$BalanceSheetEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BalanceSheetEntriesTable> {
+  $$BalanceSheetEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get entryType =>
+      $composableBuilder(column: $table.entryType, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get contactName => $composableBuilder(
+      column: $table.contactName, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dueDate =>
+      $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSettled =>
+      $composableBuilder(column: $table.isSettled, builder: (column) => column);
+}
+
+class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $BalanceSheetEntriesTable,
+    BalanceSheetEntry,
+    $$BalanceSheetEntriesTableFilterComposer,
+    $$BalanceSheetEntriesTableOrderingComposer,
+    $$BalanceSheetEntriesTableAnnotationComposer,
+    $$BalanceSheetEntriesTableCreateCompanionBuilder,
+    $$BalanceSheetEntriesTableUpdateCompanionBuilder,
+    (
+      BalanceSheetEntry,
+      BaseReferences<_$AppDatabase, $BalanceSheetEntriesTable,
+          BalanceSheetEntry>
+    ),
+    BalanceSheetEntry,
+    PrefetchHooks Function()> {
+  $$BalanceSheetEntriesTableTableManager(
+      _$AppDatabase db, $BalanceSheetEntriesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BalanceSheetEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BalanceSheetEntriesTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BalanceSheetEntriesTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<double> amount = const Value.absent(),
+            Value<String> entryType = const Value.absent(),
+            Value<String> category = const Value.absent(),
+            Value<DateTime> date = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<String?> contactName = const Value.absent(),
+            Value<DateTime?> dueDate = const Value.absent(),
+            Value<bool> isSettled = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              BalanceSheetEntriesCompanion(
+            id: id,
+            title: title,
+            amount: amount,
+            entryType: entryType,
+            category: category,
+            date: date,
+            notes: notes,
+            contactName: contactName,
+            dueDate: dueDate,
+            isSettled: isSettled,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String title,
+            required double amount,
+            required String entryType,
+            required String category,
+            required DateTime date,
+            Value<String?> notes = const Value.absent(),
+            Value<String?> contactName = const Value.absent(),
+            Value<DateTime?> dueDate = const Value.absent(),
+            Value<bool> isSettled = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              BalanceSheetEntriesCompanion.insert(
+            id: id,
+            title: title,
+            amount: amount,
+            entryType: entryType,
+            category: category,
+            date: date,
+            notes: notes,
+            contactName: contactName,
+            dueDate: dueDate,
+            isSettled: isSettled,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$BalanceSheetEntriesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $BalanceSheetEntriesTable,
+    BalanceSheetEntry,
+    $$BalanceSheetEntriesTableFilterComposer,
+    $$BalanceSheetEntriesTableOrderingComposer,
+    $$BalanceSheetEntriesTableAnnotationComposer,
+    $$BalanceSheetEntriesTableCreateCompanionBuilder,
+    $$BalanceSheetEntriesTableUpdateCompanionBuilder,
+    (
+      BalanceSheetEntry,
+      BaseReferences<_$AppDatabase, $BalanceSheetEntriesTable,
+          BalanceSheetEntry>
+    ),
+    BalanceSheetEntry,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -21278,4 +22042,6 @@ class $AppDatabaseManager {
       $$TripExclusionsTableTableManager(_db, _db.tripExclusions);
   $$VaultRecordsTableTableManager get vaultRecords =>
       $$VaultRecordsTableTableManager(_db, _db.vaultRecords);
+  $$BalanceSheetEntriesTableTableManager get balanceSheetEntries =>
+      $$BalanceSheetEntriesTableTableManager(_db, _db.balanceSheetEntries);
 }

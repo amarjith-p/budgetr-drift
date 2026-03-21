@@ -513,3 +513,21 @@ class VaultRecords extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+class BalanceSheetEntries extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  RealColumn get amount => real()();
+  TextColumn get entryType => text()(); // 'ASSET' (Dr) or 'LIABILITY' (Cr)
+  TextColumn get category => text()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get notes => text().nullable()();
+
+  // [NEW] Tracking Fields
+  TextColumn get contactName => text().nullable()(); // Who owes or is owed
+  DateTimeColumn get dueDate => dateTime().nullable()(); // When is it expected
+  BoolColumn get isSettled => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
