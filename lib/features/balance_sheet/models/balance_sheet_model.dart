@@ -7,10 +7,11 @@ class BalanceSheetModel {
   final DateTime date;
   final String? notes;
 
-  // --- NEW TRACKING FIELDS ---
+  // --- TRACKING FIELDS ---
   final String? contactName;
   final DateTime? dueDate;
   final bool isSettled;
+  final double settledAmount; // [NEW] Track partial payments
 
   BalanceSheetModel({
     required this.id,
@@ -22,6 +23,7 @@ class BalanceSheetModel {
     this.notes,
     this.contactName,
     this.dueDate,
-    this.isSettled = false, // Default is false
+    this.isSettled = false,
+    this.settledAmount = 0.0, // Default to 0
   });
 }

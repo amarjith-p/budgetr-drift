@@ -13708,6 +13708,14 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_settled" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _settledAmountMeta =
+      const VerificationMeta('settledAmount');
+  @override
+  late final GeneratedColumn<double> settledAmount = GeneratedColumn<double>(
+      'settled_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -13719,7 +13727,8 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
         notes,
         contactName,
         dueDate,
-        isSettled
+        isSettled,
+        settledAmount
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -13784,6 +13793,12 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
       context.handle(_isSettledMeta,
           isSettled.isAcceptableOrUnknown(data['is_settled']!, _isSettledMeta));
     }
+    if (data.containsKey('settled_amount')) {
+      context.handle(
+          _settledAmountMeta,
+          settledAmount.isAcceptableOrUnknown(
+              data['settled_amount']!, _settledAmountMeta));
+    }
     return context;
   }
 
@@ -13813,6 +13828,8 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
           .read(DriftSqlType.dateTime, data['${effectivePrefix}due_date']),
       isSettled: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_settled'])!,
+      settledAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}settled_amount'])!,
     );
   }
 
@@ -13834,6 +13851,7 @@ class BalanceSheetEntry extends DataClass
   final String? contactName;
   final DateTime? dueDate;
   final bool isSettled;
+  final double settledAmount;
   const BalanceSheetEntry(
       {required this.id,
       required this.title,
@@ -13844,7 +13862,8 @@ class BalanceSheetEntry extends DataClass
       this.notes,
       this.contactName,
       this.dueDate,
-      required this.isSettled});
+      required this.isSettled,
+      required this.settledAmount});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -13864,6 +13883,7 @@ class BalanceSheetEntry extends DataClass
       map['due_date'] = Variable<DateTime>(dueDate);
     }
     map['is_settled'] = Variable<bool>(isSettled);
+    map['settled_amount'] = Variable<double>(settledAmount);
     return map;
   }
 
@@ -13884,6 +13904,7 @@ class BalanceSheetEntry extends DataClass
           ? const Value.absent()
           : Value(dueDate),
       isSettled: Value(isSettled),
+      settledAmount: Value(settledAmount),
     );
   }
 
@@ -13901,6 +13922,7 @@ class BalanceSheetEntry extends DataClass
       contactName: serializer.fromJson<String?>(json['contactName']),
       dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
       isSettled: serializer.fromJson<bool>(json['isSettled']),
+      settledAmount: serializer.fromJson<double>(json['settledAmount']),
     );
   }
   @override
@@ -13917,6 +13939,7 @@ class BalanceSheetEntry extends DataClass
       'contactName': serializer.toJson<String?>(contactName),
       'dueDate': serializer.toJson<DateTime?>(dueDate),
       'isSettled': serializer.toJson<bool>(isSettled),
+      'settledAmount': serializer.toJson<double>(settledAmount),
     };
   }
 
@@ -13930,7 +13953,8 @@ class BalanceSheetEntry extends DataClass
           Value<String?> notes = const Value.absent(),
           Value<String?> contactName = const Value.absent(),
           Value<DateTime?> dueDate = const Value.absent(),
-          bool? isSettled}) =>
+          bool? isSettled,
+          double? settledAmount}) =>
       BalanceSheetEntry(
         id: id ?? this.id,
         title: title ?? this.title,
@@ -13942,6 +13966,7 @@ class BalanceSheetEntry extends DataClass
         contactName: contactName.present ? contactName.value : this.contactName,
         dueDate: dueDate.present ? dueDate.value : this.dueDate,
         isSettled: isSettled ?? this.isSettled,
+        settledAmount: settledAmount ?? this.settledAmount,
       );
   BalanceSheetEntry copyWithCompanion(BalanceSheetEntriesCompanion data) {
     return BalanceSheetEntry(
@@ -13956,6 +13981,9 @@ class BalanceSheetEntry extends DataClass
           data.contactName.present ? data.contactName.value : this.contactName,
       dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
       isSettled: data.isSettled.present ? data.isSettled.value : this.isSettled,
+      settledAmount: data.settledAmount.present
+          ? data.settledAmount.value
+          : this.settledAmount,
     );
   }
 
@@ -13971,14 +13999,15 @@ class BalanceSheetEntry extends DataClass
           ..write('notes: $notes, ')
           ..write('contactName: $contactName, ')
           ..write('dueDate: $dueDate, ')
-          ..write('isSettled: $isSettled')
+          ..write('isSettled: $isSettled, ')
+          ..write('settledAmount: $settledAmount')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, title, amount, entryType, category, date,
-      notes, contactName, dueDate, isSettled);
+      notes, contactName, dueDate, isSettled, settledAmount);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -13992,7 +14021,8 @@ class BalanceSheetEntry extends DataClass
           other.notes == this.notes &&
           other.contactName == this.contactName &&
           other.dueDate == this.dueDate &&
-          other.isSettled == this.isSettled);
+          other.isSettled == this.isSettled &&
+          other.settledAmount == this.settledAmount);
 }
 
 class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
@@ -14006,6 +14036,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
   final Value<String?> contactName;
   final Value<DateTime?> dueDate;
   final Value<bool> isSettled;
+  final Value<double> settledAmount;
   final Value<int> rowid;
   const BalanceSheetEntriesCompanion({
     this.id = const Value.absent(),
@@ -14018,6 +14049,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     this.contactName = const Value.absent(),
     this.dueDate = const Value.absent(),
     this.isSettled = const Value.absent(),
+    this.settledAmount = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   BalanceSheetEntriesCompanion.insert({
@@ -14031,6 +14063,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     this.contactName = const Value.absent(),
     this.dueDate = const Value.absent(),
     this.isSettled = const Value.absent(),
+    this.settledAmount = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         title = Value(title),
@@ -14049,6 +14082,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     Expression<String>? contactName,
     Expression<DateTime>? dueDate,
     Expression<bool>? isSettled,
+    Expression<double>? settledAmount,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -14062,6 +14096,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
       if (contactName != null) 'contact_name': contactName,
       if (dueDate != null) 'due_date': dueDate,
       if (isSettled != null) 'is_settled': isSettled,
+      if (settledAmount != null) 'settled_amount': settledAmount,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -14077,6 +14112,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
       Value<String?>? contactName,
       Value<DateTime?>? dueDate,
       Value<bool>? isSettled,
+      Value<double>? settledAmount,
       Value<int>? rowid}) {
     return BalanceSheetEntriesCompanion(
       id: id ?? this.id,
@@ -14089,6 +14125,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
       contactName: contactName ?? this.contactName,
       dueDate: dueDate ?? this.dueDate,
       isSettled: isSettled ?? this.isSettled,
+      settledAmount: settledAmount ?? this.settledAmount,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -14126,6 +14163,9 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     if (isSettled.present) {
       map['is_settled'] = Variable<bool>(isSettled.value);
     }
+    if (settledAmount.present) {
+      map['settled_amount'] = Variable<double>(settledAmount.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -14145,6 +14185,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
           ..write('contactName: $contactName, ')
           ..write('dueDate: $dueDate, ')
           ..write('isSettled: $isSettled, ')
+          ..write('settledAmount: $settledAmount, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -21744,6 +21785,7 @@ typedef $$BalanceSheetEntriesTableCreateCompanionBuilder
   Value<String?> contactName,
   Value<DateTime?> dueDate,
   Value<bool> isSettled,
+  Value<double> settledAmount,
   Value<int> rowid,
 });
 typedef $$BalanceSheetEntriesTableUpdateCompanionBuilder
@@ -21758,6 +21800,7 @@ typedef $$BalanceSheetEntriesTableUpdateCompanionBuilder
   Value<String?> contactName,
   Value<DateTime?> dueDate,
   Value<bool> isSettled,
+  Value<double> settledAmount,
   Value<int> rowid,
 });
 
@@ -21799,6 +21842,9 @@ class $$BalanceSheetEntriesTableFilterComposer
 
   ColumnFilters<bool> get isSettled => $composableBuilder(
       column: $table.isSettled, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get settledAmount => $composableBuilder(
+      column: $table.settledAmount, builder: (column) => ColumnFilters(column));
 }
 
 class $$BalanceSheetEntriesTableOrderingComposer
@@ -21839,6 +21885,10 @@ class $$BalanceSheetEntriesTableOrderingComposer
 
   ColumnOrderings<bool> get isSettled => $composableBuilder(
       column: $table.isSettled, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get settledAmount => $composableBuilder(
+      column: $table.settledAmount,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$BalanceSheetEntriesTableAnnotationComposer
@@ -21879,6 +21929,9 @@ class $$BalanceSheetEntriesTableAnnotationComposer
 
   GeneratedColumn<bool> get isSettled =>
       $composableBuilder(column: $table.isSettled, builder: (column) => column);
+
+  GeneratedColumn<double> get settledAmount => $composableBuilder(
+      column: $table.settledAmount, builder: (column) => column);
 }
 
 class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
@@ -21921,6 +21974,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             Value<String?> contactName = const Value.absent(),
             Value<DateTime?> dueDate = const Value.absent(),
             Value<bool> isSettled = const Value.absent(),
+            Value<double> settledAmount = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               BalanceSheetEntriesCompanion(
@@ -21934,6 +21988,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             contactName: contactName,
             dueDate: dueDate,
             isSettled: isSettled,
+            settledAmount: settledAmount,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -21947,6 +22002,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             Value<String?> contactName = const Value.absent(),
             Value<DateTime?> dueDate = const Value.absent(),
             Value<bool> isSettled = const Value.absent(),
+            Value<double> settledAmount = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               BalanceSheetEntriesCompanion.insert(
@@ -21960,6 +22016,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             contactName: contactName,
             dueDate: dueDate,
             isSettled: isSettled,
+            settledAmount: settledAmount,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

@@ -11,7 +11,8 @@ import '../services/balance_sheet_service.dart';
 
 class AddBalanceEntrySheet extends StatefulWidget {
   final String entryType; // 'ASSET' or 'LIABILITY'
-  final BalanceSheetModel? entryToEdit;
+  final BalanceSheetModel?
+      entryToEdit; // [NEW] Optional parameter for Edit Mode
 
   const AddBalanceEntrySheet(
       {super.key, required this.entryType, this.entryToEdit});
@@ -28,13 +29,13 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
   DateTime _selectedDate = DateTime.now();
 
   String _title = '';
-  String _category = '';
+  String _category = ''; // [FIX] Start empty, no default selection
   String _notes = '';
   String? _contactName;
   DateTime? _dueDate;
 
-  // [NEW] Track amount errors inline
   String? _amountError;
+  String? _categoryError; // [FIX] Added to track category validation
 
   late List<String> _categories;
   bool _isEditMode = false;
@@ -43,13 +44,14 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
   void initState() {
     super.initState();
 
+    // 1. Setup Comprehensive Categories
     if (widget.entryType == 'ASSET') {
       _categories = [
         'Receivables',
         'Bank Accounts',
         'Emergency Fund',
         'Money Lent',
-        'Asset Lent',
+        'Asset Lent', // Explicitly added Asset Lent
         'Cash',
         'Stocks & Mutual Funds',
         'Bonds & FDs',
@@ -71,7 +73,7 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
         'Payables',
         'Buy Now Pay Later',
         'Money Borrowed',
-        'Asset Borrowed',
+        'Asset Borrowed', // Explicitly added Asset Borrowed
         'Personal Loans',
         'EMI / Consumer Loans',
         'Mortgages',
@@ -87,15 +89,17 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
         'Other Liabilities'
       ];
     }
-    _category = _categories.first;
 
+    // 2. Check if Edit Mode and Populate Data
     if (widget.entryToEdit != null) {
       _isEditMode = true;
       final e = widget.entryToEdit!;
       _title = e.title;
-      _amountController.text =
-          e.amount.toString().replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), "");
+      _amountController.text = e.amount
+          .toString()
+          .replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), ""); // Clean decimals
 
+      // Ensure category exists in list, otherwise append it
       if (!_categories.contains(e.category)) {
         _categories.add(e.category);
       }
@@ -106,7 +110,6 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
       _dueDate = e.dueDate;
     }
 
-    // [NEW] Clear error immediately when user starts typing again
     _amountController.addListener(() {
       if (_amountError != null && _amountController.text.isNotEmpty) {
         setState(() => _amountError = null);
@@ -145,21 +148,21 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
       lastDate: DateTime(2100),
       builder: (context, child) => Theme(
         data: ThemeData.dark().copyWith(
-          colorScheme: ColorScheme.dark(
-            primary: themeColor,
-            onPrimary: Colors.black,
-            surface: BudgetrColors.cardSurface,
-          ),
-        ),
+            colorScheme: ColorScheme.dark(
+                primary: themeColor,
+                onPrimary: Colors.black,
+                surface: BudgetrColors.cardSurface)),
         child: child!,
       ),
     );
     if (picked != null) {
       setState(() {
         if (isDueDate) {
-          _dueDate = picked;
+          // [FEATURE 7 FIX] Set explicitly to 23:59:59 to prevent early overdue triggers
+          _dueDate =
+              DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
         } else {
-          _selectedDate = picked;
+          _selectedDate = DateTime(picked.year, picked.month, picked.day);
         }
       });
     }
@@ -168,27 +171,28 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
   Future<void> _saveEntry() async {
     HapticFeedback.mediumImpact();
 
-    // 1. Evaluate Amount FIRST
     final amount = _evaluateFinalAmount();
     bool isAmountValid = amount != null && amount > 0;
 
+    // [FIX] Validate Category
+    bool isCategoryValid = _category.isNotEmpty;
+
     setState(() {
-      _amountError = isAmountValid ? null : "Please enter a valid amount";
+      _amountError = isAmountValid ? null : "Please enter a valid amount.";
+      _categoryError = isCategoryValid ? null : "Please select a category.";
     });
 
-    // 2. Evaluate Form NEXT
     bool isFormValid = _formKey.currentState!.validate();
 
-    // 3. Stop if either fails
-    if (!isAmountValid || !isFormValid) {
-      HapticFeedback.heavyImpact(); // Error feedback
+    if (!isAmountValid || !isCategoryValid || !isFormValid) {
+      HapticFeedback.heavyImpact();
       return;
     }
 
     _formKey.currentState!.save();
 
     final entry = BalanceSheetModel(
-      id: _isEditMode ? widget.entryToEdit!.id : '',
+      id: _isEditMode ? widget.entryToEdit!.id : '', // Preserve ID if editing
       title: _title,
       amount: amount,
       entryType: widget.entryType,
@@ -198,6 +202,8 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
       contactName: _contactName,
       dueDate: _dueDate,
       isSettled: _isEditMode ? widget.entryToEdit!.isSettled : false,
+      // Ensure we preserve partial settlement during edit
+      settledAmount: _isEditMode ? widget.entryToEdit!.settledAmount : 0.0,
     );
 
     if (_isEditMode) {
@@ -217,7 +223,8 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
         isScrollControlled: true,
         builder: (BuildContext context) {
           return Container(
-            height: MediaQuery.of(context).size.height * 0.7,
+            height: MediaQuery.of(context).size.height *
+                0.7, // Increased height for more categories
             decoration: const BoxDecoration(
               color: BudgetrColors.background,
               borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
@@ -262,7 +269,11 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                         return InkWell(
                           onTap: () {
                             HapticFeedback.lightImpact();
-                            setState(() => _category = cat);
+                            setState(() {
+                              _category = cat;
+                              _categoryError =
+                                  null; // [FIX] Clear error on select
+                            });
                             Navigator.pop(context);
                           },
                           child: Padding(
@@ -304,6 +315,7 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
     final Color themeColor =
         isAsset ? BudgetrColors.success : BudgetrColors.error;
 
+    // Dynamic Title based on mode
     final String sheetTitle = _isEditMode
         ? (isAsset ? "EDIT ASSET" : "EDIT LIABILITY")
         : (isAsset ? "RECORD ASSET" : "RECORD LIABILITY");
@@ -399,7 +411,7 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                     // Amount Display
                     TextFormField(
                       controller: _amountController,
-                      autofocus: !_isEditMode,
+                      autofocus: !_isEditMode, // Don't auto-focus if editing
                       readOnly: true,
                       showCursor: true,
                       textAlign: TextAlign.center,
@@ -436,8 +448,6 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                         isDense: true,
                       ),
                     ),
-
-                    // [NEW] Inline Animated Error Message
                     AnimatedSize(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeOutBack,
@@ -445,16 +455,12 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                           ? const SizedBox.shrink()
                           : Padding(
                               padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                _amountError!,
-                                style: const TextStyle(
-                                  color: BudgetrColors.error,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
+                              child: Text(_amountError!,
+                                  style: const TextStyle(
+                                      color: BudgetrColors.error,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5))),
                     ),
                     const SizedBox(height: 32),
 
@@ -466,20 +472,22 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                           border: Border.all(
                               color: Colors.white.withOpacity(0.05))),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildCompactInputRow(
-                            icon: Icons.edit_note_rounded,
-                            hint: "Title (e.g., Loan to Alex)",
-                            initialValue: _title,
-                            onSaved: (val) => _title = val!,
-                            validator: (val) =>
-                                val == null || val.isEmpty ? 'Required' : null,
-                          ),
+                              icon: Icons.edit_note_rounded,
+                              hint: "Title (e.g., Loan to Alex)",
+                              initialValue: _title,
+                              onSaved: (val) => _title = val!,
+                              validator: (val) => val == null || val.isEmpty
+                                  ? 'Required'
+                                  : null),
                           Divider(
                               height: 1,
                               color: Colors.white.withOpacity(0.05),
                               indent: 48),
 
+                          // --- [FIX] CATEGORY SELECTION UI ---
                           InkWell(
                             onTap: () => _showCategoryPicker(themeColor),
                             child: Padding(
@@ -488,13 +496,20 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                               child: Row(
                                 children: [
                                   Icon(Icons.category_rounded,
-                                      color: themeColor.withOpacity(0.7),
+                                      color: _categoryError != null
+                                          ? BudgetrColors.error
+                                          : themeColor.withOpacity(0.7),
                                       size: 20),
                                   const SizedBox(width: 16),
                                   Expanded(
-                                      child: Text(_category,
-                                          style: const TextStyle(
-                                              color: Colors.white,
+                                      child: Text(
+                                          _category.isEmpty
+                                              ? "Select Category"
+                                              : _category,
+                                          style: TextStyle(
+                                              color: _category.isEmpty
+                                                  ? Colors.white38
+                                                  : Colors.white,
                                               fontSize: 15,
                                               fontWeight: FontWeight.w500))),
                                   const Icon(Icons.chevron_right_rounded,
@@ -503,23 +518,36 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                               ),
                             ),
                           ),
+                          // Inline Error for Category
+                          if (_categoryError != null)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 52, bottom: 8),
+                              child: Text(
+                                _categoryError!,
+                                style: const TextStyle(
+                                  color: BudgetrColors.error,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           Divider(
                               height: 1,
                               color: Colors.white.withOpacity(0.05),
                               indent: 48),
 
-                          // Contact Field
+                          // Contact Field (Always available)
                           _buildCompactInputRow(
-                            icon: Icons.person_rounded,
-                            hint: isAsset
-                                ? "Who owes you? (Optional)"
-                                : "Who do you owe? (Optional)",
-                            initialValue: _contactName,
-                            onSaved: (val) => _contactName =
-                                (val != null && val.trim().isNotEmpty)
-                                    ? val.trim()
-                                    : null,
-                          ),
+                              icon: Icons.person_rounded,
+                              hint: isAsset
+                                  ? "Who owes you? (Optional)"
+                                  : "Who do you owe? (Optional)",
+                              initialValue: _contactName,
+                              onSaved: (val) => _contactName =
+                                  (val != null && val.trim().isNotEmpty)
+                                      ? val.trim()
+                                      : null),
                           Divider(
                               height: 1,
                               color: Colors.white.withOpacity(0.05),
@@ -538,24 +566,22 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                                       size: 20),
                                   const SizedBox(width: 16),
                                   Expanded(
-                                    child: Text(
-                                        _dueDate != null
-                                            ? "Due: ${DateFormat('MMM dd, yyyy').format(_dueDate!)}"
-                                            : "Set Due Date (Optional)",
-                                        style: TextStyle(
-                                            color: _dueDate != null
-                                                ? Colors.white
-                                                : Colors.white38,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w500)),
-                                  ),
+                                      child: Text(
+                                          _dueDate != null
+                                              ? "Due: ${DateFormat('MMM dd, yyyy').format(_dueDate!)}"
+                                              : "Set Due Date (Optional)",
+                                          style: TextStyle(
+                                              color: _dueDate != null
+                                                  ? Colors.white
+                                                  : Colors.white38,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w500))),
                                   if (_dueDate != null)
                                     GestureDetector(
-                                      onTap: () =>
-                                          setState(() => _dueDate = null),
-                                      child: const Icon(Icons.close_rounded,
-                                          color: Colors.white38, size: 20),
-                                    )
+                                        onTap: () =>
+                                            setState(() => _dueDate = null),
+                                        child: const Icon(Icons.close_rounded,
+                                            color: Colors.white38, size: 20))
                                   else
                                     const Icon(Icons.chevron_right_rounded,
                                         color: Colors.white24, size: 20),
@@ -569,11 +595,10 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                               indent: 48),
 
                           _buildCompactInputRow(
-                            icon: Icons.sticky_note_2_rounded,
-                            hint: "Notes (Optional)",
-                            initialValue: _notes,
-                            onSaved: (val) => _notes = val ?? '',
-                          ),
+                              icon: Icons.sticky_note_2_rounded,
+                              hint: "Notes (Optional)",
+                              initialValue: _notes,
+                              onSaved: (val) => _notes = val ?? ''),
                         ],
                       ),
                     ),
