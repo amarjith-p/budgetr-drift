@@ -50,7 +50,7 @@ class BiometricService {
   Future<bool> authenticate({bool allowPin = true}) async {
     try {
       return await _auth.authenticate(
-        localizedReason: 'Unlock BudGetR to access your finances',
+        localizedReason: 'Unlock FinStack 360 to access your finances',
         options: AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: !allowPin,
@@ -58,7 +58,7 @@ class BiometricService {
         ),
         authMessages: const <AuthMessages>[
           AndroidAuthMessages(
-            signInTitle: 'Unlock BudGetR',
+            signInTitle: 'Unlock FinStack 360',
             cancelButton: 'Cancel',
           ),
         ],

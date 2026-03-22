@@ -43,7 +43,7 @@ class CreditSummaryCard extends StatelessWidget {
 
     // Calculate difference
     double difference = allocatedFunds - totalPayable;
-    bool isShortfall = difference < 0 && hasDebt;
+    bool isShortfall = difference <= -0.000001 && hasDebt;
     String statusLabel = isShortfall ? "Shortfall" : "Fully Funded";
     Color statusColor =
         isShortfall ? const Color(0xFFE71D36) : const Color(0xFF06D6A0);

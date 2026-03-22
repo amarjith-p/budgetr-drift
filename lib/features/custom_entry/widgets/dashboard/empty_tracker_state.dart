@@ -165,7 +165,7 @@ class EmptyTrackerState extends StatelessWidget {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  "BudGetR Sheets",
+                  "Custom Sheets",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,

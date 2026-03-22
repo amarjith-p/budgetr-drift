@@ -42,7 +42,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 width: 1.5,
               ),
               image: const DecorationImage(
-                image: AssetImage('assets/images/avatar.png'),
+                image: AssetImage('assets/images/finstack.png'),
                 fit: BoxFit.cover,
               ),
               boxShadow: [
@@ -58,25 +58,25 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           // App Title
           RichText(
             text: TextSpan(
-              style: GoogleFonts.robotoSlab(
-                fontSize: 24,
-                letterSpacing: 3.2,
+              style: GoogleFonts.orbitron(
+                fontSize: 22,
+                letterSpacing: 1,
                 color: const Color.fromARGB(255, 255, 255, 255),
               ),
               children: const [
                 TextSpan(
-                  text: 'Bud',
+                  text: 'Fin',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
                 TextSpan(
-                  text: 'Get',
+                  text: 'Stack',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: Color.fromARGB(255, 255, 255, 255),
                   ),
                 ),
                 TextSpan(
-                  text: 'R',
+                  text: ' 360',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: Color.fromARGB(255, 255, 255, 255),

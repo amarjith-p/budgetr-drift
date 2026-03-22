@@ -272,7 +272,7 @@ class _FactoryResetScreenState extends State<FactoryResetScreen> {
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    "You are about to completely wipe BudGetR. All accounts, expenses, categories, and settings will be permanently destroyed. The app will restart in a Day 1 Factory condition.",
+                                    "You are about to completely wipe FinStack 360. All accounts, expenses, categories, and settings will be permanently destroyed. The app will restart in a Day 1 Factory condition.",
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                         color: Colors.white.withOpacity(0.8),

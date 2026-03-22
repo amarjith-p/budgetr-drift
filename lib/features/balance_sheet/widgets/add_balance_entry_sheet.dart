@@ -11,8 +11,7 @@ import '../services/balance_sheet_service.dart';
 
 class AddBalanceEntrySheet extends StatefulWidget {
   final String entryType; // 'ASSET' or 'LIABILITY'
-  final BalanceSheetModel?
-      entryToEdit; // [NEW] Optional parameter for Edit Mode
+  final BalanceSheetModel? entryToEdit;
 
   const AddBalanceEntrySheet(
       {super.key, required this.entryType, this.entryToEdit});
@@ -34,6 +33,9 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
   String? _contactName;
   DateTime? _dueDate;
 
+  // [NEW] Track amount errors inline
+  String? _amountError;
+
   late List<String> _categories;
   bool _isEditMode = false;
 
@@ -41,14 +43,13 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
   void initState() {
     super.initState();
 
-    // 1. Setup Comprehensive Categories
     if (widget.entryType == 'ASSET') {
       _categories = [
         'Receivables',
         'Bank Accounts',
         'Emergency Fund',
         'Money Lent',
-        'Asset Lent', // Explicitly added Asset Lent
+        'Asset Lent',
         'Cash',
         'Stocks & Mutual Funds',
         'Bonds & FDs',
@@ -70,7 +71,7 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
         'Payables',
         'Buy Now Pay Later',
         'Money Borrowed',
-        'Asset Borrowed', // Explicitly added Asset Borrowed
+        'Asset Borrowed',
         'Personal Loans',
         'EMI / Consumer Loans',
         'Mortgages',
@@ -88,16 +89,13 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
     }
     _category = _categories.first;
 
-    // 2. Check if Edit Mode and Populate Data
     if (widget.entryToEdit != null) {
       _isEditMode = true;
       final e = widget.entryToEdit!;
       _title = e.title;
-      _amountController.text = e.amount
-          .toString()
-          .replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), ""); // Clean decimals
+      _amountController.text =
+          e.amount.toString().replaceAll(RegExp(r"([.]*0+)(?!.*\d)"), "");
 
-      // Ensure category exists in list, otherwise append it
       if (!_categories.contains(e.category)) {
         _categories.add(e.category);
       }
@@ -107,6 +105,13 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
       _contactName = e.contactName;
       _dueDate = e.dueDate;
     }
+
+    // [NEW] Clear error immediately when user starts typing again
+    _amountController.addListener(() {
+      if (_amountError != null && _amountController.text.isNotEmpty) {
+        setState(() => _amountError = null);
+      }
+    });
   }
 
   @override
@@ -162,23 +167,28 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
 
   Future<void> _saveEntry() async {
     HapticFeedback.mediumImpact();
-    if (!_formKey.currentState!.validate()) return;
-    _formKey.currentState!.save();
 
+    // 1. Evaluate Amount FIRST
     final amount = _evaluateFinalAmount();
+    bool isAmountValid = amount != null && amount > 0;
 
-    if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text("Please enter a valid amount.",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-      ));
+    setState(() {
+      _amountError = isAmountValid ? null : "Please enter a valid amount";
+    });
+
+    // 2. Evaluate Form NEXT
+    bool isFormValid = _formKey.currentState!.validate();
+
+    // 3. Stop if either fails
+    if (!isAmountValid || !isFormValid) {
+      HapticFeedback.heavyImpact(); // Error feedback
       return;
     }
 
+    _formKey.currentState!.save();
+
     final entry = BalanceSheetModel(
-      id: _isEditMode ? widget.entryToEdit!.id : '', // Preserve ID if editing
+      id: _isEditMode ? widget.entryToEdit!.id : '',
       title: _title,
       amount: amount,
       entryType: widget.entryType,
@@ -207,8 +217,7 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
         isScrollControlled: true,
         builder: (BuildContext context) {
           return Container(
-            height: MediaQuery.of(context).size.height *
-                0.7, // Increased height for more categories
+            height: MediaQuery.of(context).size.height * 0.7,
             decoration: const BoxDecoration(
               color: BudgetrColors.background,
               borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
@@ -295,7 +304,6 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
     final Color themeColor =
         isAsset ? BudgetrColors.success : BudgetrColors.error;
 
-    // Dynamic Title based on mode
     final String sheetTitle = _isEditMode
         ? (isAsset ? "EDIT ASSET" : "EDIT LIABILITY")
         : (isAsset ? "RECORD ASSET" : "RECORD LIABILITY");
@@ -391,18 +399,23 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                     // Amount Display
                     TextFormField(
                       controller: _amountController,
-                      autofocus: !_isEditMode, // Don't auto-focus if editing
+                      autofocus: !_isEditMode,
                       readOnly: true,
                       showCursor: true,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: Colors.white,
+                          color: _amountError != null
+                              ? BudgetrColors.error
+                              : Colors.white,
                           fontSize: 48,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -1,
                           shadows: [
                             Shadow(
-                                color: themeColor.withOpacity(0.2),
+                                color: (_amountError != null
+                                        ? BudgetrColors.error
+                                        : themeColor)
+                                    .withOpacity(0.2),
                                 blurRadius: 15)
                           ]),
                       decoration: InputDecoration(
@@ -413,13 +426,35 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                             fontWeight: FontWeight.w900),
                         prefixText: "₹ ",
                         prefixStyle: TextStyle(
-                            color: themeColor,
+                            color: _amountError != null
+                                ? BudgetrColors.error
+                                : themeColor,
                             fontSize: 32,
                             fontWeight: FontWeight.bold),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
                         isDense: true,
                       ),
+                    ),
+
+                    // [NEW] Inline Animated Error Message
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutBack,
+                      child: _amountError == null
+                          ? const SizedBox.shrink()
+                          : Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                _amountError!,
+                                style: const TextStyle(
+                                  color: BudgetrColors.error,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
                     ),
                     const SizedBox(height: 32),
 
@@ -473,7 +508,7 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
                               color: Colors.white.withOpacity(0.05),
                               indent: 48),
 
-                          // Contact Field (Always available for Assets/Money lent)
+                          // Contact Field
                           _buildCompactInputRow(
                             icon: Icons.person_rounded,
                             hint: isAsset

@@ -158,7 +158,7 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard> {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  "BudGetR Sheets",
+                  "Custom Sheets",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -328,7 +328,7 @@ class _CustomEntryDashboardState extends State<CustomEntryDashboard> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Text(
-                              "BUDGETR SHEET",
+                              "FinStack 360 SHEET",
                               style: TextStyle(
                                 color: Colors.white38,
                                 fontSize: 10,
