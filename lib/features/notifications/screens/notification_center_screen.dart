@@ -108,7 +108,7 @@ class NotificationCenterScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "BudGetR",
+                  "FinStack 360",
                   style: TextStyle(
                     color: Colors.white38,
                     fontSize: 10,

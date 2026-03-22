@@ -11,7 +11,8 @@ import 'package:restart_app/restart_app.dart';
 class BackupService {
   final String _dbName = 'budgetr_local_v2.sqlite';
   static const String _prefLastBackupKey = 'last_backup_timestamp';
-  static const String _staticBackupName = 'BudgetR_Backup_DataEngine.sqlite';
+  static const String _staticBackupName =
+      'FinStack 360_Backup_DataEngine.sqlite';
 
   // Flag to track if app was just restored
   static const String _prefJustRestoredKey = 'is_just_restored';
@@ -40,8 +41,8 @@ class BackupService {
       final backupFile = await _createTempBackup();
       final result = await Share.shareXFiles(
         [XFile(backupFile.path)],
-        subject: 'Budgetr Backup',
-        text: 'Budgetr backup created on ${DateTime.now()}',
+        subject: 'FinStack 360 Backup',
+        text: 'FinStack 360 backup created on ${DateTime.now()}',
       );
 
       if (result.status == ShareResultStatus.success) {
@@ -58,9 +59,9 @@ class BackupService {
     try {
       final backupFile = await _createTempBackup();
 
-      // 1. Generate the dynamic folder name: BudGetR/Backups/MMM yyyy
+      // 1. Generate the dynamic folder name: FinStack 360/Backups/MMM yyyy
       final folderDate = DateFormat('MMM yyyy').format(DateTime.now());
-      final folderPath = 'BudGetR/Backups/$folderDate';
+      final folderPath = 'FinStack 360/Backups/$folderDate';
 
       Directory saveDir;
       if (Platform.isAndroid) {
@@ -79,7 +80,7 @@ class BackupService {
 
       // 3. Generate a precise timestamped file name so backups don't overwrite each other
       final timestamp = DateFormat('dd_MMM_yyyy_HHmm').format(DateTime.now());
-      final fileName = 'BudGetR_Backup_DataEngine.sqlite';
+      final fileName = 'FinStack 360_Backup_DataEngine.sqlite';
 
       final exportPath = p.join(saveDir.path, fileName);
 

@@ -19,7 +19,7 @@ class FactoryResetService {
       final expenses = await db.select(db.expenseTransactions).get();
 
       if (expenses.isEmpty) {
-        return 'BudGetR_Backup_Empty_${DateFormat('dd-MMM-yyyy').format(DateTime.now())}.sqlite';
+        return 'FinStack 360_Backup_Empty_${DateFormat('dd-MMM-yyyy').format(DateTime.now())}.sqlite';
       }
 
       expenses.sort((a, b) => a.date.compareTo(b.date));
@@ -27,9 +27,9 @@ class FactoryResetService {
       final maxDate = expenses.last.date;
 
       final format = DateFormat('dd-MMM-yyyy');
-      return 'BudGetR_Backup_${format.format(minDate)}_to_${format.format(maxDate)}.sqlite';
+      return 'FinStack 360_Backup_${format.format(minDate)}_to_${format.format(maxDate)}.sqlite';
     } catch (e) {
-      return 'BudGetR_Backup_${DateFormat('dd-MMM-yyyy').format(DateTime.now())}.sqlite';
+      return 'FinStack 360_Backup_${DateFormat('dd-MMM-yyyy').format(DateTime.now())}.sqlite';
     }
   }
 
@@ -50,15 +50,15 @@ class FactoryResetService {
       // We will rely on user confirmation in the UI instead.
       await Share.shareXFiles(
         [XFile(exportPath)],
-        text: 'BudGetR Full Database Backup',
-        subject: 'BudGetR Backup',
+        text: 'FinStack 360 Full Database Backup',
+        subject: 'FinStack 360 Backup',
       );
     } catch (e) {
       throw Exception('Failed to share backup: $e');
     }
   }
 
-  /// SAVE OPTION: Saves to BudGetR/Master Backup directory
+  /// SAVE OPTION: Saves to FinStack 360/Master Backup directory
   Future<String> saveBackupToDevice(String dynamicFileName) async {
     try {
       final dbFolder = await getApplicationDocumentsDirectory();
@@ -70,12 +70,13 @@ class FactoryResetService {
       Directory saveDir;
       if (Platform.isAndroid) {
         // Target the custom nested folder in Android Downloads
-        saveDir =
-            Directory('/storage/emulated/0/Download/BudGetR/Master Backup');
+        saveDir = Directory(
+            '/storage/emulated/0/Download/FinStack 360/Master Backup');
       } else {
         // Target custom nested folder in iOS Documents
         final baseDir = await getApplicationDocumentsDirectory();
-        saveDir = Directory(p.join(baseDir.path, 'BudGetR', 'Master Backup'));
+        saveDir =
+            Directory(p.join(baseDir.path, 'FinStack 360', 'Master Backup'));
       }
 
       // Check if the directory exists, if not, create it recursively

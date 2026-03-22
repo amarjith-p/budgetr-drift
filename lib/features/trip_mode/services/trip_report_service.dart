@@ -38,7 +38,7 @@ class TripReportService {
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('BudGetR Trip Report',
+                  pw.Text('FinStack 360 Trip Report',
                       style: pw.TextStyle(
                           fontSize: 24,
                           fontWeight: pw.FontWeight.bold,
@@ -101,7 +101,7 @@ class TripReportService {
 
     // Save Logic matching CustomExportService
     final folderDate = DateFormat('MMM yyyy').format(DateTime.now());
-    final folderPath = 'BudGetR/Trips/$folderDate/PDF';
+    final folderPath = 'FinStack 360/Trips/$folderDate/PDF';
 
     Directory publicDir;
     if (Platform.isAndroid) {

@@ -226,7 +226,7 @@ class _BiometricGateState extends State<BiometricGate>
                     ),
                     const SizedBox(height: 32),
                     const Text(
-                      "BudGetR Locked",
+                      "FinStack 360 Locked",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,

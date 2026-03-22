@@ -461,7 +461,7 @@ class _CustomDataPageState extends State<CustomDataPage>
                     onPressed: () {
                       Navigator.pop(ctx);
                       Share.shareXFiles([XFile(result.safeCachePath)],
-                          text: "BudGetR $format Export");
+                          text: "FinStack 360 $format Export");
                     },
                   ),
                 ),

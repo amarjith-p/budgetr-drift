@@ -53,7 +53,7 @@ class CustomExportService {
       String defaultFileName, dynamic content, String formatFolder) async {
     try {
       final folderDate = DateFormat('MMM yyyy').format(DateTime.now());
-      final folderPath = 'BudGetR/Sheets/$folderDate/$formatFolder';
+      final folderPath = 'FinStack 360/Sheets/$folderDate/$formatFolder';
 
       Directory publicDir;
       if (Platform.isAndroid) {
@@ -175,7 +175,7 @@ class CustomExportService {
               angle: -0.5,
               child: pw.Opacity(
                   opacity: 0.05,
-                  child: pw.Text("BudGetR",
+                  child: pw.Text("FinStack 360",
                       style: pw.TextStyle(
                           fontSize: 100,
                           fontWeight: pw.FontWeight.bold,
@@ -203,7 +203,7 @@ class CustomExportService {
                     pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text("BudGetR",
+                          pw.Text("FinStack 360",
                               style: pw.TextStyle(
                                   fontSize: 20,
                                   fontWeight: pw.FontWeight.bold,

@@ -232,7 +232,7 @@ class _BackupScreenState extends State<BackupScreen> {
                         const Spacer(),
                         const Center(
                           child: Text(
-                            "BudGetR Data Engine by Amarjith",
+                            "FinStack 360 Data Engine by Amarjith",
                             style:
                                 TextStyle(color: Colors.white24, fontSize: 12),
                           ),

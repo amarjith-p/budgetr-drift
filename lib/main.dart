@@ -111,7 +111,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: true,
-      title: 'BudGetR',
+      title: 'FinStack 360',
       theme: AppTheme.darkTheme,
       navigatorKey: navigatorKey,
       builder: (context, child) => BiometricGate(

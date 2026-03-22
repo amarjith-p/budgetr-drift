@@ -85,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
           linkedAccounts.fold(0.0, (sum, acc) => sum + acc.currentBalance);
 
       // Return true if there's a shortfall and there's actually a debt
-      return (allocatedFunds - totalDebt < 0) && (totalDebt > 0.01);
+      return (allocatedFunds - totalDebt <= -0.000001) && (totalDebt > 0.01);
     });
   }
 
