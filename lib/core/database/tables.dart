@@ -514,6 +514,7 @@ class VaultRecords extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// --- 15. STANDALONE BALANCE SHEET & PAYABLE TRACKER ---
 class BalanceSheetEntries extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
@@ -523,10 +524,13 @@ class BalanceSheetEntries extends Table {
   DateTimeColumn get date => dateTime()();
   TextColumn get notes => text().nullable()();
 
-  // [NEW] Tracking Fields
-  TextColumn get contactName => text().nullable()(); // Who owes or is owed
-  DateTimeColumn get dueDate => dateTime().nullable()(); // When is it expected
+  // --- TRACKING FIELDS ---
+  TextColumn get contactName => text().nullable()();
+  DateTimeColumn get dueDate => dateTime().nullable()();
   BoolColumn get isSettled => boolean().withDefault(const Constant(false))();
+
+  // [NEW] Partial Settlement Tracking
+  RealColumn get settledAmount => real().withDefault(const Constant(0.0))();
 
   @override
   Set<Column> get primaryKey => {id};

@@ -19,13 +19,13 @@ class BalanceSheetService {
       contactName: row.contactName,
       dueDate: row.dueDate,
       isSettled: row.isSettled,
+      settledAmount: row.settledAmount,
     );
   }
 
   Stream<List<BalanceSheetModel>> watchAssets() {
     return (_db.select(_db.balanceSheetEntries)
           ..where((t) => t.entryType.equals('ASSET'))
-          // Order by unsettled first, then by date
           ..orderBy([
             (t) =>
                 OrderingTerm(expression: t.isSettled, mode: OrderingMode.asc),
@@ -38,6 +38,19 @@ class BalanceSheetService {
   Stream<List<BalanceSheetModel>> watchLiabilities() {
     return (_db.select(_db.balanceSheetEntries)
           ..where((t) => t.entryType.equals('LIABILITY'))
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.isSettled, mode: OrderingMode.asc),
+            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)
+          ]))
+        .watch()
+        .map((rows) => rows.map(_mapEntry).toList());
+  }
+
+  // [NEW] Get all entries for a specific Contact (Deep Dive)
+  Stream<List<BalanceSheetModel>> watchContactEntries(String contactName) {
+    return (_db.select(_db.balanceSheetEntries)
+          ..where((t) => t.contactName.equals(contactName))
           ..orderBy([
             (t) =>
                 OrderingTerm(expression: t.isSettled, mode: OrderingMode.asc),
@@ -60,11 +73,11 @@ class BalanceSheetService {
             contactName: Value(entry.contactName),
             dueDate: Value(entry.dueDate),
             isSettled: Value(entry.isSettled),
+            settledAmount: Value(entry.settledAmount),
           ),
         );
   }
 
-  // [NEW] Update an existing entry
   Future<void> updateEntry(BalanceSheetModel entry) async {
     await (_db.update(_db.balanceSheetEntries)
           ..where((t) => t.id.equals(entry.id)))
@@ -76,8 +89,8 @@ class BalanceSheetService {
       notes: Value(entry.notes),
       contactName: Value(entry.contactName),
       dueDate: Value(entry.dueDate),
-      // We preserve the settlement state during an edit
       isSettled: Value(entry.isSettled),
+      settledAmount: Value(entry.settledAmount),
     ));
   }
 
@@ -86,9 +99,13 @@ class BalanceSheetService {
         .go();
   }
 
-  Future<void> toggleSettlementStatus(String id, bool currentStatus) async {
+  // [NEW] Handles both partial and full settlements safely
+  Future<void> updateSettlement(
+      String id, double newSettledAmount, bool isSettled) async {
     await (_db.update(_db.balanceSheetEntries)..where((t) => t.id.equals(id)))
-        .write(
-            db.BalanceSheetEntriesCompanion(isSettled: Value(!currentStatus)));
+        .write(db.BalanceSheetEntriesCompanion(
+      settledAmount: Value(newSettledAmount),
+      isSettled: Value(isSettled),
+    ));
   }
 }
