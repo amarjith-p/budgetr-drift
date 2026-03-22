@@ -5,11 +5,16 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:open_file/open_file.dart'; // [RESTORED IMPORT]
+import 'package:share_plus/share_plus.dart'; // [RESTORED IMPORT]
+
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/widgets/modern_app_bar.dart';
 import '../../../core/widgets/status_bottom_sheet.dart';
+import '../../../core/widgets/futuristic_loader.dart'; // [RESTORED IMPORT]
 import '../models/balance_sheet_model.dart';
 import '../services/balance_sheet_service.dart';
+import '../services/balance_sheet_export_service.dart'; // [RESTORED IMPORT]
 import '../widgets/add_balance_entry_sheet.dart';
 import '../widgets/contact_ledger_sheet.dart';
 
@@ -39,6 +44,10 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
   String _currentFilter = 'All';
   int _assetLimit = 15;
   int _liabilityLimit = 15;
+
+  // --- [RESTORED] EXPORT STATE ---
+  bool _isExporting = false;
+  String _exportMessage = "";
 
   @override
   void initState() {
@@ -72,7 +81,10 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                 children: [
                   ModernAppBar(
                     title: "Balance Sheet",
-                    subtitle: "PAYABLES & RECEIVABLES",
+                    subtitle: "CRM CUM",
+                    // --- [RESTORED] EXPORT BUTTON ---
+                    trailingIcon: Icons.ios_share_rounded,
+                    onTrailingPressed: _handleExportTapped,
                   ),
                   AnimatedSize(
                     duration: const Duration(milliseconds: 300),
@@ -97,6 +109,34 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                 ],
               ),
               if (!isKeyboardOpen) _buildFloatingActionButtons(context),
+
+              // --- [RESTORED] EXPORT LOADING OVERLAY ---
+              if (_isExporting)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withOpacity(0.90),
+                    child: Center(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const FuturisticLoader(),
+                            const SizedBox(height: 32),
+                            Text(
+                              _exportMessage,
+                              style: const TextStyle(
+                                  color: Colors.cyanAccent,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  letterSpacing: 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -291,25 +331,29 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                    color: _assetColor,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                          color: _assetColor, blurRadius: 4)
-                                    ])),
-                            const SizedBox(width: 6),
-                            const Text("ASSETS",
-                                style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1)),
-                            const SizedBox(width: 8),
+                            Row(
+                              children: [
+                                Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                        color: _assetColor,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                              color: _assetColor, blurRadius: 4)
+                                        ])),
+                                const SizedBox(width: 6),
+                                const Text("ASSETS",
+                                    style: TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1)),
+                              ],
+                            ),
                             Expanded(
                               child: Align(
                                 alignment: Alignment.centerRight,
@@ -327,25 +371,30 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                         ),
                         const SizedBox(height: 8),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                    color: _liabilityColor,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                          color: _liabilityColor, blurRadius: 4)
-                                    ])),
-                            const SizedBox(width: 6),
-                            const Text("LIAB.",
-                                style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1)),
-                            const SizedBox(width: 8),
+                            Row(
+                              children: [
+                                Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                        color: _liabilityColor,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                              color: _liabilityColor,
+                                              blurRadius: 4)
+                                        ])),
+                                const SizedBox(width: 6),
+                                const Text("LIAB.",
+                                    style: TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1)),
+                              ],
+                            ),
                             Expanded(
                               child: Align(
                                 alignment: Alignment.centerRight,
@@ -630,9 +679,9 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                         child: TextButton.icon(
                           onPressed: () => setState(() {
                             if (isAsset)
-                              _assetLimit += 15;
+                              _assetLimit += 10;
                             else
-                              _liabilityLimit += 15;
+                              _liabilityLimit += 10;
                           }),
                           icon: Icon(Icons.keyboard_arrow_down_rounded,
                               color: themeColor),
@@ -744,7 +793,6 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                         : Colors.white.withOpacity(0.03))),
                             child: Row(
                               children: [
-                                // LEFT: DATE BLOCK
                                 Container(
                                   width: 40,
                                   decoration: BoxDecoration(
@@ -778,8 +826,6 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 16),
-
-                                // MIDDLE: CORE INFO
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -794,88 +840,71 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                                   ? TextDecoration.lineThrough
                                                   : null)),
                                       const SizedBox(height: 4),
-
-                                      // Category / Contact (Compressed via Wrap)
-                                      Wrap(
-                                        spacing: 8,
-                                        runSpacing: 4,
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        children: [
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(iconData,
-                                                  color: themeColor
-                                                      .withOpacity(0.8),
-                                                  size: 12),
-                                              const SizedBox(width: 4),
-                                              Text(entry.category,
-                                                  style: const TextStyle(
-                                                      color: Colors.white54,
-                                                      fontSize: 11)),
-                                            ],
-                                          ),
-                                          if (entry.contactName != null &&
-                                              entry.contactName!.isNotEmpty)
-                                            InkWell(
-                                              onTap: () {
-                                                _searchFocusNode.unfocus();
-                                                HapticFeedback.selectionClick();
-                                                showModalBottomSheet(
-                                                  context: context,
-                                                  isScrollControlled: true,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  builder: (_) =>
-                                                      ContactLedgerSheet(
-                                                          contactName: entry
-                                                              .contactName!),
-                                                );
-                                              },
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2),
-                                                decoration: BoxDecoration(
-                                                    color: Colors.white
-                                                        .withOpacity(0.05),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            4)),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(Icons.person_rounded,
-                                                        color: themeColor
-                                                            .withOpacity(0.8),
-                                                        size: 10),
-                                                    const SizedBox(width: 4),
-                                                    Text(entry.contactName!,
-                                                        style: const TextStyle(
-                                                            color:
-                                                                Colors.white70,
-                                                            fontSize: 10,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w600)),
-                                                  ],
-                                                ),
-                                              ),
+                                      if (entry.contactName != null &&
+                                          entry.contactName!.isNotEmpty) ...[
+                                        InkWell(
+                                          onTap: () {
+                                            _searchFocusNode.unfocus();
+                                            HapticFeedback.selectionClick();
+                                            showModalBottomSheet(
+                                              context: context,
+                                              isScrollControlled: true,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              builder: (_) =>
+                                                  ContactLedgerSheet(
+                                                      contactName:
+                                                          entry.contactName!),
+                                            );
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                                color: Colors.white
+                                                    .withOpacity(0.05),
+                                                borderRadius:
+                                                    BorderRadius.circular(4)),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.person_rounded,
+                                                    color: themeColor
+                                                        .withOpacity(0.8),
+                                                    size: 10),
+                                                const SizedBox(width: 4),
+                                                Text(entry.contactName!,
+                                                    style: const TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w600)),
+                                              ],
                                             ),
-                                        ],
-                                      ),
-
-                                      // Due Date / Notes (Compressed Inline)
+                                          ),
+                                        ),
+                                      ] else ...[
+                                        Row(
+                                          children: [
+                                            Icon(iconData,
+                                                color:
+                                                    themeColor.withOpacity(0.8),
+                                                size: 12),
+                                            const SizedBox(width: 4),
+                                            Text(entry.category,
+                                                style: const TextStyle(
+                                                    color: Colors.white54,
+                                                    fontSize: 12)),
+                                          ],
+                                        )
+                                      ],
                                       if ((entry.dueDate != null &&
                                               !entry.isSettled) ||
                                           (entry.notes != null &&
                                               entry.notes!
                                                   .trim()
                                                   .isNotEmpty)) ...[
-                                        const SizedBox(height: 6),
+                                        const SizedBox(height: 4),
                                         Row(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.center,
@@ -971,8 +1000,6 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-
-                                // --- [FIXED] RIGHT COLUMN COMPRESSION ---
                                 Container(
                                   constraints: BoxConstraints(
                                       maxWidth:
@@ -1261,5 +1288,268 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                 )
               ],
             ));
+  }
+
+  // --- [RESTORED] EXPORT ACTIONS ---
+  Future<void> _handleExportTapped() async {
+    _searchFocusNode.unfocus();
+    final entries = await _service.fetchAllEntries();
+    if (entries.isEmpty) {
+      showStatusSheet(
+        context: context,
+        title: "No Data",
+        message: "You have no records to export.",
+        icon: Icons.error_outline_rounded,
+        color: Colors.redAccent,
+      );
+      return;
+    }
+    _showExportOptions(entries);
+  }
+
+  void _showExportOptions(List<BalanceSheetModel> entries) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: BudgetrColors.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Export Ledger",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text("Exporting ${entries.length} records to your device",
+                style: TextStyle(color: Colors.white.withOpacity(0.5))),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildExportOption(
+                    icon: Icons.picture_as_pdf_rounded,
+                    label: "Save PDF",
+                    color: const Color(0xFFE71D36),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      setState(() {
+                        _isExporting = true;
+                        _exportMessage = "COMPILING SECURE PDF ARCHIVE...";
+                      });
+                      try {
+                        final result = await BalanceSheetExportService()
+                            .exportToPdf(entries);
+                        if (mounted) {
+                          setState(() => _isExporting = false);
+                          _showExportSuccessSheet(
+                              result, const Color(0xFFE71D36), "PDF");
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          setState(() => _isExporting = false);
+                          _showError("Export failed: $e");
+                        }
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildExportOption(
+                    icon: Icons.table_chart_rounded,
+                    label: "Save CSV",
+                    color: const Color(0xFF2EC4B6),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      setState(() {
+                        _isExporting = true;
+                        _exportMessage = "EXTRACTING DATA TO SPREADSHEET...";
+                      });
+                      try {
+                        final result = await BalanceSheetExportService()
+                            .exportToCsv(entries);
+                        if (mounted) {
+                          setState(() => _isExporting = false);
+                          _showExportSuccessSheet(
+                              result, const Color(0xFF2EC4B6), "CSV");
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          setState(() => _isExporting = false);
+                          _showError("Export failed: $e");
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExportOption(
+      {required IconData icon,
+      required String label,
+      required Color color,
+      required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withOpacity(0.3))),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 12),
+            Text(label,
+                style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showExportSuccessSheet(
+      BalanceSheetExportResult result, Color themeColor, String format) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        decoration: BoxDecoration(
+            color: BudgetrColors.background,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border:
+                Border(top: BorderSide(color: Colors.white.withOpacity(0.1)))),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: themeColor.withOpacity(0.15), shape: BoxShape.circle),
+              child:
+                  Icon(Icons.check_circle_rounded, color: themeColor, size: 48),
+            ),
+            const SizedBox(height: 16),
+            Text("$format Export Successful",
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.05))),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("File Saved to:",
+                      style: TextStyle(
+                          color: themeColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11)),
+                  const SizedBox(height: 4),
+                  Text(result.publicPath,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 12, height: 1.4)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: themeColor.withOpacity(0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16))),
+                    icon: Icon(Icons.ios_share_rounded, color: themeColor),
+                    label: Text("Share",
+                        style: TextStyle(
+                            color: themeColor, fontWeight: FontWeight.bold)),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Share.shareXFiles([XFile(result.safeCachePath)],
+                          text: "FinStack 360 Balance Sheet $format Export");
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: themeColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16))),
+                    icon: const Icon(Icons.file_open_rounded),
+                    label: const Text("Open File",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final mimeType =
+                          format == "PDF" ? "application/pdf" : "text/csv";
+                      final openResult = await OpenFile.open(
+                          result.safeCachePath,
+                          type: mimeType);
+                      if (openResult.type != ResultType.done && mounted) {
+                        _showError(
+                            "Cannot open directly. Please use the 'Share' button instead.");
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Dismiss",
+                    style: TextStyle(color: Colors.white54)))
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showError(String errorMsg) {
+    showStatusSheet(
+        context: context,
+        title: "Error",
+        message: errorMsg,
+        icon: Icons.error_outline_rounded,
+        color: Colors.redAccent);
   }
 }

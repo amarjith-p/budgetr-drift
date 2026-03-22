@@ -401,7 +401,7 @@ class _CategoryExportSheetState extends State<CategoryExportSheet> {
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text("FinStack 360 Report",
+                      pw.Text("FinStack 360",
                           style: pw.TextStyle(
                               fontSize: 24, fontWeight: pw.FontWeight.bold)),
                       pw.Text(widget.dateRangeName,

@@ -47,7 +47,6 @@ class BalanceSheetService {
         .map((rows) => rows.map(_mapEntry).toList());
   }
 
-  // [NEW] Get all entries for a specific Contact (Deep Dive)
   Stream<List<BalanceSheetModel>> watchContactEntries(String contactName) {
     return (_db.select(_db.balanceSheetEntries)
           ..where((t) => t.contactName.equals(contactName))
@@ -58,6 +57,18 @@ class BalanceSheetService {
           ]))
         .watch()
         .map((rows) => rows.map(_mapEntry).toList());
+  }
+
+  // --- [NEW] Fetch everything for Export ---
+  Future<List<BalanceSheetModel>> fetchAllEntries() async {
+    final rows = await (_db.select(_db.balanceSheetEntries)
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.isSettled, mode: OrderingMode.asc),
+            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)
+          ]))
+        .get();
+    return rows.map(_mapEntry).toList();
   }
 
   Future<void> addEntry(BalanceSheetModel entry) async {
@@ -99,7 +110,6 @@ class BalanceSheetService {
         .go();
   }
 
-  // [NEW] Handles both partial and full settlements safely
   Future<void> updateSettlement(
       String id, double newSettledAmount, bool isSettled) async {
     await (_db.update(_db.balanceSheetEntries)..where((t) => t.id.equals(id)))
