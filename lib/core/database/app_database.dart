@@ -49,7 +49,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration {
@@ -119,6 +119,42 @@ class AppDatabase extends _$AppDatabase {
 
             if (!existingColumns.contains('is_paused')) {
               await m.addColumn(tripRecords, tripRecords.isPaused);
+            }
+          }
+        }
+
+        if (from < 18) {
+          if (existingTables.contains(balanceSheetEntries.actualTableName)) {
+            final tableInfo = await customSelect(
+                    "PRAGMA table_info('${balanceSheetEntries.actualTableName}')")
+                .get();
+            final existingColumns =
+                tableInfo.map((row) => row.read<String>('name')).toSet();
+
+            if (!existingColumns.contains('contact_name')) {
+              await m.addColumn(
+                  balanceSheetEntries, balanceSheetEntries.contactName);
+            }
+            if (!existingColumns.contains('due_date')) {
+              await m.addColumn(
+                  balanceSheetEntries, balanceSheetEntries.dueDate);
+            }
+            if (!existingColumns.contains('is_settled')) {
+              await m.addColumn(
+                  balanceSheetEntries, balanceSheetEntries.isSettled);
+            }
+          }
+        }
+        if (from < 19) {
+          if (existingTables.contains(balanceSheetEntries.actualTableName)) {
+            final tableInfo = await customSelect(
+                    "PRAGMA table_info('${balanceSheetEntries.actualTableName}')")
+                .get();
+            final existingColumns =
+                tableInfo.map((row) => row.read<String>('name')).toSet();
+            if (!existingColumns.contains('settled_amount')) {
+              await m.addColumn(
+                  balanceSheetEntries, balanceSheetEntries.settledAmount);
             }
           }
         }

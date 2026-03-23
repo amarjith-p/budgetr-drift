@@ -59,7 +59,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           RichText(
             text: TextSpan(
               style: GoogleFonts.orbitron(
-                fontSize: 22,
+                fontSize: 18,
                 letterSpacing: 1,
                 color: const Color.fromARGB(255, 255, 255, 255),
               ),

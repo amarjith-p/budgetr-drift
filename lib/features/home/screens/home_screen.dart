@@ -324,8 +324,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const Color(0xFFFF7F11), const PortfolioDashboard()),
       _buildVerticalActionChip(context, "Net Worth", Icons.diamond_rounded,
           const Color(0xFFFFB703), const NetWorthScreen()),
-      _buildVerticalActionChip(context, "Budget Buckets", Icons.widgets_rounded,
-          const Color(0xFFFFE066), const SettingsScreen()),
+      _buildVerticalActionChip(context, "Balance Sheet", Icons.balance_sharp,
+          const Color(0xFF9D4EDD), const BalanceSheetScreen()),
       _buildVerticalActionChip(context, "Settlements", Icons.fact_check_rounded,
           const Color(0xFF2DC653), const SettlementScreen()),
       _buildVerticalActionChip(
@@ -351,8 +351,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const InvestmentScreen()),
       _buildVerticalActionChip(context, "Secure Vault", Icons.security_rounded,
           const Color(0xFFF72585), const VaultAuthScreen()),
-      _buildVerticalActionChip(context, "Balance Sheet", Icons.balance_sharp,
-          const Color(0xFF9D4EDD), const BalanceSheetScreen()),
+      _buildVerticalActionChip(context, "Budget Buckets", Icons.widgets_rounded,
+          const Color(0xFFFFE066), const SettingsScreen()),
       _buildVerticalActionChip(
           context,
           "Backup & Restore",
