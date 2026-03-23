@@ -1,4 +1,5 @@
 import 'dart:async'; // [NEW SEARCH LOGIC]
+import 'dart:ui'; // [NEW STICKY HEADER LOGIC]
 
 import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
@@ -71,7 +72,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
         allTransactions: _allCachedTransactions,
         onApply: (newFilters) {
           setState(() {
-            // [NEW SEARCH LOGIC] Preserve existing search when applying other filters
+            // Preserve existing search when applying other filters
             newFilters.searchQuery = _criteria.searchQuery;
             _criteria = newFilters;
           });
@@ -161,7 +162,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               _buildTuneButton(),
               const SizedBox(width: 8),
 
-              // [NEW SEARCH LOGIC] Search Trigger Button
+              // Search Trigger Button
               _buildSearchTriggerButton(),
               const SizedBox(width: 12),
 
@@ -241,58 +242,86 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                         return DateFormat('MMMM yyyy').format(t.date);
                       });
 
-                      return ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
-                        itemCount: grouped.length,
-                        itemBuilder: (context, index) {
-                          final month = grouped.keys.elementAt(index);
-                          final txns = grouped[month]!;
+                      return Column(
+                        children: [
+                          // 1. Dynamic Summary Strip
+                          _buildFilteredSummaryStrip(transactions),
 
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                                child: Text(
-                                  month,
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                              ),
-                              ...txns.map((txn) {
-                                final account = accountMap[txn.accountId];
-                                final accountName = account != null
-                                    ? "${account.name} - ${account.bankName}"
-                                    : "Unknown Account";
+                          // 2. CustomScrollView for Sticky Headers
+                          Expanded(
+                            child: CustomScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              slivers: [
+                                // --- [BUG FIX: SLIVER MAIN AXIS GROUP] ---
+                                // Using SliverMainAxisGroup ensures that when the items of a specific
+                                // month scroll off the screen, their header is pushed out by the next one.
+                                ...grouped.entries.map((entry) {
+                                  final month = entry.key;
+                                  final txns = entry.value;
 
-                                return TransactionItem(
-                                  txn: txn,
-                                  iconData: categoryIconMap[txn.category] ??
-                                      Icons.category_outlined,
-                                  sourceAccountName: accountName,
-                                  onEdit: () {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      backgroundColor: Colors.transparent,
-                                      builder: (ctx) => NewExpenseScreen(
-                                        txnToEdit: txn,
+                                  return SliverMainAxisGroup(
+                                    slivers: [
+                                      // The Sticky Header
+                                      SliverPersistentHeader(
+                                        pinned: true,
+                                        delegate: _MonthHeaderDelegate(month),
                                       ),
-                                    );
-                                  },
-                                  onDelete: () async {
-                                    await _handleDelete(context, txn);
-                                  },
-                                );
-                              }),
-                            ],
-                          );
-                        },
+                                      // The List of Transactions for this month
+                                      SliverPadding(
+                                        padding: const EdgeInsets.only(
+                                            left: 20, right: 20, bottom: 12),
+                                        sliver: SliverList(
+                                          delegate: SliverChildBuilderDelegate(
+                                            (context, index) {
+                                              final txn = txns[index];
+                                              final account =
+                                                  accountMap[txn.accountId];
+                                              final accountName = account !=
+                                                      null
+                                                  ? "${account.name} - ${account.bankName}"
+                                                  : "Unknown Account";
+
+                                              return TransactionItem(
+                                                txn: txn,
+                                                iconData: categoryIconMap[
+                                                        txn.category] ??
+                                                    Icons.category_outlined,
+                                                sourceAccountName: accountName,
+                                                onEdit: () {
+                                                  showModalBottomSheet(
+                                                    context: context,
+                                                    isScrollControlled: true,
+                                                    backgroundColor:
+                                                        Colors.transparent,
+                                                    builder: (ctx) =>
+                                                        NewExpenseScreen(
+                                                      txnToEdit: txn,
+                                                    ),
+                                                  );
+                                                },
+                                                onDelete: () async {
+                                                  await _handleDelete(
+                                                      context, txn);
+                                                },
+                                              );
+                                            },
+                                            childCount: txns.length,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }).toList(),
+                                // --- [END BUG FIX] ---
+
+                                // Bottom Padding
+                                const SliverToBoxAdapter(
+                                  child: SizedBox(height: 100),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       );
                     },
                   );
@@ -307,7 +336,134 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   // --- WIDGETS ---
 
-  // [NEW SEARCH LOGIC] Trigger Button
+// --- [NEW SUMMARY STRIP LOGIC - SPACE OPTIMIZED] ---
+  Widget _buildFilteredSummaryStrip(
+      List<ExpenseTransactionModel> transactions) {
+    // Only show if ANY filter or search is active
+    if (!_criteria.hasFilters) return const SizedBox.shrink();
+
+    double totalIncome = 0;
+    double totalExpense = 0;
+
+    for (var txn in transactions) {
+      if (txn.type == 'Income') {
+        totalIncome += txn.amount;
+      } else if (txn.type == 'Expense') {
+        totalExpense += txn.amount;
+      }
+    }
+
+    double netFlow = totalIncome - totalExpense;
+    Color netColor = netFlow >= 0 ? BudgetrColors.success : BudgetrColors.error;
+    final formatCurrency = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutQuint,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1B263B)
+              .withOpacity(0.5), // Matches transaction card background
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Column(
+          children: [
+            // TOP TIER: Net Flow (Hero Metric - Gets full screen width)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "NET FLOW",
+                    style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0),
+                  ),
+                  const SizedBox(width: 12),
+                  // Flexible + FittedBox ensures the text shrinks instead of overflowing
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        (netFlow < 0 ? "-" : "") +
+                            formatCurrency.format(netFlow.abs()),
+                        style: TextStyle(
+                            color: netColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Subtle Divider
+            const Divider(height: 1, color: Colors.white10),
+
+            // BOTTOM TIER: Income & Expense (Split 50/50)
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildSummaryColumn(
+                        "INCOME", totalIncome, BudgetrColors.success),
+                  ),
+                  Container(width: 1, color: Colors.white10),
+                  Expanded(
+                    child: _buildSummaryColumn(
+                        "EXPENSE", totalExpense, BudgetrColors.error),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryColumn(String label, double amount, Color color) {
+    final formattedAmount = NumberFormat.currency(symbol: '₹', decimalDigits: 2)
+        .format(amount.abs());
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 4),
+          // FittedBox prevents overflow on smaller phones
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              formattedAmount,
+              style: TextStyle(
+                  color: color, fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  // --- [END NEW SUMMARY STRIP LOGIC] ---
+  // --- [END NEW SUMMARY STRIP LOGIC] ---
+
   Widget _buildSearchTriggerButton() {
     return GestureDetector(
       onTap: () {
@@ -361,8 +517,8 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       onTap: () {
         setState(() {
           _criteria = FilterCriteria(); // Reset filters
-          _searchCtrl.clear(); // [NEW SEARCH LOGIC] Clear TextField on Reset
-          _isSearching = false; // [NEW SEARCH LOGIC] Collapse Search Bar
+          _searchCtrl.clear(); // Clear TextField on Reset
+          _isSearching = false; // Collapse Search Bar
         });
       },
       child: Container(
@@ -447,8 +603,8 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
           TextButton(
             onPressed: () => setState(() {
               _criteria = FilterCriteria();
-              _searchCtrl.clear(); // [NEW SEARCH LOGIC]
-              _isSearching = false; // [NEW SEARCH LOGIC]
+              _searchCtrl.clear();
+              _isSearching = false;
             }),
             child: const Text("Clear All Filters",
                 style: TextStyle(color: BudgetrColors.accent)),
@@ -476,3 +632,46 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     );
   }
 }
+
+// --- [NEW STICKY HEADER LOGIC] ---
+class _MonthHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final String month;
+
+  _MonthHeaderDelegate(this.month);
+
+  @override
+  double get minExtent => 45.0; // Height when fully scrolled up
+  @override
+  double get maxExtent => 45.0; // Height when fully expanded
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    // Glassmorphism effect to let transactions elegantly blur underneath
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          color: BudgetrColors.background.withOpacity(0.85),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          alignment: Alignment.centerLeft,
+          child: Text(
+            month.toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 2.0,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _MonthHeaderDelegate oldDelegate) {
+    return oldDelegate.month != month;
+  }
+}
+// --- [END NEW STICKY HEADER LOGIC] ---
