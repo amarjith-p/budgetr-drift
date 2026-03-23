@@ -28,7 +28,16 @@ class FilterCriteria {
 
   // Getters
   DateTime? get startDate => dateRange?.start;
-  DateTime? get endDate => dateRange?.end;
+
+  // --- [NEW END DATE LOGIC] ---
+  // Automatically pushes the end date to 11:59:59.999 PM
+  // so all transactions on the selected "To Date" are included.
+  DateTime? get endDate {
+    if (dateRange?.end == null) return null;
+    final d = dateRange!.end;
+    return DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
+  }
+  // --- [END NEW END DATE LOGIC] ---
 
   bool get hasFilters {
     return dateRange != null ||
@@ -75,7 +84,7 @@ class FilterCriteria {
   }
 
   bool matches(ExpenseTransactionModel txn) {
-    // 1. Date Check
+    // 1. Date Check (Now strictly respects the new 23:59:59 boundary)
     if (startDate != null && endDate != null) {
       if (txn.date.isBefore(startDate!) || txn.date.isAfter(endDate!)) {
         return false;
