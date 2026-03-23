@@ -47,6 +47,11 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
   late Stream<List<TransactionCategoryModel>> _categoryStream;
   late Stream<List<CreditTransactionModel>> _transactionStream;
 
+  // --- [NEW PAGINATION LOGIC: State Variables] ---
+  int _currentRenderLimit = 50;
+  final ScrollController _scrollController = ScrollController();
+  // --- [END NEW PAGINATION LOGIC] ---
+
   @override
   void initState() {
     super.initState();
@@ -54,7 +59,28 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     _transactionStream =
         GetIt.I<CreditService>().getTransactionsForCard(widget.card.id);
     _loadIgnoredTransactions();
+
+    // --- [NEW PAGINATION LOGIC: Listener] ---
+    _scrollController.addListener(_onScroll);
   }
+
+  // --- [NEW PAGINATION LOGIC: Scroll Handler & Dispose] ---
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      setState(() {
+        _currentRenderLimit += 50;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+  // --- [END NEW PAGINATION LOGIC] ---
 
   Future<void> _loadIgnoredTransactions() async {
     final prefs = await SharedPreferences.getInstance();
@@ -93,7 +119,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         return Scaffold(
           backgroundColor: _bgColor,
 
-          // --- NEW: Floating Action Button to add quick transaction ---
+          // --- Floating Action Button to add quick transaction ---
           floatingActionButton: FloatingActionButton(
             backgroundColor: _accentColor,
             elevation: 4,
@@ -193,6 +219,150 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                       final sortedDates = groupedHistory.keys.toList()
                         ..sort((a, b) => b.compareTo(a));
 
+                      // --- [NEW PAGINATION LOGIC: Build Lazy List Children] ---
+                      final List<Widget> listChildren = [];
+                      int renderedCount = 0;
+
+                      if (currentCycleSpends.isNotEmpty) {
+                        listChildren.add(
+                            _buildSectionHeader("CURRENT CYCLE (UNBILLED)"));
+                        for (var t in currentCycleSpends) {
+                          if (renderedCount >= _currentRenderLimit) break;
+                          listChildren.add(TransactionListItem(
+                            txn: t,
+                            iconData: categoryIconMap[t.category] ??
+                                Icons.category_outlined,
+                            isIgnored: _ignoredTransactionIds.contains(t.id),
+                            onEdit: () => _handleEdit(context, t),
+                            onDelete: () =>
+                                _handleDeleteTransaction(context, t),
+                            onMarkAsRepayment: () => _handleMarkAsRepayment(t),
+                            onIgnore: () => _handleIgnoreTransaction(t.id),
+                            onDeferToNextBill: t.includeInNextStatement
+                                ? () => _handleDeferTransaction(t, false)
+                                : null,
+                          ));
+                          renderedCount++;
+                        }
+                        listChildren.add(const SizedBox(height: 24));
+                      }
+
+                      if (sortedDates.isNotEmpty &&
+                          renderedCount < _currentRenderLimit) {
+                        listChildren.add(_buildSectionHeader("STATEMENTS"));
+
+                        for (var date in sortedDates) {
+                          if (renderedCount >= _currentRenderLimit) break;
+
+                          final rawTxns = groupedHistory[date]!;
+                          final statementExpenses = <CreditTransactionModel>[];
+                          final statementPayments = <CreditTransactionModel>[];
+
+                          for (var t in rawTxns) {
+                            if (t.type == 'Income' &&
+                                BillingCycleUtils.isRepaymentCategory(
+                                    t.category)) {
+                              statementPayments.add(t);
+                            } else {
+                              statementExpenses.add(t);
+                            }
+                          }
+
+                          final isLastStatement = BillingCycleUtils.isSameDay(
+                              date, lastStatementDate);
+                          if (isLastStatement) {
+                            statementPayments.addAll(lastStatementPayments);
+                          }
+
+                          final billTotal = _calculateTotal(statementExpenses);
+
+                          if (statementExpenses.isEmpty &&
+                              statementPayments.isEmpty) {
+                            continue;
+                          }
+
+                          final List<Widget> statementChildren = [];
+
+                          statementChildren.add(_buildStatementHeader(date,
+                              billTotal, isLastStatement, statementPayments));
+
+                          if (statementPayments.isNotEmpty) {
+                            statementChildren.add(const Padding(
+                              padding:
+                                  EdgeInsets.only(left: 16, top: 8, bottom: 8),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.subdirectory_arrow_right,
+                                      color: Colors.greenAccent, size: 16),
+                                  SizedBox(width: 8),
+                                  Text("Payments Received",
+                                      style: TextStyle(
+                                          color: Colors.greenAccent,
+                                          fontSize: 12)),
+                                ],
+                              ),
+                            ));
+
+                            for (var t in statementPayments) {
+                              if (renderedCount >= _currentRenderLimit) break;
+                              statementChildren.add(TransactionListItem(
+                                txn: t,
+                                iconData: Icons.payment,
+                                isIgnored:
+                                    _ignoredTransactionIds.contains(t.id),
+                                onEdit: () => _handleEdit(context, t),
+                                onDelete: () =>
+                                    _handleDeleteTransaction(context, t),
+                                onMarkAsRepayment: () =>
+                                    _handleMarkAsRepayment(t),
+                                onIgnore: () => _handleIgnoreTransaction(t.id),
+                              ));
+                              renderedCount++;
+                            }
+                          }
+
+                          for (var t in statementExpenses) {
+                            if (renderedCount >= _currentRenderLimit) break;
+
+                            final bool isDanger =
+                                BillingCycleUtils.isDangerZone(
+                                    t.date, widget.card.billDate);
+                            final bool showWarning = isDanger &&
+                                !t.includeInNextStatement &&
+                                !t.isSettlementVerified;
+
+                            statementChildren.add(TransactionListItem(
+                              txn: t,
+                              iconData: categoryIconMap[t.category] ??
+                                  Icons.category_outlined,
+                              isIgnored: _ignoredTransactionIds.contains(t.id),
+                              onEdit: () => _handleEdit(context, t),
+                              onDelete: () =>
+                                  _handleDeleteTransaction(context, t),
+                              onMarkAsRepayment: () =>
+                                  _handleMarkAsRepayment(t),
+                              onIgnore: () => _handleIgnoreTransaction(t.id),
+                              onDeferToNextBill: t.isSettlementVerified
+                                  ? null
+                                  : () => _handleDeferTransaction(
+                                      t, !t.includeInNextStatement),
+                              onVerifySettlement: () =>
+                                  _handleVerifySettlement(t),
+                              showDangerWarning: showWarning,
+                            ));
+                            renderedCount++;
+                          }
+
+                          statementChildren.add(const SizedBox(height: 24));
+
+                          listChildren.add(Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: statementChildren,
+                          ));
+                        }
+                      }
+                      // --- [END NEW PAGINATION LOGIC] ---
+
                       return Column(
                         children: [
                           // Active Filters List
@@ -208,156 +378,11 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                           ),
                           Expanded(
                             child: ListView(
+                              controller:
+                                  _scrollController, // [NEW PAGINATION LOGIC] Attach controller
                               padding: const EdgeInsets.only(
-                                  left: 16,
-                                  right: 16,
-                                  top: 16,
-                                  bottom: 80), // Extra padding for FAB
-                              children: [
-                                if (currentCycleSpends.isNotEmpty) ...[
-                                  _buildSectionHeader(
-                                      "CURRENT CYCLE (UNBILLED)"),
-                                  ...currentCycleSpends.map((t) =>
-                                      TransactionListItem(
-                                        txn: t,
-                                        iconData: categoryIconMap[t.category] ??
-                                            Icons.category_outlined,
-                                        isIgnored: _ignoredTransactionIds
-                                            .contains(t.id),
-                                        onEdit: () => _handleEdit(context, t),
-                                        onDelete: () =>
-                                            _handleDeleteTransaction(
-                                                context, t),
-                                        onMarkAsRepayment: () =>
-                                            _handleMarkAsRepayment(t),
-                                        onIgnore: () =>
-                                            _handleIgnoreTransaction(t.id),
-                                        onDeferToNextBill:
-                                            t.includeInNextStatement
-                                                ? () => _handleDeferTransaction(
-                                                    t, false)
-                                                : null,
-                                      )),
-                                  const SizedBox(height: 24),
-                                ],
-                                if (sortedDates.isNotEmpty)
-                                  _buildSectionHeader("STATEMENTS"),
-                                ...sortedDates.map((date) {
-                                  final rawTxns = groupedHistory[date]!;
-                                  final statementExpenses =
-                                      <CreditTransactionModel>[];
-                                  final statementPayments =
-                                      <CreditTransactionModel>[];
-
-                                  for (var t in rawTxns) {
-                                    if (t.type == 'Income' &&
-                                        BillingCycleUtils.isRepaymentCategory(
-                                            t.category)) {
-                                      statementPayments.add(t);
-                                    } else {
-                                      statementExpenses.add(t);
-                                    }
-                                  }
-
-                                  final isLastStatement =
-                                      BillingCycleUtils.isSameDay(
-                                          date, lastStatementDate);
-                                  if (isLastStatement) {
-                                    statementPayments
-                                        .addAll(lastStatementPayments);
-                                  }
-
-                                  final billTotal =
-                                      _calculateTotal(statementExpenses);
-
-                                  if (statementExpenses.isEmpty &&
-                                      statementPayments.isEmpty) {
-                                    return const SizedBox.shrink();
-                                  }
-
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      _buildStatementHeader(date, billTotal,
-                                          isLastStatement, statementPayments),
-                                      ...statementExpenses.map((t) {
-                                        final bool isDanger =
-                                            BillingCycleUtils.isDangerZone(
-                                                t.date, widget.card.billDate);
-
-                                        final bool showWarning = isDanger &&
-                                            !t.includeInNextStatement &&
-                                            !t.isSettlementVerified;
-
-                                        return TransactionListItem(
-                                          txn: t,
-                                          iconData:
-                                              categoryIconMap[t.category] ??
-                                                  Icons.category_outlined,
-                                          isIgnored: _ignoredTransactionIds
-                                              .contains(t.id),
-                                          onEdit: () => _handleEdit(context, t),
-                                          onDelete: () =>
-                                              _handleDeleteTransaction(
-                                                  context, t),
-                                          onMarkAsRepayment: () =>
-                                              _handleMarkAsRepayment(t),
-                                          onIgnore: () =>
-                                              _handleIgnoreTransaction(t.id),
-                                          onDeferToNextBill: t
-                                                  .isSettlementVerified
-                                              ? null
-                                              : () => _handleDeferTransaction(
-                                                  t, !t.includeInNextStatement),
-                                          onVerifySettlement: () =>
-                                              _handleVerifySettlement(t),
-                                          showDangerWarning: showWarning,
-                                        );
-                                      }),
-                                      if (statementPayments.isNotEmpty) ...[
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              left: 16, top: 8, bottom: 8),
-                                          child: Row(
-                                            children: [
-                                              const Icon(
-                                                  Icons
-                                                      .subdirectory_arrow_right,
-                                                  color: Colors.greenAccent,
-                                                  size: 16),
-                                              const SizedBox(width: 8),
-                                              const Text("Payments Received",
-                                                  style: TextStyle(
-                                                      color: Colors.greenAccent,
-                                                      fontSize: 12)),
-                                            ],
-                                          ),
-                                        ),
-                                        ...statementPayments
-                                            .map((t) => TransactionListItem(
-                                                  txn: t,
-                                                  iconData: Icons.payment,
-                                                  isIgnored:
-                                                      _ignoredTransactionIds
-                                                          .contains(t.id),
-                                                  onEdit: () =>
-                                                      _handleEdit(context, t),
-                                                  onDelete: () =>
-                                                      _handleDeleteTransaction(
-                                                          context, t),
-                                                  onMarkAsRepayment: () =>
-                                                      _handleMarkAsRepayment(t),
-                                                  onIgnore: () =>
-                                                      _handleIgnoreTransaction(
-                                                          t.id),
-                                                )),
-                                      ],
-                                      const SizedBox(height: 24),
-                                    ],
-                                  );
-                                }),
-                              ],
+                                  left: 16, right: 16, top: 16, bottom: 80),
+                              children: listChildren,
                             ),
                           ),
                         ],
@@ -373,7 +398,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     );
   }
 
-  // --- NEW: Modern Header ---
+  // --- MODERN HEADER ---
   Widget _buildModernHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -513,6 +538,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
           availableBuckets: uniqueBuckets,
           onApply: (type, sort, dateRange, categories, buckets) {
             setState(() {
+              _currentRenderLimit = 50; // [NEW PAGINATION LOGIC] Reset limit
               _selectedType = type;
               _sortOption = sort;
               _dateRange = dateRange;
@@ -538,6 +564,7 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         children: [
           GestureDetector(
             onTap: () => setState(() {
+              _currentRenderLimit = 50; // [NEW PAGINATION LOGIC] Reset limit
               _selectedType = 'All';
               _sortOption = 'Newest';
               _dateRange = null;
@@ -568,23 +595,38 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
           if (_selectedType != 'All')
             _buildFilterChip(
               _selectedType,
-              () => setState(() => _selectedType = 'All'),
+              () => setState(() {
+                _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+                _selectedType = 'All';
+              }),
             ),
           if (_dateRange != null)
             _buildFilterChip(
               "${DateFormat('dd MMM').format(_dateRange!.start)} - ${DateFormat('dd MMM').format(_dateRange!.end)}",
-              () => setState(() => _dateRange = null),
+              () => setState(() {
+                _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+                _dateRange = null;
+              }),
             ),
           ..._selectedCategories.map((c) => _buildFilterChip(c, () {
-                setState(() => _selectedCategories.remove(c));
+                setState(() {
+                  _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+                  _selectedCategories.remove(c);
+                });
               })),
           ..._selectedBuckets.map((b) => _buildFilterChip("Bucket: $b", () {
-                setState(() => _selectedBuckets.remove(b));
+                setState(() {
+                  _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+                  _selectedBuckets.remove(b);
+                });
               })),
           if (_sortOption != 'Newest')
             _buildFilterChip(
               "Sort: $_sortOption",
-              () => setState(() => _sortOption = 'Newest'),
+              () => setState(() {
+                _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+                _sortOption = 'Newest';
+              }),
             ),
         ],
       ),

@@ -40,13 +40,39 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
   late Stream<List<TransactionCategoryModel>> _categoryStream;
   late Stream<List<ExpenseTransactionModel>> _transactionStream;
 
+  // --- [NEW PAGINATION LOGIC: State Variables] ---
+  int _currentRenderLimit = 50;
+  final ScrollController _scrollController = ScrollController();
+  // --- [END NEW PAGINATION LOGIC] ---
+
   @override
   void initState() {
     super.initState();
     _categoryStream = GetIt.I<CategoryService>().getCategories();
     _transactionStream =
         GetIt.I<ExpenseService>().getTransactionsForAccount(widget.account.id);
+
+    // --- [NEW PAGINATION LOGIC: Listener] ---
+    _scrollController.addListener(_onScroll);
   }
+
+  // --- [NEW PAGINATION LOGIC: Scroll Handler & Dispose] ---
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      setState(() {
+        _currentRenderLimit += 50;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+  // --- [END NEW PAGINATION LOGIC] ---
 
   // --- SYNC LOGIC ---
   Future<void> _handleSync(List<ExpenseTransactionModel> transactions) async {
@@ -219,12 +245,20 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                                       "No transactions match your filters.");
                                 }
 
-                                final grouped = groupBy(filteredList,
+                                // --- [NEW PAGINATION LOGIC: Slice data for rendering] ---
+                                final displayedList = filteredList
+                                    .take(_currentRenderLimit)
+                                    .toList();
+
+                                final grouped = groupBy(displayedList,
                                     (ExpenseTransactionModel t) {
                                   return DateFormat('MMMM yyyy').format(t.date);
                                 });
+                                // --- [END NEW PAGINATION LOGIC] ---
 
                                 return ListView.builder(
+                                  controller:
+                                      _scrollController, // [NEW PAGINATION LOGIC: Attached]
                                   padding: const EdgeInsets.all(16),
                                   itemCount: grouped.length,
                                   itemBuilder: (context, index) {
@@ -498,6 +532,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         allTransactions: allTxns,
         onApply: (newFilters) {
           setState(() {
+            _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
             _criteria = newFilters;
           });
         },
@@ -514,6 +549,7 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
         child: ListView(scrollDirection: Axis.horizontal, children: [
           GestureDetector(
               onTap: () => setState(() {
+                    _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
                     _criteria = FilterCriteria(); // Reset to default
                   }),
               child: Container(
@@ -535,30 +571,46 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
           // Types Chips
           ..._criteria.transactionTypes
               .map((type) => _buildFilterChip(type, () {
-                    setState(() => _criteria.transactionTypes.remove(type));
+                    setState(() {
+                      _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+                      _criteria.transactionTypes.remove(type);
+                    });
                   })),
 
           // Date Chip
           if (_criteria.dateRange != null)
             _buildFilterChip(
                 "${DateFormat('dd MMM').format(_criteria.dateRange!.start)} - ${DateFormat('dd MMM').format(_criteria.dateRange!.end)}",
-                () => setState(() => _criteria.dateRange = null)),
+                () => setState(() {
+                      _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+                      _criteria.dateRange = null;
+                    })),
 
           // Category Chips
           ..._criteria.selectedCategories.map((c) => _buildFilterChip(c, () {
-                setState(() => _criteria.selectedCategories.remove(c));
+                setState(() {
+                  _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+                  _criteria.selectedCategories.remove(c);
+                });
               })),
 
           // Bucket Chips
           ..._criteria.selectedBuckets
               .map((b) => _buildFilterChip("Bucket: $b", () {
-                    setState(() => _criteria.selectedBuckets.remove(b));
+                    setState(() {
+                      _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+                      _criteria.selectedBuckets.remove(b);
+                    });
                   })),
 
           // Sort Chip (Show only if not default)
           if (_criteria.sortOption != SortOption.newest)
-            _buildFilterChip("Sort: ${_getSortLabel(_criteria.sortOption)}",
-                () => setState(() => _criteria.sortOption = SortOption.newest)),
+            _buildFilterChip(
+                "Sort: ${_getSortLabel(_criteria.sortOption)}",
+                () => setState(() {
+                      _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+                      _criteria.sortOption = SortOption.newest;
+                    })),
         ]));
   }
 

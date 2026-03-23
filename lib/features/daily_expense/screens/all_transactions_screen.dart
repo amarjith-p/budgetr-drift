@@ -1,5 +1,5 @@
-import 'dart:async'; // [NEW SEARCH LOGIC]
-import 'dart:ui'; // [NEW STICKY HEADER LOGIC]
+import 'dart:async';
+import 'dart:ui';
 
 import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
@@ -38,29 +38,52 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   // Cache for Live Count
   List<ExpenseTransactionModel> _allCachedTransactions = [];
 
-  // --- [NEW SEARCH LOGIC: Variables] ---
   bool _isSearching = false;
   final TextEditingController _searchCtrl = TextEditingController();
   Timer? _debounce;
+
+  // --- [NEW PAGINATION LOGIC: State Variables] ---
+  int _currentRenderLimit = 50;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen for scroll events to trigger lazy loading
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    // If the user scrolls within 200 pixels of the bottom, load the next 50 items
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      setState(() {
+        _currentRenderLimit += 50;
+      });
+    }
+  }
+  // --- [END NEW PAGINATION LOGIC] ---
 
   @override
   void dispose() {
     _searchCtrl.dispose();
     _debounce?.cancel();
+    _scrollController.removeListener(_onScroll); // [NEW PAGINATION LOGIC]
+    _scrollController.dispose(); // [NEW PAGINATION LOGIC]
     super.dispose();
   }
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-    // Debounce to prevent database spamming while typing
     _debounce = Timer(const Duration(milliseconds: 300), () {
       setState(() {
+        _currentRenderLimit =
+            50; // [NEW PAGINATION LOGIC] Reset limit on new search
         _criteria = _criteria.copyWithSearch(query);
       });
     });
   }
-  // --- [END NEW SEARCH LOGIC] ---
 
   void _openSmartFilterSheet() {
     showModalBottomSheet(
@@ -72,7 +95,8 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
         allTransactions: _allCachedTransactions,
         onApply: (newFilters) {
           setState(() {
-            // Preserve existing search when applying other filters
+            _currentRenderLimit =
+                50; // [NEW PAGINATION LOGIC] Reset limit on new filter
             newFilters.searchQuery = _criteria.searchQuery;
             _criteria = newFilters;
           });
@@ -83,6 +107,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   void _toggleTypeFilter(String type) {
     setState(() {
+      _currentRenderLimit = 50; // [NEW PAGINATION LOGIC] Reset limit on toggle
       if (_criteria.transactionTypes.contains(type)) {
         _criteria.transactionTypes.remove(type);
       } else {
@@ -95,7 +120,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // --- [NEW SEARCH LOGIC: Animated Expandable Search Bar] ---
+        // --- Animated Expandable Search Bar ---
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutQuint,
@@ -144,7 +169,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                 )
               : const SizedBox.shrink(),
         ),
-        // --- [END NEW SEARCH LOGIC] ---
 
         // --- SMART HORIZONTAL FILTER BAR ---
         Container(
@@ -158,21 +182,14 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
-              // 1. Tune/Filter Button
               _buildTuneButton(),
               const SizedBox(width: 8),
-
-              // Search Trigger Button
               _buildSearchTriggerButton(),
               const SizedBox(width: 12),
-
-              // 2. Clear Button (Only visible if filters are active)
               if (_criteria.hasFilters) ...[
                 _buildClearButton(),
                 const SizedBox(width: 12),
               ],
-
-              // 3. Quick Multi-Select Toggles
               _buildQuickFilterChip("Expense"),
               const SizedBox(width: 8),
               _buildQuickFilterChip("Income"),
@@ -180,9 +197,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               _buildQuickFilterChip("Transfer Out"),
               const SizedBox(width: 8),
               _buildQuickFilterChip("Transfer In"),
-
               const SizedBox(width: 8),
-              // Indicator for complex filters (Date/Amount/Cats/Buckets)
               if (_criteria.dateRange != null ||
                   _criteria.amountRange != null ||
                   _criteria.selectedCategories.isNotEmpty ||
@@ -225,36 +240,42 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                                 size: 80, label: "COMPILING GLOBAL LEDGER..."));
                       }
 
-                      final transactions = txnSnapshot.data ?? [];
+                      final allTransactions = txnSnapshot.data ?? [];
 
                       if (!_criteria.hasFilters) {
-                        _allCachedTransactions = transactions;
+                        _allCachedTransactions = allTransactions;
                       } else if (_allCachedTransactions.isEmpty) {
-                        _allCachedTransactions = transactions;
+                        _allCachedTransactions = allTransactions;
                       }
 
-                      if (transactions.isEmpty) {
+                      if (allTransactions.isEmpty) {
                         return _buildEmptyState();
                       }
 
-                      final grouped =
-                          groupBy(transactions, (ExpenseTransactionModel t) {
+                      // --- [NEW PAGINATION LOGIC: Slice data for rendering] ---
+                      // We pass the full 'allTransactions' list to the Summary Strip so totals are accurate.
+                      // We pass the sliced 'displayedTransactions' list to the list builder so scrolling is lag-free.
+                      final displayedTransactions =
+                          allTransactions.take(_currentRenderLimit).toList();
+
+                      final grouped = groupBy(displayedTransactions,
+                          (ExpenseTransactionModel t) {
                         return DateFormat('MMMM yyyy').format(t.date);
                       });
+                      // --- [END NEW PAGINATION LOGIC] ---
 
                       return Column(
                         children: [
-                          // 1. Dynamic Summary Strip
-                          _buildFilteredSummaryStrip(transactions),
+                          // Dynamic Summary Strip (Accurate Totals based on FULL search/filter match)
+                          _buildFilteredSummaryStrip(allTransactions),
 
-                          // 2. CustomScrollView for Sticky Headers
+                          // CustomScrollView for Transactions
                           Expanded(
                             child: CustomScrollView(
+                              controller:
+                                  _scrollController, // [NEW PAGINATION LOGIC: Attached]
                               physics: const BouncingScrollPhysics(),
                               slivers: [
-                                // --- [BUG FIX: SLIVER MAIN AXIS GROUP] ---
-                                // Using SliverMainAxisGroup ensures that when the items of a specific
-                                // month scroll off the screen, their header is pushed out by the next one.
                                 ...grouped.entries.map((entry) {
                                   final month = entry.key;
                                   final txns = entry.value;
@@ -312,7 +333,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                                     ],
                                   );
                                 }).toList(),
-                                // --- [END BUG FIX] ---
 
                                 // Bottom Padding
                                 const SliverToBoxAdapter(
@@ -336,10 +356,8 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   // --- WIDGETS ---
 
-// --- [NEW SUMMARY STRIP LOGIC - SPACE OPTIMIZED] ---
   Widget _buildFilteredSummaryStrip(
       List<ExpenseTransactionModel> transactions) {
-    // Only show if ANY filter or search is active
     if (!_criteria.hasFilters) return const SizedBox.shrink();
 
     double totalIncome = 0;
@@ -363,14 +381,12 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         decoration: BoxDecoration(
-          color: const Color(0xFF1B263B)
-              .withOpacity(0.5), // Matches transaction card background
+          color: const Color(0xFF1B263B).withOpacity(0.5),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
         child: Column(
           children: [
-            // TOP TIER: Net Flow (Hero Metric - Gets full screen width)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
@@ -385,7 +401,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                         letterSpacing: 1.0),
                   ),
                   const SizedBox(width: 12),
-                  // Flexible + FittedBox ensures the text shrinks instead of overflowing
                   Flexible(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -403,11 +418,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                 ],
               ),
             ),
-
-            // Subtle Divider
             const Divider(height: 1, color: Colors.white10),
-
-            // BOTTOM TIER: Income & Expense (Split 50/50)
             IntrinsicHeight(
               child: Row(
                 children: [
@@ -447,7 +458,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                 letterSpacing: 0.5),
           ),
           const SizedBox(height: 4),
-          // FittedBox prevents overflow on smaller phones
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -461,8 +471,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       ),
     );
   }
-  // --- [END NEW SUMMARY STRIP LOGIC] ---
-  // --- [END NEW SUMMARY STRIP LOGIC] ---
 
   Widget _buildSearchTriggerButton() {
     return GestureDetector(
@@ -516,9 +524,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          _criteria = FilterCriteria(); // Reset filters
-          _searchCtrl.clear(); // Clear TextField on Reset
-          _isSearching = false; // Collapse Search Bar
+          _criteria = FilterCriteria();
+          _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+          _searchCtrl.clear();
+          _isSearching = false;
         });
       },
       child: Container(
@@ -603,6 +612,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
           TextButton(
             onPressed: () => setState(() {
               _criteria = FilterCriteria();
+              _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
               _searchCtrl.clear();
               _isSearching = false;
             }),
@@ -633,21 +643,20 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   }
 }
 
-// --- [NEW STICKY HEADER LOGIC] ---
+// --- Sticky Header Delegate ---
 class _MonthHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String month;
 
   _MonthHeaderDelegate(this.month);
 
   @override
-  double get minExtent => 45.0; // Height when fully scrolled up
+  double get minExtent => 45.0;
   @override
-  double get maxExtent => 45.0; // Height when fully expanded
+  double get maxExtent => 45.0;
 
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Glassmorphism effect to let transactions elegantly blur underneath
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -674,4 +683,3 @@ class _MonthHeaderDelegate extends SliverPersistentHeaderDelegate {
     return oldDelegate.month != month;
   }
 }
-// --- [END NEW STICKY HEADER LOGIC] ---
