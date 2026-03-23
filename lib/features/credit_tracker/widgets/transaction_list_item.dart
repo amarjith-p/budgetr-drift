@@ -331,20 +331,31 @@ class _TransactionListItemState extends State<TransactionListItem> {
                   const Divider(color: Colors.white10),
                   const SizedBox(height: 8),
 
-                  // Date & Time Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        DateFormat('MMMM dd, yyyy, hh:mm a')
-                            .format(widget.txn.date),
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.5), fontSize: 12),
-                      ),
-                      if (hasBucket)
-                        _buildTag("Bucket: ${widget.txn.bucket}", maxTextWidth),
-                    ],
+                  // --- [RESPONSIVE EXPANDED ROW FIX] ---
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8, // Horizontal space before they wrap
+                      runSpacing:
+                          8, // Vertical space if the Bucket drops to line 2
+                      children: [
+                        Text(
+                          DateFormat('MMMM dd, yyyy, hh:mm a')
+                              .format(widget.txn.date),
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.5),
+                              fontSize: 12),
+                        ),
+                        if (hasBucket)
+                          _buildTag(
+                              "Bucket: ${widget.txn.bucket}", maxTextWidth),
+                      ],
+                    ),
                   ),
+                  // --- [END RESPONSIVE EXPANDED ROW FIX] ---
+
                   const SizedBox(height: 12),
 
                   // Defer to next bill feature (Preserved Workflow)

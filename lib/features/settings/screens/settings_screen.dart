@@ -367,8 +367,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       backgroundColor: _bgColor,
-      // [FIX] Removed standard AppBar
-      // Switched to SafeArea > Column layout for Modern Header
       body: SafeArea(
         child: Column(
           children: [
@@ -523,13 +521,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- NEW: Modern Header Implementation ---
   Widget _buildModernHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Back Button
           GestureDetector(
             onTap: () => Navigator.maybePop(context),
             child: GlassCard(
@@ -541,10 +537,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: Colors.white70, size: 20),
             ),
           ),
-
           const SizedBox(width: 16),
-
-          // Title Section
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -561,7 +554,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  "Budget Configurations",
+                  "Budget Configuration",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -572,8 +565,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-
-          // Action Buttons
           if (!_isEditing)
             GestureDetector(
               onTap: _authenticate,
@@ -648,6 +639,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: TextFormField(
                     initialValue: _categories[index].name,
                     enabled: _isEditing,
+                    maxLength: 20,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -662,8 +654,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: Colors.white.withOpacity(0.3),
                       ),
                     ),
-                    validator: (val) =>
-                        val == null || val.isEmpty ? 'Required' : null,
+                    // --- [UI FIX] Custom sleek text counter ---
+                    buildCounter: (context,
+                        {required currentLength,
+                        required isFocused,
+                        maxLength}) {
+                      if (!_isEditing)
+                        return null; // Hides completely in View Only mode
+                      return Text(
+                        '$currentLength/$maxLength',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.3),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      );
+                    },
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) return 'Required';
+                      if (val.trim().length < 2)
+                        return 'Min 2 characters required';
+                      if (val.trim().length > 20)
+                        return 'Max 20 characters allowed';
+                      return null;
+                    },
                     onChanged: (val) => _categories[index].name = val,
                     onSaved: (val) => _categories[index].name = val!,
                   ),
