@@ -8,19 +8,23 @@ class FilterCriteria {
   List<String> transactionTypes;
   RangeValues? amountRange;
   List<String> selectedCategories;
-  List<String> selectedBuckets; // [NEW]
+  List<String> selectedBuckets;
   SortOption sortOption;
+
+  // [NEW SEARCH LOGIC]
+  String? searchQuery;
 
   FilterCriteria({
     this.dateRange,
     List<String>? transactionTypes,
     this.amountRange,
     List<String>? selectedCategories,
-    List<String>? selectedBuckets, // [NEW]
+    List<String>? selectedBuckets,
     this.sortOption = SortOption.newest,
+    this.searchQuery, // [NEW SEARCH LOGIC]
   })  : transactionTypes = transactionTypes ?? [],
         selectedCategories = selectedCategories ?? [],
-        selectedBuckets = selectedBuckets ?? []; // [NEW]
+        selectedBuckets = selectedBuckets ?? [];
 
   // Getters
   DateTime? get startDate => dateRange?.start;
@@ -31,8 +35,9 @@ class FilterCriteria {
         transactionTypes.isNotEmpty ||
         amountRange != null ||
         selectedCategories.isNotEmpty ||
-        selectedBuckets.isNotEmpty || // [NEW]
-        sortOption != SortOption.newest;
+        selectedBuckets.isNotEmpty ||
+        sortOption != SortOption.newest ||
+        (searchQuery != null && searchQuery!.isNotEmpty); // [NEW SEARCH LOGIC]
   }
 
   FilterCriteria copyWith({
@@ -40,7 +45,7 @@ class FilterCriteria {
     List<String>? transactionTypes,
     RangeValues? amountRange,
     List<String>? selectedCategories,
-    List<String>? selectedBuckets, // [NEW]
+    List<String>? selectedBuckets,
     SortOption? sortOption,
   }) {
     return FilterCriteria(
@@ -49,9 +54,23 @@ class FilterCriteria {
       amountRange: amountRange ?? this.amountRange,
       selectedCategories:
           selectedCategories ?? List.from(this.selectedCategories),
-      selectedBuckets:
-          selectedBuckets ?? List.from(this.selectedBuckets), // [NEW]
+      selectedBuckets: selectedBuckets ?? List.from(this.selectedBuckets),
       sortOption: sortOption ?? this.sortOption,
+      searchQuery:
+          this.searchQuery, // Preserve search when other filters change
+    );
+  }
+
+  // [NEW SEARCH LOGIC] - Dedicated copy method to easily overwrite search query
+  FilterCriteria copyWithSearch(String? search) {
+    return FilterCriteria(
+      dateRange: this.dateRange,
+      transactionTypes: List.from(this.transactionTypes),
+      amountRange: this.amountRange,
+      selectedCategories: List.from(this.selectedCategories),
+      selectedBuckets: List.from(this.selectedBuckets),
+      sortOption: this.sortOption,
+      searchQuery: search,
     );
   }
 
@@ -80,10 +99,21 @@ class FilterCriteria {
       if (!selectedCategories.contains(txn.category)) return false;
     }
 
-    // 5. Bucket Check [NEW]
+    // 5. Bucket Check
     if (selectedBuckets.isNotEmpty) {
-      // Only apply bucket filter to Expenses (Income usually doesn't have buckets or is 'Unallocated')
+      // Only apply bucket filter to Expenses
       if (txn.type == 'Expense' && !selectedBuckets.contains(txn.bucket)) {
+        return false;
+      }
+    }
+
+    // 6. Search Check [NEW SEARCH LOGIC]
+    if (searchQuery != null && searchQuery!.isNotEmpty) {
+      final q = searchQuery!.toLowerCase();
+      if (!txn.notes.toLowerCase().contains(q) &&
+          !txn.category.toLowerCase().contains(q) &&
+          !txn.subCategory.toLowerCase().contains(q) &&
+          !txn.amount.toString().contains(q)) {
         return false;
       }
     }

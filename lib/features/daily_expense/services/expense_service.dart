@@ -719,6 +719,28 @@ class ExpenseService {
     final query = _db.select(_db.expenseTransactions)
       ..where((t) => t.accountId.isNotNull() & t.accountId.equals('').not());
 
+    // --- [NEW SEARCH LOGIC: Added before regular filters] ---
+    if (criteria.searchQuery != null && criteria.searchQuery!.isNotEmpty) {
+      final searchString = '%${criteria.searchQuery}%';
+      final parsedAmount = double.tryParse(criteria.searchQuery!);
+
+      if (parsedAmount != null) {
+        // If they typed a number, search text columns AND exact amount
+        query.where((t) =>
+            t.notes.like(searchString) |
+            t.category.like(searchString) |
+            t.subCategory.like(searchString) |
+            t.amount.equals(parsedAmount));
+      } else {
+        // Otherwise, just search text columns
+        query.where((t) =>
+            t.notes.like(searchString) |
+            t.category.like(searchString) |
+            t.subCategory.like(searchString));
+      }
+    }
+    // --- [END NEW SEARCH LOGIC] ---
+
     if (criteria.startDate != null && criteria.endDate != null) {
       query.where((t) =>
           t.date.isBetweenValues(criteria.startDate!, criteria.endDate!));

@@ -1,3 +1,5 @@
+import 'dart:async'; // [NEW SEARCH LOGIC]
+
 import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -35,6 +37,30 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   // Cache for Live Count
   List<ExpenseTransactionModel> _allCachedTransactions = [];
 
+  // --- [NEW SEARCH LOGIC: Variables] ---
+  bool _isSearching = false;
+  final TextEditingController _searchCtrl = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    // Debounce to prevent database spamming while typing
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      setState(() {
+        _criteria = _criteria.copyWithSearch(query);
+      });
+    });
+  }
+  // --- [END NEW SEARCH LOGIC] ---
+
   void _openSmartFilterSheet() {
     showModalBottomSheet(
       context: context,
@@ -45,6 +71,8 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
         allTransactions: _allCachedTransactions,
         onApply: (newFilters) {
           setState(() {
+            // [NEW SEARCH LOGIC] Preserve existing search when applying other filters
+            newFilters.searchQuery = _criteria.searchQuery;
             _criteria = newFilters;
           });
         },
@@ -66,6 +94,57 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // --- [NEW SEARCH LOGIC: Animated Expandable Search Bar] ---
+        AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutQuint,
+          child: _isSearching
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: _onSearchChanged,
+                    autofocus: true,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: "Search notes, amounts, or categories...",
+                      hintStyle:
+                          TextStyle(color: Colors.white.withOpacity(0.3)),
+                      prefixIcon: const Icon(Icons.search_rounded,
+                          color: BudgetrColors.accent),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.cancel_rounded,
+                            color: Colors.white38),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          _onSearchChanged("");
+                          setState(() => _isSearching = false);
+                          FocusScope.of(context).unfocus();
+                        },
+                      ),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Colors.white10),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Colors.white10),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                            color: BudgetrColors.accent.withOpacity(0.5)),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        // --- [END NEW SEARCH LOGIC] ---
+
         // --- SMART HORIZONTAL FILTER BAR ---
         Container(
           height: 60,
@@ -80,6 +159,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
             children: [
               // 1. Tune/Filter Button
               _buildTuneButton(),
+              const SizedBox(width: 8),
+
+              // [NEW SEARCH LOGIC] Search Trigger Button
+              _buildSearchTriggerButton(),
               const SizedBox(width: 12),
 
               // 2. Clear Button (Only visible if filters are active)
@@ -95,8 +178,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               const SizedBox(width: 8),
               _buildQuickFilterChip("Transfer Out"),
               const SizedBox(width: 8),
-              _buildQuickFilterChip(
-                  "Transfer In"), // [UPDATED] Added Transfer In
+              _buildQuickFilterChip("Transfer In"),
 
               const SizedBox(width: 8),
               // Indicator for complex filters (Date/Amount/Cats/Buckets)
@@ -225,8 +307,34 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   // --- WIDGETS ---
 
+  // [NEW SEARCH LOGIC] Trigger Button
+  Widget _buildSearchTriggerButton() {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isSearching = !_isSearching;
+          if (!_isSearching) {
+            _searchCtrl.clear();
+            _onSearchChanged("");
+            FocusScope.of(context).unfocus();
+          }
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+            color: _isSearching
+                ? BudgetrColors.accent
+                : Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white10)),
+        child: Icon(Icons.search_rounded,
+            size: 18, color: _isSearching ? Colors.white : Colors.white70),
+      ),
+    );
+  }
+
   Widget _buildTuneButton() {
-    // Check if complex filters are active (anything other than basic type toggles)
     bool hasComplexFilters = _criteria.dateRange != null ||
         _criteria.amountRange != null ||
         _criteria.selectedCategories.isNotEmpty ||
@@ -248,12 +356,13 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     );
   }
 
-  // [NEW] Clear Filter Button
   Widget _buildClearButton() {
     return GestureDetector(
       onTap: () {
         setState(() {
           _criteria = FilterCriteria(); // Reset filters
+          _searchCtrl.clear(); // [NEW SEARCH LOGIC] Clear TextField on Reset
+          _isSearching = false; // [NEW SEARCH LOGIC] Collapse Search Bar
         });
       },
       child: Container(
@@ -336,7 +445,11 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               style: TextStyle(color: Colors.white.withOpacity(0.5))),
           const SizedBox(height: 16),
           TextButton(
-            onPressed: () => setState(() => _criteria = FilterCriteria()),
+            onPressed: () => setState(() {
+              _criteria = FilterCriteria();
+              _searchCtrl.clear(); // [NEW SEARCH LOGIC]
+              _isSearching = false; // [NEW SEARCH LOGIC]
+            }),
             child: const Text("Clear All Filters",
                 style: TextStyle(color: BudgetrColors.accent)),
           )
