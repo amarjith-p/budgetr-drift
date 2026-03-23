@@ -53,17 +53,24 @@ class _TransactionListItemState extends State<TransactionListItem> {
     final amountColor = isExpense ? Colors.redAccent : Colors.greenAccent;
     final iconColor = isExpense ? const Color(0xFF3A86FF) : Colors.green;
 
-    // Check if we have summary data to show in collapsed state
-    final bool hasSummary =
-        widget.txn.bucket.isNotEmpty || widget.txn.notes.isNotEmpty;
+    // Determine what metadata exists
+    final bool hasSubcategory = widget.txn.subCategory.isNotEmpty &&
+        widget.txn.subCategory != 'General';
+
+    // Explicitly kept your restriction: Bucket only applies to expenses
+    final bool hasBucket = isExpense && widget.txn.bucket.isNotEmpty;
+
+    // Calculate maximum safe width for text to prevent absolute overflow
+    final maxTextWidth = MediaQuery.of(context).size.width * 0.45;
 
     return GestureDetector(
       onTap: () => setState(() => _isExpanded = !_isExpanded),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        // [SPACE OPTIMIZATION] Tightened margins and padding
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: const Color(0xFF1B263B).withOpacity(0.5),
           borderRadius: BorderRadius.circular(8),
@@ -116,15 +123,40 @@ class _TransactionListItemState extends State<TransactionListItem> {
                           style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 15)),
-                      if (widget.txn.subCategory.isNotEmpty &&
-                          widget.txn.subCategory != 'General')
+                              fontSize:
+                                  14)), // Adjusted size slightly to match daily expense style
+
+                      // --- [RESPONSIVE WRAP LOGIC] ---
+                      if (hasSubcategory || hasBucket)
                         Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(widget.txn.subCategory,
-                                style: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
-                                    fontSize: 12))),
+                          padding: const EdgeInsets.only(top: 6.0),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              // 1. Subcategory
+                              if (hasSubcategory)
+                                Container(
+                                  constraints:
+                                      BoxConstraints(maxWidth: maxTextWidth),
+                                  child: Text(
+                                    widget.txn.subCategory,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color: Colors.white.withOpacity(0.6),
+                                        fontSize: 11),
+                                  ),
+                                ),
+
+                              // 2. Bucket Tag
+                              if (hasBucket)
+                                _buildTag(widget.txn.bucket, maxTextWidth),
+                            ],
+                          ),
+                        )
+                      // --- [END RESPONSIVE WRAP LOGIC] ---
                     ],
                   ),
                 ),
@@ -146,7 +178,7 @@ class _TransactionListItemState extends State<TransactionListItem> {
               ],
             ),
 
-            // DANGER ZONE WARNING
+            // DANGER ZONE WARNING (Preserved Workflow)
             if (widget.showDangerWarning && _isExpanded)
               Container(
                 margin: const EdgeInsets.only(top: 12),
@@ -213,7 +245,7 @@ class _TransactionListItemState extends State<TransactionListItem> {
                 ),
               ),
 
-            // UNVERIFIED TRANSFER WARNING
+            // UNVERIFIED TRANSFER WARNING (Preserved Workflow)
             if (_isUnverifiedTransfer)
               Container(
                 margin: const EdgeInsets.only(top: 12),
@@ -284,58 +316,38 @@ class _TransactionListItemState extends State<TransactionListItem> {
                 ),
               ),
 
-            // --- CHANGED: AnimatedCrossFade for Clean Toggle ---
+            // Animated Expanded Details
             AnimatedCrossFade(
               duration: const Duration(milliseconds: 300),
-              // First Child: The Collapsed Summary (Bucket + Note Preview)
-              firstChild: hasSummary
-                  ? Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.only(top: 8, left: 56),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          if (widget.txn.bucket.isNotEmpty)
-                            _buildTag(widget.txn.bucket),
-                          if (widget.txn.notes.isNotEmpty)
-                            Text(
-                              widget.txn.notes,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.4),
-                                fontSize: 11,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                        ],
-                      ),
-                    )
-                  : const SizedBox(
-                      width: double.infinity), // Empty box placeholder
 
-              // Second Child: The Full Expanded Details
+              // Collapsed state is completely empty to save maximum space
+              firstChild: const SizedBox(width: double.infinity, height: 0),
+
+              // Expanded Details
               secondChild: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
                   const Divider(color: Colors.white10),
                   const SizedBox(height: 8),
+
+                  // Date & Time Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        DateFormat('EEEE, hh:mm a').format(widget.txn.date),
+                        DateFormat('MMMM dd, yyyy, hh:mm a')
+                            .format(widget.txn.date),
                         style: TextStyle(
                             color: Colors.white.withOpacity(0.5), fontSize: 12),
                       ),
-                      if (widget.txn.bucket.isNotEmpty)
-                        _buildTag("Bucket: ${widget.txn.bucket}"),
+                      if (hasBucket)
+                        _buildTag("Bucket: ${widget.txn.bucket}", maxTextWidth),
                     ],
                   ),
                   const SizedBox(height: 12),
+
+                  // Defer to next bill feature (Preserved Workflow)
                   if (widget.onDeferToNextBill != null) ...[
                     Container(
                       width: double.infinity,
@@ -381,6 +393,8 @@ class _TransactionListItemState extends State<TransactionListItem> {
                       ),
                     ),
                   ],
+
+                  // Notes moved entirely to Expanded View
                   if (widget.txn.notes.isNotEmpty) ...[
                     Text("Notes:",
                         style: TextStyle(
@@ -393,6 +407,8 @@ class _TransactionListItemState extends State<TransactionListItem> {
                             color: Colors.white70, fontSize: 13)),
                     const SizedBox(height: 20),
                   ],
+
+                  // Action Buttons
                   Row(children: [
                     Expanded(
                         child: _buildActionButton(
@@ -414,15 +430,16 @@ class _TransactionListItemState extends State<TransactionListItem> {
                   ? CrossFadeState.showSecond
                   : CrossFadeState.showFirst,
             ),
-            // --------------------------------------------------------
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTag(String text) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+  // Updated Tag to accept maxWidth and match the styling
+  Widget _buildTag(String text, double maxWidth) => Container(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
           color: Colors.white10,
           borderRadius: BorderRadius.circular(4),
@@ -430,10 +447,12 @@ class _TransactionListItemState extends State<TransactionListItem> {
         ),
         child: Text(
           text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white70,
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
           ),
         ),
       );

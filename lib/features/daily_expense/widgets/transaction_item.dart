@@ -8,7 +8,6 @@ class TransactionItem extends StatefulWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  // [UPDATED] Optional field to display source account name
   final String? sourceAccountName;
 
   const TransactionItem({
@@ -70,17 +69,22 @@ class _TransactionItemState extends State<TransactionItem> {
       sign = '+';
     }
 
-    final bool hasSummary = (isExpense && widget.txn.bucket.isNotEmpty) ||
-        widget.txn.notes.isNotEmpty ||
-        widget.sourceAccountName != null;
+    final bool hasSubcategory = widget.txn.subCategory.isNotEmpty &&
+        widget.txn.subCategory != 'General';
+
+    // Kept your restriction: Bucket only applies to expenses
+    final bool hasBucket = isExpense && widget.txn.bucket.isNotEmpty;
+
+    // Determine safe max width for chips so Wrap functions correctly without overflowing
+    final maxTextWidth = MediaQuery.of(context).size.width * 0.45;
 
     return GestureDetector(
       onTap: () => setState(() => _isExpanded = !_isExpanded),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
             color: const Color(0xFF1B263B).withOpacity(0.5),
             borderRadius: BorderRadius.circular(8),
@@ -114,33 +118,60 @@ class _TransactionItemState extends State<TransactionItem> {
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 14)),
-                      // [UPDATED] Show Source Account Name directly in title block if provided
-                      if (widget.sourceAccountName != null)
+
+                      // Metadata Row (Subcategory, Bucket, Account)
+                      if (hasSubcategory ||
+                          hasBucket ||
+                          widget.sourceAccountName != null)
                         Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4)),
-                            child: Text(
-                              widget.sourceAccountName!,
-                              style: const TextStyle(
-                                  color: Colors.blueAccent,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600),
-                            ),
+                          padding: const EdgeInsets.only(top: 6.0),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              // 1. Subcategory
+                              if (hasSubcategory)
+                                Container(
+                                  constraints:
+                                      BoxConstraints(maxWidth: maxTextWidth),
+                                  child: Text(
+                                    widget.txn.subCategory,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color: Colors.white.withOpacity(0.6),
+                                        fontSize: 11),
+                                  ),
+                                ),
+
+                              // 2. Bucket Tag
+                              if (hasBucket)
+                                _buildTag(widget.txn.bucket, maxTextWidth),
+
+                              // 3. Source Account Name
+                              if (widget.sourceAccountName != null)
+                                Container(
+                                  constraints:
+                                      BoxConstraints(maxWidth: maxTextWidth),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4)),
+                                  child: Text(
+                                    widget.sourceAccountName!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        color: Colors.blueAccent,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                            ],
                           ),
                         )
-                      else if (widget.txn.subCategory.isNotEmpty &&
-                          widget.txn.subCategory != 'General')
-                        Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(widget.txn.subCategory,
-                                style: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
-                                    fontSize: 12))),
                     ],
                   ),
                 ),
@@ -161,58 +192,32 @@ class _TransactionItemState extends State<TransactionItem> {
               ],
             ),
 
-            // Animated Summary / Expanded View
+            // Animated Expanded Details
             AnimatedCrossFade(
               duration: const Duration(milliseconds: 300),
-              // First Child: Summary Line (Visible when Collapsed)
-              firstChild: hasSummary
-                  ? Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.only(
-                          top: 8, left: 56), // Align with title
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          if (isExpense && widget.txn.bucket.isNotEmpty)
-                            _buildTag(widget.txn.bucket),
-                          if (widget.txn.notes.isNotEmpty)
-                            Text(
-                              widget.txn.notes,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.4),
-                                fontSize: 11,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                        ],
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-
-              // Second Child: Expanded Details (Visible when Expanded)
+              firstChild: const SizedBox(width: double.infinity, height: 0),
               secondChild: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   const Divider(color: Colors.white10),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        DateFormat('EEEE, hh:mm a').format(widget.txn.date),
+                        DateFormat('MMMM dd, yyyy, hh:mm a')
+                            .format(widget.txn.date),
                         style: TextStyle(
                             color: Colors.white.withOpacity(0.5), fontSize: 12),
                       ),
-                      if (isExpense && widget.txn.bucket.isNotEmpty)
-                        _buildTag("Bucket: ${widget.txn.bucket}"),
+                      // Keep Bucket in Expanded view too as a reference
+                      if (hasBucket)
+                        _buildTag("Bucket: ${widget.txn.bucket}", maxTextWidth),
                     ],
                   ),
                   const SizedBox(height: 12),
+                  // Notes
                   if (widget.txn.notes.isNotEmpty) ...[
                     Text("Notes:",
                         style: TextStyle(
@@ -252,17 +257,21 @@ class _TransactionItemState extends State<TransactionItem> {
     );
   }
 
-  Widget _buildTag(String text) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+  // Updated Tag to accept maxWidth
+  Widget _buildTag(String text, double maxWidth) => Container(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
           color: Colors.white10,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(color: Colors.white12)),
       child: Text(text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
               color: Colors.white70,
-              fontSize: 10,
-              fontWeight: FontWeight.w500)));
+              fontSize: 9,
+              fontWeight: FontWeight.w600)));
 
   Widget _buildActionButton(
           {required IconData icon,
