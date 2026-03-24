@@ -24,8 +24,10 @@ class AccountOptionsDialog extends StatelessWidget {
       filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
       child: Dialog(
         backgroundColor: const Color(0xff1B263B).withOpacity(0.9),
+        insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20), // Prevents dialog from touching screen edges
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(8),
             side: BorderSide(color: Colors.white.withOpacity(0.1))),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -35,30 +37,35 @@ class AccountOptionsDialog extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          shape: BoxShape.circle,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.account_balance_wallet,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.account_balance_wallet,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        "Account Options",
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        const SizedBox(width: 12),
+                        const Flexible(
+                          child: Text(
+                            "Account Details",
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
                             ),
-                      ),
-                    ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.white54),
@@ -67,16 +74,21 @@ class AccountOptionsDialog extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 24),
-              _buildDetailRow("Account Name", account.name),
+
+              // Allowed to wrap up to 2 lines for long names
+              _buildDetailRow("Name", account.name, allowWrap: true),
               const Divider(color: Colors.white10, height: 24),
-              _buildDetailRow("Bank", account.bankName),
+              _buildDetailRow("Bank / Provider", account.bankName),
               const Divider(color: Colors.white10, height: 24),
               _buildDetailRow("Type", account.accountType),
               const Divider(color: Colors.white10, height: 24),
-              _buildDetailRow("Account No", "**** ${account.accountNumber}"),
+              _buildDetailRow("Account No (Last 4 Digits)",
+                  "**** ${account.accountNumber}"),
               const Divider(color: Colors.white10, height: 24),
+              // Balance is kept to 1 line with ellipsis to prevent vertical layout shifting
               _buildDetailRow(
-                  "Balance", currency.format(account.currentBalance)),
+                  "Curr. Balance", currency.format(account.currentBalance)),
+
               const SizedBox(height: 32),
               Row(
                 children: [
@@ -94,7 +106,7 @@ class AccountOptionsDialog extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         backgroundColor: Colors.redAccent.withOpacity(0.1),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
@@ -114,7 +126,7 @@ class AccountOptionsDialog extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         backgroundColor: Colors.white.withOpacity(0.1),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
@@ -128,11 +140,36 @@ class AccountOptionsDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) =>
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5))),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold))
-      ]);
+  Widget _buildDetailRow(String label, String value,
+          {bool allowWrap = false}) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Label is flexible so it doesn't get crushed by the value
+            Text(
+              label,
+              style:
+                  TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                overflow: TextOverflow.ellipsis,
+                // If allowWrap is true (for names), show up to 2 lines. Else (for amounts), keep to 1.
+                maxLines: allowWrap ? 2 : 1,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }

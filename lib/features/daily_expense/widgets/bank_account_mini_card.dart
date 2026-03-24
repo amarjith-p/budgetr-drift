@@ -27,7 +27,6 @@ class BankAccountMiniCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        // Reduced padding to prevent overflow
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
@@ -47,59 +46,66 @@ class BankAccountMiniCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          // Using MainAxisSize.min ensures column doesn't try to expand unnecessarily
           mainAxisSize: MainAxisSize.min,
           children: [
             // --- PILL (Bank Identity) ---
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 14,
-                    height: 14,
-                    decoration: const BoxDecoration(
-                        color: Colors.white, shape: BoxShape.circle),
-                    padding: const EdgeInsets.all(2),
-                    child: ClipOval(
-                      child: Image.asset(
-                        BankConstants.getBankLogoPath(account.bankName),
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(
-                            Icons.account_balance,
-                            size: 8,
-                            color: Colors.black),
-                      ),
+            // Wrapped in a Row + Flexible to prevent the pill itself from overflowing
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 14,
+                          height: 14,
+                          decoration: const BoxDecoration(
+                              color: Colors.white, shape: BoxShape.circle),
+                          padding: const EdgeInsets.all(2),
+                          child: ClipOval(
+                            child: Image.asset(
+                              BankConstants.getBankLogoPath(account.bankName),
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.account_balance,
+                                  size: 8,
+                                  color: Colors.black),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            account.bankName.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      account.bankName.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9, // Slightly smaller
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
 
-            // Use Spacer to push content down ONLY if there is space,
-            // otherwise just a small box.
             const Spacer(),
 
             // --- DETAILS ---
+            // Wrapping the details in a Column with constrained width
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -115,17 +121,21 @@ class BankAccountMiniCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                // FittedBox ensures Balance shrinks if it hits the width limit
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    currency.format(account.currentBalance),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16, // Adjusted for mini card
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
+                // Constraining the FittedBox with a SizedBox to define a max width
+                // effectively preventing horizontal layout crashes.
+                SizedBox(
+                  width: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      currency.format(account.currentBalance),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5,
+                      ),
                     ),
                   ),
                 ),

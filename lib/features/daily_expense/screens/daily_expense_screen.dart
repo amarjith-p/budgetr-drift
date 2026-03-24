@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
+import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
 import '../models/expense_models.dart';
 import '../services/expense_service.dart';
@@ -20,8 +21,9 @@ import 'expense_analytics_screen.dart';
 import 'category_breakdown_screen.dart';
 import '../widgets/cash_flow_card.dart';
 import '../widgets/balance_trend_chart.dart';
-import '../../home/screens/home_screen.dart'; // For Navigation
-import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
+import '../../home/screens/home_screen.dart';
+import '../../../core/widgets/glass_card.dart';
+import '../widgets/balance_calculator_sheet.dart';
 
 class DailyExpenseScreen extends StatefulWidget {
   const DailyExpenseScreen({super.key});
@@ -32,14 +34,17 @@ class DailyExpenseScreen extends StatefulWidget {
 
 class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
   final ExpenseService _service = GetIt.I<ExpenseService>();
-  late Stream<List<ExpenseAccountModel>> _accountsStream;
+
+  late Stream<List<ExpenseAccountModel>> _allAccountsStream;
+  late Stream<List<ExpenseAccountModel>> _dashboardAccountsStream;
 
   int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _accountsStream = _service.getDashboardAccounts();
+    _allAccountsStream = _service.getAccounts();
+    _dashboardAccountsStream = _service.getDashboardAccounts();
   }
 
   void _onTabTapped(int index) {
@@ -49,15 +54,12 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     }
   }
 
-  // Logic to handle Back Press
   void _handlePopInvoked(bool didPop) {
     if (didPop) return;
 
-    // Check if we can pop normally (e.g. opened from Home)
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     } else {
-      // If we can't pop (Quick Launch), manually go to Home
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
@@ -68,28 +70,19 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
   Widget build(BuildContext context) {
     const Color bgColor = Color(0xff0D1B2A);
 
-    // Wrap Scaffold in PopScope
     return PopScope(
-      canPop: false, // We handle the pop manually
+      canPop: false,
       onPopInvoked: _handlePopInvoked,
       child: Scaffold(
         backgroundColor: bgColor,
         extendBody: true,
-        // [FIX] Removed standard AppBar property
-        // Switched to Stack > SafeArea > Column layout for Modern Header
         body: Stack(
           children: [
-            // Background Elements (Optional, kept consistent if needed)
-            // ... (Your background elements here if any, otherwise plain bgColor)
-
             SafeArea(
-              bottom: false, // Let content flow behind bottom nav
+              bottom: false,
               child: Column(
                 children: [
-                  // 1. MODERN HEADER (Replaces AppBar)
                   _buildModernHeader(),
-
-                  // 2. SCREEN CONTENT (IndexedStack)
                   Expanded(
                     child: IndexedStack(
                       index: _currentIndex,
@@ -111,7 +104,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  // --- NEW: Modern Header Implementation ---
   Widget _buildModernHeader() {
     String title = "Transaction Tracker";
     String subtitle = "ACCOUNTS & WALLETS";
@@ -131,7 +123,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Back Button
           GestureDetector(
             onTap: () => _handlePopInvoked(false),
             child: GlassCard(
@@ -143,10 +134,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                   color: Colors.white70, size: 20),
             ),
           ),
-
           const SizedBox(width: 16),
-
-          // Title Section
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,8 +162,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
               ],
             ),
           ),
-
-          // Heatmap Action Button (Only show on Overview or make persistent)
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -186,7 +172,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
             },
             child: GlassCard(
               borderRadius: 12,
-              padding: const EdgeInsets.all(0), // Custom padding inside
+              padding: const EdgeInsets.all(0),
               margin: EdgeInsets.zero,
               color: Colors.white.withOpacity(0.05),
               child: SizedBox(
@@ -236,8 +222,6 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
     );
   }
 
-  // ... [ALL OTHER METHODS REMAIN EXACTLY AS THEY WERE] ...
-
   Widget _buildOriginalHomeContent() {
     return Stack(
       children: [
@@ -268,95 +252,185 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
 
   Widget _buildDualRowAccounts() {
     return StreamBuilder<List<ExpenseAccountModel>>(
-      stream: _accountsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+      stream: _allAccountsStream,
+      builder: (context, allSnapshot) {
+        if (allSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(
               child:
                   FuturisticLoader(size: 80, label: "RETRIEVING ACCOUNTS..."));
         }
 
-        final accounts = snapshot.data ?? [];
-        final displayAccounts = accounts.take(6).toList();
+        final allAccounts = allSnapshot.data ?? [];
 
-        final List<ExpenseAccountModel> row1Items = [];
-        final List<dynamic> row2Items = [];
+        // --- FORMATTED TOTALS ACROSS ALL ACCOUNTS (2 DECIMAL PLACES) ---
+        final double totalBalance =
+            allAccounts.fold(0.0, (s, a) => s + a.currentBalance);
+        final String formattedBalance = NumberFormat.currency(
+                locale: 'en_IN', symbol: '₹', decimalDigits: 2)
+            .format(totalBalance);
 
-        for (int i = 0; i < displayAccounts.length; i++) {
-          if (i < 3) {
-            row1Items.add(displayAccounts[i]);
-          } else {
-            row2Items.add(displayAccounts[i]);
-          }
-        }
-        row2Items.add("ALL_ACCOUNTS_CARD");
+        return StreamBuilder<List<ExpenseAccountModel>>(
+          stream: _dashboardAccountsStream,
+          builder: (context, dashboardSnapshot) {
+            final dashboardAccounts = dashboardSnapshot.data ?? [];
+            final List<ExpenseAccountModel> row1Items = [];
+            final List<dynamic> row2Items = [];
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 110),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (accounts.isNotEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  child: Text(
-                    "My Accounts",
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
+            for (int i = 0; i < dashboardAccounts.length; i++) {
+              if (i < 3) {
+                row1Items.add(dashboardAccounts[i]);
+              } else {
+                row2Items.add(dashboardAccounts[i]);
+              }
+            }
+            row2Items.add("ALL_ACCOUNTS_CARD");
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 110),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (allAccounts.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "ACCOUNTS",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+
+                          // --- [FIXED] Managed Large Balance with Expanded + FittedBox ---
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                        color: Colors.white.withOpacity(0.1)),
+                                  ),
+                                  child: Text(
+                                    "${allAccounts.length} Accounts  •  $formattedBalance",
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.8),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 8), // Gap before button
+
+                          // Custom Sum Button
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              showModalBottomSheet(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                isScrollControlled: true,
+                                builder: (ctx) => BalanceCalculatorSheet(
+                                    accounts: allAccounts),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00B4D8).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color: const Color(0xFF00B4D8)
+                                        .withOpacity(0.3)),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.functions_rounded,
+                                      color: Color(0xFF00B4D8), size: 14),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    "Custom Sum",
+                                    style: TextStyle(
+                                      color: Color(0xFF00B4D8),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (row1Items.isNotEmpty) ...[
+                    SizedBox(
+                      height: 90,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: row1Items.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          return SizedBox(
+                            width: 160,
+                            child: BankAccountMiniCard(
+                              account: row1Items[index],
+                              onTap: () =>
+                                  _openAccount(context, row1Items[index]),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  SizedBox(
+                    height: 90,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: row2Items.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final item = row2Items[index];
+                        if (item == "ALL_ACCOUNTS_CARD") {
+                          return SizedBox(
+                              width: 160,
+                              child: _buildAllAccountsCard(context));
+                        }
+                        return SizedBox(
+                          width: 160,
+                          child: BankAccountMiniCard(
+                            account: item as ExpenseAccountModel,
+                            onTap: () => _openAccount(context, item),
+                          ),
+                        );
+                      },
                     ),
                   ),
-                ),
-              if (row1Items.isNotEmpty) ...[
-                SizedBox(
-                  height: 90,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: row1Items.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) {
-                      return SizedBox(
-                        width: 160,
-                        child: BankAccountMiniCard(
-                          account: row1Items[index],
-                          onTap: () => _openAccount(context, row1Items[index]),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-              SizedBox(
-                height: 90,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: row2Items.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final item = row2Items[index];
-                    if (item == "ALL_ACCOUNTS_CARD") {
-                      return SizedBox(
-                          width: 160, child: _buildAllAccountsCard(context));
-                    }
-                    return SizedBox(
-                      width: 160,
-                      child: BankAccountMiniCard(
-                        account: item as ExpenseAccountModel,
-                        onTap: () => _openAccount(context, item),
-                      ),
-                    );
-                  },
-                ),
+                  const CashFlowCard(),
+                  const BalanceTrendChart(),
+                ],
               ),
-              const CashFlowCard(),
-              const BalanceTrendChart(),
-            ],
-          ),
+            );
+          },
         );
       },
     );

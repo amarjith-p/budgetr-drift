@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/design/budgetr_colors.dart';
@@ -86,122 +87,154 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.9,
       decoration: const BoxDecoration(
-        color: BudgetrColors.cardSurface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+        color: BudgetrColors.cardSurface, // Deep premium background
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       child: Column(
         children: [
-          // HEADER
+          // --- Drag Handle ---
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 48,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+
+          // --- HEADER ---
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Smart Filters",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold)),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("FILTERS",
+                        style: TextStyle(
+                            color: BudgetrColors.accent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2)),
+                    SizedBox(height: 2),
+                    Text("Smart Selection",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5)),
+                  ],
+                ),
                 TextButton(
                   onPressed: () {
+                    HapticFeedback.lightImpact();
                     widget.onApply(FilterCriteria());
                     Navigator.pop(context);
                   },
-                  child: const Text("Reset",
-                      style: TextStyle(color: BudgetrColors.accent)),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.05),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text("Reset All",
+                      style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold)),
                 )
               ],
             ),
           ),
-          const Divider(height: 1, color: Colors.white10),
 
-          // SCROLLABLE FILTERS
+          // --- SCROLLABLE FILTERS ---
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              physics: const BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 1. SORT
-                  _buildSectionLabel("Sort By"),
-                  _buildHorizontalRibbon([
-                    _buildSortChip("Newest", SortOption.newest),
-                    _buildSortChip("Oldest", SortOption.oldest),
-                    _buildSortChip("Highest", SortOption.highestAmount),
-                    _buildSortChip("Lowest", SortOption.lowestAmount),
-                  ]),
-
-                  const SizedBox(height: 24),
+                  _buildCardSection(
+                    label: "Sort Strategy",
+                    child: _buildHorizontalRibbon([
+                      _buildSortChip("Newest", SortOption.newest),
+                      _buildSortChip("Oldest", SortOption.oldest),
+                      _buildSortChip("Highest", SortOption.highestAmount),
+                      _buildSortChip("Lowest", SortOption.lowestAmount),
+                    ]),
+                  ),
+                  const SizedBox(height: 20),
 
                   // 2. DATE
-                  _buildSectionLabel("Time Period"),
-                  _buildHorizontalRibbon([
-                    _buildDateChip("All Time", null),
-                    _buildDateChip(
-                        "This Month", _getDateRangeForMonth(DateTime.now())),
-                    _buildDateChip(
-                        "Last Month",
-                        _getDateRangeForMonth(
-                            DateTime.now().subtract(const Duration(days: 30)))),
-                    _buildCustomDateButton(),
-                  ]),
-
-                  const SizedBox(height: 24),
+                  _buildCardSection(
+                    label: "Timeframe",
+                    child: _buildHorizontalRibbon([
+                      _buildDateChip("All Time", null),
+                      _buildDateChip(
+                          "This Month", _getDateRangeForMonth(DateTime.now())),
+                      _buildDateChip(
+                          "Last Month",
+                          _getDateRangeForMonth(DateTime.now()
+                              .subtract(const Duration(days: 30)))),
+                      _buildCustomDateButton(),
+                    ]),
+                  ),
+                  const SizedBox(height: 20),
 
                   // 3. TYPE
-                  _buildSectionLabel("Transaction Type"),
-                  _buildHorizontalRibbon([
-                    _buildTypeChip("All"),
-                    _buildTypeChip("Expense"),
-                    _buildTypeChip("Income"),
-                    _buildTypeChip("Transfer Out"),
-                    _buildTypeChip(
-                        "Transfer In"), // [UPDATED] Added Transfer In
-                  ]),
-
+                  _buildCardSection(
+                    label: "Transaction Type",
+                    child: _buildHorizontalRibbon([
+                      _buildTypeChip("All"),
+                      _buildTypeChip("Expense"),
+                      _buildTypeChip("Income"),
+                      _buildTypeChip("Transfer Out"),
+                      _buildTypeChip("Transfer In"),
+                    ]),
+                  ),
                   const SizedBox(height: 24),
 
                   // 4. BUCKETS
-                  _buildSectionLabel("Buckets"),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildDrillDownTile(
-                      label: "Selected Buckets",
-                      count: _filters.selectedBuckets.length,
-                      onTap: () => _openBucketSelector(),
-                    ),
+                  _buildDrillDownTile(
+                    icon: Icons.pie_chart_outline_rounded,
+                    label: "Buckets",
+                    count: _filters.selectedBuckets.length,
+                    onTap: () => _openBucketSelector(),
                   ),
-
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
                   // 5. CATEGORIES
-                  _buildSectionLabel("Categories"),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildDrillDownTile(
-                      label: "Selected Categories",
-                      count: _filters.selectedCategories.length,
-                      onTap: () => _openCategorySelector(),
-                    ),
+                  _buildDrillDownTile(
+                    icon: Icons.category_outlined,
+                    label: "Categories",
+                    count: _filters.selectedCategories.length,
+                    onTap: () => _openCategorySelector(),
                   ),
-
                   const SizedBox(height: 24),
 
                   // 6. AMOUNT
-                  _buildSectionLabel("Amount Range"),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  _buildCardSection(
+                    label: "Amount Threshold",
                     child: Column(
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text("₹${_currentRange.start.toInt()}",
-                                style: const TextStyle(color: Colors.white54)),
+                                style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontWeight: FontWeight.bold)),
                             Text("₹${_currentRange.end.toInt()}+",
-                                style: const TextStyle(color: Colors.white54)),
+                                style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontWeight: FontWeight.bold)),
                           ],
                         ),
                         RangeSlider(
@@ -210,7 +243,7 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
                           max: _maxAmount,
                           divisions: 1000,
                           activeColor: BudgetrColors.accent,
-                          inactiveColor: Colors.white10,
+                          inactiveColor: Colors.white.withOpacity(0.1),
                           onChanged: (values) =>
                               setState(() => _currentRange = values),
                           onChangeEnd: (values) => _updateFilters(
@@ -219,34 +252,38 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
           ),
 
-          // LIVE COUNT BUTTON
+          // --- LIVE COUNT BUTTON ---
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(
+                24, 16, 24, MediaQuery.of(context).padding.bottom + 16),
             decoration: BoxDecoration(
-                color: BudgetrColors.cardSurface,
-                border: Border(
-                    top: BorderSide(color: Colors.white.withOpacity(0.05)))),
+              color: const Color(0xFF151C24),
+              border: Border(
+                  top: BorderSide(color: Colors.white.withOpacity(0.05))),
+            ),
             child: SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
                 onPressed: () {
+                  HapticFeedback.mediumImpact();
                   widget.onApply(_filters);
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BudgetrColors.accent,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(8)),
                   elevation: 0,
                 ),
                 child: Text(
-                  "Show $_matchCount Transactions",
+                  "Show $_matchCount Results",
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -262,21 +299,37 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
 
   // --- WIDGET HELPERS ---
 
-  Widget _buildSectionLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 20, bottom: 12),
-      child: Text(label,
-          style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.w600)),
+  Widget _buildCardSection({required String label, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(label.toUpperCase(),
+              style: TextStyle(
+                  color: Colors.white.withOpacity(0.4),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2)),
+        ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: child,
+        ),
+      ],
     );
   }
 
   Widget _buildHorizontalRibbon(List<Widget> children) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      physics: const BouncingScrollPhysics(),
       child: Row(
         children: children
             .map((c) =>
@@ -287,51 +340,61 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
   }
 
   Widget _buildDrillDownTile(
-      {required String label,
+      {required IconData icon,
+      required String label,
       required int count,
       required VoidCallback onTap}) {
     final hasSelection = count > 0;
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(10),
+          color: hasSelection
+              ? BudgetrColors.accent.withOpacity(0.08)
+              : Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
               color: hasSelection
-                  ? BudgetrColors.accent.withOpacity(0.5)
-                  : Colors.white10),
+                  ? BudgetrColors.accent.withOpacity(0.3)
+                  : Colors.white.withOpacity(0.05)),
         ),
         child: Row(
           children: [
-            Icon(
-                label.contains("Buckets")
-                    ? Icons.pie_chart_outline
-                    : Icons.category_outlined,
-                color: hasSelection ? BudgetrColors.accent : Colors.white70),
+            Icon(icon,
+                color: hasSelection ? BudgetrColors.accent : Colors.white38,
+                size: 22),
             const SizedBox(width: 16),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 12)),
-                  const SizedBox(height: 4),
-                  Text(
-                    hasSelection ? "$count Selected" : "All",
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600),
-                  ),
-                ],
+              child: Text(label,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600)),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: hasSelection
+                    ? BudgetrColors.accent
+                    : Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                hasSelection ? "$count Selected" : "All",
+                style: TextStyle(
+                    color: hasSelection ? Colors.white : Colors.white54,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                size: 16, color: Colors.white38),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded,
+                size: 20, color: Colors.white.withOpacity(0.2)),
           ],
         ),
       ),
@@ -379,16 +442,26 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
 
   Widget _buildSortChip(String label, SortOption option) {
     bool isSelected = _filters.sortOption == option;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) => _updateFilters(() => _filters.sortOption = option),
-      selectedColor: BudgetrColors.accent,
-      backgroundColor: Colors.white.withOpacity(0.05),
-      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10), side: BorderSide.none),
-      showCheckmark: false,
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        _updateFilters(() => _filters.sortOption = option);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? BudgetrColors.accent
+              : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white54,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+      ),
     );
   }
 
@@ -402,34 +475,35 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
           _filters.dateRange!.end.month == range.end.month;
     }
 
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) => _updateFilters(() => _filters.dateRange = range),
-      selectedColor: BudgetrColors.accent,
-      backgroundColor: Colors.white.withOpacity(0.05),
-      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10), side: BorderSide.none),
-      showCheckmark: false,
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        _updateFilters(() => _filters.dateRange = range);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? BudgetrColors.accent
+              : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white54,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+      ),
     );
   }
 
   Widget _buildCustomDateButton() {
     bool isCustom =
         _filters.dateRange != null && !_isStandardRange(_filters.dateRange!);
-    return ActionChip(
-      label: Text(isCustom
-          ? "${DateFormat('dd/MM').format(_filters.dateRange!.start)} - ${DateFormat('dd/MM').format(_filters.dateRange!.end)}"
-          : "Custom"),
-      avatar: Icon(Icons.calendar_today,
-          size: 14, color: isCustom ? Colors.white : Colors.white70),
-      backgroundColor:
-          isCustom ? BudgetrColors.accent : Colors.white.withOpacity(0.05),
-      labelStyle: TextStyle(color: isCustom ? Colors.white : Colors.white70),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10), side: BorderSide.none),
-      onPressed: () async {
+    return GestureDetector(
+      onTap: () async {
+        HapticFeedback.lightImpact();
         final picked = await showDateRangePicker(
           context: context,
           firstDate: DateTime(2020),
@@ -450,6 +524,30 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
           _updateFilters(() => _filters.dateRange = picked);
         }
       },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color:
+              isCustom ? BudgetrColors.accent : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today_rounded,
+                size: 14, color: isCustom ? Colors.white : Colors.white38),
+            const SizedBox(width: 6),
+            Text(
+                isCustom
+                    ? "${DateFormat('dd/MM').format(_filters.dateRange!.start)} - ${DateFormat('dd/MM').format(_filters.dateRange!.end)}"
+                    : "Custom",
+                style: TextStyle(
+                    color: isCustom ? Colors.white : Colors.white54,
+                    fontSize: 13,
+                    fontWeight: isCustom ? FontWeight.bold : FontWeight.w500)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -458,10 +556,9 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
         ? _filters.transactionTypes.isEmpty
         : _filters.transactionTypes.contains(label);
 
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (bool selected) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
         _updateFilters(() {
           if (label == 'All') {
             _filters.transactionTypes.clear();
@@ -474,12 +571,20 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
           }
         });
       },
-      selectedColor: Colors.blueAccent,
-      backgroundColor: Colors.white.withOpacity(0.05),
-      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10), side: BorderSide.none),
-      showCheckmark: false,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color:
+              isSelected ? Colors.blueAccent : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white54,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+      ),
     );
   }
 
@@ -494,10 +599,6 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
     return false;
   }
 }
-
-// ... (Sub-sheets: _CategorySelectionSheet & _SimpleMultiSelectSheet remain unchanged)
-// [OMITTED FOR BREVITY - Assume they are present as in original file]
-// For completion, I will include them below to ensure you have the FULL file content.
 
 // =============================================================================
 // SUB-SHEET 1: CATEGORIES
@@ -540,46 +641,80 @@ class _CategorySelectionSheetState extends State<_CategorySelectionSheet>
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
       decoration: const BoxDecoration(
-        color: Color(0xFF151C24),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+        color: Color(0xFF0D1217),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       child: Column(
         children: [
+          // Drag Handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 48,
+              height: 5,
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel",
-                      style: TextStyle(color: Colors.white54)),
-                ),
-                const Text("Select Categories",
+                const Text("Categories",
                     style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
-                TextButton(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5)),
+                ElevatedButton(
                   onPressed: () {
+                    HapticFeedback.mediumImpact();
                     widget.onSelectionChanged(_tempSelected);
                     Navigator.pop(context);
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: BudgetrColors.accent,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
                   child: const Text("Done",
-                      style: TextStyle(
-                          color: BudgetrColors.accent,
-                          fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
           ),
-          TabBar(
-            controller: _tabController,
-            indicatorColor: BudgetrColors.accent,
-            labelColor: BudgetrColors.accent,
-            unselectedLabelColor: Colors.white54,
-            tabs: const [Tab(text: "Expense"), Tab(text: "Income")],
+
+          // Modern Segmented TabBar
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(8)),
+            child: TabBar(
+              controller: _tabController,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: BoxDecoration(
+                color: BudgetrColors.accent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: BudgetrColors.accent.withOpacity(0.5), width: 1),
+              ),
+              labelColor: BudgetrColors.accent,
+              unselectedLabelColor: Colors.white54,
+              labelStyle:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              unselectedLabelStyle:
+                  const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              tabs: const [Tab(text: "Expense"), Tab(text: "Income")],
+            ),
           ),
+          const SizedBox(height: 8),
+
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -595,38 +730,89 @@ class _CategorySelectionSheetState extends State<_CategorySelectionSheet>
   }
 
   Widget _buildList(List<TransactionCategoryModel> categories) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+      physics: const BouncingScrollPhysics(),
       itemCount: categories.length + 1,
-      separatorBuilder: (_, __) =>
-          const Divider(height: 1, color: Colors.white10),
       itemBuilder: (context, index) {
         if (index == 0) {
-          return ListTile(
-            title: const Text("Clear Selection",
-                style: TextStyle(
-                    color: Colors.white54, fontStyle: FontStyle.italic)),
-            onTap: () => setState(() => _tempSelected
-                .removeWhere((name) => categories.any((c) => c.name == name))),
+          return GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() => _tempSelected.removeWhere(
+                  (name) => categories.any((c) => c.name == name)));
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8)),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.clear_all, color: Colors.redAccent, size: 18),
+                  SizedBox(width: 8),
+                  Text("Clear Selection",
+                      style: TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
           );
         }
+
         final cat = categories[index - 1];
         final isSelected = _tempSelected.contains(cat.name);
-        return ListTile(
-          title: Text(cat.name,
-              style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white70,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal)),
-          trailing: isSelected
-              ? const Icon(Icons.check_circle, color: BudgetrColors.accent)
-              : const Icon(Icons.circle_outlined, color: Colors.white24),
-          onTap: () => setState(() {
-            if (isSelected)
-              _tempSelected.remove(cat.name);
-            else
-              _tempSelected.add(cat.name);
-          }),
+
+        return GestureDetector(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => isSelected
+                ? _tempSelected.remove(cat.name)
+                : _tempSelected.add(cat.name));
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? BudgetrColors.accent.withOpacity(0.08)
+                  : Colors.white.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: isSelected
+                      ? BudgetrColors.accent.withOpacity(0.4)
+                      : Colors.white.withOpacity(0.05),
+                  width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Text(cat.name,
+                    style: TextStyle(
+                        color: isSelected
+                            ? Colors.white
+                            : Colors.white.withOpacity(0.8),
+                        fontSize: 15,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w500)),
+                const Spacer(),
+                AnimatedScale(
+                  scale: isSelected ? 1.0 : 0.8,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
+                      color: isSelected ? BudgetrColors.accent : Colors.white24,
+                      size: 22),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -666,77 +852,143 @@ class _SimpleMultiSelectSheetState extends State<_SimpleMultiSelectSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.of(context).size.height * 0.75,
       decoration: const BoxDecoration(
-        color: Color(0xFF151C24),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+        color: Color(0xFF0D1217),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       child: Column(
         children: [
+          // Drag Handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 48,
+              height: 5,
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel",
-                      style: TextStyle(color: Colors.white54)),
-                ),
                 Text(widget.title,
                     style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
-                TextButton(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5)),
+                ElevatedButton(
                   onPressed: () {
+                    HapticFeedback.mediumImpact();
                     widget.onSelectionChanged(_tempSelected);
                     Navigator.pop(context);
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: BudgetrColors.accent,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
                   child: const Text("Done",
-                      style: TextStyle(
-                          color: BudgetrColors.accent,
-                          fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
+              physics: const BouncingScrollPhysics(),
               itemCount: widget.items.length + 1,
-              separatorBuilder: (_, __) =>
-                  const Divider(height: 1, color: Colors.white10),
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  return ListTile(
-                    title: const Text("Clear Selection",
-                        style: TextStyle(
-                            color: Colors.white54,
-                            fontStyle: FontStyle.italic)),
-                    onTap: () => setState(() => _tempSelected.clear()),
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() => _tempSelected.clear());
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 16),
+                      decoration: BoxDecoration(
+                          color: Colors.redAccent.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8)),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.clear_all,
+                              color: Colors.redAccent, size: 18),
+                          SizedBox(width: 8),
+                          Text("Clear Selection",
+                              style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
                   );
                 }
+
                 final item = widget.items[index - 1];
                 final isSelected = _tempSelected.contains(item);
-                return ListTile(
-                  title: Text(item,
-                      style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.white70,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal)),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle,
-                          color: BudgetrColors.accent)
-                      : const Icon(Icons.circle_outlined,
-                          color: Colors.white24),
-                  onTap: () => setState(() {
-                    if (isSelected)
-                      _tempSelected.remove(item);
-                    else
-                      _tempSelected.add(item);
-                  }),
+
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => isSelected
+                        ? _tempSelected.remove(item)
+                        : _tempSelected.add(item));
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? BudgetrColors.accent.withOpacity(0.08)
+                          : Colors.white.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: isSelected
+                              ? BudgetrColors.accent.withOpacity(0.4)
+                              : Colors.white.withOpacity(0.05),
+                          width: 1.5),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(item,
+                            style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.8),
+                                fontSize: 15,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500)),
+                        const Spacer(),
+                        AnimatedScale(
+                          scale: isSelected ? 1.0 : 0.8,
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                              isSelected
+                                  ? Icons.check_circle_rounded
+                                  : Icons.circle_outlined,
+                              color: isSelected
+                                  ? BudgetrColors.accent
+                                  : Colors.white24,
+                              size: 22),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             ),

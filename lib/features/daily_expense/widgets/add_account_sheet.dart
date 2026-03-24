@@ -62,9 +62,9 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
     'Savings Account',
     'Salary Account',
     'Current Account',
-    'Wallet', // [NEW] Added Wallet
+    'Wallet',
     'Cash',
-    'Credit Card'
+    // 'Credit Card'
   ];
 
   List<String> get _availableAccountTypes {
@@ -134,10 +134,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
 
   void _onTypeChanged(String? val) {
     setState(() {
-      // If switching types, generally reset the "Bank/Wallet" selection
-      // unless switching between similar types (e.g. Savings <-> Salary)
       if (_selectedAccountType != val) {
-        // Reset specific fields when switching mainly to/from special types
         if (val == 'Credit Card' ||
             val == 'Cash' ||
             val == 'Wallet' ||
@@ -158,10 +155,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
         _selectedBank = 'Cash';
         _accountNoController.clear();
       } else if (val == 'Wallet') {
-        // [NEW] Wallet logic: Reset bank so user selects from Wallet list
-        // We keep account number field clear/enabled for user to potentially enter Phone No.
       } else {
-        // Normal Bank Accounts
         if (_selectedBank == 'Credit Card Pool Account' ||
             _selectedBank == 'Cash') {
           _selectedBank = null;
@@ -211,7 +205,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
     final isEditing = widget.accountToEdit != null;
     final isCreditCard = _selectedAccountType == 'Credit Card';
     final isCash = _selectedAccountType == 'Cash';
-    final isWallet = _selectedAccountType == 'Wallet'; // [NEW]
+    final isWallet = _selectedAccountType == 'Wallet';
 
     return Container(
       decoration: const BoxDecoration(
@@ -245,7 +239,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
               ),
               const SizedBox(height: 24),
 
-              // 1. Account Name
+              // 1. Account Name Field with updated constraints
               _buildTextField(
                 fieldKey: _nameFieldKey,
                 controller: _nameController,
@@ -262,12 +256,18 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
                     ? Icons.account_balance_wallet
                     : Icons.edit_outlined,
                 inputAction: TextInputAction.next,
+                maxLength: 20, // Max limit
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) return 'Required';
+                  if (val.trim().length < 2)
+                    return 'Minimum 2 characters'; // Min limit
+                  return null;
+                },
                 onSubmitted: () =>
                     FocusScope.of(context).requestFocus(_accNumFocus),
               ),
               const SizedBox(height: 16),
 
-              // 2. Type & Provider (Bank/Wallet)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -281,16 +281,12 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
                       validator: (v) => v == null ? 'Required' : null,
                     ),
                   ),
-
-                  // Hide Provider Dropdown if Cash
                   if (!isCash) ...[
                     const SizedBox(width: 16),
                     Expanded(
                       child: _buildSelectField<String>(
-                        label:
-                            isWallet ? "Wallet" : "Bank", // [NEW] Dynamic Label
+                        label: isWallet ? "Wallet" : "Bank",
                         value: _selectedBank,
-                        // [NEW] Switch items based on type
                         items: isCreditCard
                             ? ['Credit Card Pool Account']
                             : (isWallet
@@ -306,21 +302,16 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
                 ],
               ),
 
-              // 3. Account Number / ID
-              // Hidden for Cash and Credit Card.
-              // Visible for Wallet (User can put Phone Number) and Bank.
               if (!isCreditCard && !isCash) ...[
                 const SizedBox(height: 16),
                 _buildTextField(
                   fieldKey: _accNumFieldKey,
                   controller: _accountNoController,
                   focusNode: _accNumFocus,
-                  // [NEW] Label change for Wallet
                   label: isWallet ? "Phone / ID (Optional)" : "Last 4 Digits",
                   hint: isWallet ? "e.g. 9876543210" : "e.g. 8842",
                   icon: Icons.numbers,
                   inputType: TextInputType.number,
-                  // Remove max length constraint for wallets as phone numbers are longer
                   maxLength: isWallet ? 15 : 4,
                   isDigitOnly: true,
                   inputAction: TextInputAction.next,
@@ -329,7 +320,6 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
                 ),
               ],
 
-              // 4. Balance
               if (!isCreditCard) ...[
                 const SizedBox(height: 16),
                 _buildTextField(
@@ -452,6 +442,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
     TextInputType inputType = TextInputType.text,
     int? maxLength,
     bool isDigitOnly = false,
+    String? Function(String?)? validator, // Added validator parameter
   }) {
     return Container(
       key: fieldKey,
@@ -463,14 +454,14 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
         onFieldSubmitted: (_) => onSubmitted?.call(),
         style:
             const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-        maxLength: maxLength,
+        maxLength: maxLength, // Enforces the max character limit
         inputFormatters: isDigitOnly
             ? [
                 FilteringTextInputFormatter.digitsOnly,
                 LengthLimitingTextInputFormatter(maxLength)
               ]
             : null,
-        validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+        validator: validator, // Validation logic
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
@@ -481,7 +472,9 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
               borderSide: BorderSide.none),
           prefixIcon:
               Icon(icon, color: Colors.white.withOpacity(0.5), size: 20),
-          counterText: "",
+          // Character counter styling
+          counterStyle:
+              TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10),
         ),
       ),
     );
