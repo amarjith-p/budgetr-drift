@@ -70,7 +70,6 @@ class ExpenseService {
         .map((rows) => rows.map(_mapAccount).toList());
   }
 
-  // [UPDATED] Watches Multiple Accounts for Credit Summary
   Stream<List<ExpenseAccountModel>> watchAccountsByIds(List<String> ids) {
     if (ids.isEmpty) return Stream.value([]);
     return (_db.select(_db.expenseAccounts)..where((t) => t.id.isIn(ids)))
@@ -173,6 +172,19 @@ class ExpenseService {
     final results = await query.get();
     return results
         .map((row) => row.read(_db.expenseTransactions.notes)!)
+        .toList();
+  }
+
+  // --- [NEW: HYBRID BUCKET STRATEGY] - Fetch unique historical buckets ---
+  Future<List<String>> getDistinctUsedBuckets() async {
+    final query = _db.selectOnly(_db.expenseTransactions, distinct: true)
+      ..addColumns([_db.expenseTransactions.bucket])
+      ..where(_db.expenseTransactions.bucket.isNotNull() &
+          _db.expenseTransactions.bucket.equals('').not());
+
+    final results = await query.get();
+    return results
+        .map((row) => row.read(_db.expenseTransactions.bucket)!)
         .toList();
   }
 
@@ -718,7 +730,7 @@ class ExpenseService {
       FilterCriteria criteria) {
     final query = _db.select(_db.expenseTransactions);
 
-    // 1. Initialize the base predicate
+    // 1. Initialize the Base Predicate
     Expression<bool> predicate = _db.expenseTransactions.accountId.isNotNull() &
         _db.expenseTransactions.accountId.equals('').not();
 
@@ -767,13 +779,11 @@ class ExpenseService {
           _db.expenseTransactions.type.isIn(criteria.transactionTypes);
     }
 
-    // 7. Combine Buckets (Fixing the logic mismatch)
-    // 7. Combine Buckets (Strict & Robust Match)
+    // 7. Combine Buckets (Strict & Robust Match using LIKE to ignore hidden spaces)
     if (criteria.selectedBuckets.isNotEmpty) {
       Expression<bool>? bucketPredicate;
 
       for (String selected in criteria.selectedBuckets) {
-        // Uses LIKE operator to perform a case-insensitive match and ignore hidden spaces
         final searchPattern = '%${selected.trim()}%';
         final condition = _db.expenseTransactions.bucket.like(searchPattern);
 
@@ -788,7 +798,8 @@ class ExpenseService {
         predicate = predicate & bucketPredicate;
       }
     }
-    // 8. Apply the single combined predicate
+
+    // 8. Apply the single unified predicate
     query.where((t) => predicate);
 
     // 9. Apply Sorting

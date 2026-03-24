@@ -8,6 +8,7 @@ import '../../../core/services/category_service.dart';
 import '../../settings/services/settings_service.dart';
 import '../models/filter_criteria.dart';
 import '../models/expense_models.dart';
+import '../services/expense_service.dart';
 
 class SmartFilterSheet extends StatefulWidget {
   final FilterCriteria initialFilters;
@@ -61,18 +62,58 @@ class _SmartFilterSheetState extends State<SmartFilterSheet> {
     final catsFuture = GetIt.I<CategoryService>().getCategories().first;
     final configFuture = GetIt.I<SettingsService>().getPercentageConfig();
 
-    final results = await Future.wait([catsFuture, configFuture]);
+    // Fetch distinct historical buckets that have actually been saved to the DB
+    final historicalBucketsFuture =
+        GetIt.I<ExpenseService>().getDistinctUsedBuckets();
+
+    final results =
+        await Future.wait([catsFuture, configFuture, historicalBucketsFuture]);
 
     if (mounted) {
       setState(() {
         _allCategories = results[0] as List<TransactionCategoryModel>;
 
         final config = results[1] as dynamic;
-        _allBuckets =
+
+        // 1. Get active buckets from Current Settings
+        final List<String> activeBuckets =
             (config.categories as List).map((e) => e.name as String).toList();
-        if (!_allBuckets.contains("Out of Bucket")) {
-          _allBuckets.add("Out of Bucket");
+
+        // 2. Get historical buckets from Database
+        final List<String> historicalBuckets = results[2] as List<String>;
+
+        // --- [UPDATED: CASE-INSENSITIVE DEDUPLICATION & FILTERING] ---
+        // 3. Merge them uniquely using a Map.
+        // Key: lowercase name (for exact matching), Value: Original casing (for display)
+        final Map<String, String> uniqueBucketsMap = {};
+
+        // Add active buckets first so we preserve the user's preferred casing from settings
+        for (var b in activeBuckets) {
+          if (b.trim().isNotEmpty) {
+            uniqueBucketsMap[b.trim().toLowerCase()] = b.trim();
+          }
         }
+
+        // Add historical buckets safely without overwriting the active casing
+        for (var b in historicalBuckets) {
+          if (b.trim().isNotEmpty) {
+            uniqueBucketsMap.putIfAbsent(
+                b.trim().toLowerCase(), () => b.trim());
+          }
+        }
+
+        // 4. Remove internal/system buckets explicitly (Case-Insensitive)
+        uniqueBucketsMap.remove('unallocated');
+        uniqueBucketsMap.remove('income');
+        uniqueBucketsMap.remove('out of bucket');
+
+        // 5. Convert back to list and sort alphabetically ignoring case
+        _allBuckets = uniqueBucketsMap.values.toList();
+        _allBuckets.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+        // 6. Always append "Out of Bucket" cleanly at the very end
+        _allBuckets.add("Out of Bucket");
+        // --- [END UPDATED LOGIC] ---
       });
     }
   }
@@ -936,14 +977,22 @@ class _SimpleMultiSelectSheetState extends State<_SimpleMultiSelectSheet> {
                 }
 
                 final item = widget.items[index - 1];
-                final isSelected = _tempSelected.contains(item);
+
+                // When selecting/deselecting, ignore casing to match the correct internal logic
+                final isSelected = _tempSelected
+                    .any((e) => e.toLowerCase() == item.toLowerCase());
 
                 return GestureDetector(
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    setState(() => isSelected
-                        ? _tempSelected.remove(item)
-                        : _tempSelected.add(item));
+                    setState(() {
+                      if (isSelected) {
+                        _tempSelected.removeWhere(
+                            (e) => e.toLowerCase() == item.toLowerCase());
+                      } else {
+                        _tempSelected.add(item);
+                      }
+                    });
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
