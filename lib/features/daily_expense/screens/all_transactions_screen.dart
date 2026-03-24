@@ -42,15 +42,24 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   Timer? _debounce;
 
-  // --- [NEW PAGINATION LOGIC: State Variables] ---
+  // --- [PAGINATION & STREAM LOGIC: State Variables] ---
   int _currentRenderLimit = 50;
   final ScrollController _scrollController = ScrollController();
+
+  // [FIXED] Cached Stream to prevent resetting on scroll pagination
+  late Stream<List<ExpenseTransactionModel>> _transactionsStream;
 
   @override
   void initState() {
     super.initState();
     // Listen for scroll events to trigger lazy loading
     _scrollController.addListener(_onScroll);
+    _updateStream(); // Initialize the stream once
+  }
+
+  // [FIXED] Updates the stream ONLY when filters change, preventing scroll jump
+  void _updateStream() {
+    _transactionsStream = _service.getFilteredTransactions(_criteria);
   }
 
   void _onScroll() {
@@ -62,14 +71,13 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       });
     }
   }
-  // --- [END NEW PAGINATION LOGIC] ---
 
   @override
   void dispose() {
     _searchCtrl.dispose();
     _debounce?.cancel();
-    _scrollController.removeListener(_onScroll); // [NEW PAGINATION LOGIC]
-    _scrollController.dispose(); // [NEW PAGINATION LOGIC]
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -78,9 +86,9 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
     _debounce = Timer(const Duration(milliseconds: 300), () {
       setState(() {
-        _currentRenderLimit =
-            50; // [NEW PAGINATION LOGIC] Reset limit on new search
+        _currentRenderLimit = 50;
         _criteria = _criteria.copyWithSearch(query);
+        _updateStream(); // Fetch new stream on search
       });
     });
   }
@@ -95,10 +103,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
         allTransactions: _allCachedTransactions,
         onApply: (newFilters) {
           setState(() {
-            _currentRenderLimit =
-                50; // [NEW PAGINATION LOGIC] Reset limit on new filter
+            _currentRenderLimit = 50;
             newFilters.searchQuery = _criteria.searchQuery;
             _criteria = newFilters;
+            _updateStream(); // Fetch new stream on filter apply
           });
         },
       ),
@@ -107,12 +115,13 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   void _toggleTypeFilter(String type) {
     setState(() {
-      _currentRenderLimit = 50; // [NEW PAGINATION LOGIC] Reset limit on toggle
+      _currentRenderLimit = 50;
       if (_criteria.transactionTypes.contains(type)) {
         _criteria.transactionTypes.remove(type);
       } else {
         _criteria.transactionTypes.add(type);
       }
+      _updateStream(); // Fetch new stream on type toggle
     });
   }
 
@@ -231,7 +240,8 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                   };
 
                   return StreamBuilder<List<ExpenseTransactionModel>>(
-                    stream: _service.getFilteredTransactions(_criteria),
+                    // [FIXED] Use the cached stream so scrolling doesn't reset the connection
+                    stream: _transactionsStream,
                     builder: (context, txnSnapshot) {
                       if (txnSnapshot.connectionState ==
                           ConnectionState.waiting) {
@@ -252,9 +262,8 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                         return _buildEmptyState();
                       }
 
-                      // --- [NEW PAGINATION LOGIC: Slice data for rendering] ---
-                      // We pass the full 'allTransactions' list to the Summary Strip so totals are accurate.
-                      // We pass the sliced 'displayedTransactions' list to the list builder so scrolling is lag-free.
+                      // We pass the full list to Summary Strip so totals are accurate.
+                      // We pass the sliced list to the builder so scrolling is lag-free.
                       final displayedTransactions =
                           allTransactions.take(_currentRenderLimit).toList();
 
@@ -262,18 +271,16 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                           (ExpenseTransactionModel t) {
                         return DateFormat('MMMM yyyy').format(t.date);
                       });
-                      // --- [END NEW PAGINATION LOGIC] ---
 
                       return Column(
                         children: [
-                          // Dynamic Summary Strip (Accurate Totals based on FULL search/filter match)
+                          // Dynamic Summary Strip
                           _buildFilteredSummaryStrip(allTransactions),
 
                           // CustomScrollView for Transactions
                           Expanded(
                             child: CustomScrollView(
-                              controller:
-                                  _scrollController, // [NEW PAGINATION LOGIC: Attached]
+                              controller: _scrollController,
                               physics: const BouncingScrollPhysics(),
                               slivers: [
                                 ...grouped.entries.map((entry) {
@@ -525,9 +532,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       onTap: () {
         setState(() {
           _criteria = FilterCriteria();
-          _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+          _currentRenderLimit = 50;
           _searchCtrl.clear();
           _isSearching = false;
+          _updateStream(); // Refresh Stream
         });
       },
       child: Container(
@@ -612,9 +620,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
           TextButton(
             onPressed: () => setState(() {
               _criteria = FilterCriteria();
-              _currentRenderLimit = 50; // [NEW PAGINATION LOGIC]
+              _currentRenderLimit = 50;
               _searchCtrl.clear();
               _isSearching = false;
+              _updateStream(); // Refresh Stream
             }),
             child: const Text("Clear All Filters",
                 style: TextStyle(color: BudgetrColors.accent)),
@@ -640,6 +649,43 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
         await _service.deleteTransaction(txn);
       },
     );
+  }
+
+  // --- Filter Chip Helpers (for Active Filters) ---
+  Widget _buildFilterChip(String label, VoidCallback onRemove) {
+    return Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.only(left: 12, right: 4, top: 6, bottom: 6),
+        decoration: BoxDecoration(
+            color: BudgetrColors.accent.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: BudgetrColors.accent.withOpacity(0.3))),
+        child: Row(children: [
+          Text(label,
+              style: const TextStyle(
+                  color: BudgetrColors.accent,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11)),
+          const SizedBox(width: 4),
+          InkWell(
+              onTap: onRemove,
+              borderRadius: BorderRadius.circular(10),
+              child: const Icon(Icons.close,
+                  size: 16, color: BudgetrColors.accent))
+        ]));
+  }
+
+  String _getSortLabel(SortOption option) {
+    switch (option) {
+      case SortOption.newest:
+        return "Newest";
+      case SortOption.oldest:
+        return "Oldest";
+      case SortOption.highestAmount:
+        return "Highest";
+      case SortOption.lowestAmount:
+        return "Lowest";
+    }
   }
 }
 
