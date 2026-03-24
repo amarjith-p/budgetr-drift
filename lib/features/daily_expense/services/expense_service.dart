@@ -716,53 +716,82 @@ class ExpenseService {
 
   Stream<List<ExpenseTransactionModel>> getFilteredTransactions(
       FilterCriteria criteria) {
-    final query = _db.select(_db.expenseTransactions)
-      ..where((t) => t.accountId.isNotNull() & t.accountId.equals('').not());
+    final query = _db.select(_db.expenseTransactions);
 
-    // --- [NEW SEARCH LOGIC: Added before regular filters] ---
+    // 1. Initialize the base predicate
+    Expression<bool> predicate = _db.expenseTransactions.accountId.isNotNull() &
+        _db.expenseTransactions.accountId.equals('').not();
+
+    // 2. Combine Search Logic
     if (criteria.searchQuery != null && criteria.searchQuery!.isNotEmpty) {
       final searchString = '%${criteria.searchQuery}%';
       final parsedAmount = double.tryParse(criteria.searchQuery!);
 
       if (parsedAmount != null) {
-        // If they typed a number, search text columns AND exact amount
-        query.where((t) =>
-            t.notes.like(searchString) |
-            t.category.like(searchString) |
-            t.subCategory.like(searchString) |
-            t.amount.equals(parsedAmount));
+        predicate = predicate &
+            (_db.expenseTransactions.notes.like(searchString) |
+                _db.expenseTransactions.category.like(searchString) |
+                _db.expenseTransactions.subCategory.like(searchString) |
+                _db.expenseTransactions.amount.equals(parsedAmount));
       } else {
-        // Otherwise, just search text columns
-        query.where((t) =>
-            t.notes.like(searchString) |
-            t.category.like(searchString) |
-            t.subCategory.like(searchString));
+        predicate = predicate &
+            (_db.expenseTransactions.notes.like(searchString) |
+                _db.expenseTransactions.category.like(searchString) |
+                _db.expenseTransactions.subCategory.like(searchString));
       }
     }
-    // --- [END NEW SEARCH LOGIC] ---
 
+    // 3. Combine Date Range
     if (criteria.startDate != null && criteria.endDate != null) {
-      query.where((t) =>
-          t.date.isBetweenValues(criteria.startDate!, criteria.endDate!));
+      predicate = predicate &
+          _db.expenseTransactions.date
+              .isBetweenValues(criteria.startDate!, criteria.endDate!);
     }
 
+    // 4. Combine Amount Range
     if (criteria.amountRange != null) {
-      query.where((t) => t.amount.isBetweenValues(
-          criteria.amountRange!.start, criteria.amountRange!.end));
+      predicate = predicate &
+          _db.expenseTransactions.amount.isBetweenValues(
+              criteria.amountRange!.start, criteria.amountRange!.end);
     }
 
+    // 5. Combine Categories
     if (criteria.selectedCategories.isNotEmpty) {
-      query.where((t) => t.category.isIn(criteria.selectedCategories));
+      predicate = predicate &
+          _db.expenseTransactions.category.isIn(criteria.selectedCategories);
     }
 
+    // 6. Combine Transaction Types
     if (criteria.transactionTypes.isNotEmpty) {
-      query.where((t) => t.type.isIn(criteria.transactionTypes));
+      predicate = predicate &
+          _db.expenseTransactions.type.isIn(criteria.transactionTypes);
     }
 
+    // 7. Combine Buckets (Fixing the logic mismatch)
+    // 7. Combine Buckets (Strict & Robust Match)
     if (criteria.selectedBuckets.isNotEmpty) {
-      query.where((t) => t.bucket.isIn(criteria.selectedBuckets));
-    }
+      Expression<bool>? bucketPredicate;
 
+      for (String selected in criteria.selectedBuckets) {
+        // Uses LIKE operator to perform a case-insensitive match and ignore hidden spaces
+        final searchPattern = '%${selected.trim()}%';
+        final condition = _db.expenseTransactions.bucket.like(searchPattern);
+
+        if (bucketPredicate == null) {
+          bucketPredicate = condition;
+        } else {
+          bucketPredicate = bucketPredicate | condition;
+        }
+      }
+
+      if (bucketPredicate != null) {
+        predicate = predicate & bucketPredicate;
+      }
+    }
+    // 8. Apply the single combined predicate
+    query.where((t) => predicate);
+
+    // 9. Apply Sorting
     switch (criteria.sortOption) {
       case SortOption.newest:
         query.orderBy(

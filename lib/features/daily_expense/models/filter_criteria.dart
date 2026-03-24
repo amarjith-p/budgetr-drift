@@ -110,8 +110,21 @@ class FilterCriteria {
 
     // 5. Bucket Check
     if (selectedBuckets.isNotEmpty) {
-      // Only apply bucket filter to Expenses
-      if (txn.type == 'Expense' && !selectedBuckets.contains(txn.bucket)) {
+      bool isBucketMatch = false;
+      final String txnBucket = txn.bucket.toLowerCase().trim();
+
+      for (String selected in selectedBuckets) {
+        // Checks if the database bucket string contains the selected bucket name
+        // Ignoring case sensitivity and trailing spaces
+        if (txnBucket.contains(selected.toLowerCase().trim())) {
+          isBucketMatch = true;
+          break;
+        }
+      }
+
+      // If it doesn't match the selected bucket, exclude it entirely
+      // (This stops Income/Transfers from sneaking through)
+      if (!isBucketMatch) {
         return false;
       }
     }
