@@ -41,12 +41,28 @@ class CreditSummaryCard extends StatelessWidget {
     double allocatedFunds =
         linkedAccounts.fold(0.0, (sum, acc) => sum + acc.currentBalance);
 
-    // Calculate difference
+    // --- NEW: 3-STATE STATUS LOGIC ---
     double difference = allocatedFunds - totalPayable;
-    bool isShortfall = difference <= -0.000001 && hasDebt;
-    String statusLabel = isShortfall ? "Shortfall" : "Fully Funded";
-    Color statusColor =
-        isShortfall ? const Color(0xFFE71D36) : const Color(0xFF06D6A0);
+
+    String statusLabel;
+    Color statusColor;
+    IconData statusIcon;
+
+    // Using 0.01 to avoid floating-point precision issues
+    if (difference <= -0.01 && hasDebt) {
+      statusLabel = "Shortfall";
+      statusColor = const Color(0xFFE71D36); // Red
+      statusIcon = Icons.warning_rounded;
+    } else if (difference >= 0.01) {
+      statusLabel = "Excess Reserve";
+      statusColor = const Color(0xFF4CC9F0); // Blue (matches surplus)
+      statusIcon = Icons.account_balance_wallet_rounded;
+    } else {
+      statusLabel = "Fully Funded";
+      statusColor = const Color(0xFF06D6A0); // Green
+      statusIcon = Icons.check_circle_rounded;
+    }
+    // ---------------------------------
 
     // Determine subtitle text based on selection count
     String accountText = "Tap to link bank accounts";
@@ -65,7 +81,7 @@ class CreditSummaryCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
         boxShadow: [
           BoxShadow(
@@ -179,11 +195,10 @@ class CreditSummaryCard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                          isShortfall
-                              ? Icons.warning_rounded
-                              : Icons.check_circle_rounded,
-                          color: statusColor,
-                          size: 16),
+                        statusIcon,
+                        color: statusColor,
+                        size: 16,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         "Status: $statusLabel",

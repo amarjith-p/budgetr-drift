@@ -266,7 +266,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
         final double totalBalance =
             allAccounts.fold(0.0, (s, a) => s + a.currentBalance);
         final String formattedBalance = NumberFormat.currency(
-                locale: 'en_IN', symbol: '₹', decimalDigits: 2)
+                locale: 'en_IN', symbol: '₹ ', decimalDigits: 2)
             .format(totalBalance);
 
         return StreamBuilder<List<ExpenseAccountModel>>(
@@ -296,16 +296,16 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const Text(
-                            "ACCOUNTS",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
+                          // const Text(
+                          //   "ACCOUNTS",
+                          //   style: TextStyle(
+                          //     color: Colors.white70,
+                          //     fontSize: 12,
+                          //     fontWeight: FontWeight.bold,
+                          //     letterSpacing: 1.5,
+                          //   ),
+                          // ),
+                          // const SizedBox(width: 8),
 
                           // --- [FIXED] Managed Large Balance with Expanded + FittedBox ---
                           Expanded(
@@ -313,21 +313,33 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                               alignment: Alignment.centerLeft,
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.05),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                        color: Colors.white.withOpacity(0.1)),
-                                  ),
-                                  child: Text(
-                                    "${allAccounts.length} Accounts  •  $formattedBalance",
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.8),
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const AccountManagementScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                          color: Colors.white.withOpacity(0.3)),
+                                    ),
+                                    child: Text(
+                                      "${allAccounts.length} Accounts  •  $formattedBalance",
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.9),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -351,27 +363,28 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
+                                  horizontal: 8, vertical: 5),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF00B4D8).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                    color: const Color(0xFF00B4D8)
-                                        .withOpacity(0.3)),
+                                    color:
+                                        const Color.fromARGB(255, 255, 255, 255)
+                                            .withOpacity(0.5)),
                               ),
                               child: const Row(
                                 children: [
                                   Icon(Icons.functions_rounded,
-                                      color: Color(0xFF00B4D8), size: 14),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    "Custom Sum",
-                                    style: TextStyle(
-                                      color: Color(0xFF00B4D8),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                      color: Color(0xFF00B4D8), size: 11),
+                                  // SizedBox(width: 3),
+                                  // Text(
+                                  //   "Custom Sum",
+                                  //   style: TextStyle(
+                                  //     color: Color(0xFF00B4D8),
+                                  //     fontSize: 10,
+                                  //     fontWeight: FontWeight.bold,
+                                  //   ),
+                                  // ),
                                 ],
                               ),
                             ),

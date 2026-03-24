@@ -108,7 +108,7 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
 
       final card = CreditCardModel(
         id: isEditing ? widget.cardToEdit!.id : '',
-        name: _nameCtrl.text,
+        name: _nameCtrl.text.trim(),
         bankName: _selectedBank!,
         creditLimit: double.parse(_limitCtrl.text),
         billDate: _billDate,
@@ -183,18 +183,30 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Card Name (System Keyboard)
+                    // --- UPDATED: Card Name Field (System Keyboard) ---
                     TextFormField(
                       key: _nameFieldKey,
                       focusNode: _nameNode,
                       controller: _nameCtrl,
+                      maxLength: 20, // Enforces max 20 chars and adds a counter
                       style: const TextStyle(color: Colors.white),
-                      decoration: _inputDeco('Card Name (e.g. Regalia Gold)'),
+                      decoration:
+                          _inputDeco('Card Name (e.g. Regalia Gold)').copyWith(
+                        // Style the character counter so it's subtle
+                        counterStyle: TextStyle(
+                            color: Colors.white.withOpacity(0.4), fontSize: 12),
+                      ),
                       textInputAction: TextInputAction.next,
                       onFieldSubmitted: (_) {
                         FocusScope.of(context).requestFocus(_limitNode);
                       },
-                      validator: (v) => v!.trim().isEmpty ? 'Required' : null,
+                      validator: (v) {
+                        final text = v?.trim() ?? '';
+                        if (text.isEmpty) return 'Card name is required';
+                        if (text.length < 2)
+                          return 'Minimum 2 characters required';
+                        return null; // maxLength strictly prevents typing > 20
+                      },
                     ),
                     const SizedBox(height: 16),
 
@@ -214,7 +226,6 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
                       key: _limitFieldKey,
                       focusNode: _limitNode,
                       controller: _limitCtrl,
-                      // FIXED: Toggle based on system keyboard activity
                       keyboardType: _systemKeyboardActive
                           ? const TextInputType.numberWithOptions(decimal: true)
                           : TextInputType.none,
@@ -315,7 +326,6 @@ class _AddCreditCardSheetState extends State<AddCreditCardSheet> {
                 setState(() => _showCustomKeyboard = false);
                 _limitNode.unfocus();
               },
-              // ADDED: System Keyboard Logic
               onSwitchToSystem: () {
                 setState(() {
                   _showCustomKeyboard = false;

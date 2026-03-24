@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import '../../../core/widgets/glass_card.dart';
@@ -48,18 +49,19 @@ class _PayableAccountSelectionSheetState
   Widget build(BuildContext context) {
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-      // [FIX 2] Wrapped inside SafeArea to prevent notch/notification bar overlap
+      // Wrapped inside SafeArea to prevent notch/notification bar overlap
       child: SafeArea(
         bottom: false,
         child: Container(
+          // --- [ADDED]: Set height to 90% of screen height ---
+          height: MediaQuery.of(context).size.height * 0.8,
           padding: const EdgeInsets.only(top: 16),
           decoration: BoxDecoration(
             color: const Color(0xFF0D1B2A).withOpacity(0.9),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
               // Drag Handle
               Container(
@@ -70,7 +72,7 @@ class _PayableAccountSelectionSheetState
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 25),
+              const SizedBox(height: 20),
 
               // Header
               const Padding(
@@ -95,11 +97,13 @@ class _PayableAccountSelectionSheetState
               const SizedBox(height: 16),
 
               // Account List
-              Flexible(
+              Expanded(
                 child: _isLoading
-                    ? const Padding(
-                        padding: EdgeInsets.all(40.0),
-                        child: ModernLoader(size: 40),
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40.0),
+                          child: FuturisticLoader(size: 40),
+                        ),
                       )
                     : StreamBuilder<List<ExpenseAccountModel>>(
                         stream: _expenseService.getAccounts(),
@@ -107,20 +111,24 @@ class _PayableAccountSelectionSheetState
                           if (snapshot.connectionState ==
                                   ConnectionState.waiting &&
                               snapshot.data == null) {
-                            return const Padding(
-                              padding: EdgeInsets.all(40.0),
-                              child: ModernLoader(size: 40),
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(40.0),
+                                child: FuturisticLoader(size: 40),
+                              ),
                             );
                           }
 
                           final accounts = snapshot.data ?? [];
 
                           if (accounts.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.all(40.0),
-                              child: Text(
-                                "No bank accounts found.",
-                                style: TextStyle(color: Colors.white54),
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(40.0),
+                                child: Text(
+                                  "No bank accounts found.",
+                                  style: TextStyle(color: Colors.white54),
+                                ),
                               ),
                             );
                           }
@@ -153,7 +161,7 @@ class _PayableAccountSelectionSheetState
                               final account = accounts[index];
                               final isSelected =
                                   _selectedIds.contains(account.id);
-                              // [FIX 3] Standardized Bank Icon String Matcher
+                              // Standardized Bank Icon String Matcher
                               final normalizedBankName = account.bankName
                                   .toLowerCase()
                                   .replaceAll(' ', '')
@@ -183,7 +191,7 @@ class _PayableAccountSelectionSheetState
                                   ),
                                   child: Row(
                                     children: [
-                                      // [FIX 3] Fallback Bank Logo implementation matching Daily Expense Module
+                                      // Fallback Bank Logo implementation matching Daily Expense Module
                                       Container(
                                         width: 40,
                                         height: 40,
@@ -249,7 +257,7 @@ class _PayableAccountSelectionSheetState
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4CC9F0),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                     child: const Text(
                       "Save Preferences",

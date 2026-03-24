@@ -112,7 +112,7 @@ class CreditSummaryCard extends StatelessWidget {
                       color: isNetLiability
                           ? Colors.redAccent
                           : Colors.greenAccent,
-                      fontSize: 24,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
@@ -164,7 +164,7 @@ class CreditSummaryCard extends StatelessWidget {
                       color: isOverPaid
                           ? Colors.greenAccent
                           : (isPaidOff ? Colors.white60 : Colors.redAccent),
-                      fontSize: 24,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
