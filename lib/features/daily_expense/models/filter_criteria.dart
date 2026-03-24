@@ -21,7 +21,7 @@ class FilterCriteria {
     List<String>? selectedCategories,
     List<String>? selectedBuckets,
     this.sortOption = SortOption.newest,
-    this.searchQuery, // [NEW SEARCH LOGIC]
+    this.searchQuery,
   })  : transactionTypes = transactionTypes ?? [],
         selectedCategories = selectedCategories ?? [],
         selectedBuckets = selectedBuckets ?? [];
@@ -30,14 +30,11 @@ class FilterCriteria {
   DateTime? get startDate => dateRange?.start;
 
   // --- [NEW END DATE LOGIC] ---
-  // Automatically pushes the end date to 11:59:59.999 PM
-  // so all transactions on the selected "To Date" are included.
   DateTime? get endDate {
     if (dateRange?.end == null) return null;
     final d = dateRange!.end;
     return DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
   }
-  // --- [END NEW END DATE LOGIC] ---
 
   bool get hasFilters {
     return dateRange != null ||
@@ -46,7 +43,7 @@ class FilterCriteria {
         selectedCategories.isNotEmpty ||
         selectedBuckets.isNotEmpty ||
         sortOption != SortOption.newest ||
-        (searchQuery != null && searchQuery!.isNotEmpty); // [NEW SEARCH LOGIC]
+        (searchQuery != null && searchQuery!.isNotEmpty);
   }
 
   FilterCriteria copyWith({
@@ -65,12 +62,10 @@ class FilterCriteria {
           selectedCategories ?? List.from(this.selectedCategories),
       selectedBuckets: selectedBuckets ?? List.from(this.selectedBuckets),
       sortOption: sortOption ?? this.sortOption,
-      searchQuery:
-          this.searchQuery, // Preserve search when other filters change
+      searchQuery: this.searchQuery,
     );
   }
 
-  // [NEW SEARCH LOGIC] - Dedicated copy method to easily overwrite search query
   FilterCriteria copyWithSearch(String? search) {
     return FilterCriteria(
       dateRange: this.dateRange,
@@ -84,7 +79,7 @@ class FilterCriteria {
   }
 
   bool matches(ExpenseTransactionModel txn) {
-    // 1. Date Check (Now strictly respects the new 23:59:59 boundary)
+    // 1. Date Check
     if (startDate != null && endDate != null) {
       if (txn.date.isBefore(startDate!) || txn.date.isAfter(endDate!)) {
         return false;
@@ -108,28 +103,25 @@ class FilterCriteria {
       if (!selectedCategories.contains(txn.category)) return false;
     }
 
-    // 5. Bucket Check
+    // 5. Bucket Check --- [UPDATED TO EXACT MATCH] ---
     if (selectedBuckets.isNotEmpty) {
       bool isBucketMatch = false;
       final String txnBucket = txn.bucket.toLowerCase().trim();
 
       for (String selected in selectedBuckets) {
-        // Checks if the database bucket string contains the selected bucket name
-        // Ignoring case sensitivity and trailing spaces
-        if (txnBucket.contains(selected.toLowerCase().trim())) {
+        // Uses exact equality (==) to prevent "Commitments" matching "Past Commitments"
+        if (txnBucket == selected.toLowerCase().trim()) {
           isBucketMatch = true;
           break;
         }
       }
 
-      // If it doesn't match the selected bucket, exclude it entirely
-      // (This stops Income/Transfers from sneaking through)
       if (!isBucketMatch) {
         return false;
       }
     }
 
-    // 6. Search Check [NEW SEARCH LOGIC]
+    // 6. Search Check
     if (searchQuery != null && searchQuery!.isNotEmpty) {
       final q = searchQuery!.toLowerCase();
       if (!txn.notes.toLowerCase().contains(q) &&
