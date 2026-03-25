@@ -4,9 +4,15 @@ import '../../../core/database/app_database.dart' as db;
 import '../models/goal_loan_models.dart';
 import '../../../core/database/tables.dart';
 
+// [NEW IMPORT]
+import 'goals_loans_notification_scheduler.dart';
+
 class GoalLoanService {
   final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
+
+  // [NEW] Instance of the scheduler
+  final _scheduler = GoalsLoansNotificationScheduler();
 
   // --- MAPPERS ---
   GoalModel _mapGoal(db.Goal row) {
@@ -59,19 +65,14 @@ class GoalLoanService {
   }
 
   // --- GOALS ---
-
-  // [EXISTING] Preserved for backward compatibility
   Stream<List<GoalModel>> getActiveGoals() {
     return getGoals(showHistory: false);
   }
 
-  // [NEW] Flexible Stream for Active OR History
   Stream<List<GoalModel>> getGoals({required bool showHistory}) {
     return (_db.select(_db.goals)
           ..where((t) => t.isCompleted.equals(showHistory))
           ..orderBy([
-            // For History, show most recently updated/completed first?
-            // For now keeping priority for consistency
             (t) => OrderingTerm(expression: t.priority, mode: OrderingMode.asc)
           ]))
         .watch()
@@ -105,7 +106,6 @@ class GoalLoanService {
             createdAt: DateTime.now(),
           ));
 
-      // Create Initial Log if needed
       if (goal.currentAmount > 0) {
         await _db.into(_db.assetLogs).insert(db.AssetLogsCompanion.insert(
               id: _uuid.v4(),
@@ -118,6 +118,7 @@ class GoalLoanService {
             ));
       }
     });
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   Future<void> updateGoal(GoalModel goal) async {
@@ -134,6 +135,7 @@ class GoalLoanService {
       identificationNumber: Value(goal.identificationNumber),
       expectedReturn: Value(goal.expectedReturn),
     ));
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   Future<void> deleteGoal(String goalId) async {
@@ -142,6 +144,7 @@ class GoalLoanService {
           .go();
       await (_db.delete(_db.goals)..where((t) => t.id.equals(goalId))).go();
     });
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   Future<void> addGoalContribution(
@@ -169,6 +172,7 @@ class GoalLoanService {
         isCompleted: Value(isComplete),
       ));
     });
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   Future<void> adjustGoalValue(
@@ -198,6 +202,7 @@ class GoalLoanService {
         isCompleted: Value(isComplete),
       ));
     });
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   Future<void> deleteGoalLog(String logId) async {
@@ -219,16 +224,14 @@ class GoalLoanService {
         isCompleted: Value(isComplete),
       ));
     });
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   // --- LOANS ---
-
-  // [EXISTING] Preserved for backward compatibility
   Stream<List<LoanModel>> getActiveLoans() {
     return getLoans(showHistory: false);
   }
 
-  // [NEW] Flexible Stream for Active OR History
   Stream<List<LoanModel>> getLoans({required bool showHistory}) {
     return (_db.select(_db.loans)
           ..where((t) => t.isClosed.equals(showHistory))
@@ -261,6 +264,7 @@ class GoalLoanService {
           nextPaymentDate: Value(loan.nextPaymentDate),
           notes: Value(loan.notes),
         ));
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   Future<void> updateLoan(LoanModel loan) async {
@@ -277,6 +281,7 @@ class GoalLoanService {
       dueDate: Value(loan.dueDate),
       notes: Value(loan.notes),
     ));
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   Future<void> deleteLoan(String loanId) async {
@@ -285,6 +290,7 @@ class GoalLoanService {
           .go();
       await (_db.delete(_db.loans)..where((t) => t.id.equals(loanId))).go();
     });
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   Future<void> addLoanPayment(
@@ -312,6 +318,7 @@ class GoalLoanService {
         isClosed: Value(isClosed),
       ));
     });
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   Future<void> deleteLoanLog(String logId) async {
@@ -334,6 +341,7 @@ class GoalLoanService {
         isClosed: Value(isClosed),
       ));
     });
+    _triggerNotificationSync(); // [NEW HOOK]
   }
 
   Stream<List<AssetLogModel>> getLogsForParent(String parentId) {
@@ -344,5 +352,12 @@ class GoalLoanService {
           ]))
         .watch()
         .map((rows) => rows.map(_mapLog).toList());
+  }
+
+  // --- [NEW METHOD] Hand over data directly to Batched Scheduler ---
+  Future<void> _triggerNotificationSync() async {
+    final loans = await _db.select(_db.loans).get();
+    final goals = await _db.select(_db.goals).get();
+    await _scheduler.syncNotifications(loans, goals);
   }
 }
