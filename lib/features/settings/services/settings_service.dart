@@ -113,4 +113,33 @@ class SettingsService {
           value: jsonEncode(accountIds),
         ));
   }
+
+  // ===========================================================================
+  // --- [NEW] BALANCE SHEET NOTIFICATION PREFERENCES ---
+  // ===========================================================================
+
+  Future<String> getBalanceSheetReminderTime() async {
+    final row = await (_db.select(_db.settings)
+          ..where((t) => t.key.equals('balance_sheet_reminder_time')))
+        .getSingleOrNull();
+
+    // Default to 09:00 AM if not set
+    return row?.value ?? "09:00";
+  }
+
+  Future<void> setBalanceSheetReminderTime(String timeString) async {
+    await _db
+        .into(_db.settings)
+        .insertOnConflictUpdate(db.SettingsCompanion.insert(
+          key: 'balance_sheet_reminder_time',
+          value: timeString,
+        ));
+  }
+
+  Stream<String> watchBalanceSheetReminderTime() {
+    return (_db.select(_db.settings)
+          ..where((t) => t.key.equals('balance_sheet_reminder_time')))
+        .watchSingleOrNull()
+        .map((row) => row?.value ?? "09:00");
+  }
 }

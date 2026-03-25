@@ -6,6 +6,11 @@ import '../../../core/widgets/glass_card.dart';
 import '../services/real_time_notification_manager.dart';
 import 'scheduled_notifications_screen.dart';
 
+// --- [NEW IMPORTS] For Balance Sheet Notification Sync ---
+import '../../balance_sheet/services/balance_sheet_service.dart';
+import '../../balance_sheet/services/balance_sheet_notification_scheduler.dart';
+import '../../settings/services/settings_service.dart';
+
 class NotificationManagerScreen extends StatefulWidget {
   const NotificationManagerScreen({super.key});
 
@@ -31,6 +36,9 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
   static const String kPrefCreditEnabled = 'notif_enable_credit';
   static const String kPrefCreditTime = 'notif_time_credit';
 
+  // [NEW] Balance Sheet Preference Key
+  static const String kPrefBalanceSheetEnabled = 'notif_enable_balance_sheet';
+
   static const String kPrefBudgetEnabled = 'notif_enable_budget';
   static const String kPrefAccountEnabled = 'notif_enable_account';
   static const String kPrefInvestEnabled = 'notif_enable_invest';
@@ -49,6 +57,10 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
   bool _creditEnabled = true;
   TimeOfDay _creditTime = const TimeOfDay(hour: 10, minute: 0);
 
+  // [NEW] Balance Sheet State
+  bool _balanceSheetEnabled = true;
+  TimeOfDay _balanceSheetTime = const TimeOfDay(hour: 9, minute: 0);
+
   bool _budgetEnabled = true;
   bool _accountEnabled = true;
   bool _investEnabled = true;
@@ -62,6 +74,11 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
 
   Future<void> _loadSettings() async {
     _prefs = await SharedPreferences.getInstance();
+
+    // Fetch the Drift-stored time for Balance Sheet from Settings Service
+    final settingsService = GetIt.I<SettingsService>();
+    final bsTimeStr = await settingsService.getBalanceSheetReminderTime();
+
     setState(() {
       _dailyEnabled = _prefs.getBool(kPrefDailyEnabled) ?? true;
       _dailyTime = _parseTime(_prefs.getString(kPrefDailyTime),
@@ -79,11 +96,17 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
       _creditTime = _parseTime(_prefs.getString(kPrefCreditTime),
           const TimeOfDay(hour: 10, minute: 0));
 
+      // [NEW] Load Balance Sheet Config
+      _balanceSheetEnabled = _prefs.getBool(kPrefBalanceSheetEnabled) ?? true;
+      _balanceSheetTime =
+          _parseTime(bsTimeStr, const TimeOfDay(hour: 9, minute: 0));
+
       _budgetEnabled = _prefs.getBool(kPrefBudgetEnabled) ?? true;
       _accountEnabled = _prefs.getBool(kPrefAccountEnabled) ?? true;
       _investEnabled = _prefs.getBool(kPrefInvestEnabled) ?? true;
       _lowBalanceThreshold =
           _prefs.getDouble(kPrefLowBalanceThreshold) ?? 1000.0;
+
       _isLoading = false;
     });
   }
@@ -112,9 +135,30 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
     if (value is String) await _prefs.setString(key, value);
   }
 
+  // --- [NEW] Global Sync for Balance Sheet Alarms ---
+  Future<void> _syncBalanceSheetAlarms() async {
+    try {
+      final scheduler = BalanceSheetNotificationScheduler();
+      if (!_balanceSheetEnabled) {
+        // Clear all Balance Sheet alarms if toggled off
+        await scheduler.syncNotifications([]);
+      } else {
+        // Resync with active entries
+        final service = GetIt.I<BalanceSheetService>();
+        final entries = await service.fetchAllEntries();
+        await scheduler.syncNotifications(entries);
+      }
+    } catch (e) {
+      debugPrint("Error syncing Balance Sheet alarms: $e");
+    }
+  }
+
   Future<void> _rescheduleAll() async {
     final manager = GetIt.I<RealTimeNotificationManager>();
     await manager.rescheduleAll();
+
+    // [NEW HOOK] Resync Balance Sheet alarms alongside the existing workflow
+    await _syncBalanceSheetAlarms();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -221,7 +265,27 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
                       }),
                     ),
 
-                    // 4. Backup Check
+                    // --- [NEW] 4. Balance Sheet ---
+                    _buildConfigCard(
+                      title: "Payables & Receivables",
+                      subtitle: "Balance Sheet due date alerts",
+                      enabled: _balanceSheetEnabled,
+                      time: _balanceSheetTime,
+                      onToggle: (v) {
+                        setState(() => _balanceSheetEnabled = v);
+                        _saveSetting(kPrefBalanceSheetEnabled, v);
+                        _rescheduleAll();
+                      },
+                      onTimeTap: () =>
+                          _pickTime(context, _balanceSheetTime, (t) {
+                        setState(() => _balanceSheetTime = t);
+                        // Using SettingsService since it interacts via Drift for cross-module compatibility
+                        GetIt.I<SettingsService>()
+                            .setBalanceSheetReminderTime(_formatTimeStr(t));
+                      }),
+                    ),
+
+                    // 5. Backup Check
                     _buildConfigCard(
                       title: "Backup Verification",
                       subtitle: "Checks if your data is safely backed up",

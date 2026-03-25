@@ -2,10 +2,14 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart' as db;
 import '../models/balance_sheet_model.dart';
+import 'balance_sheet_notification_scheduler.dart'; // [NEW IMPORT]
 
 class BalanceSheetService {
   final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
+
+  // [NEW] Instance of our intelligent scheduler
+  final _scheduler = BalanceSheetNotificationScheduler();
 
   BalanceSheetModel _mapEntry(db.BalanceSheetEntry row) {
     return BalanceSheetModel(
@@ -59,7 +63,6 @@ class BalanceSheetService {
         .map((rows) => rows.map(_mapEntry).toList());
   }
 
-  // --- [NEW] Fetch everything for Export ---
   Future<List<BalanceSheetModel>> fetchAllEntries() async {
     final rows = await (_db.select(_db.balanceSheetEntries)
           ..orderBy([
@@ -87,6 +90,9 @@ class BalanceSheetService {
             settledAmount: Value(entry.settledAmount),
           ),
         );
+
+    // [NEW HOOK] Resync alarms after addition
+    _triggerNotificationSync();
   }
 
   Future<void> updateEntry(BalanceSheetModel entry) async {
@@ -103,11 +109,17 @@ class BalanceSheetService {
       isSettled: Value(entry.isSettled),
       settledAmount: Value(entry.settledAmount),
     ));
+
+    // [NEW HOOK] Resync alarms after edit
+    _triggerNotificationSync();
   }
 
   Future<void> deleteEntry(String id) async {
     await (_db.delete(_db.balanceSheetEntries)..where((t) => t.id.equals(id)))
         .go();
+
+    // [NEW HOOK] Resync alarms after delete to wipe pending triggers
+    _triggerNotificationSync();
   }
 
   Future<void> updateSettlement(
@@ -117,5 +129,14 @@ class BalanceSheetService {
       settledAmount: Value(newSettledAmount),
       isSettled: Value(isSettled),
     ));
+
+    // [NEW HOOK] Resync alarms if an item is fully paid off
+    _triggerNotificationSync();
+  }
+
+  // --- [NEW] Private method to fetch all items and hand them to the scheduler ---
+  Future<void> _triggerNotificationSync() async {
+    final allEntries = await fetchAllEntries();
+    await _scheduler.syncNotifications(allEntries);
   }
 }
