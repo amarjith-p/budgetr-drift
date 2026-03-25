@@ -1,3 +1,4 @@
+import 'package:budget/features/credit_tracker/services/credit_notification_scheduler.dart';
 import 'package:budget/features/daily_expense/services/expense_service.dart';
 import 'package:budget/features/trip_mode/services/trip_service.dart';
 import 'package:drift/drift.dart';
@@ -10,7 +11,7 @@ import '../../../core/database/tables.dart'; // Ensure tables are imported for a
 class CreditService {
   final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
-
+  final _scheduler = CreditNotificationScheduler();
   // --- MAPPERS ---
 
   CreditCardModel _mapCard(db.CreditCard row) {
@@ -74,6 +75,7 @@ class CreditService {
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ));
+    _triggerNotificationSync();
   }
 
   Future<void> updateCreditCard(CreditCardModel card) async {
@@ -88,6 +90,7 @@ class CreditService {
       color: Value(card.color),
       updatedAt: Value(DateTime.now()),
     ));
+    _triggerNotificationSync();
   }
 
   Future<void> deleteCreditCard(String cardId) async {
@@ -98,6 +101,7 @@ class CreditService {
       await (_db.delete(_db.creditCards)..where((t) => t.id.equals(cardId)))
           .go();
     });
+    _triggerNotificationSync();
   }
 
   // --- TRANSACTIONS ---
@@ -170,6 +174,7 @@ class CreditService {
           txn.type == 'Expense' ? txn.amount : -txn.amount;
       await _updateCardBalance(txn.cardId, balanceChange);
     });
+    _triggerNotificationSync();
   }
 
   Future<void> updateTransaction(CreditTransactionModel txn) async {
@@ -214,6 +219,7 @@ class CreditService {
         );
       }
     });
+    _triggerNotificationSync();
   }
 
   Future<void> deleteTransaction(String id) async {
@@ -238,6 +244,7 @@ class CreditService {
             .deleteTransactionFromCredit(oldRow.linkedExpenseId!);
       }
     });
+    _triggerNotificationSync();
   }
 
   Future<void> payCreditCardBill(
@@ -256,6 +263,7 @@ class CreditService {
       isSettlementVerified: false,
     );
     await addTransaction(txn);
+    _triggerNotificationSync();
   }
 
   Future<void> updateTransactionFromExpense(
@@ -280,6 +288,7 @@ class CreditService {
         ));
       }
     });
+    _triggerNotificationSync();
   }
 
   Future<void> deleteTransactionFromExpense(String expenseId) async {
@@ -296,6 +305,7 @@ class CreditService {
             .go();
       }
     });
+    _triggerNotificationSync();
   }
 
   Future<void> _updateCardBalance(String cardId, double change) async {
@@ -306,5 +316,11 @@ class CreditService {
         .write(db.CreditCardsCompanion(
       currentBalance: Value(card.currentBalance + change),
     ));
+  }
+
+  Future<void> _triggerNotificationSync() async {
+    // Fetch directly from Drift table to pass to scheduler
+    final cards = await _db.select(_db.creditCards).get();
+    await _scheduler.syncNotifications(cards);
   }
 }
