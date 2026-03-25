@@ -322,13 +322,17 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
         // Pass the restriction flag
         isCreditPoolAvailable: isCreditPoolAvailable,
         onAccountAdded: (data) async {
+          double rawBalance =
+              double.tryParse(data['currentBalance'].toString()) ?? 0.0;
+          // Format to 2 decimal places (e.g., "150.55") and parse back to double
+          double formattedBalance = double.parse(rawBalance.toStringAsFixed(2));
           final newAccount = ExpenseAccountModel(
             id: accountToEdit?.id ??
                 DateTime.now().millisecondsSinceEpoch.toString(),
             name: data['name'],
             bankName: data['bankName'],
             type: data['type'],
-            currentBalance: data['currentBalance'],
+            currentBalance: formattedBalance,
             accountType: data['accountType'],
             accountNumber: data['accountNumber'],
             color: data['color'],

@@ -43,7 +43,7 @@ class _TotalBalanceSummaryState extends State<TotalBalanceSummary> {
         color: Colors.white.withOpacity(0.03),
         borderRadius:
             BorderRadius.circular(8), // Slightly adjusted for better aesthetics
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
@@ -64,7 +64,7 @@ class _TotalBalanceSummaryState extends State<TotalBalanceSummary> {
                 ),
                 const Spacer(),
                 _buildHeaderAction(
-                  icon: Icons.calculate_outlined,
+                  icon: Icons.functions_rounded,
                   onTap: () {
                     HapticFeedback.lightImpact();
                     showModalBottomSheet(
@@ -172,15 +172,16 @@ class _TotalBalanceSummaryState extends State<TotalBalanceSummary> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
+          border: BoxBorder.all(color: Colors.white.withOpacity(0.2)),
           color: active
               ? const Color(0xFF00B4D8).withOpacity(0.15)
-              : Colors.white.withOpacity(0.05),
+              : Colors.white.withOpacity(0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(
           icon,
           color:
-              active ? const Color(0xFF00B4D8) : Colors.white.withOpacity(0.4),
+              active ? const Color(0xFF00B4D8) : Colors.white.withOpacity(0.8),
           size: 18,
         ),
       ),

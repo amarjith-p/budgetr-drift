@@ -199,7 +199,7 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('cc_${card.id}_today').hashCode.abs(),
           title: 'Credit Card Bill Due',
-          body: 'Your Bill for ${card.name} is Due Today.',
+          body: 'Your Bill for ${card.bankName} - ${card.name} is Due Today.',
           scheduledDate: _applyStagger(dueTime),
           payload: card.id,
         );
@@ -210,7 +210,8 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('cc_${card.id}_1day').hashCode.abs(),
           title: 'Credit Card Bill Tomorrow',
-          body: 'Your Bill for ${card.name} is Due Tomorrow.',
+          body:
+              'Your Bill for ${card.bankName} - ${card.name} is Due Tomorrow.',
           scheduledDate: _applyStagger(oneDayBefore),
           payload: card.id,
         );
@@ -221,7 +222,8 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('cc_${card.id}_3days').hashCode.abs(),
           title: 'Credit Card Bill Soon',
-          body: 'Your Bill for ${card.name} is Due in 3 Days.',
+          body:
+              'Your Bill for ${card.bankName} - ${card.name} is Due in 3 Days.',
           scheduledDate: _applyStagger(threeDaysBefore),
           payload: card.id,
         );
@@ -240,7 +242,8 @@ class RealTimeNotificationManager {
         await _systemService.scheduleNotification(
           id: ('cc_${card.id}_stmt').hashCode.abs(),
           title: 'Statement Generated',
-          body: 'Your Bill for ${card.name} is Generated Today.',
+          body:
+              'Your Bill for ${card.bankName} - ${card.name} is Generated Today.',
           scheduledDate: _applyStagger(billTime),
           payload: card.id,
         );

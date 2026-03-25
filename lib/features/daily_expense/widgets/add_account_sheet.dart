@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart'; // Added for ExpenseService
 import '../../../core/constants/bank_list.dart';
 import '../models/expense_models.dart';
+import '../services/expense_service.dart'; // Added for ExpenseService
 
 class AddAccountSheet extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic>) onAccountAdded;
@@ -37,6 +39,9 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
   String? _selectedBank;
   String? _selectedAccountType;
   bool _isLoading = false;
+
+  // Track the original balance for reconciliation
+  double _originalBalance = 0.0;
 
   final List<Color> _accountColors = [
     const Color(0xFF1E1E1E),
@@ -82,10 +87,13 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
     _nameController = TextEditingController(text: edit?.name ?? '');
     _accountNoController =
         TextEditingController(text: edit?.accountNumber ?? '');
+
+    _originalBalance = edit?.currentBalance ?? 0.0;
+
     _balanceController = TextEditingController(
       text: edit != null
           ? edit.currentBalance
-              .toString()
+              .toStringAsFixed(2)
               .replaceAll(RegExp(r"([.]*0)(?!.*\d)"), "")
           : '',
     );
@@ -170,31 +178,93 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
     });
   }
 
-  Future<void> _submit() async {
+  // Intercepts the submit action to check for balance changes
+  void _submitInterceptor() {
     if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+      final isEditing = widget.accountToEdit != null;
+      final rawBalance =
+          double.tryParse(_balanceController.text.replaceAll(',', '')) ?? 0.0;
+      // 2. Force 2 decimal places and parse back to double
+      final newBalance = double.parse(rawBalance.toStringAsFixed(2));
 
-      try {
-        final newAccountData = {
-          'name': _nameController.text.trim(),
-          'bankName': _selectedBank,
-          'accountType': _selectedAccountType,
-          'accountNumber': _accountNoController.text.trim(),
-          'currentBalance':
-              double.tryParse(_balanceController.text.replaceAll(',', '')) ??
-                  0.0,
-          'color': _selectedColor.value,
-          'type': 'Bank',
-        };
-
-        await widget.onAccountAdded(newAccountData);
-
-        if (mounted) Navigator.pop(context);
-      } catch (e) {
-        debugPrint("Error adding account: $e");
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
+      if (isEditing && _originalBalance != newBalance) {
+        _showReconciliationSheet(newBalance);
+      } else {
+        _executeSave(newBalance, reconcile: false);
       }
+    }
+  }
+
+  // Shows the warning bottom sheet
+  void _showReconciliationSheet(double newBalance) {
+    FocusScope.of(context).unfocus(); // Hide keyboard
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => BalanceAdjustmentSheet(
+        oldBalance: _originalBalance,
+        newBalance: newBalance,
+        onChoiceSelected: (bool adjustByRecord) async {
+          Navigator.pop(context);
+          await _executeSave(newBalance, reconcile: adjustByRecord);
+        },
+      ),
+    );
+  }
+
+  // The actual save execution containing your original logic + ghost transaction
+  Future<void> _executeSave(double newBalance,
+      {required bool reconcile}) async {
+    setState(() => _isLoading = true);
+
+    try {
+      final newAccountData = {
+        'name': _nameController.text.trim(),
+        'bankName': _selectedBank,
+        'accountType': _selectedAccountType,
+        'accountNumber': _accountNoController.text.trim(),
+        // If reconciling via transaction, we must keep the original balance in the account update
+        // so the system doesn't apply the difference twice.
+        'currentBalance': reconcile ? _originalBalance : newBalance,
+        'color': _selectedColor.value,
+        'type': 'Bank',
+      };
+
+      await widget.onAccountAdded(newAccountData);
+
+      // Handle Ghost Transaction if they chose 'Adjust By Record'
+      if (reconcile && widget.accountToEdit != null) {
+        final difference = newBalance - _originalBalance;
+        if (difference != 0) {
+          final isIncrease = difference > 0;
+          final expenseService = GetIt.I<ExpenseService>();
+
+          final adjustmentTxn = ExpenseTransactionModel(
+            id: '',
+            accountId: widget.accountToEdit!.id,
+            amount: double.parse(difference.abs().toStringAsFixed(2)),
+            date: DateTime.now(),
+            bucket: 'Unallocated',
+            type: isIncrease ? 'Transfer In' : 'Transfer Out',
+            category: 'Transfer',
+            subCategory: 'Manual Balance Sync',
+            notes: 'Missing - Account Adjustments',
+            transferAccountId: null,
+            transferAccountName: 'External Account',
+            transferAccountBankName: 'External',
+            linkedCreditCardId: null,
+          );
+
+          await expenseService.addTransaction(adjustmentTxn);
+        }
+      }
+
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      debugPrint("Error adding account: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -332,7 +402,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
                   inputType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputAction: TextInputAction.done,
-                  onSubmitted: () => _submit(),
+                  onSubmitted: () => _submitInterceptor(),
                 ),
               ] else ...[
                 Container(
@@ -401,7 +471,7 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
+                  onPressed: _isLoading ? null : _submitInterceptor,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF00B4D8),
                     foregroundColor: Colors.white,
@@ -617,6 +687,187 @@ class _AddAccountSheetState extends State<AddAccountSheet> {
           },
         );
       },
+    );
+  }
+}
+
+// ============================================================================
+// --- [RECONCILIATION SHEET WIDGET] ---
+// ============================================================================
+
+class BalanceAdjustmentSheet extends StatelessWidget {
+  final double oldBalance;
+  final double newBalance;
+  final Function(bool adjustByRecord) onChoiceSelected;
+
+  const BalanceAdjustmentSheet({
+    super.key,
+    required this.oldBalance,
+    required this.newBalance,
+    required this.onChoiceSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final difference = newBalance - oldBalance;
+    final isIncrease = difference > 0;
+
+    final diffText = "₹${difference.abs().toStringAsFixed(2)}";
+    final actionText = isIncrease ? "Increasing" : "Decreasing";
+    final color =
+        isIncrease ? const Color(0xFF06D6A0) : const Color(0xFFE71D36);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Color(0xff152238),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.warning_amber_rounded,
+                    color: Colors.orange),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Text(
+                  "Balance Adjustment",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                  color: Colors.white70, fontSize: 14, height: 1.5),
+              children: [
+                const TextSpan(text: "You are "),
+                TextSpan(
+                  text: "$actionText the balance by $diffText",
+                  style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                ),
+                const TextSpan(
+                  text:
+                      ". To keep your monthly analytics and cash flow charts accurate, how would you like to apply this change?",
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 32),
+
+          // Option 1: Record Transaction (Recommended)
+          _buildOptionCard(
+            title: "Adjust By Record (Recommended)",
+            description:
+                "Creates a 'Transfer ${isIncrease ? "In" : "Out"}' transaction to bridge the gap. Keeps analytics intact.",
+            icon: Icons.receipt_long_rounded,
+            iconColor: const Color(0xFF00B4D8),
+            onTap: () => onChoiceSelected(true),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Option 2: Change Initial Balance
+          _buildOptionCard(
+            title: "Change Initial Balance",
+            description:
+                "Forces the new balance without a paper trail. May cause sudden unexplained jumps in net worth history.",
+            icon: Icons.edit_note_rounded,
+            iconColor: Colors.white54,
+            isGhost: true,
+            onTap: () => onChoiceSelected(false),
+          ),
+
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionCard({
+    required String title,
+    required String description,
+    required IconData icon,
+    required Color iconColor,
+    required VoidCallback onTap,
+    bool isGhost = false,
+  }) {
+    return InkWell(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isGhost ? Colors.transparent : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isGhost ? Colors.white.withOpacity(0.5) : Colors.transparent,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: iconColor, size: 24),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isGhost ? Colors.white70 : Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.5),
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
