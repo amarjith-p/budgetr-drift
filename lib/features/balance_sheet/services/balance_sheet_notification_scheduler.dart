@@ -92,7 +92,7 @@ class BalanceSheetNotificationScheduler {
               .replaceAll("• ", ""); // Remove bullet for single item
         } else {
           // Inbox Style Grouping
-          title = "${messages.length} Pending Actions";
+          title = "${messages.length} Pending Reminders";
           body =
               "You have ${messages.length} items requiring attention today:\n${messages.join("\n")}";
         }
