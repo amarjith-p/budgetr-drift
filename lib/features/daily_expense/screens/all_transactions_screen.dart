@@ -327,6 +327,20 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                                                     ),
                                                   );
                                                 },
+                                                onDuplicate: () {
+                                                  showModalBottomSheet(
+                                                    context: context,
+                                                    isScrollControlled: true,
+                                                    backgroundColor:
+                                                        Colors.transparent,
+                                                    builder: (_) =>
+                                                        NewExpenseScreen(
+                                                      txnToEdit: txn,
+                                                      isDuplicate:
+                                                          true, // Passes the new flag!
+                                                    ),
+                                                  );
+                                                },
                                                 onDelete: () async {
                                                   await _handleDelete(
                                                       context, txn);

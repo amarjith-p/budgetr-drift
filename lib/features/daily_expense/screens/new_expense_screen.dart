@@ -25,12 +25,14 @@ class NewExpenseScreen extends StatefulWidget {
   final ExpenseTransactionModel? txnToEdit;
   final ExpenseAccountModel? preSelectedAccount;
   final DateTime? initialDate;
+  final bool isDuplicate; // [NEW] Flag for duplicating records
 
   const NewExpenseScreen({
     super.key,
     this.txnToEdit,
     this.preSelectedAccount,
     this.initialDate,
+    this.isDuplicate = false, // [NEW] Default to false
   });
 
   @override
@@ -178,7 +180,14 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
           _amountCtrl.text =
               t.amount.toString().replaceAll(RegExp(r"([.]*0)(?!.*\d)"), "");
           _notesCtrl.text = t.notes;
-          _date = t.date;
+
+          // [UPDATED] If duplicating, snap the date to right now.
+          if (widget.isDuplicate) {
+            _date = DateTime.now();
+          } else {
+            _date = t.date;
+          }
+
           _selectedBucket = t.bucket;
           _category = t.category;
           _subCategory = t.subCategory;
@@ -187,7 +196,8 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
           if (t.linkedCreditCardId != null &&
               t.linkedCreditCardId!.isNotEmpty) {
             _isCreditEntry = true;
-            _isLinkedTransaction = true;
+            // [UPDATED] Do not lock the transaction if we are just creating a clone
+            _isLinkedTransaction = !widget.isDuplicate;
             _selectedCreditCard = _creditCards.firstWhere(
                 (c) => c.id == t.linkedCreditCardId,
                 orElse: () => _creditCards.first);
@@ -359,7 +369,8 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final bool isEditing = widget.txnToEdit != null;
+      // [UPDATED] Treat duplicates as brand new entries
+      final bool isEditing = widget.txnToEdit != null && !widget.isDuplicate;
       final String txnId = isEditing ? widget.txnToEdit!.id : '';
 
       ExpenseTransactionModel txn;
@@ -625,7 +636,10 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
                   icon: const Icon(Icons.close, color: Colors.white54),
                 ),
                 Text(
-                  widget.txnToEdit != null ? "Edit Transaction" : "New Entry",
+                  // [UPDATED] Dynamic Title
+                  (widget.txnToEdit != null && !widget.isDuplicate)
+                      ? "Edit Transaction"
+                      : (widget.isDuplicate ? "Duplicate Entry" : "New Entry"),
                   style: BudgetrStyles.h3.copyWith(color: Colors.white70),
                 ),
                 _isLoading
@@ -771,7 +785,8 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
   // --- WIDGETS ---
 
   Widget _buildSegmentControl(Color activeColor) {
-    bool isEditing = widget.txnToEdit != null;
+    // [UPDATED] Free the segment control if we are duplicating
+    bool isEditing = widget.txnToEdit != null && !widget.isDuplicate;
     return Container(
       height: 40,
       padding: const EdgeInsets.all(4),
@@ -792,9 +807,12 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
       String label, Color color, bool isEditing, Color activeColor) {
     bool isSelected = _type == label;
     bool wasOriginalTransfer = false;
-    if (isEditing && widget.txnToEdit != null) {
+
+    // [UPDATED] Only enforce strict transfer rules if it's a hard edit
+    if (isEditing && widget.txnToEdit != null && !widget.isDuplicate) {
       wasOriginalTransfer = widget.txnToEdit!.type.contains('Transfer');
     }
+
     bool isDisabled = _isLinkedTransaction ||
         (isEditing && label == 'Transfer' && !wasOriginalTransfer);
 
@@ -893,7 +911,9 @@ class _NewExpenseScreenState extends State<NewExpenseScreen> {
                 : Icons.account_balance_wallet,
             label: "TYPE",
             value: _isCreditEntry ? "Credit" : "Cash/Bank",
-            isActive: !_isLinkedTransaction && widget.txnToEdit == null,
+            // [UPDATED] Free up if duplicating
+            isActive: !_isLinkedTransaction &&
+                (widget.txnToEdit == null || widget.isDuplicate),
             onTap: () => setState(() {
               _isCreditEntry = !_isCreditEntry;
               if (_isCreditEntry) {

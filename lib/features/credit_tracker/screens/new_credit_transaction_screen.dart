@@ -21,13 +21,14 @@ import '../services/credit_service.dart';
 
 class NewCreditTransactionScreen extends StatefulWidget {
   final CreditTransactionModel? transactionToEdit;
-  final CreditCardModel?
-      preSelectedCard; // NEW: Added to support default selection
+  final CreditCardModel? preSelectedCard;
+  final bool isDuplicate; // [NEW] Added for duplicate logic
 
   const NewCreditTransactionScreen({
     super.key,
     this.transactionToEdit,
     this.preSelectedCard,
+    this.isDuplicate = false, // [NEW] Default to false
   });
 
   @override
@@ -161,7 +162,14 @@ class _NewCreditTransactionScreenState
           _amountCtrl.text =
               t.amount.toString().replaceAll(RegExp(r"([.]*0)(?!.*\d)"), "");
           _notesCtrl.text = t.notes;
-          _date = t.date;
+
+          // [UPDATED] Clone logic for date
+          if (widget.isDuplicate) {
+            _date = DateTime.now();
+          } else {
+            _date = t.date;
+          }
+
           _type = t.type;
           _selectedBucket = t.bucket;
           _category = t.category;
@@ -174,10 +182,9 @@ class _NewCreditTransactionScreenState
           }
 
           if (t.linkedExpenseId != null && t.linkedExpenseId!.isNotEmpty) {
-            _isLinked = true;
+            _isLinked = !widget.isDuplicate; // [UPDATED] Free up if duplicating
           }
         } else {
-          // --- NEW: Handle Pre-Selected Card logic here ---
           if (widget.preSelectedCard != null) {
             try {
               _selectedCard =
@@ -247,7 +254,6 @@ class _NewCreditTransactionScreenState
       return;
     }
 
-    // VALIDATION: Card must be selected
     if (_selectedCard == null) {
       _showError("Please select a Credit Card");
       return;
@@ -266,22 +272,27 @@ class _NewCreditTransactionScreenState
     setState(() => _isLoading = true);
 
     try {
+      // [UPDATED] Insert as new if it's a clone
+      final bool isEditing =
+          widget.transactionToEdit != null && !widget.isDuplicate;
+      final String txnId = isEditing ? widget.transactionToEdit!.id : '';
+
       final txn = CreditTransactionModel(
-        id: widget.transactionToEdit?.id ?? '',
+        id: txnId,
         cardId: _selectedCard!.id,
         amount: amount,
         date: _date,
         bucket: _type == 'Expense'
             ? (_selectedBucket ?? 'Unallocated')
-            : 'Unallocated', // Required by Model
+            : 'Unallocated',
         type: _type,
         category: _category!,
-        subCategory: _subCategory ?? 'General', // Required by Model
+        subCategory: _subCategory ?? 'General',
         notes: _notesCtrl.text,
         linkedExpenseId: widget.transactionToEdit?.linkedExpenseId,
       );
 
-      if (widget.transactionToEdit == null) {
+      if (!isEditing) {
         await GetIt.I<CreditService>().addTransaction(txn);
       } else {
         await GetIt.I<CreditService>().updateTransaction(txn);
@@ -343,7 +354,7 @@ class _NewCreditTransactionScreenState
       resizeToAvoidBottomInset: !_showCalculator,
       body: Column(
         children: [
-          // 1. MANUALLY SPACED HEADER (Reverted to standard check button on top right)
+          // 1. MANUALLY SPACED HEADER
           Container(
             padding: EdgeInsets.only(
                 top: statusBarHeight + 40, left: 16, right: 16, bottom: 12),
@@ -356,9 +367,10 @@ class _NewCreditTransactionScreenState
                   icon: const Icon(Icons.close, color: Colors.white54),
                 ),
                 Text(
-                  widget.transactionToEdit != null
+                  // [UPDATED] Dynamic Title
+                  (widget.transactionToEdit != null && !widget.isDuplicate)
                       ? "Edit Transaction"
-                      : "New Entry",
+                      : (widget.isDuplicate ? "Duplicate Entry" : "New Entry"),
                   style: BudgetrStyles.h3.copyWith(color: Colors.white70),
                 ),
                 _isLoading
@@ -981,11 +993,9 @@ class _EmbeddedCalculator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Soft, professional tinted background for operators
     final operatorBgColor = typeColor.withOpacity(0.1);
 
     return Padding(
-      // Tightened top padding so it sticks closer to the fields above
       padding: const EdgeInsets.only(left: 12, right: 12, top: 8, bottom: 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1032,30 +1042,26 @@ class _EmbeddedCalculator extends StatelessWidget {
     );
   }
 
-  // Generic key builder with compact styling
   Widget _buildKey(String label,
       {Color? textColor, Color? bgColor, VoidCallback? onTap}) {
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 3), // Tighter gap between keys
+        padding: const EdgeInsets.symmetric(horizontal: 3),
         child: Material(
-          color: bgColor ??
-              Colors.white.withOpacity(0.04), // Clean, flat background
-          borderRadius:
-              BorderRadius.circular(12), // Professional, subtle corners
+          color: bgColor ?? Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(12),
           child: InkWell(
             onTap: onTap ?? () => _onKey(label),
             borderRadius: BorderRadius.circular(12),
             splashColor: (textColor ?? Colors.white).withOpacity(0.1),
             highlightColor: Colors.transparent,
             child: Container(
-              height: 48, // Reduced height for a more compact footprint
+              height: 48,
               alignment: Alignment.center,
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 20, // Clean typography
+                  fontSize: 20,
                   fontWeight: FontWeight.w500,
                   color: textColor ?? Colors.white.withOpacity(0.9),
                 ),

@@ -3,6 +3,7 @@
 import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/daily_expense/screens/new_expense_screen.dart';
+import 'package:budget/features/daily_expense/widgets/modern_expense_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -289,6 +290,20 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                                                       Icons.category_outlined,
                                                   onEdit: () =>
                                                       _handleEdit(context, t),
+                                                  onDuplicate: () {
+                                                    showModalBottomSheet(
+                                                      context: context,
+                                                      isScrollControlled: true,
+                                                      backgroundColor:
+                                                          Colors.transparent,
+                                                      builder: (_) =>
+                                                          NewExpenseScreen(
+                                                        txnToEdit: t,
+                                                        isDuplicate:
+                                                            true, // Passes the new flag!
+                                                      ),
+                                                    );
+                                                  },
                                                   onDelete: () =>
                                                       _handleDeleteTransaction(
                                                           context, t),

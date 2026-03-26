@@ -236,6 +236,8 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                             onEdit: () => _handleEdit(context, t),
                             onDelete: () =>
                                 _handleDeleteTransaction(context, t),
+                            onDuplicate: () => _handleDuplicate(
+                                context, t), // [NEW] Duplicate callback
                             onMarkAsRepayment: () => _handleMarkAsRepayment(t),
                             onIgnore: () => _handleIgnoreTransaction(t.id),
                             onDeferToNextBill: t.includeInNextStatement
@@ -313,6 +315,8 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                                 onEdit: () => _handleEdit(context, t),
                                 onDelete: () =>
                                     _handleDeleteTransaction(context, t),
+                                onDuplicate: () => _handleDuplicate(
+                                    context, t), // [NEW] Duplicate callback
                                 onMarkAsRepayment: () =>
                                     _handleMarkAsRepayment(t),
                                 onIgnore: () => _handleIgnoreTransaction(t.id),
@@ -339,6 +343,8 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
                               onEdit: () => _handleEdit(context, t),
                               onDelete: () =>
                                   _handleDeleteTransaction(context, t),
+                              onDuplicate: () => _handleDuplicate(
+                                  context, t), // [NEW] Duplicate callback
                               onMarkAsRepayment: () =>
                                   _handleMarkAsRepayment(t),
                               onIgnore: () => _handleIgnoreTransaction(t.id),
@@ -760,7 +766,9 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
     double netPosition = total - totalPaid;
     double surplus = netPosition < 0 ? netPosition.abs() : 0;
     bool isOverPaid = surplus > 0;
-    bool isPaid = isLastStmt && total > 0 && (total - totalPaid) < 0;
+    bool isPaid = isLastStmt &&
+        total > 0 &&
+        (total - totalPaid) < 0; // Updated to match previous version
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, top: 4),
@@ -843,6 +851,18 @@ class _CreditCardDetailScreenState extends State<CreditCardDetailScreen> {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (c) => NewCreditTransactionScreen(transactionToEdit: txn));
+  }
+
+  // --- [NEW] DUPLICATE HANDLER ---
+  void _handleDuplicate(BuildContext context, CreditTransactionModel txn) {
+    showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (c) => NewCreditTransactionScreen(
+              transactionToEdit: txn,
+              isDuplicate: true, // Treat this as a template
+            ));
   }
 
   void _handleDeleteTransaction(
