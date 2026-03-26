@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/bank_list.dart';
 import '../models/credit_models.dart';
 import '../screens/card_detail_screen.dart';
+import '../utils/billing_cycle_utils.dart'; // [NEW IMPORT]
 
 class CreditCardListItem extends StatelessWidget {
   final CreditCardModel card;
@@ -34,7 +35,7 @@ class CreditCardListItem extends StatelessWidget {
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        height: 130,
+        height: 130, // [RESTORED] Fixed height
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
@@ -69,6 +70,7 @@ class CreditCardListItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // --- ROW 1: Logo & More ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -137,7 +139,10 @@ class CreditCardListItem extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const Spacer(),
+
+                  const Spacer(), // [RESTORED] Preserves vertical balance
+
+                  // --- ROW 2: Card Name ---
                   Text(
                     card.name,
                     style: const TextStyle(
@@ -147,10 +152,24 @@ class CreditCardListItem extends StatelessWidget {
                       letterSpacing: 0.5,
                     ),
                   ),
-                  const Spacer(),
+
+                  const Spacer(), // [RESTORED] Preserves vertical balance
+
+                  // --- ROW 3: Progress Bar (Left) & Balance (Right) ---
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // [NEW] Progress Bar taking up the empty left space
+                      Expanded(
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.only(right: 16.0, bottom: 2.0),
+                          child: _CompactCycleProgressBar(card: card),
+                        ),
+                      ),
+
+                      // Balance Data
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
@@ -349,5 +368,104 @@ class CreditCardListItem extends StatelessWidget {
       default:
         return '${number}th';
     }
+  }
+}
+
+// --- [NEW] COMPACT CYCLE PROGRESS BAR WIDGET ---
+class _CompactCycleProgressBar extends StatelessWidget {
+  final CreditCardModel card;
+
+  const _CompactCycleProgressBar({required this.card});
+
+  @override
+  Widget build(BuildContext context) {
+    final info =
+        BillingCycleUtils.getCurrentCycleInfo(card.billDate, card.dueDate);
+    final isPaymentPhase = info.phase == CyclePhase.payment;
+
+    final trackColor = Colors.white.withOpacity(0.05);
+    final fillColor =
+        isPaymentPhase ? Colors.orangeAccent : const Color(0xFF4CC9F0);
+
+    final String dayWord = info.daysRemaining == 1 ? "day" : "days";
+
+    final label = isPaymentPhase
+        ? (info.daysRemaining == 0
+            ? "Payment Due Today"
+            : "Payment Due in ${info.daysRemaining} $dayWord")
+        : (info.daysRemaining == 0
+            ? "Billed Today"
+            : "Next Bill in ${info.daysRemaining} $dayWord");
+
+    final icon =
+        isPaymentPhase ? Icons.warning_amber_rounded : Icons.sync_rounded;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 10, color: fillColor),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: fillColor,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+            // Optional: You can uncomment this if you want the % text, but it's cleaner without it in the compact view
+            /*
+            Text(
+              "${(info.progress * 100).toInt()}%",
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            */
+          ],
+        ),
+        const SizedBox(height: 5), // Tight spacing
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return Container(
+              height: 4, // Thinner bar for compact view
+              width: constraints.maxWidth,
+              decoration: BoxDecoration(
+                color: trackColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+              alignment: Alignment.centerLeft,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 1000),
+                curve: Curves.easeOutCubic,
+                height: 4,
+                width: constraints.maxWidth * info.progress,
+                decoration: BoxDecoration(
+                    color: fillColor,
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: fillColor.withOpacity(0.4),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      )
+                    ]),
+              ),
+            );
+          },
+        ),
+      ],
+    );
   }
 }

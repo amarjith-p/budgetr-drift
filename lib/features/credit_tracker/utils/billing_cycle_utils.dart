@@ -1,7 +1,87 @@
 import 'package:intl/intl.dart';
 import '../models/credit_models.dart';
 
+// --- [NEW] ENUM AND CLASS FOR CYCLE PROGRESS ---
+enum CyclePhase { payment, spending }
+
+class CycleInfo {
+  final CyclePhase phase;
+  final DateTime startDate;
+  final DateTime endDate;
+  final int daysRemaining;
+  final double progress;
+
+  CycleInfo({
+    required this.phase,
+    required this.startDate,
+    required this.endDate,
+    required this.daysRemaining,
+    required this.progress,
+  });
+}
+// -----------------------------------------------
+
 class BillingCycleUtils {
+  // --- [NEW] CYCLE PROGRESS ENGINE ---
+  static CycleInfo getCurrentCycleInfo(int billDay, int dueDay) {
+    final now = DateTime.now();
+    final today =
+        DateTime(now.year, now.month, now.day); // Normalize to start of day
+
+    final lastBillDateRaw = getLastBillDate(now, billDay);
+    final lastBillDate = DateTime(
+        lastBillDateRaw.year, lastBillDateRaw.month, lastBillDateRaw.day);
+
+    final nextBillDateRaw =
+        _getValidDate(lastBillDate.year, lastBillDate.month + 1, billDay);
+    final nextBillDate = DateTime(
+        nextBillDateRaw.year, nextBillDateRaw.month, nextBillDateRaw.day);
+
+    final currentDueDateRaw = getDueDateForStatement(lastBillDateRaw, dueDay);
+    final currentDueDate = DateTime(
+        currentDueDateRaw.year, currentDueDateRaw.month, currentDueDateRaw.day);
+
+    // If today is within the Payment Grace Period
+    if (!today.isBefore(lastBillDate) && !today.isAfter(currentDueDate)) {
+      final totalDays = currentDueDate.difference(lastBillDate).inDays;
+      final daysPassed = today.difference(lastBillDate).inDays;
+      final daysRemaining = currentDueDate.difference(today).inDays;
+      double progress = totalDays > 0 ? daysPassed / totalDays : 1.0;
+
+      return CycleInfo(
+        phase: CyclePhase.payment,
+        startDate: lastBillDate,
+        endDate: currentDueDate,
+        daysRemaining: daysRemaining,
+        progress: progress.clamp(0.0, 1.0),
+      );
+    }
+    // Otherwise, we are in the Spending Phase (After Due Date, before Next Bill)
+    else {
+      DateTime start = currentDueDate;
+      DateTime end = nextBillDate;
+
+      // Fallback alignment if logic drifts
+      if (today.isBefore(start)) {
+        start = lastBillDate;
+      }
+
+      final totalDays = end.difference(start).inDays;
+      final daysPassed = today.difference(start).inDays;
+      final daysRemaining = end.difference(today).inDays;
+      double progress = totalDays > 0 ? daysPassed / totalDays : 1.0;
+
+      return CycleInfo(
+        phase: CyclePhase.spending,
+        startDate: start,
+        endDate: end,
+        daysRemaining: daysRemaining < 0 ? 0 : daysRemaining,
+        progress: progress.clamp(0.0, 1.0),
+      );
+    }
+  }
+  // -----------------------------------------------
+
   /// Checks if the transaction date is within [thresholdDays] BEFORE the bill date.
   static bool isDangerZone(DateTime txnDate, int billDay,
       {int thresholdDays = 3}) {

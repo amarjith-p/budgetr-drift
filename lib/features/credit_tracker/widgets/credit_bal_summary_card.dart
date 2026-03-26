@@ -108,12 +108,20 @@ class CreditSummaryCard extends StatelessWidget {
                     letterSpacing: 1.5,
                   ),
                 ),
-                Text(
-                  currencyFormat.format(displayedDebt),
-                  style: TextStyle(
-                    color: debtColor,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
+                const SizedBox(width: 12), // Spacing guard
+                // OVERFLOW FIX: Shrinks huge numbers instead of throwing error
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      currencyFormat.format(displayedDebt),
+                      style: TextStyle(
+                        color: debtColor,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -145,6 +153,8 @@ class CreditSummaryCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text("Allocated Fund Reserve",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style:
                                 TextStyle(color: Colors.white70, fontSize: 13)),
                         const SizedBox(height: 2),
@@ -162,20 +172,29 @@ class CreditSummaryCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Row(
-                    children: [
-                      Text(
-                        currencyFormat.format(allocatedFunds),
-                        // [FIX 3] Allocated Funds explicitly set to Green
-                        style: const TextStyle(
-                            color: Color(0xFF06D6A0),
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold),
+                  const SizedBox(width: 12), // Spacing guard
+                  // OVERFLOW FIX: Flexible + FittedBox for the trailing data
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            currencyFormat.format(allocatedFunds),
+                            // [FIX 3] Allocated Funds explicitly set to Green
+                            style: const TextStyle(
+                                color: Color(0xFF06D6A0),
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.edit_rounded,
+                              color: Colors.white38, size: 14),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.edit_rounded,
-                          color: Colors.white38, size: 14),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -192,27 +211,42 @@ class CreditSummaryCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        statusIcon,
-                        color: statusColor,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Status: $statusLabel",
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13),
-                      ),
-                    ],
+                  // OVERFLOW FIX: Expanded around the left side text
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(
+                          statusIcon,
+                          color: statusColor,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "Status: $statusLabel",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  Text(
-                    currencyFormat.format(difference.abs()),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(width: 12), // Spacing guard
+                  // OVERFLOW FIX: Protects the difference amount
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        currencyFormat.format(difference.abs()),
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
