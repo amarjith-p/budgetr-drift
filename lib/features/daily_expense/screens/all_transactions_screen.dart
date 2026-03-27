@@ -42,28 +42,23 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   Timer? _debounce;
 
-  // --- [PAGINATION & STREAM LOGIC: State Variables] ---
   int _currentRenderLimit = 50;
   final ScrollController _scrollController = ScrollController();
 
-  // [FIXED] Cached Stream to prevent resetting on scroll pagination
   late Stream<List<ExpenseTransactionModel>> _transactionsStream;
 
   @override
   void initState() {
     super.initState();
-    // Listen for scroll events to trigger lazy loading
     _scrollController.addListener(_onScroll);
-    _updateStream(); // Initialize the stream once
+    _updateStream();
   }
 
-  // [FIXED] Updates the stream ONLY when filters change, preventing scroll jump
   void _updateStream() {
     _transactionsStream = _service.getFilteredTransactions(_criteria);
   }
 
   void _onScroll() {
-    // If the user scrolls within 200 pixels of the bottom, load the next 50 items
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       setState(() {
@@ -88,7 +83,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       setState(() {
         _currentRenderLimit = 50;
         _criteria = _criteria.copyWithSearch(query);
-        _updateStream(); // Fetch new stream on search
+        _updateStream();
       });
     });
   }
@@ -106,7 +101,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
             _currentRenderLimit = 50;
             newFilters.searchQuery = _criteria.searchQuery;
             _criteria = newFilters;
-            _updateStream(); // Fetch new stream on filter apply
+            _updateStream();
           });
         },
       ),
@@ -121,8 +116,14 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       } else {
         _criteria.transactionTypes.add(type);
       }
-      _updateStream(); // Fetch new stream on type toggle
+      _updateStream();
     });
+  }
+
+  // --- [NEW] Strict Memory Filter ---
+  List<ExpenseTransactionModel> _applyFilters(
+      List<ExpenseTransactionModel> data) {
+    return data.where((t) => _criteria.matches(t)).toList();
   }
 
   @override
@@ -240,7 +241,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                   };
 
                   return StreamBuilder<List<ExpenseTransactionModel>>(
-                    // [FIXED] Use the cached stream so scrolling doesn't reset the connection
                     stream: _transactionsStream,
                     builder: (context, txnSnapshot) {
                       if (txnSnapshot.connectionState ==
@@ -250,7 +250,11 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                                 size: 80, label: "COMPILING GLOBAL LEDGER..."));
                       }
 
-                      final allTransactions = txnSnapshot.data ?? [];
+                      // Fetch Raw Data
+                      var allTransactions = txnSnapshot.data ?? [];
+
+                      // [FIXED] Apply Strict Memory Filter to prevent "Past Commitments"
+                      allTransactions = _applyFilters(allTransactions);
 
                       if (!_criteria.hasFilters) {
                         _allCachedTransactions = allTransactions;
@@ -262,8 +266,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                         return _buildEmptyState();
                       }
 
-                      // We pass the full list to Summary Strip so totals are accurate.
-                      // We pass the sliced list to the builder so scrolling is lag-free.
                       final displayedTransactions =
                           allTransactions.take(_currentRenderLimit).toList();
 
@@ -336,8 +338,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                                                     builder: (_) =>
                                                         NewExpenseScreen(
                                                       txnToEdit: txn,
-                                                      isDuplicate:
-                                                          true, // Passes the new flag!
+                                                      isDuplicate: true,
                                                     ),
                                                   );
                                                 },
@@ -549,7 +550,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
           _currentRenderLimit = 50;
           _searchCtrl.clear();
           _isSearching = false;
-          _updateStream(); // Refresh Stream
+          _updateStream();
         });
       },
       child: Container(
@@ -637,7 +638,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               _currentRenderLimit = 50;
               _searchCtrl.clear();
               _isSearching = false;
-              _updateStream(); // Refresh Stream
+              _updateStream();
             }),
             child: const Text("Clear All Filters",
                 style: TextStyle(color: BudgetrColors.accent)),
@@ -665,7 +666,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     );
   }
 
-  // --- Filter Chip Helpers (for Active Filters) ---
   Widget _buildFilterChip(String label, VoidCallback onRemove) {
     return Container(
         margin: const EdgeInsets.only(right: 8),
@@ -703,7 +703,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   }
 }
 
-// --- Sticky Header Delegate ---
 class _MonthHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String month;
 
