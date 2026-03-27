@@ -140,20 +140,26 @@ class RecurringDashboard extends StatelessWidget {
                                               fontWeight: FontWeight.w900))
                                     ]))
                           ]),
-                      Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text("FREE TO SPEND",
-                                style: TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold)),
-                            Text("₹${safe.toStringAsFixed(2)}",
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold))
-                          ])
+                      // [FIX] Horizontal Overflow for massive balances
+                      Flexible(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text("FREE TO SPEND",
+                                  style: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold)),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text("₹${safe.toStringAsFixed(2)}",
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold)),
+                              )
+                            ]),
+                      )
                     ]),
                 const SizedBox(height: 20),
 
@@ -209,17 +215,24 @@ class RecurringDashboard extends StatelessWidget {
               color: Colors.white.withOpacity(0.05), shape: BoxShape.circle),
           child: Icon(icon, color: Colors.white54, size: 16)),
       const SizedBox(width: 12),
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: const TextStyle(
-                color: Colors.white30,
-                fontSize: 10,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 2),
-        Text(value,
-            style: TextStyle(
-                color: color, fontSize: 14, fontWeight: FontWeight.bold))
-      ])
+      // [FIX] Expanding the column and forcing the text to scale down or clip
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white30,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(value,
+                style: TextStyle(
+                    color: color, fontSize: 14, fontWeight: FontWeight.bold)),
+          )
+        ]),
+      )
     ]);
   }
 
@@ -336,8 +349,7 @@ class RecurringDashboard extends StatelessWidget {
                                         fontSize: 8, color: Colors.orange))),
                           Expanded(
                             child: Text("${item.category} • ${item.bucket}",
-                                overflow:
-                                    TextOverflow.ellipsis, // Prevents overflow
+                                overflow: TextOverflow.ellipsis,
                                 maxLines: 1,
                                 style: TextStyle(
                                     color: Colors.white.withOpacity(0.5),
@@ -348,42 +360,50 @@ class RecurringDashboard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      item.isVariable
-                          ? const Text("Waiting",
-                              style:
-                                  TextStyle(color: Colors.orange, fontSize: 14))
-                          : Text("₹${item.amount.toStringAsFixed(2)}",
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16)),
-                      const SizedBox(height: 4),
-                      if (item.isVariable || !item.autoExecute)
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white10,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8),
-                              minimumSize: const Size(60, 24)),
-                          onPressed: () {
-                            if (item.isVariable) {
-                              _showVariablePaySheet(context, item);
-                            } else {
-                              GetIt.I<RecurringService>()
-                                  .manualExecute(item.id);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text("Processing...")));
-                            }
-                          },
-                          child: const Text("PAY NOW",
-                              style:
-                                  TextStyle(fontSize: 10, color: Colors.white)),
-                        )
-                    ],
+                  // [FIX] Bounding the trailing column so massive amounts don't overflow the screen
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 80),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        item.isVariable
+                            ? const Text("Waiting",
+                                style: TextStyle(
+                                    color: Colors.orange, fontSize: 14))
+                            : FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                    "₹${item.amount.toStringAsFixed(2)}",
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16)),
+                              ),
+                        const SizedBox(height: 4),
+                        if (item.isVariable || !item.autoExecute)
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white10,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                                minimumSize: const Size(60, 24)),
+                            onPressed: () {
+                              if (item.isVariable) {
+                                _showVariablePaySheet(context, item);
+                              } else {
+                                GetIt.I<RecurringService>()
+                                    .manualExecute(item.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text("Processing...")));
+                              }
+                            },
+                            child: const Text("PAY NOW",
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.white)),
+                          )
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -434,106 +454,112 @@ class _VariablePaySheetState extends State<_VariablePaySheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xff0D1B2A).withOpacity(0.9),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.5),
-              blurRadius: 20,
-              spreadRadius: 5)
-        ],
-      ),
-      padding: EdgeInsets.only(
-        top: 24,
-        left: 24,
-        right: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2)),
+    // [FIX] Wrapped BottomSheet content in a SingleChildScrollView to prevent
+    // RenderFlex Overflow when the keyboard appears on smaller screens.
+    return SingleChildScrollView(
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xff0D1B2A).withOpacity(0.9),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 20,
+                spreadRadius: 5)
+          ],
+        ),
+        padding: EdgeInsets.only(
+          top: 24,
+          left: 24,
+          right: 24,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            "PAY ${widget.item.name.toUpperCase()}",
-            style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.5),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "Enter Amount",
-            style: TextStyle(
-                color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: TextField(
-              controller: _amountCtrl,
-              keyboardType: TextInputType.number,
+            const SizedBox(height: 24),
+            Text(
+              "PAY ${widget.item.name.toUpperCase()}",
               style: const TextStyle(
-                  color: Color(0xFF00B4D8),
-                  fontSize: 32,
+                  color: Colors.white38,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Enter Amount",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                prefixText: "₹ ",
-                prefixStyle: TextStyle(color: Colors.white54, fontSize: 32),
-                border: InputBorder.none,
-                hintText: "0.00",
-                hintStyle: TextStyle(color: Colors.white10),
-              ),
-              autofocus: true,
             ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00B4D8),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12))),
-              onPressed: () {
-                final amt = double.tryParse(_amountCtrl.text);
-                if (amt != null && amt > 0) {
-                  Navigator.pop(context);
-                  GetIt.I<RecurringService>()
-                      .manualExecute(widget.item.id, overrideAmount: amt);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Payment Recorded")));
-                }
-              },
-              child: const Text(
-                "CONFIRM PAYMENT",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: TextField(
+                controller: _amountCtrl,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(
+                    color: Color(0xFF00B4D8),
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold),
+                decoration: const InputDecoration(
+                  prefixText: "₹ ",
+                  prefixStyle: TextStyle(color: Colors.white54, fontSize: 32),
+                  border: InputBorder.none,
+                  hintText: "0.00",
+                  hintStyle: TextStyle(color: Colors.white10),
+                ),
+                autofocus: true,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00B4D8),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12))),
+                onPressed: () {
+                  final amt = double.tryParse(_amountCtrl.text);
+                  if (amt != null && amt > 0) {
+                    Navigator.pop(context);
+                    GetIt.I<RecurringService>()
+                        .manualExecute(widget.item.id, overrideAmount: amt);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Payment Recorded")));
+                  }
+                },
+                child: const Text(
+                  "CONFIRM PAYMENT",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -6,7 +6,6 @@ import '../../../core/widgets/glass_card.dart';
 import '../services/real_time_notification_manager.dart';
 import 'scheduled_notifications_screen.dart';
 
-// --- [NEW IMPORTS] For Balance Sheet Notification Sync ---
 import '../../balance_sheet/services/balance_sheet_service.dart';
 import '../../balance_sheet/services/balance_sheet_notification_scheduler.dart';
 import '../../settings/services/settings_service.dart';
@@ -36,8 +35,10 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
   static const String kPrefCreditEnabled = 'notif_enable_credit';
   static const String kPrefCreditTime = 'notif_time_credit';
 
-  // [NEW] Balance Sheet Preference Key
   static const String kPrefBalanceSheetEnabled = 'notif_enable_balance_sheet';
+
+  // [NEW] Key for Recurring Alert Toggle
+  static const String kPrefRecurringEnabled = 'notif_enable_recurring';
 
   static const String kPrefBudgetEnabled = 'notif_enable_budget';
   static const String kPrefAccountEnabled = 'notif_enable_account';
@@ -57,9 +58,10 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
   bool _creditEnabled = true;
   TimeOfDay _creditTime = const TimeOfDay(hour: 10, minute: 0);
 
-  // [NEW] Balance Sheet State
   bool _balanceSheetEnabled = true;
   TimeOfDay _balanceSheetTime = const TimeOfDay(hour: 9, minute: 0);
+
+  bool _recurringEnabled = true; // [NEW] State for Recurring Toggle
 
   bool _budgetEnabled = true;
   bool _accountEnabled = true;
@@ -75,7 +77,6 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
   Future<void> _loadSettings() async {
     _prefs = await SharedPreferences.getInstance();
 
-    // Fetch the Drift-stored time for Balance Sheet from Settings Service
     final settingsService = GetIt.I<SettingsService>();
     final bsTimeStr = await settingsService.getBalanceSheetReminderTime();
 
@@ -96,10 +97,12 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
       _creditTime = _parseTime(_prefs.getString(kPrefCreditTime),
           const TimeOfDay(hour: 10, minute: 0));
 
-      // [NEW] Load Balance Sheet Config
       _balanceSheetEnabled = _prefs.getBool(kPrefBalanceSheetEnabled) ?? true;
       _balanceSheetTime =
           _parseTime(bsTimeStr, const TimeOfDay(hour: 9, minute: 0));
+
+      // [NEW] Load Recurring Toggle
+      _recurringEnabled = _prefs.getBool(kPrefRecurringEnabled) ?? true;
 
       _budgetEnabled = _prefs.getBool(kPrefBudgetEnabled) ?? true;
       _accountEnabled = _prefs.getBool(kPrefAccountEnabled) ?? true;
@@ -135,15 +138,12 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
     if (value is String) await _prefs.setString(key, value);
   }
 
-  // --- [NEW] Global Sync for Balance Sheet Alarms ---
   Future<void> _syncBalanceSheetAlarms() async {
     try {
       final scheduler = BalanceSheetNotificationScheduler();
       if (!_balanceSheetEnabled) {
-        // Clear all Balance Sheet alarms if toggled off
         await scheduler.syncNotifications([]);
       } else {
-        // Resync with active entries
         final service = GetIt.I<BalanceSheetService>();
         final entries = await service.fetchAllEntries();
         await scheduler.syncNotifications(entries);
@@ -156,8 +156,6 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
   Future<void> _rescheduleAll() async {
     final manager = GetIt.I<RealTimeNotificationManager>();
     await manager.rescheduleAll();
-
-    // [NEW HOOK] Resync Balance Sheet alarms alongside the existing workflow
     await _syncBalanceSheetAlarms();
 
     if (mounted) {
@@ -203,9 +201,7 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // 1. MODERN HEADER
             _buildModernHeader(context),
-
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
@@ -214,7 +210,6 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
                   children: [
                     _buildSectionHeader("SCHEDULED REMINDERS"),
 
-                    // 1. Daily App Reminder
                     _buildConfigCard(
                       title: "Daily Check-in",
                       subtitle: "Reminds you to log expenses",
@@ -231,7 +226,6 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
                       }),
                     ),
 
-                    // 2. Loans & Goals
                     _buildConfigCard(
                       title: "Loans & Goals",
                       subtitle: "Deadlines and repayment alerts",
@@ -248,7 +242,6 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
                       }),
                     ),
 
-                    // 3. Credit Cards
                     _buildConfigCard(
                       title: "Credit Cards",
                       subtitle: "Bill generation and due dates",
@@ -265,7 +258,6 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
                       }),
                     ),
 
-                    // --- [NEW] 4. Balance Sheet ---
                     _buildConfigCard(
                       title: "Payables & Receivables",
                       subtitle: "Balance Sheet due date alerts",
@@ -279,13 +271,21 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
                       onTimeTap: () =>
                           _pickTime(context, _balanceSheetTime, (t) {
                         setState(() => _balanceSheetTime = t);
-                        // Using SettingsService since it interacts via Drift for cross-module compatibility
                         GetIt.I<SettingsService>()
                             .setBalanceSheetReminderTime(_formatTimeStr(t));
                       }),
                     ),
 
-                    // 5. Backup Check
+                    // --- [NEW] Recurring Transactions Toggle ---
+                    _buildSwitch(
+                        "Recurring Transactions",
+                        "Alert at the exact scheduled execution time",
+                        _recurringEnabled, (v) {
+                      setState(() => _recurringEnabled = v);
+                      _saveSetting(kPrefRecurringEnabled, v);
+                      _rescheduleAll(); // Re-syncs the alarms dynamically
+                    }),
+
                     _buildConfigCard(
                       title: "Backup Verification",
                       subtitle: "Checks if your data is safely backed up",
@@ -347,13 +347,11 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
     );
   }
 
-  // --- MODERN HEADER ---
   Widget _buildModernHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Back Button
           GestureDetector(
             onTap: () => Navigator.maybePop(context),
             child: GlassCard(
@@ -365,10 +363,7 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
                   color: Colors.white70, size: 20),
             ),
           ),
-
           const SizedBox(width: 16),
-
-          // Title Section
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

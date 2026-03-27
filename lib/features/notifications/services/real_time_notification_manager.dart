@@ -379,7 +379,6 @@ import '../../../core/database/app_database.dart';
 import 'notification_service.dart';
 import 'system_notification_service.dart';
 
-// --- [NEW IMPORTS] Batched Notification Schedulers ---
 import '../../credit_tracker/services/credit_notification_scheduler.dart';
 import '../../goals_loans/services/goals_loans_notification_scheduler.dart';
 
@@ -397,6 +396,7 @@ class RealTimeNotificationManager {
   StreamSubscription? _loanSub;
   StreamSubscription? _budgetSub;
   StreamSubscription? _investmentSub;
+  StreamSubscription? _recurringSub; // [NEW] Listener for Recurring Table
 
   Timer? _debounceTimer;
   bool _isRescheduling = false;
@@ -406,6 +406,9 @@ class RealTimeNotificationManager {
 
   static const String kPrefBackupEnabled = 'notif_enable_backup';
   static const String kPrefBackupTime = 'notif_time_backup';
+
+  // [NEW] Preference key for Recurring Notifications
+  static const String kPrefRecurringEnabled = 'notif_enable_recurring';
 
   void init() {
     debugPrint("Initializing Batched Real-Time Notification Engine...");
@@ -434,21 +437,27 @@ class RealTimeNotificationManager {
         .listen((_) => _onDatabaseChanged());
     _goalSub = _db.goals.select().watch().listen((_) => _onDatabaseChanged());
     _loanSub = _db.loans.select().watch().listen((_) => _onDatabaseChanged());
+
+    // [NEW] Watch Recurring Patterns
+    _recurringSub = _db.recurringPatterns
+        .select()
+        .watch()
+        .listen((_) => _onDatabaseChanged());
   }
 
   void _onDatabaseChanged() {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
     _debounceTimer = Timer(const Duration(seconds: 2), () async {
-      // Logic checks remain exactly as before
       await _notificationService.runLogicChecks();
 
       final loans = await _db.loans.select().get();
       final goals = await _db.goals.select().get();
       final cards = await _db.creditCards.select().get();
+      final recurring =
+          await _db.recurringPatterns.select().get(); // [NEW] Fetch Patterns
 
-      // Hand off to Batched Engines
-      _scheduleBatchedModules(loans, goals, cards);
+      _scheduleBatchedModules(loans, goals, cards, recurring);
     });
   }
 
@@ -460,33 +469,74 @@ class RealTimeNotificationManager {
       final loans = await _db.loans.select().get();
       final goals = await _db.goals.select().get();
       final cards = await _db.creditCards.select().get();
+      final recurring = await _db.recurringPatterns.select().get(); // [NEW]
 
-      // Clear legacy/static notifications
       await _systemService.cancelAll();
 
-      // 1. Schedule Fixed Static Items
       await _scheduleDailyAppReminder();
       await _scheduleBackupReminder();
 
-      // 2. Delegate Dynamic Items to Batched Engines
-      await _scheduleBatchedModules(loans, goals, cards);
+      // Delegate to Dynamic Engines
+      await _scheduleBatchedModules(loans, goals, cards, recurring);
     } finally {
       await Future.delayed(const Duration(milliseconds: 300));
       _isRescheduling = false;
     }
   }
 
-  Future<void> _scheduleBatchedModules(
-      List<Loan> loans, List<Goal> goals, List<CreditCard> cards) async {
-    // [UPGRADE TO BATCHED ENGINES]
-    // The old staggered loops have been entirely deprecated and replaced.
-    // Overlapping alarms are now successfully grouped into Inbox-Style summaries.
-
+  Future<void> _scheduleBatchedModules(List<Loan> loans, List<Goal> goals,
+      List<CreditCard> cards, List<RecurringPattern> recurring) async {
     final creditScheduler = CreditNotificationScheduler();
     await creditScheduler.syncNotifications(cards);
 
     final goalLoanScheduler = GoalsLoansNotificationScheduler();
     await goalLoanScheduler.syncNotifications(loans, goals);
+
+    // [NEW] Trigger exact-time recurring alarms
+    await _scheduleRecurringNotifications(recurring);
+  }
+
+  // --- [NEW] EXACT-TIME RECURRING SCHEDULER ---
+  Future<void> _scheduleRecurringNotifications(
+      List<RecurringPattern> patterns) async {
+    if (!await _isEnabled(kPrefRecurringEnabled)) return;
+
+    final now = DateTime.now();
+
+    for (var pattern in patterns) {
+      if (pattern.isActive == false) continue;
+
+      // Only schedule if the nextRunAt is in the future
+      if (pattern.nextRunAt.isAfter(now)) {
+        final notifId = ('recurring_${pattern.id}').hashCode.abs();
+
+        String titleText;
+        String bodyText;
+
+        // 1. Handle Variable Pay
+        if (pattern.isVariable) {
+          titleText = pattern.name;
+          // Using \n forces the expandable notification to format beautifully
+          bodyText =
+              'Your variable payment is scheduled for today.\n\nPlease enter the exact amount and process the transaction via Recurring Transactions.';
+        }
+        // 2. Handle Fixed / Auto-Execute Pay
+        else {
+          titleText = pattern.name;
+          bodyText = pattern.autoExecute
+              ? 'Auto-pay is scheduled to execute for ₹${pattern.amount.toStringAsFixed(2)}.\n\nPlease ensure The Transaction is Processed Automatically'
+              : 'A payment of ₹${pattern.amount.toStringAsFixed(2)} is due today.\n\nPlease ensure The Transaction is Processed Automatically via Recurring Transactions';
+        }
+
+        await _systemService.scheduleNotification(
+          id: notifId,
+          title: titleText,
+          body: bodyText,
+          scheduledDate: pattern.nextRunAt,
+          payload: 'recurring_${pattern.id}',
+        );
+      }
+    }
   }
 
   Future<TimeOfDay> _fetchTime(
@@ -505,8 +555,6 @@ class RealTimeNotificationManager {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(key) ?? true;
   }
-
-  // --- STATIC SCHEDULING LOGIC ---
 
   Future<void> _scheduleDailyAppReminder() async {
     if (!await _isEnabled(kPrefDailyEnabled)) return;
@@ -543,6 +591,7 @@ class RealTimeNotificationManager {
     _loanSub?.cancel();
     _budgetSub?.cancel();
     _investmentSub?.cancel();
+    _recurringSub?.cancel(); // [NEW]
     _debounceTimer?.cancel();
   }
 }
