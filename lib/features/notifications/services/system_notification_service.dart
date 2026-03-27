@@ -98,6 +98,42 @@ class SystemNotificationService {
     );
   }
 
+  // -------------------------------------------------------------
+  // [NEW] Background Backup Reminder Notification
+  // -------------------------------------------------------------
+  Future<void> showBackupReminderNotification() async {
+    const String bodyText =
+        'It has been over 12 hours since your last backup. Please open FinStack 360 to secure your data.';
+
+    final androidDetails = AndroidNotificationDetails(
+      'backup_alerts_channel_v1',
+      'Backup Alerts',
+      channelDescription:
+          'Notifications reminding you to backup your financial data',
+      importance: Importance.high,
+      priority: Priority.high,
+      color: const Color(0xFF0D1B2A), // Matches your app's theme
+      styleInformation: const BigTextStyleInformation(bodyText),
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    await _notificationsPlugin.show(
+      8888, // Unique ID for Backup Notifications
+      'Data Backup Overdue! ⚠️',
+      bodyText,
+      NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      ),
+    );
+  }
+  // -------------------------------------------------------------
+
   Future<void> scheduleNotification({
     required int id,
     required String title,

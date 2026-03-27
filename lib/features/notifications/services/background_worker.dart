@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import 'notification_check_logic.dart';
 import 'system_notification_service.dart';
+import '../../backup_restore/services/backup_service.dart'; // <-- Add this import
 
-// Defined task name
 const String kBackgroundCheckTask = "com.budgetr.background_check";
 
 @pragma('vm:entry-point')
@@ -29,6 +29,17 @@ void callbackDispatcher() {
       await logic.checkDailyExpenseHealth();
       await logic.checkInvestmentHealth();
       await logic.checkGoalLoanState();
+
+      // -------------------------------------------------
+      // 5. NEW: Background Backup Overdue Check
+      // -------------------------------------------------
+      final backupService = BackupService();
+      final isOverdue = await backupService.isBackupOverdue();
+
+      if (isOverdue) {
+        await systemService.showBackupReminderNotification();
+      }
+      // -------------------------------------------------
 
       return Future.value(true);
     } catch (e) {

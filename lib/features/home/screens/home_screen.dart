@@ -99,26 +99,26 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       if (_needsBackup) {
-        try {
-          // Attempt to resolve from locator if you registered it there
-          final notifService = locator<SystemNotificationService>();
-          await notifService.showInstantNotification(
-            id: 8888, // Unique ID for Backup Alert
-            title: "Backup Overdue",
-            body:
-                "Your data hasn't been backed up in over 12 hours. Tap the warning icon to secure your data.",
-          );
-        } catch (_) {
-          // Fallback: Create a direct instance if it's not in the service locator
-          final notifService = SystemNotificationService();
-          await notifService.init();
-          await notifService.showInstantNotification(
-            id: 8888,
-            title: "Backup Overdue",
-            body:
-                "Your data hasn't been backed up in over 12 hours. Tap the warning icon to secure your data.",
-          );
-        }
+        // try {
+        //   // Attempt to resolve from locator if you registered it there
+        //   final notifService = locator<SystemNotificationService>();
+        //   await notifService.showInstantNotification(
+        //     id: 8888, // Unique ID for Backup Alert
+        //     title: "Backup Overdue",
+        //     body:
+        //         "Your data hasn't been backed up in over 12 hours. Tap the warning icon to secure your data.",
+        //   );
+        // } catch (_) {
+        //   // Fallback: Create a direct instance if it's not in the service locator
+        //   final notifService = SystemNotificationService();
+        //   await notifService.init();
+        //   await notifService.showInstantNotification(
+        //     id: 8888,
+        //     title: "Backup Overdue",
+        //     body:
+        //         "Your data hasn't been backed up in over 12 hours. Tap the warning icon to secure your data.",
+        //   );
+        // }
         Future.delayed(const Duration(seconds: 8), () {
           if (mounted) {
             setState(() => _showTopBanner = false);
