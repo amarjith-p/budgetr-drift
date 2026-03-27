@@ -20,7 +20,8 @@ import '../widgets/jump_to_date_sheet.dart';
 import '../widgets/budget_closure_sheet.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
-import '../../../core/widgets/modern_app_bar.dart'; // [NEW IMPORT]
+import '../../../core/widgets/modern_app_bar.dart';
+import 'custom_budgets_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -33,11 +34,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final DashboardService _dashboardService = GetIt.I<DashboardService>();
   final SettlementService _settlementService = GetIt.I<SettlementService>();
 
-  // Infinite Scroll Logic
   final int _initialIndex = 12 * 50;
   late final PageController _pageController;
 
-  // Streams & State
   late Stream<List<FinancialRecord>> _recordsStream;
   DateTime _currentDate = DateTime.now();
   bool _isMonthSettled = false;
@@ -48,11 +47,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _initialIndex);
-    // Initialize stream here to prevent reloading on setState (Fixes Blinking)
     _recordsStream = _dashboardService.getFinancialRecords();
     _checkSettlementStatus();
 
-    // Auto-hide the swipe hint after 4 seconds
     Timer(const Duration(seconds: 5), () {
       if (mounted) setState(() => _showSwipeHint = false);
     });
@@ -81,12 +78,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final diff = index - _initialIndex;
     final newDate = DateTime(now.year, now.month + diff);
 
-    // Only trigger setState if the month actually changed to avoid unnecessary rebuilds
     if (newDate.month != _currentDate.month ||
         newDate.year != _currentDate.year) {
       setState(() {
         _currentDate = newDate;
-        if (_showSwipeHint) _showSwipeHint = false; // Hide hint on first swipe
+        if (_showSwipeHint) _showSwipeHint = false;
       });
       _checkSettlementStatus();
     }
@@ -272,6 +268,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // Delete Action
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -343,7 +341,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Current date formatted for the subtitle
     final dateString = DateFormat('MMMM yyyy').format(_currentDate);
 
     return Scaffold(
@@ -353,18 +350,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Column(
               children: [
-                // 1. MODERN APP BAR (Replaced Custom Row)
                 ModernAppBar(
                   title: "Budget Insights",
                   subtitle: dateString,
                   trailingIcon: Icons.calendar_month_rounded,
                   onTrailingPressed: _showJumpToDateSheet,
                 ),
-
-                // 2. FULL PAGE SWIPER
                 Expanded(
                   child: StreamBuilder<List<FinancialRecord>>(
-                    stream: _recordsStream, // Use initialized stream
+                    stream: _recordsStream,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
@@ -378,15 +372,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       return PageView.builder(
                         controller: _pageController,
                         onPageChanged: _onPageChanged,
-                        // Physics ensures smooth snapping like a carousel
                         physics: const BouncingScrollPhysics(),
                         itemBuilder: (context, index) {
-                          // Calculate date for this specific page index
                           final now = DateTime.now();
                           final diff = index - _initialIndex;
                           final pageDate = DateTime(now.year, now.month + diff);
 
-                          // Find record for this page
                           final currentRecord = records.firstWhere(
                             (r) =>
                                 r.year == pageDate.year &&
@@ -409,7 +400,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                           final hasData = currentRecord.id.isNotEmpty;
 
-                          // Pass data to a pure display widget to keep logic clean
                           return _buildPageContent(
                               pageDate, currentRecord, hasData);
                         },
@@ -419,8 +409,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-
-            // 3. SWIPE HINT (User Notification)
             if (_showSwipeHint)
               Positioned(
                 bottom: 100,
@@ -439,12 +427,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: Colors.white24, width: 0.5),
                         ),
-                        child: Row(
+                        child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.arrow_back_ios_rounded,
+                            Icon(Icons.arrow_back_ios_rounded,
                                 size: 12, color: Colors.white70),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text(
                               "Swipe for Other Months",
                               style: TextStyle(
@@ -453,8 +441,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward_ios_rounded,
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_ios_rounded,
                                 size: 12, color: Colors.white70),
                           ],
                         ),
@@ -469,17 +457,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- PAGE CONTENT BUILDER ---
   Widget _buildPageContent(
       DateTime pageDate, FinancialRecord currentRecord, bool hasData) {
-    // We determine if THIS specific page is closed/settled based on the global state
-    // matched with the page's date.
-    // Note: Ideally, each page should fetch its own settlement status, but for
-    // simplicity and consistency with your old code, we rely on the primary
-    // _currentDate check for the FAB interactions.
-    // However, for the UI *inside* the list (the Banner), we display it if
-    // this page is the one currently selected AND settled.
-
     final isPageFocused = pageDate.year == _currentDate.year &&
         pageDate.month == _currentDate.month;
 
@@ -494,10 +473,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return Stack(
           children: [
             SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               child: Column(
                 children: [
-                  // Closed Budget Indicator (Only show if this is the active page & settled)
                   if (_isMonthSettled && isPageFocused)
                     Container(
                       width: double.infinity,
@@ -532,7 +510,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                     ),
-
                   if (hasData) ...[
                     DashboardSummaryCard(
                       record: currentRecord,
@@ -550,16 +527,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Budget Allocations",
-                        style: BudgetrStyles.h3.copyWith(
-                          color: Colors.white70,
+
+                    // The Updated Section Header with the Matrix Button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Budget Allocations",
+                          style: BudgetrStyles.h3.copyWith(
+                            color: Colors.white70,
+                          ),
                         ),
-                      ),
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const CustomBudgetsScreen(),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: BudgetrColors.accent.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color: BudgetrColors.accent.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.account_tree_rounded,
+                                    color: BudgetrColors.accent, size: 14),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  "Matrix Budgets",
+                                  style: TextStyle(
+                                    color: BudgetrColors.accent,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
+
                     BudgetAllocationsList(
                       record: currentRecord,
                       currencyFormat: _currencyFormat,
@@ -570,10 +590,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-
-            // FAB
-            // We show the FAB *only* if this page matches the currently selected date.
-            // This prevents FABs from "sliding" in from the side.
             if (isPageFocused)
               Positioned(
                 bottom: 20,

@@ -1,3 +1,5 @@
+// lib/core/services/service_locator.dart
+
 import 'package:budget/core/database/app_database.dart';
 import 'package:budget/features/balance_sheet/services/balance_sheet_service.dart';
 import 'package:budget/features/recurring/services/recurring_service.dart';
@@ -22,15 +24,16 @@ import '../../features/database_viewer/services/database_viewer_service.dart';
 import '../../features/goals_loans/services/goal_loan_service.dart';
 import '../../features/notifications/services/notification_service.dart';
 import '../../features/notifications/services/real_time_notification_manager.dart';
-// [NEW] System Service Import
 import '../../features/notifications/services/system_notification_service.dart';
 import '../../features/investments/services/portfolio_service.dart';
+import '../../features/dashboard/services/category_budget_service.dart'; // [NEW]
 
 final locator = GetIt.instance;
 
 class ServiceLocator {
   static Future<void> init() async {
     locator.registerSingleton<AppDatabase>(AppDatabase.instance);
+
     // 1. Core Services
     final categoryService = CategoryService();
     locator.registerSingleton<CategoryService>(categoryService);
@@ -61,14 +64,17 @@ class ServiceLocator {
     locator.registerLazySingleton<BalanceSheetService>(
         () => BalanceSheetService());
 
-    // [NEW] Register System Notification Service & Init
+    // [NEW] Custom Budget Service Registration
+    locator.registerLazySingleton<CategoryBudgetService>(
+        () => CategoryBudgetService());
+
+    // 3. System Notification Service
     final systemNotifService = SystemNotificationService();
-    await systemNotifService.init(); // Must init before use
+    await systemNotifService.init();
     locator.registerSingleton<SystemNotificationService>(systemNotifService);
 
     locator.registerLazySingleton<NotificationService>(
         () => NotificationService());
-
     locator.registerLazySingleton<RealTimeNotificationManager>(
         () => RealTimeNotificationManager());
 
