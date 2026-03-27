@@ -256,6 +256,7 @@ class CategoryAllocationListItem extends StatelessWidget {
                           backgroundColor: Colors.blueAccent.withOpacity(0.9),
                           foregroundColor: Colors.white,
                           icon: Icons.edit_outlined,
+                          label: "Edit",
                           borderRadius: const BorderRadius.horizontal(
                               left: Radius.circular(8)),
                         ),
@@ -265,18 +266,20 @@ class CategoryAllocationListItem extends StatelessWidget {
                               const Color(0xFF00E676).withOpacity(0.9),
                           foregroundColor: Colors.white,
                           icon: Icons.check_circle_outline_rounded,
+                          label: "Settle",
                         ),
                       ],
                     ),
               endActionPane: ActionPane(
                 motion: const DrawerMotion(),
-                extentRatio: 0.25,
+                extentRatio: 0.26,
                 children: [
                   SlidableAction(
                     onPressed: (_) => _handleDelete(context),
                     backgroundColor: Colors.redAccent.withOpacity(0.9),
                     foregroundColor: Colors.white,
                     icon: Icons.delete_outline,
+                    label: "Delete",
                     borderRadius: isClosed
                         ? BorderRadius.circular(8)
                         : const BorderRadius.horizontal(

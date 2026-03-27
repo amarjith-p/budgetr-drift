@@ -74,13 +74,13 @@ class _CustomBudgetsScreenState extends State<CustomBudgetsScreen> {
                     physics: const BouncingScrollPhysics(),
                     slivers: [
                       SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                         sliver: SliverList(
                           delegate: SliverChildListDelegate([
                             // 1. iOS-Style Fluid Segmented Control
                             _buildPremiumTabToggle(),
 
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 16),
 
                             // 2. Section Header
                             if (displayBudgets.isNotEmpty)
@@ -151,7 +151,7 @@ class _CustomBudgetsScreenState extends State<CustomBudgetsScreen> {
       height: 46,
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Stack(
@@ -168,7 +168,7 @@ class _CustomBudgetsScreenState extends State<CustomBudgetsScreen> {
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E293B), // Elevated surface color
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.2),

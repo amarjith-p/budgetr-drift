@@ -135,7 +135,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: BudgetrColors.background,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
           border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
         ),
         child: Column(
@@ -165,7 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.05),
-                  borderRadius: BudgetrStyles.radiusM,
+                  borderRadius: BudgetrStyles.radiusS,
                 ),
                 child: ListTile(
                   onTap: () async {
@@ -230,7 +230,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
-                borderRadius: BudgetrStyles.radiusM,
+                borderRadius: BudgetrStyles.radiusS,
               ),
               child: ListTile(
                 onTap: () {
@@ -274,7 +274,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
-                borderRadius: BudgetrStyles.radiusM,
+                borderRadius: BudgetrStyles.radiusS,
               ),
               child: ListTile(
                 onTap: () {
@@ -486,7 +486,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.orangeAccent.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: Colors.orangeAccent.withOpacity(0.3),
                         ),
@@ -553,7 +553,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: BudgetrColors.accent.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                   color: BudgetrColors.accent.withOpacity(0.3)),
                             ),

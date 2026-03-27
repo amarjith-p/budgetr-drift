@@ -289,7 +289,7 @@ class _CategoryTransactionCardState extends State<CategoryTransactionCard> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: BudgetrColors.cardSurface.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
               color: _isExpanded
                   ? Colors.white.withOpacity(0.2)

@@ -119,7 +119,7 @@ class _BudgetClosureSheetState extends State<BudgetClosureSheet> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: BudgetrColors.background,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
       child: Column(
@@ -180,7 +180,7 @@ class _BudgetClosureSheetState extends State<BudgetClosureSheet> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: BudgetrColors.cardSurface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.white.withOpacity(0.05)),
             ),
             child: Column(
@@ -219,7 +219,7 @@ class _BudgetClosureSheetState extends State<BudgetClosureSheet> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.orangeAccent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
               ),
               child: Column(
@@ -325,7 +325,7 @@ class _BudgetClosureSheetState extends State<BudgetClosureSheet> {
                 backgroundColor: BudgetrColors.success,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 elevation: 0,
               ),

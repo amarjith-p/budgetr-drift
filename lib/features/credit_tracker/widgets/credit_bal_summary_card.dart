@@ -135,19 +135,21 @@ class CreditSummaryCard extends StatelessWidget {
             onTap: onLinkAccountTapped,
             child: Padding(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
+                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const FaIcon(FontAwesomeIcons.chessKnight,
-                        color: Color(0xFF4CC9F0), size: 16),
-                  ),
-                  const SizedBox(width: 12),
+                  // Container(
+                  //   padding: const EdgeInsets.all(8),
+                  //   decoration: BoxDecoration(
+                  //     color: Colors.white.withOpacity(0.05),
+                  //     borderRadius: BorderRadius.circular(8),
+                  //   ),
+                  //   child: const FaIcon(FontAwesomeIcons.chessKnight,
+                  //       color: Color(0xFF4CC9F0), size: 16),
+                  // ),
+                  // const SizedBox(width: 12),
+
+                  // This Expanded pushes the amount and icon completely to the right
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,30 +174,20 @@ class CreditSummaryCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12), // Spacing guard
-                  // OVERFLOW FIX: Flexible + FittedBox for the trailing data
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerRight,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            currencyFormat.format(allocatedFunds),
-                            // [FIX 3] Allocated Funds explicitly set to Green
-                            style: const TextStyle(
-                                color: Color(0xFF06D6A0),
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.edit_rounded,
-                              color: Colors.white38, size: 14),
-                        ],
-                      ),
-                    ),
+
+                  const SizedBox(width: 12),
+
+                  // No Flexible or FittedBox wrappers to prevent phantom blank space
+                  Text(
+                    currencyFormat.format(allocatedFunds),
+                    style: const TextStyle(
+                        color: Color(0xFF06D6A0),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.edit_rounded,
+                      color: Colors.white38, size: 14),
                 ],
               ),
             ),
