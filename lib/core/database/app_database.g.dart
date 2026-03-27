@@ -14192,6 +14192,477 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
   }
 }
 
+class $CategoryBudgetsTable extends CategoryBudgets
+    with TableInfo<$CategoryBudgetsTable, CategoryBudget> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoryBudgetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _categoriesMeta =
+      const VerificationMeta('categories');
+  @override
+  late final GeneratedColumn<String> categories = GeneratedColumn<String>(
+      'categories', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _bucketsMeta =
+      const VerificationMeta('buckets');
+  @override
+  late final GeneratedColumn<String> buckets = GeneratedColumn<String>(
+      'buckets', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('[]'));
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+      'amount', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _periodTypeMeta =
+      const VerificationMeta('periodType');
+  @override
+  late final GeneratedColumn<String> periodType = GeneratedColumn<String>(
+      'period_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _startDateMeta =
+      const VerificationMeta('startDate');
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+      'start_date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _endDateMeta =
+      const VerificationMeta('endDate');
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+      'end_date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _isClosedMeta =
+      const VerificationMeta('isClosed');
+  @override
+  late final GeneratedColumn<bool> isClosed = GeneratedColumn<bool>(
+      'is_closed', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_closed" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        categories,
+        buckets,
+        amount,
+        periodType,
+        startDate,
+        endDate,
+        isClosed,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'category_budgets';
+  @override
+  VerificationContext validateIntegrity(Insertable<CategoryBudget> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('categories')) {
+      context.handle(
+          _categoriesMeta,
+          categories.isAcceptableOrUnknown(
+              data['categories']!, _categoriesMeta));
+    } else if (isInserting) {
+      context.missing(_categoriesMeta);
+    }
+    if (data.containsKey('buckets')) {
+      context.handle(_bucketsMeta,
+          buckets.isAcceptableOrUnknown(data['buckets']!, _bucketsMeta));
+    }
+    if (data.containsKey('amount')) {
+      context.handle(_amountMeta,
+          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('period_type')) {
+      context.handle(
+          _periodTypeMeta,
+          periodType.isAcceptableOrUnknown(
+              data['period_type']!, _periodTypeMeta));
+    } else if (isInserting) {
+      context.missing(_periodTypeMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(_startDateMeta,
+          startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta));
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(_endDateMeta,
+          endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta));
+    } else if (isInserting) {
+      context.missing(_endDateMeta);
+    }
+    if (data.containsKey('is_closed')) {
+      context.handle(_isClosedMeta,
+          isClosed.isAcceptableOrUnknown(data['is_closed']!, _isClosedMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CategoryBudget map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoryBudget(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      categories: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}categories'])!,
+      buckets: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}buckets'])!,
+      amount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
+      periodType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}period_type'])!,
+      startDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date'])!,
+      endDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}end_date'])!,
+      isClosed: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_closed'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $CategoryBudgetsTable createAlias(String alias) {
+    return $CategoryBudgetsTable(attachedDatabase, alias);
+  }
+}
+
+class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
+  final String id;
+  final String categories;
+  final String buckets;
+  final double amount;
+  final String periodType;
+  final DateTime startDate;
+  final DateTime endDate;
+  final bool isClosed;
+  final DateTime createdAt;
+  const CategoryBudget(
+      {required this.id,
+      required this.categories,
+      required this.buckets,
+      required this.amount,
+      required this.periodType,
+      required this.startDate,
+      required this.endDate,
+      required this.isClosed,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['categories'] = Variable<String>(categories);
+    map['buckets'] = Variable<String>(buckets);
+    map['amount'] = Variable<double>(amount);
+    map['period_type'] = Variable<String>(periodType);
+    map['start_date'] = Variable<DateTime>(startDate);
+    map['end_date'] = Variable<DateTime>(endDate);
+    map['is_closed'] = Variable<bool>(isClosed);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CategoryBudgetsCompanion toCompanion(bool nullToAbsent) {
+    return CategoryBudgetsCompanion(
+      id: Value(id),
+      categories: Value(categories),
+      buckets: Value(buckets),
+      amount: Value(amount),
+      periodType: Value(periodType),
+      startDate: Value(startDate),
+      endDate: Value(endDate),
+      isClosed: Value(isClosed),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CategoryBudget.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoryBudget(
+      id: serializer.fromJson<String>(json['id']),
+      categories: serializer.fromJson<String>(json['categories']),
+      buckets: serializer.fromJson<String>(json['buckets']),
+      amount: serializer.fromJson<double>(json['amount']),
+      periodType: serializer.fromJson<String>(json['periodType']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      endDate: serializer.fromJson<DateTime>(json['endDate']),
+      isClosed: serializer.fromJson<bool>(json['isClosed']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'categories': serializer.toJson<String>(categories),
+      'buckets': serializer.toJson<String>(buckets),
+      'amount': serializer.toJson<double>(amount),
+      'periodType': serializer.toJson<String>(periodType),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'endDate': serializer.toJson<DateTime>(endDate),
+      'isClosed': serializer.toJson<bool>(isClosed),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CategoryBudget copyWith(
+          {String? id,
+          String? categories,
+          String? buckets,
+          double? amount,
+          String? periodType,
+          DateTime? startDate,
+          DateTime? endDate,
+          bool? isClosed,
+          DateTime? createdAt}) =>
+      CategoryBudget(
+        id: id ?? this.id,
+        categories: categories ?? this.categories,
+        buckets: buckets ?? this.buckets,
+        amount: amount ?? this.amount,
+        periodType: periodType ?? this.periodType,
+        startDate: startDate ?? this.startDate,
+        endDate: endDate ?? this.endDate,
+        isClosed: isClosed ?? this.isClosed,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  CategoryBudget copyWithCompanion(CategoryBudgetsCompanion data) {
+    return CategoryBudget(
+      id: data.id.present ? data.id.value : this.id,
+      categories:
+          data.categories.present ? data.categories.value : this.categories,
+      buckets: data.buckets.present ? data.buckets.value : this.buckets,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      periodType:
+          data.periodType.present ? data.periodType.value : this.periodType,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      isClosed: data.isClosed.present ? data.isClosed.value : this.isClosed,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryBudget(')
+          ..write('id: $id, ')
+          ..write('categories: $categories, ')
+          ..write('buckets: $buckets, ')
+          ..write('amount: $amount, ')
+          ..write('periodType: $periodType, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('isClosed: $isClosed, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, categories, buckets, amount, periodType,
+      startDate, endDate, isClosed, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoryBudget &&
+          other.id == this.id &&
+          other.categories == this.categories &&
+          other.buckets == this.buckets &&
+          other.amount == this.amount &&
+          other.periodType == this.periodType &&
+          other.startDate == this.startDate &&
+          other.endDate == this.endDate &&
+          other.isClosed == this.isClosed &&
+          other.createdAt == this.createdAt);
+}
+
+class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
+  final Value<String> id;
+  final Value<String> categories;
+  final Value<String> buckets;
+  final Value<double> amount;
+  final Value<String> periodType;
+  final Value<DateTime> startDate;
+  final Value<DateTime> endDate;
+  final Value<bool> isClosed;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const CategoryBudgetsCompanion({
+    this.id = const Value.absent(),
+    this.categories = const Value.absent(),
+    this.buckets = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.periodType = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.isClosed = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CategoryBudgetsCompanion.insert({
+    required String id,
+    required String categories,
+    this.buckets = const Value.absent(),
+    required double amount,
+    required String periodType,
+    required DateTime startDate,
+    required DateTime endDate,
+    this.isClosed = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        categories = Value(categories),
+        amount = Value(amount),
+        periodType = Value(periodType),
+        startDate = Value(startDate),
+        endDate = Value(endDate);
+  static Insertable<CategoryBudget> custom({
+    Expression<String>? id,
+    Expression<String>? categories,
+    Expression<String>? buckets,
+    Expression<double>? amount,
+    Expression<String>? periodType,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
+    Expression<bool>? isClosed,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (categories != null) 'categories': categories,
+      if (buckets != null) 'buckets': buckets,
+      if (amount != null) 'amount': amount,
+      if (periodType != null) 'period_type': periodType,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (isClosed != null) 'is_closed': isClosed,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CategoryBudgetsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? categories,
+      Value<String>? buckets,
+      Value<double>? amount,
+      Value<String>? periodType,
+      Value<DateTime>? startDate,
+      Value<DateTime>? endDate,
+      Value<bool>? isClosed,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return CategoryBudgetsCompanion(
+      id: id ?? this.id,
+      categories: categories ?? this.categories,
+      buckets: buckets ?? this.buckets,
+      amount: amount ?? this.amount,
+      periodType: periodType ?? this.periodType,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      isClosed: isClosed ?? this.isClosed,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (categories.present) {
+      map['categories'] = Variable<String>(categories.value);
+    }
+    if (buckets.present) {
+      map['buckets'] = Variable<String>(buckets.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (periodType.present) {
+      map['period_type'] = Variable<String>(periodType.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (isClosed.present) {
+      map['is_closed'] = Variable<bool>(isClosed.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryBudgetsCompanion(')
+          ..write('id: $id, ')
+          ..write('categories: $categories, ')
+          ..write('buckets: $buckets, ')
+          ..write('amount: $amount, ')
+          ..write('periodType: $periodType, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('isClosed: $isClosed, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -14235,6 +14706,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $VaultRecordsTable vaultRecords = $VaultRecordsTable(this);
   late final $BalanceSheetEntriesTable balanceSheetEntries =
       $BalanceSheetEntriesTable(this);
+  late final $CategoryBudgetsTable categoryBudgets =
+      $CategoryBudgetsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -14266,7 +14739,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         tripRecords,
         tripExclusions,
         vaultRecords,
-        balanceSheetEntries
+        balanceSheetEntries,
+        categoryBudgets
       ];
 }
 
@@ -22042,6 +22516,240 @@ typedef $$BalanceSheetEntriesTableProcessedTableManager = ProcessedTableManager<
     ),
     BalanceSheetEntry,
     PrefetchHooks Function()>;
+typedef $$CategoryBudgetsTableCreateCompanionBuilder = CategoryBudgetsCompanion
+    Function({
+  required String id,
+  required String categories,
+  Value<String> buckets,
+  required double amount,
+  required String periodType,
+  required DateTime startDate,
+  required DateTime endDate,
+  Value<bool> isClosed,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$CategoryBudgetsTableUpdateCompanionBuilder = CategoryBudgetsCompanion
+    Function({
+  Value<String> id,
+  Value<String> categories,
+  Value<String> buckets,
+  Value<double> amount,
+  Value<String> periodType,
+  Value<DateTime> startDate,
+  Value<DateTime> endDate,
+  Value<bool> isClosed,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$CategoryBudgetsTableFilterComposer
+    extends Composer<_$AppDatabase, $CategoryBudgetsTable> {
+  $$CategoryBudgetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get categories => $composableBuilder(
+      column: $table.categories, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get buckets => $composableBuilder(
+      column: $table.buckets, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get periodType => $composableBuilder(
+      column: $table.periodType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+      column: $table.endDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isClosed => $composableBuilder(
+      column: $table.isClosed, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$CategoryBudgetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CategoryBudgetsTable> {
+  $$CategoryBudgetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get categories => $composableBuilder(
+      column: $table.categories, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get buckets => $composableBuilder(
+      column: $table.buckets, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get periodType => $composableBuilder(
+      column: $table.periodType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+      column: $table.endDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isClosed => $composableBuilder(
+      column: $table.isClosed, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$CategoryBudgetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CategoryBudgetsTable> {
+  $$CategoryBudgetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get categories => $composableBuilder(
+      column: $table.categories, builder: (column) => column);
+
+  GeneratedColumn<String> get buckets =>
+      $composableBuilder(column: $table.buckets, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get periodType => $composableBuilder(
+      column: $table.periodType, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<bool> get isClosed =>
+      $composableBuilder(column: $table.isClosed, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$CategoryBudgetsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CategoryBudgetsTable,
+    CategoryBudget,
+    $$CategoryBudgetsTableFilterComposer,
+    $$CategoryBudgetsTableOrderingComposer,
+    $$CategoryBudgetsTableAnnotationComposer,
+    $$CategoryBudgetsTableCreateCompanionBuilder,
+    $$CategoryBudgetsTableUpdateCompanionBuilder,
+    (
+      CategoryBudget,
+      BaseReferences<_$AppDatabase, $CategoryBudgetsTable, CategoryBudget>
+    ),
+    CategoryBudget,
+    PrefetchHooks Function()> {
+  $$CategoryBudgetsTableTableManager(
+      _$AppDatabase db, $CategoryBudgetsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CategoryBudgetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CategoryBudgetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CategoryBudgetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> categories = const Value.absent(),
+            Value<String> buckets = const Value.absent(),
+            Value<double> amount = const Value.absent(),
+            Value<String> periodType = const Value.absent(),
+            Value<DateTime> startDate = const Value.absent(),
+            Value<DateTime> endDate = const Value.absent(),
+            Value<bool> isClosed = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CategoryBudgetsCompanion(
+            id: id,
+            categories: categories,
+            buckets: buckets,
+            amount: amount,
+            periodType: periodType,
+            startDate: startDate,
+            endDate: endDate,
+            isClosed: isClosed,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String categories,
+            Value<String> buckets = const Value.absent(),
+            required double amount,
+            required String periodType,
+            required DateTime startDate,
+            required DateTime endDate,
+            Value<bool> isClosed = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CategoryBudgetsCompanion.insert(
+            id: id,
+            categories: categories,
+            buckets: buckets,
+            amount: amount,
+            periodType: periodType,
+            startDate: startDate,
+            endDate: endDate,
+            isClosed: isClosed,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$CategoryBudgetsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $CategoryBudgetsTable,
+    CategoryBudget,
+    $$CategoryBudgetsTableFilterComposer,
+    $$CategoryBudgetsTableOrderingComposer,
+    $$CategoryBudgetsTableAnnotationComposer,
+    $$CategoryBudgetsTableCreateCompanionBuilder,
+    $$CategoryBudgetsTableUpdateCompanionBuilder,
+    (
+      CategoryBudget,
+      BaseReferences<_$AppDatabase, $CategoryBudgetsTable, CategoryBudget>
+    ),
+    CategoryBudget,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -22101,4 +22809,6 @@ class $AppDatabaseManager {
       $$VaultRecordsTableTableManager(_db, _db.vaultRecords);
   $$BalanceSheetEntriesTableTableManager get balanceSheetEntries =>
       $$BalanceSheetEntriesTableTableManager(_db, _db.balanceSheetEntries);
+  $$CategoryBudgetsTableTableManager get categoryBudgets =>
+      $$CategoryBudgetsTableTableManager(_db, _db.categoryBudgets);
 }

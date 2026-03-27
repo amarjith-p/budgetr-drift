@@ -1,3 +1,5 @@
+// lib/core/database/app_database.dart
+
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -25,7 +27,7 @@ part 'app_database.g.dart';
     CustomTemplates,
     CustomRecords,
     TransactionCategories,
-    Settings, // Note: Removed a duplicate "Settlements" that was here
+    Settings,
     AssetLogs,
     Loans,
     Goals,
@@ -40,6 +42,7 @@ part 'app_database.g.dart';
     TripExclusions,
     VaultRecords,
     BalanceSheetEntries,
+    CategoryBudgets, // [NEW] Added Custom Budget Table
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -49,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration {
@@ -58,8 +61,6 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        // 1. Fetch all existing tables from the restored backup to prevent
-        // "Table already exists" SQLite crashes during unpredictable upgrades.
         final existingTablesResult = await customSelect(
           "SELECT name FROM sqlite_master WHERE type='table'",
         ).get();
@@ -67,7 +68,6 @@ class AppDatabase extends _$AppDatabase {
         final existingTables =
             existingTablesResult.map((row) => row.read<String>('name')).toSet();
 
-        // 2. Helper to safely create a table ONLY if it doesn't already exist
         Future<void> safeCreateTable(dynamic table) async {
           if (!existingTables.contains(table.actualTableName)) {
             await m.createTable(table);
@@ -75,12 +75,10 @@ class AppDatabase extends _$AppDatabase {
         }
 
         if (from < 17) {
-          // Safely drop and recreate netWorthSplits
           await customStatement(
               'DROP TABLE IF EXISTS ${netWorthSplits.actualTableName}');
           await m.createTable(netWorthSplits);
 
-          // Safely create all other tables
           await safeCreateTable(heatmapLimits);
           await safeCreateTable(assetLogs);
           await safeCreateTable(loans);
@@ -96,7 +94,6 @@ class AppDatabase extends _$AppDatabase {
           await safeCreateTable(vaultRecords);
           await safeCreateTable(balanceSheetEntries);
 
-          // 3. Safely add columns if the table existed but the column did not
           if (existingTables.contains(investments.actualTableName)) {
             final tableInfo = await customSelect(
               "PRAGMA table_info('${investments.actualTableName}')",
@@ -157,6 +154,9 @@ class AppDatabase extends _$AppDatabase {
                   balanceSheetEntries, balanceSheetEntries.settledAmount);
             }
           }
+        }
+        if (from < 23) {
+          await safeCreateTable(categoryBudgets);
         }
       },
     );

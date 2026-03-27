@@ -1,3 +1,5 @@
+// lib/core/database/tables.dart
+
 import 'package:drift/drift.dart';
 
 // --- TYPE CONVERTERS ---
@@ -222,20 +224,6 @@ class NetWorthRecords extends Table {
 }
 
 // --- 13. NET WORTH SPLITS ---
-// class NetWorthSplits extends Table {
-//   TextColumn get id => text()();
-//   DateTimeColumn get date => dateTime()();
-
-//   RealColumn get netIncome => real().withDefault(const Constant(0.0))();
-//   RealColumn get netExpense => real().withDefault(const Constant(0.0))();
-//   RealColumn get capitalGain => real().withDefault(const Constant(0.0))();
-//   RealColumn get capitalLoss => real().withDefault(const Constant(0.0))();
-//   RealColumn get nonCalcIncome => real().withDefault(const Constant(0.0))();
-//   RealColumn get nonCalcExpense => real().withDefault(const Constant(0.0))();
-
-//   @override
-//   Set<Column> get primaryKey => {id};
-// }
 @DataClassName("NetWorthSplit")
 class NetWorthSplits extends Table {
   TextColumn get id => text()();
@@ -434,7 +422,6 @@ class HeatmapLimits extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
-// --- RECURRING / PLANNED PAYMENTS ---
 
 // --- RECURRING / PLANNED PAYMENTS ---
 class RecurringPatterns extends Table {
@@ -531,6 +518,27 @@ class BalanceSheetEntries extends Table {
 
   // [NEW] Partial Settlement Tracking
   RealColumn get settledAmount => real().withDefault(const Constant(0.0))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// --- 16. CATEGORY BUDGETS (NEW CUSTOM MODULE) ---
+class CategoryBudgets extends Table {
+  TextColumn get id => text()();
+
+  TextColumn get categories => text()();
+  TextColumn get buckets => text().withDefault(const Constant('[]'))();
+
+  RealColumn get amount => real()();
+  TextColumn get periodType => text()();
+  DateTimeColumn get startDate => dateTime()();
+  DateTimeColumn get endDate => dateTime()();
+
+  // [NEW] Flag to mark the budget as closed/settled
+  BoolColumn get isClosed => boolean().withDefault(const Constant(false))();
+
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
