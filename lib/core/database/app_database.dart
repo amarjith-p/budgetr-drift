@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase._internal() : super(_openConnection());
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration {
@@ -75,10 +75,7 @@ class AppDatabase extends _$AppDatabase {
         }
 
         if (from < 17) {
-          await customStatement(
-              'DROP TABLE IF EXISTS ${netWorthSplits.actualTableName}');
-          await m.createTable(netWorthSplits);
-
+          await safeCreateTable(netWorthSplits);
           await safeCreateTable(heatmapLimits);
           await safeCreateTable(assetLogs);
           await safeCreateTable(loans);
