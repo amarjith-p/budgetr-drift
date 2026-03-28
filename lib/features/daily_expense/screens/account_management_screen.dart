@@ -107,7 +107,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                               return Column(
                                 key: ValueKey(account.id),
                                 children: [
-                                  if (index == 6)
+                                  if (index == 10)
                                     Padding(
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 12),
@@ -264,7 +264,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "Long press & drag cards to reorder. The top 6 accounts will appear on your Home Dashboard.",
+                  "Long press & drag cards to reorder. The top 10 accounts will appear on your Home Dashboard.",
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.7),
                     fontSize: 12,

@@ -65,7 +65,7 @@ class ExpenseService {
             (t) => OrderingTerm(
                 expression: t.dashboardOrder, mode: OrderingMode.asc)
           ])
-          ..limit(6))
+          ..limit(10))
         .watch()
         .map((rows) => rows.map(_mapAccount).toList());
   }

@@ -277,7 +277,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
             final List<dynamic> row2Items = [];
 
             for (int i = 0; i < dashboardAccounts.length; i++) {
-              if (i < 3) {
+              if (i < 5) {
                 row1Items.add(dashboardAccounts[i]);
               } else {
                 row2Items.add(dashboardAccounts[i]);
@@ -591,7 +591,7 @@ class _DailyExpenseScreenState extends State<DailyExpenseScreen> {
           color: isSelected
               ? const Color(0xFF00B4D8).withOpacity(0.15)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
