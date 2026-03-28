@@ -1,3 +1,4 @@
+import 'dart:ui'; // Added for BackdropFilter
 import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -340,11 +341,12 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
           ),
           child: child!),
     );
-    if (picked != null)
+    if (picked != null) {
       setState(() {
         _customDateRange = picked;
         _selectedRange = 'Custom Range';
       });
+    }
   }
 
   @override
@@ -363,8 +365,9 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
         final Map<String, IconData> iconMap = {};
         if (catSnapshot.hasData) {
           for (var c in catSnapshot.data!) {
-            if (c.iconCode != null)
+            if (c.iconCode != null) {
               iconMap[c.name] = IconConstants.getIconByCode(c.iconCode!);
+            }
           }
         }
 
@@ -375,14 +378,18 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                   stream: _creditService.getCreditCards(),
                   builder: (context, cardListSnap) {
                     final Map<String, String> accountNameMap = {};
-                    if (accountListSnap.hasData)
-                      for (var acc in accountListSnap.data!)
+                    if (accountListSnap.hasData) {
+                      for (var acc in accountListSnap.data!) {
                         accountNameMap[acc.id] =
                             "${acc.name} (${acc.bankName})";
-                    if (cardListSnap.hasData)
-                      for (var card in cardListSnap.data!)
+                      }
+                    }
+                    if (cardListSnap.hasData) {
+                      for (var card in cardListSnap.data!) {
                         accountNameMap[card.id] =
                             "${card.name} (${card.bankName})";
+                      }
+                    }
 
                     return StreamBuilder<List<FinancialRecord>>(
                         stream: _dashboardService.getFinancialRecords(),
@@ -415,12 +422,13 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                         .getTransactionsForCard(fetchId),
                                 builder: (context, creditSnapshot) {
                                   if (!expenseSnapshot.hasData &&
-                                      !creditSnapshot.hasData)
+                                      !creditSnapshot.hasData) {
                                     return const Center(
                                         child: FuturisticLoader(
                                             size: 80,
                                             label:
                                                 "GENERATING FINANCIAL INSIGHTS..."));
+                                  }
 
                                   final expenses = expenseSnapshot.data ?? [];
                                   final credits = creditSnapshot.data ?? [];
@@ -508,10 +516,11 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                         isCredit ? t.type : t.type;
                                     final double amount =
                                         isCredit ? t.amount : t.amount;
-                                    if (type == 'Income' && !isCredit)
+                                    if (type == 'Income' && !isCredit) {
                                       totalIncome += amount;
-                                    else if (type == 'Expense')
+                                    } else if (type == 'Expense') {
                                       totalExpense += amount;
+                                    }
                                   }
                                   final currentTotal =
                                       _showIncome ? totalIncome : totalExpense;
@@ -675,8 +684,9 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                                     customRangeOverride:
                                                         prevPeriod.custom,
                                                     rangeTypeOverride:
-                                                        prevPeriod.type))
+                                                        prevPeriod.type)) {
                                                   continue;
+                                                }
                                                 final isCredit =
                                                     t is CreditTransactionModel;
                                                 final type =
@@ -709,14 +719,15 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                                           .amount;
                                                 }
                                               }
-                                              if (prevTotal > 0)
+                                              if (prevTotal > 0) {
                                                 trend = ((item.totalAmount -
                                                             prevTotal) /
                                                         prevTotal) *
                                                     100;
-                                              else if (prevTotal == 0 &&
-                                                  item.totalAmount > 0)
+                                              } else if (prevTotal == 0 &&
+                                                  item.totalAmount > 0) {
                                                 trend = 100;
+                                              }
                                             }
                                           }
 
@@ -967,132 +978,67 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
           cards.any((c) => c.id == _selectedAccountId);
       if (!exists) _selectedAccountId = null;
     }
-    return Container(
+
+    return GestureDetector(
+      onTap: () => _showAccountSelectionSheet(accounts, cards),
+      child: Container(
         height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
         decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.white.withOpacity(0.1))),
-        child: DropdownButtonHideUnderline(
-            child: DropdownButton<String?>(
-                value: _selectedAccountId,
-                dropdownColor: const Color(0xFF1B263B),
-                icon: const Icon(Icons.account_balance_wallet_outlined,
-                    color: Colors.white70, size: 16),
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                _getAccountDisplayText(_selectedAccountId, accounts, cards),
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
                     fontWeight: FontWeight.w600),
-                isExpanded: true,
-                hint: const Text("All Accounts",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600),
-                    overflow: TextOverflow.ellipsis),
-                items: [
-                  const DropdownMenuItem<String?>(
-                      value: null, child: Text("All Accounts")),
-                  if (accounts.isNotEmpty)
-                    const DropdownMenuItem<String?>(
-                        enabled: false,
-                        value: 'header_bank',
-                        child: Text("BANK ACCOUNTS",
-                            style: TextStyle(
-                                color: Colors.white38,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold))),
-                  if (accounts.isNotEmpty)
-                    const DropdownMenuItem<String?>(
-                        value: kGroupBanks,
-                        child: Text("All Bank Accounts",
-                            style: TextStyle(fontWeight: FontWeight.w500))),
-                  ...accounts.map((acc) => DropdownMenuItem(
-                      value: acc.id,
-                      child: Text("${acc.name} ( ${acc.bankName} )",
-                          overflow: TextOverflow.ellipsis))),
-                  if (cards.isNotEmpty)
-                    const DropdownMenuItem<String?>(
-                        enabled: false,
-                        value: 'header_credit',
-                        child: Text("CREDIT CARDS",
-                            style: TextStyle(
-                                color: Colors.white38,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold))),
-                  if (cards.isNotEmpty)
-                    const DropdownMenuItem<String?>(
-                        value: kGroupCredits,
-                        child: Text("All Credit Cards",
-                            style: TextStyle(fontWeight: FontWeight.w500))),
-                  ...cards.map((card) => DropdownMenuItem(
-                      value: card.id,
-                      child: Text("${card.name} ( ${card.bankName} )",
-                          overflow: TextOverflow.ellipsis)))
-                ],
-                onChanged: (val) {
-                  setState(() => _selectedAccountId = val);
-                })));
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.account_balance_wallet_outlined,
+                color: Colors.white70, size: 16),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildTimeFilter() {
-    return Container(
+    return GestureDetector(
+      onTap: _showTimeSelectionSheet,
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.white.withOpacity(0.1))),
-        child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-                value: _selectedRange,
-                dropdownColor: const Color(0xFF1B263B),
-                icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                    color: Colors.white70, size: 18),
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600),
-                isDense: true,
-                items: [
-                  'This Month',
-                  'Last Month',
-                  'This Year',
-                  'Last Year',
-                  'All Time',
-                  'Custom Range'
-                ].map((e) {
-                  if (e == 'Custom Range' &&
-                      _selectedRange == 'Custom Range' &&
-                      _customDateRange != null) {
-                    final start =
-                        DateFormat('dd MMM').format(_customDateRange!.start);
-                    final end =
-                        DateFormat('dd MMM').format(_customDateRange!.end);
-                    return DropdownMenuItem(
-                        value: e,
-                        onTap: () {
-                          WidgetsBinding.instance
-                              .addPostFrameCallback((_) => _pickDateRange());
-                        },
-                        child: Text("$start - $end"));
-                  }
-                  if (e == 'Custom Range') {
-                    return DropdownMenuItem(
-                        value: e,
-                        onTap: () {
-                          WidgetsBinding.instance
-                              .addPostFrameCallback((_) => _pickDateRange());
-                        },
-                        child: Text(e));
-                  }
-                  return DropdownMenuItem(value: e, child: Text(e));
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null && val != 'Custom Range') {
-                    setState(() => _selectedRange = val);
-                  }
-                })));
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _selectedRange == 'Custom Range' && _customDateRange != null
+                  ? "${DateFormat('dd MMM').format(_customDateRange!.start)} - ${DateFormat('dd MMM').format(_customDateRange!.end)}"
+                  : _selectedRange,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.keyboard_arrow_down_rounded,
+                color: Colors.white70, size: 18),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildSummaryCard(
@@ -1150,12 +1096,13 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
       final remaining = item.budgetLimit! - item.totalAmount;
       if (remaining >= 0) {
         statusLabel = "Left: ${fmt.format(remaining)}";
-        if (percentage < 0.75)
+        if (percentage < 0.75) {
           color = const Color(0xFF00E676);
-        else if (percentage < 1.0)
+        } else if (percentage < 1.0) {
           color = Colors.orangeAccent;
-        else
+        } else {
           color = Colors.redAccent;
+        }
       } else {
         statusLabel = "Over: ${fmt.format(remaining.abs())}";
         color = const Color(0xFFFF4D6D);
@@ -1316,6 +1263,322 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                 ]));
                       }).toList()))
                 ])));
+  }
+
+  // ===========================================================================
+  // --- BOTTOM SHEETS & LIST HELPERS ---
+  // ===========================================================================
+
+  String _getAccountDisplayText(String? id, List<ExpenseAccountModel> accounts,
+      List<CreditCardModel> cards) {
+    if (id == null) return "All Accounts";
+    if (id == kGroupBanks) return "All Bank Accounts";
+    if (id == kGroupCredits) return "All Credit Cards";
+
+    final acc = accounts.firstWhereOrNull((a) => a.id == id);
+    if (acc != null) return "${acc.name} (${acc.bankName})";
+
+    final card = cards.firstWhereOrNull((c) => c.id == id);
+    if (card != null) return "${card.name} (${card.bankName})";
+
+    return "Unknown Account";
+  }
+
+  Widget _buildEnhancedListTile({
+    required String title,
+    required bool isSelected,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF00B4D8).withOpacity(0.15)
+              : Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF00B4D8).withOpacity(0.5)
+                : Colors.white.withOpacity(0.05),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? const Color(0xFF00B4D8) : Colors.white38,
+              size: 20,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.white70,
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                ),
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle_rounded,
+                  color: Color(0xFF00B4D8), size: 20)
+            else
+              const Icon(Icons.circle_outlined,
+                  color: Colors.white12, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountListHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white38,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
+  void _showTimeSelectionSheet() {
+    final periods = [
+      'This Month',
+      'Last Month',
+      'This Year',
+      'Last Year',
+      'All Time',
+      'Custom Range'
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+          decoration: BoxDecoration(
+            color: const Color(0xFF151D29).withOpacity(0.9),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border:
+                Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Select Period",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close,
+                            color: Colors.white54, size: 18),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: periods.map((p) {
+                    return _buildEnhancedListTile(
+                      title: p,
+                      isSelected: _selectedRange == p,
+                      icon: Icons.calendar_today_rounded,
+                      onTap: () {
+                        Navigator.pop(context);
+                        if (p == 'Custom Range') {
+                          WidgetsBinding.instance
+                              .addPostFrameCallback((_) => _pickDateRange());
+                        } else {
+                          setState(() => _selectedRange = p);
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAccountSelectionSheet(
+      List<ExpenseAccountModel> accounts, List<CreditCardModel> cards) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.6,
+            minChildSize: 0.4,
+            maxChildSize: 0.9,
+            builder: (_, controller) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF151D29).withOpacity(0.9),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  border: Border(
+                      top: BorderSide(color: Colors.white.withOpacity(0.1))),
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Select Account",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close,
+                                  color: Colors.white54, size: 18),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView(
+                        controller: controller,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 8),
+                        children: [
+                          _buildEnhancedListTile(
+                            title: "All Accounts",
+                            isSelected: _selectedAccountId == null,
+                            icon: Icons.account_balance_wallet_rounded,
+                            onTap: () {
+                              setState(() => _selectedAccountId = null);
+                              Navigator.pop(context);
+                            },
+                          ),
+                          if (accounts.isNotEmpty) ...[
+                            _buildAccountListHeader("BANK ACCOUNTS"),
+                            _buildEnhancedListTile(
+                              title: "All Bank Accounts",
+                              isSelected: _selectedAccountId == kGroupBanks,
+                              icon: Icons.account_balance_rounded,
+                              onTap: () {
+                                setState(
+                                    () => _selectedAccountId = kGroupBanks);
+                                Navigator.pop(context);
+                              },
+                            ),
+                            ...accounts.map((acc) => _buildEnhancedListTile(
+                                  title: "${acc.name} (${acc.bankName})",
+                                  isSelected: _selectedAccountId == acc.id,
+                                  icon: Icons.account_balance_rounded,
+                                  onTap: () {
+                                    setState(() => _selectedAccountId = acc.id);
+                                    Navigator.pop(context);
+                                  },
+                                )),
+                          ],
+                          if (cards.isNotEmpty) ...[
+                            _buildAccountListHeader("CREDIT CARDS"),
+                            _buildEnhancedListTile(
+                              title: "All Credit Cards",
+                              isSelected: _selectedAccountId == kGroupCredits,
+                              icon: Icons.credit_card_rounded,
+                              onTap: () {
+                                setState(
+                                    () => _selectedAccountId = kGroupCredits);
+                                Navigator.pop(context);
+                              },
+                            ),
+                            ...cards.map((card) => _buildEnhancedListTile(
+                                  title: "${card.name} (${card.bankName})",
+                                  isSelected: _selectedAccountId == card.id,
+                                  icon: Icons.credit_card_rounded,
+                                  onTap: () {
+                                    setState(
+                                        () => _selectedAccountId = card.id);
+                                    Navigator.pop(context);
+                                  },
+                                )),
+                          ],
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 }
 

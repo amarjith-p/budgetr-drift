@@ -81,7 +81,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                 children: [
                   ModernAppBar(
                     title: "Balance Sheet",
-                    subtitle: "CRM CUM",
+                    subtitle: "PAYABLE RECEIVABLE CUM",
                     // --- [RESTORED] EXPORT BUTTON ---
                     trailingIcon: Icons.ios_share_rounded,
                     onTrailingPressed: _handleExportTapped,
