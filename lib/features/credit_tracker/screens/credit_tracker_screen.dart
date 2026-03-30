@@ -4,6 +4,7 @@ import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:budget/features/credit_tracker/widgets/modern_credit_txn_sheet.dart';
 import 'package:budget/features/credit_tracker/screens/new_credit_transaction_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/modern_loader.dart';
@@ -40,8 +41,19 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
 
   late Stream<List<CreditCardModel>> _cardsStream;
 
-  // [UPDATED] Streams for multiple Payable Accounts
   Stream<List<ExpenseAccountModel>>? _payableAccountsStream;
+
+  // --- SORTING STATE ---
+  // [UPDATED] Default Sort set to Balance (High to Low)
+  String _selectedSort = 'Balance (High to Low)';
+
+  final List<String> _sortOptions = [
+    'Name (A-Z)',
+    'Balance (High to Low)',
+    'Balance (Low to High)',
+    'Due Date (Ascending)',
+    'Bill Date (Ascending)'
+  ];
 
   @override
   void initState() {
@@ -50,12 +62,32 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
     _loadPayableAccounts();
   }
 
-  // [UPDATED] Fetches IDs and builds the stream for a list
   Future<void> _loadPayableAccounts() async {
     final ids = await _settingsService.getCreditPayableAccountIds();
     setState(() {
       _payableAccountsStream = _expenseService.watchAccountsByIds(ids);
     });
+  }
+
+  // Helper method to sort the cards based on selected option
+  List<CreditCardModel> _sortCards(List<CreditCardModel> cards) {
+    final sortedList = List<CreditCardModel>.from(cards);
+    sortedList.sort((a, b) {
+      switch (_selectedSort) {
+        case 'Balance (High to Low)':
+          return b.currentBalance.compareTo(a.currentBalance);
+        case 'Balance (Low to High)':
+          return a.currentBalance.compareTo(b.currentBalance);
+        case 'Due Date (Ascending)':
+          return a.dueDate.compareTo(b.dueDate);
+        case 'Bill Date (Ascending)':
+          return a.billDate.compareTo(b.billDate);
+        case 'Name (A-Z)':
+        default:
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      }
+    });
+    return sortedList;
   }
 
   @override
@@ -105,6 +137,8 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                       }
 
                       final cards = snapshot.data!;
+
+                      // Calculate aggregates before sorting
                       final double totalDebt = cards
                           .where((c) => c.currentBalance > 0)
                           .fold(0.0, (sum, c) => sum + c.currentBalance);
@@ -112,11 +146,13 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                           .where((c) => c.currentBalance < 0)
                           .fold(0.0, (sum, c) => sum + c.currentBalance);
 
+                      // Apply Sorting
+                      final sortedCards = _sortCards(cards);
+
                       return Stack(
                         children: [
                           Column(
                             children: [
-                              // [UPDATED] Nested Stream expects a List now
                               StreamBuilder<List<ExpenseAccountModel>>(
                                   stream: _payableAccountsStream ??
                                       Stream.value([]),
@@ -135,19 +171,22 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                                           builder: (ctx) =>
                                               const PayableAccountSelectionSheet(),
                                         );
-                                        // Reload stream once user has made selections
                                         _loadPayableAccounts();
                                       },
                                     );
                                   }),
+
+                              // --- SORTING HEADER ---
+                              _buildSortHeader(),
+
                               Expanded(
                                 child: ListView.builder(
                                   padding:
                                       const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                                  itemCount: cards.length,
+                                  itemCount: sortedCards.length,
                                   itemBuilder: (context, index) =>
                                       CreditCardListItem(
-                                    card: cards[index],
+                                    card: sortedCards[index],
                                     accentColor: _accentColor,
                                     currency: _currency,
                                     onEdit: () => showModalBottomSheet(
@@ -155,10 +194,10 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                                       isScrollControlled: true,
                                       backgroundColor: Colors.transparent,
                                       builder: (c) => AddCreditCardSheet(
-                                          cardToEdit: cards[index]),
+                                          cardToEdit: sortedCards[index]),
                                     ),
-                                    onDelete: () =>
-                                        _handleDelete(context, cards[index]),
+                                    onDelete: () => _handleDelete(
+                                        context, sortedCards[index]),
                                   ),
                                 ),
                               ),
@@ -240,6 +279,130 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSortHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            "Saved Cards",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+
+          // [UPDATED] Tap to open bottom sheet
+          GestureDetector(
+            onTap: _showSortSheet,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _selectedSort,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.sort_rounded,
+                      color: Colors.white54, size: 16),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // [NEW] Modern Bottom Sheet for sorting
+  void _showSortSheet() {
+    HapticFeedback.lightImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.only(top: 24, bottom: 32),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E293B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                "Sort Cards By",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ..._sortOptions.map((option) {
+                final isSelected = _selectedSort == option;
+                return Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? _accentColor.withOpacity(0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ListTile(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _selectedSort = option;
+                      });
+                      Navigator.pop(context);
+                    },
+                    title: Text(
+                      option,
+                      style: TextStyle(
+                        color: isSelected ? _accentColor : Colors.white,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? Icon(Icons.check_circle_rounded, color: _accentColor)
+                        : null,
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 

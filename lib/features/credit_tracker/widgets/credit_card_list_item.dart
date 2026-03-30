@@ -37,7 +37,7 @@ class CreditCardListItem extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 16),
         height: 130, // [RESTORED] Fixed height
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,

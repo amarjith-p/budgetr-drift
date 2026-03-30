@@ -23,6 +23,11 @@ class CategoryService {
         'Bakery',
         'Liquor/Bars',
         'Snacks',
+        'Restaurant',
+        'Fast Food',
+        'Cafe',
+        'Supplements',
+        'Baby Food',
       ],
       'icon': Icons.restaurant.codePoint,
     },
@@ -146,7 +151,8 @@ class CategoryService {
         'Bank Charges',
         'Fines',
         'Failed Transactions',
-        'Capital Losses'
+        'Capital Losses',
+        'Surcharges'
       ],
       'icon': Icons.account_balance.codePoint,
     },
@@ -202,6 +208,7 @@ class CategoryService {
       'subs': [
         'Tax Refund',
         'Reimbursements',
+        'Surcharge Reversals',
         'Bill Adjustments',
         'Failed Transaction Reversals'
       ],

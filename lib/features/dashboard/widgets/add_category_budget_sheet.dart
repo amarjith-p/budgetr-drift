@@ -79,40 +79,41 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
       if (mounted) setState(() => _categories = expenseCats);
     });
 
-    final db = GetIt.I<AppDatabase>();
-    Set<String> masterBucketSet = {'Essential', 'Lifestyle', 'Savings'};
-
-    try {
-      final txns = await db.select(db.expenseTransactions).get();
-      for (var txn in txns) {
-        if (txn.bucket.isNotEmpty) masterBucketSet.add(txn.bucket);
-      }
-    } catch (_) {}
-
     _dashboardService.getFinancialRecords().listen((records) {
       if (!mounted) return;
 
-      Set<String> streamBuckets = Set.from(masterBucketSet);
+      // Dart's Set preserves insertion order (LinkedHashSet)
+      // This automatically handles duplicates while maintaining the order.
+      Set<String> orderedUniqueBuckets = {};
 
       for (var record in records) {
+        // 1. Prioritize order strictly from bucketOrder
         if (record.bucketOrder.isNotEmpty) {
-          streamBuckets.addAll(record.bucketOrder);
+          orderedUniqueBuckets.addAll(
+            record.bucketOrder.where((b) =>
+                b.toLowerCase() != 'unallocated' &&
+                b.toLowerCase() != 'income'),
+          );
         }
+
+        // 2. Add remaining fallback buckets from allocations just in case
+        // they exist but aren't strictly in bucketOrder yet
         if (record.allocations.isNotEmpty) {
-          streamBuckets.addAll(record.allocations.keys);
+          orderedUniqueBuckets.addAll(
+            record.allocations.keys.where((b) =>
+                b.toLowerCase() != 'unallocated' &&
+                b.toLowerCase() != 'income'),
+          );
         }
       }
 
-      setState(() {
-        _availableBuckets = streamBuckets
-            .where((b) =>
-                b.toLowerCase() != 'unallocated' && b.toLowerCase() != 'income')
-            .toList()
-          ..sort();
+      // 3. Explicitly add "Out of Bucket" to the end of the sequence
+      orderedUniqueBuckets.add('Out of Bucket');
 
-        if (_availableBuckets.isEmpty) {
-          _availableBuckets = ['Essential', 'Lifestyle', 'Savings'];
-        }
+      setState(() {
+        // Convert to List. We DO NOT call .sort() here so it perfectly
+        // retains the custom layout defined in financial_records' bucket_order
+        _availableBuckets = orderedUniqueBuckets.toList();
       });
     });
   }
@@ -561,14 +562,12 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
   }
 
   void _save() {
-    // Clear any previous errors
     setState(() {
       _amountError = null;
     });
 
     final amountText = _amountController.text.trim();
 
-    // Validation 1: Check if empty
     if (amountText.isEmpty) {
       setState(() {
         _amountError = "Budget limit cannot be empty.";
@@ -577,7 +576,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
       return;
     }
 
-    // Validation 2: Check if valid numeric value and greater than 0
     final amount = double.tryParse(amountText);
     if (amount == null || amount <= 0) {
       setState(() {
@@ -587,7 +585,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
       return;
     }
 
-    // If valid, save the budget
     if (widget.existingBudget != null) {
       _service.updateCategoryBudget(
         id: widget.existingBudget!.id,
@@ -615,7 +612,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
   Widget build(BuildContext context) {
     final isEditing = widget.existingBudget != null;
 
-    // Display Logic for Categories
     String categoryDisplayText = "Any Category";
     IconData catDisplayIcon = Icons.all_inclusive_rounded;
     if (_selectedCategories.isNotEmpty) {
@@ -633,7 +629,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
       }
     }
 
-    // Display Logic for Buckets
     String bucketDisplayText = "Any Bucket";
     if (_selectedBuckets.isNotEmpty) {
       if (_selectedBuckets.length == 1) {
@@ -704,8 +699,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
               ],
             ),
             const SizedBox(height: 32),
-
-            // 1. Bucket Selection
             GestureDetector(
               onTap: _showBucketPicker,
               behavior: HitTestBehavior.opaque,
@@ -733,8 +726,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                 ),
               ),
             ),
-
-            // 2. Category Selection
             GestureDetector(
               onTap: _showCategoryPicker,
               behavior: HitTestBehavior.opaque,
@@ -770,8 +761,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                 ),
               ),
             ),
-
-            // Budget Limit Field WITH VALIDATION
             _buildUnifiedField(
               label: "Budget Limit",
               icon: Icons.currency_rupee_rounded,
@@ -790,7 +779,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                   hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                 ),
                 onChanged: (value) {
-                  // Clear error immediately when user starts typing again
                   if (_amountError != null) {
                     setState(() {
                       _amountError = null;
@@ -799,7 +787,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                 },
               ),
             ),
-
             GestureDetector(
               onTap: _showPeriodPicker,
               behavior: HitTestBehavior.opaque,
@@ -820,7 +807,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                 ),
               ),
             ),
-
             AnimatedSize(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOutCubic,
@@ -849,9 +835,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                     )
                   : const SizedBox.shrink(),
             ),
-
             const SizedBox(height: 16),
-
             SizedBox(
               height: 56,
               child: ElevatedButton(
@@ -921,7 +905,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
               ],
             ),
           ),
-          // Show Error message if present
           if (hasError)
             Padding(
               padding: const EdgeInsets.only(left: 4, top: 8),
