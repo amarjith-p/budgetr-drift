@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:drift/drift.dart'; // [NEW] Added for Value and InsertMode
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -6,6 +7,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+import '../../../core/database/app_database.dart'; // [NEW] Added for Database Insert
 
 class SystemNotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -173,6 +176,27 @@ class SystemNotificationService {
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: enhancedPayload,
       );
+
+      // --- [NEW] PRE-INSERT INTO LOCAL DATABASE ---
+      try {
+        final db = AppDatabase.instance;
+        await db.into(db.appNotifications).insert(
+              AppNotificationsCompanion.insert(
+                id: 'sched_${id}_${scheduledDate.millisecondsSinceEpoch}',
+                type: 'scheduled_alert',
+                title: title,
+                message: body,
+                payload: Value(payload),
+                isRead: const Value(false),
+                createdAt: scheduledDate, // Set to the FUTURE trigger date
+              ),
+              mode: InsertMode.insertOrReplace, // Prevents duplicate crashes
+            );
+      } catch (dbError) {
+        debugPrint("Error saving scheduled notification to DB: $dbError");
+      }
+      // ------------------------------------------
+
       debugPrint("Scheduled Notif ($id) for $scheduledDate");
     } catch (e) {
       debugPrint("Error Scheduling Notification: $e");
@@ -225,6 +249,27 @@ class SystemNotificationService {
         matchDateTimeComponents: DateTimeComponents.time,
         payload: enhancedPayload,
       );
+
+      // --- [NEW] PRE-INSERT DAILY TO LOCAL DATABASE ---
+      try {
+        final db = AppDatabase.instance;
+        await db.into(db.appNotifications).insert(
+              AppNotificationsCompanion.insert(
+                id: 'daily_${id}_${scheduledDate.millisecondsSinceEpoch}',
+                type: 'daily_reminder',
+                title: title,
+                message: body,
+                payload: Value(payload),
+                isRead: const Value(false),
+                createdAt: scheduledDate, // Set to FUTURE trigger date
+              ),
+              mode: InsertMode.insertOrReplace,
+            );
+      } catch (dbError) {
+        debugPrint("Error saving daily notification to DB: $dbError");
+      }
+      // ----------------------------------------------
+
       debugPrint("Scheduled Daily Notif ($id) for $hour:$minute");
     } catch (e) {
       debugPrint("Error Scheduling Daily Notification: $e");
@@ -237,6 +282,18 @@ class SystemNotificationService {
 
   Future<void> cancelAll() async {
     await _notificationsPlugin.cancelAll();
+
+    // --- [NEW] PURGE ORPHANED FUTURE NOTIFICATIONS ---
+    // Wipe pending future DB rows so the UI doesn't show canceled alerts.
+    try {
+      final db = AppDatabase.instance;
+      await (db.delete(db.appNotifications)
+            ..where((t) => t.createdAt.isBiggerThanValue(DateTime.now())))
+          .go();
+    } catch (e) {
+      debugPrint("Error purging future notifications: $e");
+    }
+    // -------------------------------------------------
   }
 
   Future<List<PendingNotificationRequest>> getPendingNotifications() async {
