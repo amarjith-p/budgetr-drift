@@ -25,23 +25,6 @@ class CreditCardModel {
     required this.createdAt,
   });
 
-  // factory CreditCardModel.fromFirestore(DocumentSnapshot doc) {
-  //   final data = doc.data() as Map<String, dynamic>;
-  //   return CreditCardModel(
-  //     id: doc.id,
-  //     name: data['name'] ?? '',
-  //     bankName: data['bankName'] ?? '',
-  //     lastFourDigits: data['lastFourDigits'] ?? '',
-  //     creditLimit: (data['creditLimit'] ?? 0.0).toDouble(),
-  //     billDate: data['billDate'] ?? 1,
-  //     dueDate: data['dueDate'] ?? 10,
-  //     currentBalance: (data['currentBalance'] ?? 0.0).toDouble(),
-  //     color: data['color'] ?? 0xFF1E1E1E,
-  //     isArchived: data['isArchived'] ?? false,
-  //     createdAt: data['createdAt'] ?? Timestamp.now(),
-  //   );
-  // }
-
   Map<String, dynamic> toMap() {
     return {
       'name': name,
@@ -89,24 +72,6 @@ class CreditTransactionModel {
     this.isSettlementVerified = false,
   });
 
-  // factory CreditTransactionModel.fromFirestore(DocumentSnapshot doc) {
-  //   final data = doc.data() as Map<String, dynamic>;
-  //   return CreditTransactionModel(
-  //     id: doc.id,
-  //     cardId: data['cardId'] ?? '',
-  //     amount: (data['amount'] ?? 0.0).toDouble(),
-  //     date: data['date'] ?? Timestamp.now(),
-  //     bucket: data['bucket'] ?? 'Unallocated',
-  //     type: data['type'] ?? 'Expense',
-  //     category: data['category'] ?? 'General',
-  //     subCategory: data['subCategory'] ?? 'General',
-  //     notes: data['notes'] ?? '',
-  //     linkedExpenseId: data['linkedExpenseId'],
-  //     includeInNextStatement: data['includeInNextStatement'] ?? false,
-  //     isSettlementVerified: data['isSettlementVerified'] ?? false,
-  //   );
-  // }
-
   Map<String, dynamic> toMap() {
     return {
       'cardId': cardId,
@@ -122,4 +87,43 @@ class CreditTransactionModel {
       'isSettlementVerified': isSettlementVerified,
     };
   }
+}
+
+// ==========================================
+// --- [NEW] SMART CYCLE INDICATOR MODELS ---
+// ==========================================
+
+enum SmartCyclePhase {
+  noActivity, // Balance is 0
+  paymentDue, // In grace period, Statement Balance > 0
+  statementPaid, // In grace period, Statement Balance paid off
+  unbilledSpending // Normal spending phase
+}
+
+class SmartCycleInfo {
+  final SmartCyclePhase phase;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final int daysRemaining;
+  final double progress;
+
+  SmartCycleInfo({
+    required this.phase,
+    this.startDate,
+    this.endDate,
+    required this.daysRemaining,
+    required this.progress,
+  });
+}
+
+class CreditCardDashboardData {
+  final CreditCardModel card;
+  final double statementBalance;
+  final double unbilledBalance;
+
+  CreditCardDashboardData({
+    required this.card,
+    required this.statementBalance,
+    required this.unbilledBalance,
+  });
 }

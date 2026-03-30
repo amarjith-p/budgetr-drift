@@ -39,12 +39,12 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
 
   bool _isLoading = false;
 
-  late Stream<List<CreditCardModel>> _cardsStream;
+  // [UPDATED] Using the new Smart Dashboard Data stream instead of just the Card Model
+  late Stream<List<CreditCardDashboardData>> _cardsStream;
 
   Stream<List<ExpenseAccountModel>>? _payableAccountsStream;
 
   // --- SORTING STATE ---
-  // [UPDATED] Default Sort set to Balance (High to Low)
   String _selectedSort = 'Balance (High to Low)';
 
   final List<String> _sortOptions = [
@@ -58,7 +58,8 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
   @override
   void initState() {
     super.initState();
-    _cardsStream = _service.getCreditCards();
+    // [UPDATED] Fetching the smart dashboard aggregator
+    _cardsStream = _service.getSmartCreditCardsDashboard();
     _loadPayableAccounts();
   }
 
@@ -69,10 +70,13 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
     });
   }
 
-  // Helper method to sort the cards based on selected option
-  List<CreditCardModel> _sortCards(List<CreditCardModel> cards) {
-    final sortedList = List<CreditCardModel>.from(cards);
-    sortedList.sort((a, b) {
+  // [UPDATED] Helper method to sort the smart data cards
+  List<CreditCardDashboardData> _sortCards(
+      List<CreditCardDashboardData> dashboardDataList) {
+    final sortedList = List<CreditCardDashboardData>.from(dashboardDataList);
+    sortedList.sort((aData, bData) {
+      final a = aData.card;
+      final b = bData.card;
       switch (_selectedSort) {
         case 'Balance (High to Low)':
           return b.currentBalance.compareTo(a.currentBalance);
@@ -113,7 +117,8 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
             Expanded(
               child: Stack(
                 children: [
-                  StreamBuilder<List<CreditCardModel>>(
+                  // [UPDATED] StreamBuilder now uses CreditCardDashboardData
+                  StreamBuilder<List<CreditCardDashboardData>>(
                     stream: _cardsStream,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
@@ -136,18 +141,20 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                         return _buildEmptyState(context);
                       }
 
-                      final cards = snapshot.data!;
+                      final dashboardDataList = snapshot.data!;
 
                       // Calculate aggregates before sorting
-                      final double totalDebt = cards
-                          .where((c) => c.currentBalance > 0)
-                          .fold(0.0, (sum, c) => sum + c.currentBalance);
-                      final double totalSurplus = cards
-                          .where((c) => c.currentBalance < 0)
-                          .fold(0.0, (sum, c) => sum + c.currentBalance);
+                      final double totalDebt = dashboardDataList
+                          .where((data) => data.card.currentBalance > 0)
+                          .fold(0.0,
+                              (sum, data) => sum + data.card.currentBalance);
+                      final double totalSurplus = dashboardDataList
+                          .where((data) => data.card.currentBalance < 0)
+                          .fold(0.0,
+                              (sum, data) => sum + data.card.currentBalance);
 
                       // Apply Sorting
-                      final sortedCards = _sortCards(cards);
+                      final sortedCardsData = _sortCards(dashboardDataList);
 
                       return Stack(
                         children: [
@@ -183,22 +190,26 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                                 child: ListView.builder(
                                   padding:
                                       const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                                  itemCount: sortedCards.length,
-                                  itemBuilder: (context, index) =>
-                                      CreditCardListItem(
-                                    card: sortedCards[index],
-                                    accentColor: _accentColor,
-                                    currency: _currency,
-                                    onEdit: () => showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      backgroundColor: Colors.transparent,
-                                      builder: (c) => AddCreditCardSheet(
-                                          cardToEdit: sortedCards[index]),
-                                    ),
-                                    onDelete: () => _handleDelete(
-                                        context, sortedCards[index]),
-                                  ),
+                                  itemCount: sortedCardsData.length,
+                                  itemBuilder: (context, index) {
+                                    final currentData = sortedCardsData[index];
+
+                                    // [UPDATED] Using the SmartCreditCardListItem widget
+                                    return SmartCreditCardListItem(
+                                      dashboardData: currentData,
+                                      accentColor: _accentColor,
+                                      currency: _currency,
+                                      onEdit: () => showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        backgroundColor: Colors.transparent,
+                                        builder: (c) => AddCreditCardSheet(
+                                            cardToEdit: currentData.card),
+                                      ),
+                                      onDelete: () => _handleDelete(
+                                          context, currentData.card),
+                                    );
+                                  },
                                 ),
                               ),
                             ],
@@ -297,8 +308,6 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
               letterSpacing: 0.5,
             ),
           ),
-
-          // [UPDATED] Tap to open bottom sheet
           GestureDetector(
             onTap: _showSortSheet,
             behavior: HitTestBehavior.opaque,
@@ -332,7 +341,6 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
     );
   }
 
-  // [NEW] Modern Bottom Sheet for sorting
   void _showSortSheet() {
     HapticFeedback.lightImpact();
     showModalBottomSheet(

@@ -6,12 +6,14 @@ import 'package:get_it/get_it.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart' as db;
 import '../models/credit_models.dart';
-import '../../../core/database/tables.dart'; // Ensure tables are imported for access
+import '../../../core/database/tables.dart';
+import '../utils/billing_cycle_utils.dart'; // [NEW IMPORT for calculations]
 
 class CreditService {
   final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
   final _scheduler = CreditNotificationScheduler();
+
   // --- MAPPERS ---
 
   CreditCardModel _mapCard(db.CreditCard row) {
@@ -47,6 +49,58 @@ class CreditService {
     );
   }
 
+  // =============================================================
+  // --- [NEW] SMART DASHBOARD AGGREGATOR (Preserves pure DB) ---
+  // =============================================================
+  Stream<List<CreditCardDashboardData>> getSmartCreditCardsDashboard() {
+    return (_db.select(_db.creditCards)
+          ..where((t) => t.isArchived.equals(false))
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)
+          ]))
+        .watch()
+        .asyncMap((cardRows) async {
+      List<CreditCardDashboardData> dashboardData = [];
+
+      for (var row in cardRows) {
+        final cardModel = _mapCard(row);
+
+        // Fetch specific transactions for this card to calculate balances
+        final txns = await (_db.select(_db.creditTransactions)
+              ..where((t) => t.cardId.equals(cardModel.id)))
+            .get();
+
+        double unbilledExpenses = 0.0;
+
+        for (var txnRow in txns) {
+          final txn = _mapTxn(txnRow);
+          if (txn.type == 'Expense') {
+            final isUnbilled =
+                BillingCycleUtils.isUnbilled(txn, cardModel.billDate);
+            if (isUnbilled) {
+              unbilledExpenses += txn.amount;
+            }
+          }
+        }
+
+        // The brilliance of this formula: Total Balance - Unbilled = Owed Statement
+        double statementBalance = cardModel.currentBalance - unbilledExpenses;
+
+        // Safety clamp in case of overpayment refunds
+        if (statementBalance < 0) statementBalance = 0;
+
+        dashboardData.add(CreditCardDashboardData(
+          card: cardModel,
+          statementBalance: statementBalance,
+          unbilledBalance: unbilledExpenses,
+        ));
+      }
+      return dashboardData;
+    });
+  }
+  // =============================================================
+
   // --- CARDS ---
 
   Stream<List<CreditCardModel>> getCreditCards() {
@@ -67,7 +121,7 @@ class CreditService {
           bankName: card.bankName,
           lastFourDigits: Value(card.lastFourDigits),
           creditLimit: card.creditLimit,
-          currentBalance: const Value(0.0), // Start with 0
+          currentBalance: const Value(0.0),
           billDate: card.billDate,
           dueDate: card.dueDate,
           color: Value(card.color),
@@ -125,7 +179,6 @@ class CreditService {
         .map((rows) => rows.map(_mapTxn).toList());
   }
 
-  // [NEW] Get distinct notes for suggestions
   Future<List<String>> getDistinctNotes() async {
     final query = _db.selectOnly(_db.creditTransactions, distinct: true)
       ..addColumns([_db.creditTransactions.notes])
@@ -160,7 +213,6 @@ class CreditService {
             description: txn.category,
           ));
 
-      // --- 🔴 NEW: Intercept & Exclude from Paused Trip ---
       try {
         final tripService = GetIt.I<TripService>();
         final activeTrip = await tripService.getActiveTripFuture();
@@ -168,7 +220,6 @@ class CreditService {
           await tripService.excludeTransaction(activeTrip.id, newId);
         }
       } catch (_) {}
-      // ----------------------------------------------------
 
       final double balanceChange =
           txn.type == 'Expense' ? txn.amount : -txn.amount;
@@ -179,7 +230,6 @@ class CreditService {
 
   Future<void> updateTransaction(CreditTransactionModel txn) async {
     await _db.transaction(() async {
-      // 1. Fetch Old Data to calculate balance difference
       final oldRow = await (_db.select(_db.creditTransactions)
             ..where((t) => t.id.equals(txn.id)))
           .getSingle();
@@ -189,10 +239,8 @@ class CreditService {
       double newEffect = txn.type == 'Expense' ? txn.amount : -txn.amount;
       double netChange = newEffect - oldEffect;
 
-      // 2. Update Credit Card Balance
       await _updateCardBalance(txn.cardId, netChange);
 
-      // 3. Update Credit Transaction Record
       await (_db.update(_db.creditTransactions)
             ..where((t) => t.id.equals(txn.id)))
           .write(db.CreditTransactionsCompanion(
@@ -207,7 +255,6 @@ class CreditService {
         isSettlementVerified: Value(txn.isSettlementVerified),
       ));
 
-      // 4. SYNC BACK TO EXPENSE MODULE
       if (txn.linkedExpenseId != null) {
         await GetIt.I<ExpenseService>().updateTransactionFromCredit(
           txn.linkedExpenseId!,
@@ -229,16 +276,13 @@ class CreditService {
           .getSingleOrNull();
       if (oldRow == null) return;
 
-      // 1. Revert Credit Card Balance
       double reverseEffect =
           oldRow.type == 'Expense' ? -oldRow.amount : oldRow.amount;
       await _updateCardBalance(oldRow.cardId, reverseEffect);
 
-      // 2. Delete Credit Transaction
       await (_db.delete(_db.creditTransactions)..where((t) => t.id.equals(id)))
           .go();
 
-      // 3. SYNC BACK TO EXPENSE MODULE
       if (oldRow.linkedExpenseId != null) {
         await GetIt.I<ExpenseService>()
             .deleteTransactionFromCredit(oldRow.linkedExpenseId!);
@@ -319,7 +363,6 @@ class CreditService {
   }
 
   Future<void> _triggerNotificationSync() async {
-    // Fetch directly from Drift table to pass to scheduler
     final cards = await _db.select(_db.creditCards).get();
     await _scheduler.syncNotifications(cards);
   }
