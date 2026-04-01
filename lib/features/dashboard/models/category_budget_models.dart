@@ -8,7 +8,8 @@ class CategoryBudgetSummaryModel {
   final double remainingAmount;
   final double progressPercentage;
   final List<String> categoryList;
-  final List<String> bucketList; // [NEW]
+  final List<String> bucketList;
+  final List<String> subCategoryList; // [NEW] Added Subcategory List
 
   CategoryBudgetSummaryModel({
     required this.budget,
@@ -18,5 +19,7 @@ class CategoryBudgetSummaryModel {
             ? (spentAmount / budget.amount).clamp(0.0, 1.0)
             : 0.0,
         categoryList = List<String>.from(jsonDecode(budget.categories)),
-        bucketList = List<String>.from(jsonDecode(budget.buckets));
+        bucketList = List<String>.from(jsonDecode(budget.buckets)),
+        // [NEW] Decode the subcategories safely
+        subCategoryList = List<String>.from(jsonDecode(budget.subCategories));
 }

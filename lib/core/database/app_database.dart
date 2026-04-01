@@ -42,7 +42,7 @@ part 'app_database.g.dart';
     TripExclusions,
     VaultRecords,
     BalanceSheetEntries,
-    CategoryBudgets, // [NEW] Added Custom Budget Table
+    CategoryBudgets,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -51,8 +51,9 @@ class AppDatabase extends _$AppDatabase {
 
   AppDatabase._internal() : super(_openConnection());
 
+  // [NEW] Incremented schemaVersion from 24 to 25
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => 25;
 
   @override
   MigrationStrategy get migration {
@@ -154,6 +155,20 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 23) {
           await safeCreateTable(categoryBudgets);
+        }
+
+        // [NEW] Schema migration for subCategories in Custom Matrix Budgets
+        if (from < 25) {
+          if (existingTables.contains(categoryBudgets.actualTableName)) {
+            final tableInfo = await customSelect(
+                    "PRAGMA table_info('${categoryBudgets.actualTableName}')")
+                .get();
+            final existingColumns =
+                tableInfo.map((row) => row.read<String>('name')).toSet();
+            if (!existingColumns.contains('sub_categories')) {
+              await m.addColumn(categoryBudgets, categoryBudgets.subCategories);
+            }
+          }
         }
       },
     );

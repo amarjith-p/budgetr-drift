@@ -14217,6 +14217,14 @@ class $CategoryBudgetsTable extends CategoryBudgets
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('[]'));
+  static const VerificationMeta _subCategoriesMeta =
+      const VerificationMeta('subCategories');
+  @override
+  late final GeneratedColumn<String> subCategories = GeneratedColumn<String>(
+      'sub_categories', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('[]'));
   static const VerificationMeta _amountMeta = const VerificationMeta('amount');
   @override
   late final GeneratedColumn<double> amount = GeneratedColumn<double>(
@@ -14263,6 +14271,7 @@ class $CategoryBudgetsTable extends CategoryBudgets
         id,
         categories,
         buckets,
+        subCategories,
         amount,
         periodType,
         startDate,
@@ -14296,6 +14305,12 @@ class $CategoryBudgetsTable extends CategoryBudgets
     if (data.containsKey('buckets')) {
       context.handle(_bucketsMeta,
           buckets.isAcceptableOrUnknown(data['buckets']!, _bucketsMeta));
+    }
+    if (data.containsKey('sub_categories')) {
+      context.handle(
+          _subCategoriesMeta,
+          subCategories.isAcceptableOrUnknown(
+              data['sub_categories']!, _subCategoriesMeta));
     }
     if (data.containsKey('amount')) {
       context.handle(_amountMeta,
@@ -14346,6 +14361,8 @@ class $CategoryBudgetsTable extends CategoryBudgets
           .read(DriftSqlType.string, data['${effectivePrefix}categories'])!,
       buckets: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}buckets'])!,
+      subCategories: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sub_categories'])!,
       amount: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
       periodType: attachedDatabase.typeMapping
@@ -14371,6 +14388,7 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
   final String id;
   final String categories;
   final String buckets;
+  final String subCategories;
   final double amount;
   final String periodType;
   final DateTime startDate;
@@ -14381,6 +14399,7 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
       {required this.id,
       required this.categories,
       required this.buckets,
+      required this.subCategories,
       required this.amount,
       required this.periodType,
       required this.startDate,
@@ -14393,6 +14412,7 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
     map['id'] = Variable<String>(id);
     map['categories'] = Variable<String>(categories);
     map['buckets'] = Variable<String>(buckets);
+    map['sub_categories'] = Variable<String>(subCategories);
     map['amount'] = Variable<double>(amount);
     map['period_type'] = Variable<String>(periodType);
     map['start_date'] = Variable<DateTime>(startDate);
@@ -14407,6 +14427,7 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
       id: Value(id),
       categories: Value(categories),
       buckets: Value(buckets),
+      subCategories: Value(subCategories),
       amount: Value(amount),
       periodType: Value(periodType),
       startDate: Value(startDate),
@@ -14423,6 +14444,7 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
       id: serializer.fromJson<String>(json['id']),
       categories: serializer.fromJson<String>(json['categories']),
       buckets: serializer.fromJson<String>(json['buckets']),
+      subCategories: serializer.fromJson<String>(json['subCategories']),
       amount: serializer.fromJson<double>(json['amount']),
       periodType: serializer.fromJson<String>(json['periodType']),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
@@ -14438,6 +14460,7 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
       'id': serializer.toJson<String>(id),
       'categories': serializer.toJson<String>(categories),
       'buckets': serializer.toJson<String>(buckets),
+      'subCategories': serializer.toJson<String>(subCategories),
       'amount': serializer.toJson<double>(amount),
       'periodType': serializer.toJson<String>(periodType),
       'startDate': serializer.toJson<DateTime>(startDate),
@@ -14451,6 +14474,7 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
           {String? id,
           String? categories,
           String? buckets,
+          String? subCategories,
           double? amount,
           String? periodType,
           DateTime? startDate,
@@ -14461,6 +14485,7 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
         id: id ?? this.id,
         categories: categories ?? this.categories,
         buckets: buckets ?? this.buckets,
+        subCategories: subCategories ?? this.subCategories,
         amount: amount ?? this.amount,
         periodType: periodType ?? this.periodType,
         startDate: startDate ?? this.startDate,
@@ -14474,6 +14499,9 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
       categories:
           data.categories.present ? data.categories.value : this.categories,
       buckets: data.buckets.present ? data.buckets.value : this.buckets,
+      subCategories: data.subCategories.present
+          ? data.subCategories.value
+          : this.subCategories,
       amount: data.amount.present ? data.amount.value : this.amount,
       periodType:
           data.periodType.present ? data.periodType.value : this.periodType,
@@ -14490,6 +14518,7 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
           ..write('id: $id, ')
           ..write('categories: $categories, ')
           ..write('buckets: $buckets, ')
+          ..write('subCategories: $subCategories, ')
           ..write('amount: $amount, ')
           ..write('periodType: $periodType, ')
           ..write('startDate: $startDate, ')
@@ -14501,8 +14530,8 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
   }
 
   @override
-  int get hashCode => Object.hash(id, categories, buckets, amount, periodType,
-      startDate, endDate, isClosed, createdAt);
+  int get hashCode => Object.hash(id, categories, buckets, subCategories,
+      amount, periodType, startDate, endDate, isClosed, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -14510,6 +14539,7 @@ class CategoryBudget extends DataClass implements Insertable<CategoryBudget> {
           other.id == this.id &&
           other.categories == this.categories &&
           other.buckets == this.buckets &&
+          other.subCategories == this.subCategories &&
           other.amount == this.amount &&
           other.periodType == this.periodType &&
           other.startDate == this.startDate &&
@@ -14522,6 +14552,7 @@ class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
   final Value<String> id;
   final Value<String> categories;
   final Value<String> buckets;
+  final Value<String> subCategories;
   final Value<double> amount;
   final Value<String> periodType;
   final Value<DateTime> startDate;
@@ -14533,6 +14564,7 @@ class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
     this.id = const Value.absent(),
     this.categories = const Value.absent(),
     this.buckets = const Value.absent(),
+    this.subCategories = const Value.absent(),
     this.amount = const Value.absent(),
     this.periodType = const Value.absent(),
     this.startDate = const Value.absent(),
@@ -14545,6 +14577,7 @@ class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
     required String id,
     required String categories,
     this.buckets = const Value.absent(),
+    this.subCategories = const Value.absent(),
     required double amount,
     required String periodType,
     required DateTime startDate,
@@ -14562,6 +14595,7 @@ class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
     Expression<String>? id,
     Expression<String>? categories,
     Expression<String>? buckets,
+    Expression<String>? subCategories,
     Expression<double>? amount,
     Expression<String>? periodType,
     Expression<DateTime>? startDate,
@@ -14574,6 +14608,7 @@ class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
       if (id != null) 'id': id,
       if (categories != null) 'categories': categories,
       if (buckets != null) 'buckets': buckets,
+      if (subCategories != null) 'sub_categories': subCategories,
       if (amount != null) 'amount': amount,
       if (periodType != null) 'period_type': periodType,
       if (startDate != null) 'start_date': startDate,
@@ -14588,6 +14623,7 @@ class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
       {Value<String>? id,
       Value<String>? categories,
       Value<String>? buckets,
+      Value<String>? subCategories,
       Value<double>? amount,
       Value<String>? periodType,
       Value<DateTime>? startDate,
@@ -14599,6 +14635,7 @@ class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
       id: id ?? this.id,
       categories: categories ?? this.categories,
       buckets: buckets ?? this.buckets,
+      subCategories: subCategories ?? this.subCategories,
       amount: amount ?? this.amount,
       periodType: periodType ?? this.periodType,
       startDate: startDate ?? this.startDate,
@@ -14620,6 +14657,9 @@ class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
     }
     if (buckets.present) {
       map['buckets'] = Variable<String>(buckets.value);
+    }
+    if (subCategories.present) {
+      map['sub_categories'] = Variable<String>(subCategories.value);
     }
     if (amount.present) {
       map['amount'] = Variable<double>(amount.value);
@@ -14651,6 +14691,7 @@ class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
           ..write('id: $id, ')
           ..write('categories: $categories, ')
           ..write('buckets: $buckets, ')
+          ..write('subCategories: $subCategories, ')
           ..write('amount: $amount, ')
           ..write('periodType: $periodType, ')
           ..write('startDate: $startDate, ')
@@ -22521,6 +22562,7 @@ typedef $$CategoryBudgetsTableCreateCompanionBuilder = CategoryBudgetsCompanion
   required String id,
   required String categories,
   Value<String> buckets,
+  Value<String> subCategories,
   required double amount,
   required String periodType,
   required DateTime startDate,
@@ -22534,6 +22576,7 @@ typedef $$CategoryBudgetsTableUpdateCompanionBuilder = CategoryBudgetsCompanion
   Value<String> id,
   Value<String> categories,
   Value<String> buckets,
+  Value<String> subCategories,
   Value<double> amount,
   Value<String> periodType,
   Value<DateTime> startDate,
@@ -22560,6 +22603,9 @@ class $$CategoryBudgetsTableFilterComposer
 
   ColumnFilters<String> get buckets => $composableBuilder(
       column: $table.buckets, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get subCategories => $composableBuilder(
+      column: $table.subCategories, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get amount => $composableBuilder(
       column: $table.amount, builder: (column) => ColumnFilters(column));
@@ -22598,6 +22644,10 @@ class $$CategoryBudgetsTableOrderingComposer
   ColumnOrderings<String> get buckets => $composableBuilder(
       column: $table.buckets, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get subCategories => $composableBuilder(
+      column: $table.subCategories,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get amount => $composableBuilder(
       column: $table.amount, builder: (column) => ColumnOrderings(column));
 
@@ -22634,6 +22684,9 @@ class $$CategoryBudgetsTableAnnotationComposer
 
   GeneratedColumn<String> get buckets =>
       $composableBuilder(column: $table.buckets, builder: (column) => column);
+
+  GeneratedColumn<String> get subCategories => $composableBuilder(
+      column: $table.subCategories, builder: (column) => column);
 
   GeneratedColumn<double> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
@@ -22684,6 +22737,7 @@ class $$CategoryBudgetsTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> categories = const Value.absent(),
             Value<String> buckets = const Value.absent(),
+            Value<String> subCategories = const Value.absent(),
             Value<double> amount = const Value.absent(),
             Value<String> periodType = const Value.absent(),
             Value<DateTime> startDate = const Value.absent(),
@@ -22696,6 +22750,7 @@ class $$CategoryBudgetsTableTableManager extends RootTableManager<
             id: id,
             categories: categories,
             buckets: buckets,
+            subCategories: subCategories,
             amount: amount,
             periodType: periodType,
             startDate: startDate,
@@ -22708,6 +22763,7 @@ class $$CategoryBudgetsTableTableManager extends RootTableManager<
             required String id,
             required String categories,
             Value<String> buckets = const Value.absent(),
+            Value<String> subCategories = const Value.absent(),
             required double amount,
             required String periodType,
             required DateTime startDate,
@@ -22720,6 +22776,7 @@ class $$CategoryBudgetsTableTableManager extends RootTableManager<
             id: id,
             categories: categories,
             buckets: buckets,
+            subCategories: subCategories,
             amount: amount,
             periodType: periodType,
             startDate: startDate,

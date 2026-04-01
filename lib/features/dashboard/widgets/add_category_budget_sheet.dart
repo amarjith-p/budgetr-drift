@@ -3,8 +3,8 @@ import 'package:budget/core/constants/icon_constants.dart';
 import 'package:budget/core/database/app_database.dart';
 import 'package:budget/core/design/budgetr_colors.dart';
 import 'package:budget/core/design/budgetr_styles.dart';
-import 'package:budget/core/services/category_service.dart';
 import 'package:budget/core/models/transaction_category_model.dart';
+import 'package:budget/core/services/category_service.dart';
 import 'package:budget/features/dashboard/services/category_budget_service.dart';
 import 'package:budget/features/dashboard/services/dashboard_service.dart';
 import 'package:flutter/material.dart';
@@ -28,10 +28,11 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
   final _dashboardService = GetIt.I<DashboardService>();
 
   List<String> _selectedCategories = [];
+  List<String> _selectedSubCategories = []; // Subcategory State
   List<String> _selectedBuckets = [];
   String _selectedPeriod = 'MONTHLY';
   late TextEditingController _amountController;
-  String? _amountError; // Track validation error
+  String? _amountError;
 
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
@@ -57,6 +58,9 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
           List<String>.from(jsonDecode(widget.existingBudget!.categories));
       _selectedBuckets =
           List<String>.from(jsonDecode(widget.existingBudget!.buckets));
+      _selectedSubCategories =
+          List<String>.from(jsonDecode(widget.existingBudget!.subCategories));
+
       _selectedPeriod = widget.existingBudget!.periodType;
       _startDate = widget.existingBudget!.startDate;
       _endDate = widget.existingBudget!.endDate;
@@ -81,13 +85,9 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
 
     _dashboardService.getFinancialRecords().listen((records) {
       if (!mounted) return;
-
-      // Dart's Set preserves insertion order (LinkedHashSet)
-      // This automatically handles duplicates while maintaining the order.
       Set<String> orderedUniqueBuckets = {};
 
       for (var record in records) {
-        // 1. Prioritize order strictly from bucketOrder
         if (record.bucketOrder.isNotEmpty) {
           orderedUniqueBuckets.addAll(
             record.bucketOrder.where((b) =>
@@ -95,9 +95,6 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                 b.toLowerCase() != 'income'),
           );
         }
-
-        // 2. Add remaining fallback buckets from allocations just in case
-        // they exist but aren't strictly in bucketOrder yet
         if (record.allocations.isNotEmpty) {
           orderedUniqueBuckets.addAll(
             record.allocations.keys.where((b) =>
@@ -106,13 +103,8 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
           );
         }
       }
-
-      // 3. Explicitly add "Out of Bucket" to the end of the sequence
       orderedUniqueBuckets.add('Out of Bucket');
-
       setState(() {
-        // Convert to List. We DO NOT call .sort() here so it perfectly
-        // retains the custom layout defined in financial_records' bucket_order
         _availableBuckets = orderedUniqueBuckets.toList();
       });
     });
@@ -168,6 +160,26 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
     }
   }
 
+  // [NEW] Dynamically compute available subcategories
+// [NEW] Dynamically compute available subcategories
+  List<String> get _currentAvailableSubCategories {
+    Set<String> subs = {};
+    if (_selectedCategories.isEmpty) {
+      for (var cat in _categories) {
+        // FIXED: cat.subCategories is already a List<String> in the model
+        subs.addAll(cat.subCategories);
+      }
+    } else {
+      for (var cat
+          in _categories.where((c) => _selectedCategories.contains(c.name))) {
+        // FIXED: cat.subCategories is already a List<String> in the model
+        subs.addAll(cat.subCategories);
+      }
+    }
+    final sortedList = subs.toList()..sort();
+    return sortedList;
+  }
+
   void _showCategoryPicker() {
     HapticFeedback.lightImpact();
     List<String> tempSelected = List.from(_selectedCategories);
@@ -185,7 +197,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
           padding: const EdgeInsets.only(top: 24),
           decoration: const BoxDecoration(
             color: BudgetrColors.background,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
           ),
           child: Column(
             children: [
@@ -229,7 +241,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                             ? Colors.white.withOpacity(0.05)
                             : BudgetrColors.accent.withOpacity(0.1),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                       child: Text(isAllSelected ? "Deselect All" : "Select All",
                           style: const TextStyle(
@@ -257,7 +269,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                         color: isSelected
                             ? BudgetrColors.accent.withOpacity(0.1)
                             : Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                             color: isSelected
                                 ? BudgetrColors.accent.withOpacity(0.3)
@@ -315,12 +327,194 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                     style: ElevatedButton.styleFrom(
                         backgroundColor: BudgetrColors.accent,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16))),
+                            borderRadius: BorderRadius.circular(8))),
                     onPressed: () {
-                      setState(() => _selectedCategories = tempSelected);
+                      setState(() {
+                        _selectedCategories = tempSelected;
+                        // Auto-clean subcategories if their parent category was removed
+                        final availableSubs = _currentAvailableSubCategories;
+                        _selectedSubCategories
+                            .removeWhere((sub) => !availableSubs.contains(sub));
+                      });
                       Navigator.pop(ctx);
                     },
                     child: const Text("Confirm Categories",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  // [NEW] Subcategory Picker Bottom Sheet
+  void _showSubCategoryPicker() {
+    HapticFeedback.lightImpact();
+    List<String> tempSelected = List.from(_selectedSubCategories);
+    final availableSubs = _currentAvailableSubCategories;
+
+    if (availableSubs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text(
+            "No subcategories available for the selected categories."),
+        backgroundColor: Colors.orange.shade800,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(builder: (context, setSheetState) {
+        final bool isAllSelected =
+            tempSelected.length == availableSubs.length &&
+                availableSubs.isNotEmpty;
+
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.8,
+          padding: const EdgeInsets.only(top: 24),
+          decoration: const BoxDecoration(
+            color: BudgetrColors.background,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Target Subcategories", style: BudgetrStyles.h3),
+                        if (tempSelected.isNotEmpty)
+                          Text("${tempSelected.length} Selected",
+                              style: const TextStyle(
+                                  color: BudgetrColors.accent,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12)),
+                      ],
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        setSheetState(() => isAllSelected
+                            ? tempSelected.clear()
+                            : tempSelected = List.from(availableSubs));
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: isAllSelected
+                            ? Colors.white70
+                            : BudgetrColors.accent,
+                        backgroundColor: isAllSelected
+                            ? Colors.white.withOpacity(0.05)
+                            : BudgetrColors.accent.withOpacity(0.1),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Text(isAllSelected ? "Deselect All" : "Select All",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: availableSubs.length,
+                  itemBuilder: (context, index) {
+                    final subCat = availableSubs[index];
+                    final isSelected = tempSelected.contains(subCat);
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? BudgetrColors.accent.withOpacity(0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: isSelected
+                                ? BudgetrColors.accent.withOpacity(0.3)
+                                : Colors.transparent),
+                      ),
+                      child: ListTile(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setSheetState(() => isSelected
+                              ? tempSelected.remove(subCat)
+                              : tempSelected.add(subCat));
+                        },
+                        leading: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              shape: BoxShape.circle),
+                          child: Icon(Icons.subdirectory_arrow_right_rounded,
+                              color: isSelected
+                                  ? BudgetrColors.accent
+                                  : Colors.white70,
+                              size: 20),
+                        ),
+                        title: Text(subCat,
+                            style: TextStyle(
+                                color: isSelected
+                                    ? BudgetrColors.accent
+                                    : Colors.white,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal)),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle_rounded,
+                                color: BudgetrColors.accent)
+                            : const Icon(Icons.circle_outlined,
+                                color: Colors.white24),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration:
+                    BoxDecoration(color: BudgetrColors.background, boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 10,
+                      offset: const Offset(0, -5))
+                ]),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: BudgetrColors.accent,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8))),
+                    onPressed: () {
+                      setState(() => _selectedSubCategories = tempSelected);
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text("Confirm Subcategories",
                         style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -353,7 +547,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
           padding: const EdgeInsets.only(top: 24),
           decoration: const BoxDecoration(
             color: BudgetrColors.background,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
           ),
           child: Column(
             children: [
@@ -396,7 +590,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                             ? Colors.white.withOpacity(0.05)
                             : BudgetrColors.accent.withOpacity(0.1),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                       child: Text(isAllSelected ? "Deselect All" : "Select All",
                           style: const TextStyle(
@@ -421,7 +615,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                         color: isSelected
                             ? BudgetrColors.accent.withOpacity(0.1)
                             : Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                             color: isSelected
                                 ? BudgetrColors.accent.withOpacity(0.3)
@@ -479,7 +673,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                     style: ElevatedButton.styleFrom(
                         backgroundColor: BudgetrColors.accent,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16))),
+                            borderRadius: BorderRadius.circular(8))),
                     onPressed: () {
                       setState(() => _selectedBuckets = tempSelected);
                       Navigator.pop(ctx);
@@ -508,7 +702,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
         padding: const EdgeInsets.only(top: 24, bottom: 32),
         decoration: const BoxDecoration(
           color: BudgetrColors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -530,7 +724,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                   color: isSelected
                       ? BudgetrColors.accent.withOpacity(0.1)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: ListTile(
                   onTap: () {
@@ -590,6 +784,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
         id: widget.existingBudget!.id,
         categories: _selectedCategories,
         buckets: _selectedBuckets,
+        subCategories: _selectedSubCategories,
         amount: amount,
         periodType: _selectedPeriod,
         startDate: _startDate,
@@ -599,6 +794,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
       _service.addCategoryBudget(
         categories: _selectedCategories,
         buckets: _selectedBuckets,
+        subCategories: _selectedSubCategories,
         amount: amount,
         periodType: _selectedPeriod,
         startDate: _startDate,
@@ -629,6 +825,17 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
       }
     }
 
+    // [NEW] Subcategory display logic
+    String subCategoryDisplayText = "Any Subcategory";
+    if (_selectedSubCategories.isNotEmpty) {
+      if (_selectedSubCategories.length == 1) {
+        subCategoryDisplayText = _selectedSubCategories.first;
+      } else {
+        subCategoryDisplayText =
+            "${_selectedSubCategories.length} Subcategories";
+      }
+    }
+
     String bucketDisplayText = "Any Bucket";
     if (_selectedBuckets.isNotEmpty) {
       if (_selectedBuckets.length == 1) {
@@ -647,7 +854,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
       ),
       decoration: const BoxDecoration(
         color: BudgetrColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -662,7 +869,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                 margin: const EdgeInsets.only(bottom: 24),
                 decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(8)),
               ),
             ),
             Row(
@@ -761,6 +968,34 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                 ),
               ),
             ),
+            // [NEW] Target Subcategories Field
+            GestureDetector(
+              onTap: _showSubCategoryPicker,
+              behavior: HitTestBehavior.opaque,
+              child: _buildUnifiedField(
+                label: "Target Subcategories",
+                icon: Icons.subdirectory_arrow_right_rounded,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        subCategoryDisplayText,
+                        style: TextStyle(
+                            color: _selectedSubCategories.isNotEmpty
+                                ? Colors.white
+                                : Colors.white54,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: Colors.white54),
+                  ],
+                ),
+              ),
+            ),
             _buildUnifiedField(
               label: "Budget Limit",
               icon: Icons.currency_rupee_rounded,
@@ -843,7 +1078,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
                   backgroundColor: BudgetrColors.accent,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+                      borderRadius: BorderRadius.circular(8)),
                   elevation: 0,
                 ),
                 onPressed: _save,
@@ -889,7 +1124,7 @@ class _AddCategoryBudgetSheetState extends State<AddCategoryBudgetSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                   color: hasError
                       ? Colors.redAccent

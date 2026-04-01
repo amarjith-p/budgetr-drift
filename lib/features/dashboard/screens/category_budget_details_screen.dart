@@ -95,19 +95,27 @@ class _CategoryBudgetDetailsScreenState
     final dateStr =
         "${DateFormat('MMM d').format(widget.model.budget.startDate)} - ${DateFormat('MMM d, yyyy').format(widget.model.budget.endDate)}";
 
+    // [UPDATED] Dynamic Title Builder matching the dashboard card logic
     String title = "Global Budget";
-    if (widget.model.categoryList.isNotEmpty &&
-        widget.model.bucketList.isNotEmpty) {
+    final int cats = widget.model.categoryList.length;
+    final int bucks = widget.model.bucketList.length;
+    final int subs = widget.model.subCategoryList.length;
+
+    if (cats > 0 && bucks > 0 && subs > 0) {
+      title = "Complex Matrix";
+    } else if (cats > 0 && bucks > 0) {
+      title = "$cats Cats in $bucks Buckets";
+    } else if (subs > 0 && bucks > 0) {
+      title = "$subs Subs in $bucks Buckets";
+    } else if (cats > 0 && subs > 0) {
+      title = "$subs Subs in $cats Cats";
+    } else if (subs > 0) {
       title =
-          "${widget.model.categoryList.length} Cats in ${widget.model.bucketList.length} Buckets";
-    } else if (widget.model.categoryList.isNotEmpty) {
-      title = widget.model.categoryList.length > 1
-          ? "${widget.model.categoryList.length} Categories"
-          : widget.model.categoryList.first;
-    } else if (widget.model.bucketList.isNotEmpty) {
-      title = widget.model.bucketList.length > 1
-          ? "${widget.model.bucketList.length} Buckets"
-          : widget.model.bucketList.first;
+          subs > 1 ? "$subs Subcategories" : widget.model.subCategoryList.first;
+    } else if (cats > 0) {
+      title = cats > 1 ? "$cats Categories" : widget.model.categoryList.first;
+    } else if (bucks > 0) {
+      title = bucks > 1 ? "$bucks Buckets" : widget.model.bucketList.first;
     }
 
     return Scaffold(
@@ -136,6 +144,10 @@ class _CategoryBudgetDetailsScreenState
                                     .contains(t.category)) &&
                             (widget.model.bucketList.isEmpty ||
                                 widget.model.bucketList.contains(t.bucket)) &&
+                            // [NEW] Added Subcategory filtering condition
+                            (widget.model.subCategoryList.isEmpty ||
+                                widget.model.subCategoryList
+                                    .contains(t.subCategory)) &&
                             t.type == 'Expense' &&
                             t.date.isAfter(widget.model.budget.startDate
                                 .subtract(const Duration(seconds: 1))) &&
@@ -151,6 +163,10 @@ class _CategoryBudgetDetailsScreenState
                                 (widget.model.bucketList.isEmpty ||
                                     widget.model.bucketList
                                         .contains(c.bucket)) &&
+                                // [NEW] Added Subcategory filtering condition
+                                (widget.model.subCategoryList.isEmpty ||
+                                    widget.model.subCategoryList
+                                        .contains(c.subCategory)) &&
                                 c.type == 'Expense' &&
                                 c.date.isAfter(widget.model.budget.startDate
                                     .subtract(const Duration(seconds: 1))) &&

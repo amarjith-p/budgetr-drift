@@ -22,15 +22,23 @@ class CategoryBudgetService {
           return budgets.map((budget) {
             final catList = List<String>.from(jsonDecode(budget.categories));
             final bucketList = List<String>.from(jsonDecode(budget.buckets));
+            // [NEW] Parse the subcategories list
+            final subCatList =
+                List<String>.from(jsonDecode(budget.subCategories));
 
             final spentExpenses = expenses.where((t) {
               if (t.accountId == null || t.accountId!.isEmpty) return false;
+
               final matchCat = catList.isEmpty || catList.contains(t.category);
               final matchBucket =
                   bucketList.isEmpty || bucketList.contains(t.bucket);
+              // [NEW] Check Subcategory match
+              final matchSubCat =
+                  subCatList.isEmpty || subCatList.contains(t.subCategory);
 
               return matchCat &&
                   matchBucket &&
+                  matchSubCat && // [NEW] Added to condition
                   t.type == 'Expense' &&
                   t.date.isAfter(
                       budget.startDate.subtract(const Duration(seconds: 1))) &&
@@ -41,9 +49,13 @@ class CategoryBudgetService {
               final matchCat = catList.isEmpty || catList.contains(c.category);
               final matchBucket =
                   bucketList.isEmpty || bucketList.contains(c.bucket);
+              // [NEW] Check Subcategory match
+              final matchSubCat =
+                  subCatList.isEmpty || subCatList.contains(c.subCategory);
 
               return matchCat &&
                   matchBucket &&
+                  matchSubCat && // [NEW] Added to condition
                   c.type == 'Expense' &&
                   c.date.isAfter(
                       budget.startDate.subtract(const Duration(seconds: 1))) &&
@@ -61,6 +73,8 @@ class CategoryBudgetService {
   Future<void> addCategoryBudget({
     required List<String> categories,
     required List<String> buckets,
+    List<String> subCategories =
+        const [], // [NEW] Added with default to avoid breaking old code
     required double amount,
     required String periodType,
     required DateTime startDate,
@@ -71,11 +85,12 @@ class CategoryBudgetService {
             id: Value(_uuid.v4()),
             categories: Value(jsonEncode(categories)),
             buckets: Value(jsonEncode(buckets)),
+            subCategories: Value(jsonEncode(subCategories)), // [NEW] Save it
             amount: Value(amount),
             periodType: Value(periodType),
             startDate: Value(startDate),
             endDate: Value(endDate),
-            isClosed: const Value(false), // Ensure it starts active
+            isClosed: const Value(false),
           ),
         );
   }
@@ -84,6 +99,7 @@ class CategoryBudgetService {
     required String id,
     required List<String> categories,
     required List<String> buckets,
+    List<String> subCategories = const [], // [NEW] Added with default
     required double amount,
     required String periodType,
     required DateTime startDate,
@@ -94,6 +110,7 @@ class CategoryBudgetService {
       CategoryBudgetsCompanion(
         categories: Value(jsonEncode(categories)),
         buckets: Value(jsonEncode(buckets)),
+        subCategories: Value(jsonEncode(subCategories)), // [NEW] Update it
         amount: Value(amount),
         periodType: Value(periodType),
         startDate: Value(startDate),
@@ -102,7 +119,6 @@ class CategoryBudgetService {
     );
   }
 
-  // [NEW] Mark Budget as Settled
   Future<void> settleCategoryBudget(String id) async {
     await (_db.update(_db.categoryBudgets)..where((t) => t.id.equals(id)))
         .write(

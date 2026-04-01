@@ -111,7 +111,25 @@ class CategoryAllocationListItem extends StatelessWidget {
                   runSpacing: 10,
                   children:
                       model.categoryList.map((c) => _buildChip(c)).toList()),
+              const SizedBox(height: 24),
+            ],
+            // [NEW] Subcategories Info Display
+            if (model.subCategoryList.isNotEmpty) ...[
+              Text("TARGET SUBCATEGORIES",
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.5),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2)),
+              const SizedBox(height: 12),
+              Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children:
+                      model.subCategoryList.map((s) => _buildChip(s)).toList()),
               const SizedBox(height: 36),
+            ] else ...[
+              const SizedBox(height: 12),
             ],
             SizedBox(
               width: double.infinity,
@@ -201,23 +219,32 @@ class CategoryAllocationListItem extends StatelessWidget {
     final dateStr =
         "${DateFormat('dd MMM').format(model.budget.startDate)} - ${DateFormat('dd MMM').format(model.budget.endDate)}";
 
+    // [NEW] Dynamic Title Builder with Subcategory Support
     String title = "Global Budget";
-    if (model.categoryList.isNotEmpty && model.bucketList.isNotEmpty) {
-      title =
-          "${model.categoryList.length} Cats in ${model.bucketList.length} Buckets";
-    } else if (model.categoryList.isNotEmpty) {
-      title = model.categoryList.length > 1
-          ? "${model.categoryList.length} Categories"
-          : model.categoryList.first;
-    } else if (model.bucketList.isNotEmpty) {
-      title = model.bucketList.length > 1
-          ? "${model.bucketList.length} Buckets"
-          : model.bucketList.first;
+    final int cats = model.categoryList.length;
+    final int bucks = model.bucketList.length;
+    final int subs = model.subCategoryList.length;
+
+    if (cats > 0 && bucks > 0 && subs > 0) {
+      title = "Complex Matrix";
+    } else if (cats > 0 && bucks > 0) {
+      title = "$cats Cats in $bucks Buckets";
+    } else if (subs > 0 && bucks > 0) {
+      title = "$subs Subs in $bucks Buckets";
+    } else if (cats > 0 && subs > 0) {
+      title = "$subs Subs in $cats Cats";
+    } else if (subs > 0) {
+      title = subs > 1 ? "$subs Subcategories" : model.subCategoryList.first;
+    } else if (cats > 0) {
+      title = cats > 1 ? "$cats Categories" : model.categoryList.first;
+    } else if (bucks > 0) {
+      title = bucks > 1 ? "$bucks Buckets" : model.bucketList.first;
     }
 
-    final bool showInfoIcon = model.categoryList.length > 1 ||
-        model.bucketList.length > 1 ||
-        (model.categoryList.isNotEmpty && model.bucketList.isNotEmpty);
+    int activeLists =
+        (cats > 0 ? 1 : 0) + (bucks > 0 ? 1 : 0) + (subs > 0 ? 1 : 0);
+    final bool showInfoIcon =
+        activeLists > 1 || cats > 1 || bucks > 1 || subs > 1;
 
     return StreamBuilder<List<TransactionCategoryModel>>(
         stream: GetIt.I<CategoryService>().getCategories(),
@@ -225,28 +252,27 @@ class CategoryAllocationListItem extends StatelessWidget {
           final categories = snapshot.data ?? [];
           IconData displayIcon = Icons.account_tree_rounded;
 
-          if (model.categoryList.isEmpty && model.bucketList.isNotEmpty)
+          if (cats == 0 && subs == 0 && bucks > 0)
             displayIcon = Icons.account_balance_wallet_rounded;
-          else if (model.categoryList.length == 1 && model.bucketList.isEmpty) {
+          else if (cats == 1 && bucks == 0 && subs == 0) {
             try {
               final cat = categories
                   .firstWhere((c) => c.name == model.categoryList.first);
               if (cat.iconCode != null)
                 displayIcon = IconConstants.getIconByCode(cat.iconCode!);
             } catch (_) {}
-          } else if (model.categoryList.isEmpty && model.bucketList.isEmpty)
+          } else if (cats == 0 && bucks == 0 && subs == 0)
             displayIcon = Icons.all_inclusive_rounded;
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Slidable(
               key: ValueKey(model.budget.id),
-              // Only show Edit and Settle if the budget is active
               startActionPane: isClosed
                   ? null
                   : ActionPane(
                       motion: const DrawerMotion(),
-                      extentRatio: 0.5, // Wider to fit two buttons
+                      extentRatio: 0.5,
                       children: [
                         SlidableAction(
                           onPressed: (_) {
@@ -300,7 +326,6 @@ class CategoryAllocationListItem extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    // Dim the card if it's closed
                     color: isClosed
                         ? const Color(0xFF0F172A)
                         : const Color(0xFF1B263B).withOpacity(0.5),

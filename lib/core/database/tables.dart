@@ -319,7 +319,7 @@ class Goals extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
 
-  // [NEW] Asset Details
+  // Asset Details
   TextColumn get purpose => text().nullable()(); // "Retirement", "Car", etc.
   TextColumn get investmentType => text()
       .withDefault(const Constant('Others'))(); // "Mutual Fund", "Stocks" etc.
@@ -362,23 +362,23 @@ class Loans extends Table {
   TextColumn get type => text()(); // 'BORROWED' or 'LENT'
 
   // Amounts
-  RealColumn get principalAmount => real()
-      .withDefault(const Constant(0.0))(); // [NEW] The original loan amount
+  RealColumn get principalAmount =>
+      real().withDefault(const Constant(0.0))(); // The original loan amount
   RealColumn get totalAmount =>
       real()(); // Total Repayment Amount (Principal + Interest)
   RealColumn get paidAmount => real().withDefault(const Constant(0.0))();
 
   // Terms
   RealColumn get interestRate => real().withDefault(const Constant(0.0))();
-  RealColumn get emiAmount => real().nullable()(); // [NEW]
+  RealColumn get emiAmount => real().nullable()();
 
   // Dates
   DateTimeColumn get startDate => dateTime()();
   DateTimeColumn get dueDate => dateTime().nullable()(); // Loan End Date
-  DateTimeColumn get nextPaymentDate => dateTime().nullable()(); // [NEW]
+  DateTimeColumn get nextPaymentDate => dateTime().nullable()();
 
   // Meta
-  TextColumn get notes => text().nullable()(); // [NEW] Account No etc.
+  TextColumn get notes => text().nullable()(); // Account No etc.
   BoolColumn get isClosed => boolean().withDefault(const Constant(false))();
 
   @override
@@ -395,7 +395,7 @@ class AssetLogs extends Table {
   // The Total Amount of the transaction
   RealColumn get amount => real()();
 
-  // [NEW] The portion of 'amount' that is Interest/Profit
+  // The portion of 'amount' that is Interest/Profit
   RealColumn get interestComponent => real().withDefault(const Constant(0.0))();
 
   DateTimeColumn get date => dateTime()();
@@ -415,7 +415,7 @@ class HeatmapLimits extends Table {
   // Tier 2: Spending <= this is Caution (Yellow)
   RealColumn get cautionLimit => real().withDefault(const Constant(2000.0))();
 
-  // Tier 3: Spending <= this is Warning (Orange) [NEW FIELD]
+  // Tier 3: Spending <= this is Warning (Orange)
   // Anything above this is Critical (Red)
   RealColumn get severeLimit => real().withDefault(const Constant(5000.0))();
 
@@ -446,12 +446,12 @@ class RecurringPatterns extends Table {
   DateTimeColumn get startDate => dateTime()();
   TextColumn get executionTime => text()();
 
-  // [NEW] SMART SCHEDULE COLUMNS
+  // SMART SCHEDULE COLUMNS
   TextColumn get scheduleType => text().withDefault(const Constant('Fixed'))();
   IntColumn get weekParam => integer().nullable()();
   IntColumn get dayParam => integer().nullable()();
 
-  // [NEW - SCALE UP FIELDS]
+  // SCALE UP FIELDS
   BoolColumn get isVariable => boolean().withDefault(const Constant(false))();
   DateTimeColumn get endDate => dateTime().nullable()(); // Auto-Stop date
   IntColumn get maxOccurrences => integer().nullable()(); // Stop after N times
@@ -516,26 +516,29 @@ class BalanceSheetEntries extends Table {
   DateTimeColumn get dueDate => dateTime().nullable()();
   BoolColumn get isSettled => boolean().withDefault(const Constant(false))();
 
-  // [NEW] Partial Settlement Tracking
+  // Partial Settlement Tracking
   RealColumn get settledAmount => real().withDefault(const Constant(0.0))();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
-// --- 16. CATEGORY BUDGETS (NEW CUSTOM MODULE) ---
+// --- 16. CATEGORY BUDGETS (MATRIX BUDGET MODULE) ---
 class CategoryBudgets extends Table {
   TextColumn get id => text()();
 
   TextColumn get categories => text()();
   TextColumn get buckets => text().withDefault(const Constant('[]'))();
 
+  // [NEW] Added Subcategories Support
+  TextColumn get subCategories => text().withDefault(const Constant('[]'))();
+
   RealColumn get amount => real()();
   TextColumn get periodType => text()();
   DateTimeColumn get startDate => dateTime()();
   DateTimeColumn get endDate => dateTime()();
 
-  // [NEW] Flag to mark the budget as closed/settled
+  // Flag to mark the budget as closed/settled
   BoolColumn get isClosed => boolean().withDefault(const Constant(false))();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
