@@ -246,6 +246,19 @@ class _TransactionItemState extends State<TransactionItem> {
                         Text(DateFormat('dd MMM').format(widget.txn.date),
                             style: const TextStyle(
                                 color: Colors.white38, fontSize: 11)),
+
+                        // --- [NEW ADDITION START] RUNNING BALANCE DISPLAY ---
+                        if (widget.txn.runningBalance != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            currency.format(widget.txn.runningBalance),
+                            style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                        // --- [NEW ADDITION END] ---
                       ],
                     ),
                   ],

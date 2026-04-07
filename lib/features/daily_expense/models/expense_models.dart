@@ -27,23 +27,6 @@ class ExpenseAccountModel {
     this.dashboardOrder = 0,
   });
 
-  // factory ExpenseAccountModel.fromFirestore(DocumentSnapshot doc) {
-  //   final data = doc.data() as Map<String, dynamic>;
-  //   return ExpenseAccountModel(
-  //     id: doc.id,
-  //     name: data['name'] ?? '',
-  //     bankName: data['bankName'] ?? '',
-  //     type: data['type'] ?? 'Bank',
-  //     currentBalance: (data['currentBalance'] ?? 0.0).toDouble(),
-  //     createdAt: data['createdAt'] ?? DateTime.now(),
-  //     accountType: data['accountType'] ?? 'Savings Account',
-  //     accountNumber: data['accountNumber'] ?? '',
-  //     color: data['color'] ?? 0xFF1E1E1E,
-  //     showOnDashboard: data['showOnDashboard'] ?? true,
-  //     dashboardOrder: data['dashboardOrder'] ?? 0,
-  //   );
-  // }
-
   Map<String, dynamic> toMap() {
     return {
       'name': name,
@@ -99,6 +82,10 @@ class ExpenseTransactionModel {
   // --- NEW FIELD FOR SYNC ---
   final String? linkedCreditCardId;
 
+  // --- [NEW ADDITION START] TRANSIENT STATE FOR RUNNING BALANCE ---
+  final double? runningBalance;
+  // --- [NEW ADDITION END] ---
+
   ExpenseTransactionModel({
     required this.id,
     required this.accountId,
@@ -113,26 +100,45 @@ class ExpenseTransactionModel {
     this.transferAccountName,
     this.transferAccountBankName,
     this.linkedCreditCardId,
+    this.runningBalance, // [NEW ADDITION]
   });
 
-  // factory ExpenseTransactionModel.fromFirestore(DocumentSnapshot doc) {
-  //   final data = doc.data() as Map<String, dynamic>;
-  //   return ExpenseTransactionModel(
-  //     id: doc.id,
-  //     accountId: data['accountId'] ?? '',
-  //     amount: (data['amount'] ?? 0.0).toDouble(),
-  //     date: data['date'] ?? DateTime.now(),
-  //     bucket: data['bucket'] ?? 'Unallocated',
-  //     type: data['type'] ?? 'Expense',
-  //     category: data['category'] ?? 'General',
-  //     subCategory: data['subCategory'] ?? 'General',
-  //     notes: data['notes'] ?? '',
-  //     transferAccountId: data['transferAccountId'],
-  //     transferAccountName: data['transferAccountName'],
-  //     transferAccountBankName: data['transferAccountBankName'],
-  //     linkedCreditCardId: data['linkedCreditCardId'],
-  //   );
-  // }
+  // --- [NEW ADDITION START] copyWith method to safely inject runningBalance in memory ---
+  ExpenseTransactionModel copyWith({
+    String? id,
+    String? accountId,
+    double? amount,
+    DateTime? date,
+    String? bucket,
+    String? type,
+    String? category,
+    String? subCategory,
+    String? notes,
+    String? transferAccountId,
+    String? transferAccountName,
+    String? transferAccountBankName,
+    String? linkedCreditCardId,
+    double? runningBalance,
+  }) {
+    return ExpenseTransactionModel(
+      id: id ?? this.id,
+      accountId: accountId ?? this.accountId,
+      amount: amount ?? this.amount,
+      date: date ?? this.date,
+      bucket: bucket ?? this.bucket,
+      type: type ?? this.type,
+      category: category ?? this.category,
+      subCategory: subCategory ?? this.subCategory,
+      notes: notes ?? this.notes,
+      transferAccountId: transferAccountId ?? this.transferAccountId,
+      transferAccountName: transferAccountName ?? this.transferAccountName,
+      transferAccountBankName:
+          transferAccountBankName ?? this.transferAccountBankName,
+      linkedCreditCardId: linkedCreditCardId ?? this.linkedCreditCardId,
+      runningBalance: runningBalance ?? this.runningBalance,
+    );
+  }
+  // --- [NEW ADDITION END] ---
 
   Map<String, dynamic> toMap() {
     return {

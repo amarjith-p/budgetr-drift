@@ -212,109 +212,150 @@ class _AccountDetailScreenState extends State<AccountDetailScreen> {
                       Column(
                         children: [
                           if (_criteria.hasFilters) _buildActiveFiltersList(),
+
+                          // --- [NEW INJECTION] Wrap only the list to keep live account balance without breaking your UI ---
                           Expanded(
-                            child: StreamBuilder<List<ExpenseTransactionModel>>(
-                              stream: _transactionStream,
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return const Center(
-                                      child: FuturisticLoader(
-                                          size: 80,
-                                          label:
-                                              "ANALYZING TRANSACTION FLOW..."));
-                                }
-                                if (snapshot.hasError) {
-                                  return Center(
-                                      child: Text("Error: ${snapshot.error}",
-                                          style: const TextStyle(
-                                              color: Colors.red)));
-                                }
-                                if (!snapshot.hasData ||
-                                    snapshot.data!.isEmpty) {
-                                  return isPoolAccount
-                                      ? _buildEmptyState(
-                                          "All caught up! No unsynced entries.")
-                                      : _buildEmptyState(
-                                          "No transactions found.");
-                                }
+                            child: StreamBuilder<List<ExpenseAccountModel>>(
+                                stream: GetIt.I<ExpenseService>()
+                                    .watchAccountsByIds([widget.account.id]),
+                                builder: (context, accSnapshot) {
+                                  final liveAccount = (accSnapshot.hasData &&
+                                          accSnapshot.data!.isNotEmpty)
+                                      ? accSnapshot.data!.first
+                                      : widget.account;
 
-                                final filteredList =
-                                    _applyFilters(snapshot.data!);
-                                if (filteredList.isEmpty) {
-                                  return _buildEmptyState(
-                                      "No transactions match your filters.");
-                                }
+                                  return StreamBuilder<
+                                      List<ExpenseTransactionModel>>(
+                                    stream: _transactionStream,
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Center(
+                                            child: FuturisticLoader(
+                                                size: 80,
+                                                label:
+                                                    "ANALYZING TRANSACTION FLOW..."));
+                                      }
+                                      if (snapshot.hasError) {
+                                        return Center(
+                                            child: Text(
+                                                "Error: ${snapshot.error}",
+                                                style: const TextStyle(
+                                                    color: Colors.red)));
+                                      }
+                                      if (!snapshot.hasData ||
+                                          snapshot.data!.isEmpty) {
+                                        return isPoolAccount
+                                            ? _buildEmptyState(
+                                                "All caught up! No unsynced entries.")
+                                            : _buildEmptyState(
+                                                "No transactions found.");
+                                      }
 
-                                // --- [NEW PAGINATION LOGIC: Slice data for rendering] ---
-                                final displayedList = filteredList
-                                    .take(_currentRenderLimit)
-                                    .toList();
+                                      // --- [NEW INJECTION] Calculate balance on Unfiltered Data ---
+                                      double tempBal =
+                                          liveAccount.currentBalance;
+                                      final txnsWithBalance =
+                                          snapshot.data!.map((t) {
+                                        final updated =
+                                            t.copyWith(runningBalance: tempBal);
+                                        if (t.type == 'Expense' ||
+                                            t.type == 'Transfer Out') {
+                                          tempBal += t.amount;
+                                        } else if (t.type == 'Income' ||
+                                            t.type == 'Transfer In') {
+                                          tempBal -= t.amount;
+                                        }
+                                        return updated;
+                                      }).toList();
 
-                                final grouped = groupBy(displayedList,
-                                    (ExpenseTransactionModel t) {
-                                  return DateFormat('MMMM yyyy').format(t.date);
-                                });
-                                // --- [END NEW PAGINATION LOGIC] ---
+                                      // Apply your exact original filters AFTER calculating balance
+                                      final filteredList =
+                                          _applyFilters(txnsWithBalance);
 
-                                return ListView.builder(
-                                  controller:
-                                      _scrollController, // [NEW PAGINATION LOGIC: Attached]
-                                  padding: const EdgeInsets.all(16),
-                                  itemCount: grouped.length,
-                                  itemBuilder: (context, index) {
-                                    final month = grouped.keys.elementAt(index);
-                                    final txns = grouped[month]!;
+                                      if (filteredList.isEmpty) {
+                                        return _buildEmptyState(
+                                            "No transactions match your filters.");
+                                      }
 
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 12),
-                                          child: Text(
-                                            month,
-                                            style: const TextStyle(
-                                                color: Colors.white54,
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 1),
-                                          ),
-                                        ),
-                                        ...txns
-                                            .map((t) => TransactionItem(
-                                                  txn: t,
-                                                  iconData: categoryIconMap[
-                                                          t.category] ??
-                                                      Icons.category_outlined,
-                                                  onEdit: () =>
-                                                      _handleEdit(context, t),
-                                                  onDuplicate: () {
-                                                    showModalBottomSheet(
-                                                      context: context,
-                                                      isScrollControlled: true,
-                                                      backgroundColor:
-                                                          Colors.transparent,
-                                                      builder: (_) =>
-                                                          NewExpenseScreen(
-                                                        txnToEdit: t,
-                                                        isDuplicate:
-                                                            true, // Passes the new flag!
-                                                      ),
-                                                    );
-                                                  },
-                                                  onDelete: () =>
-                                                      _handleDeleteTransaction(
-                                                          context, t),
-                                                ))
-                                            .toList(),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            ),
+                                      // --- [NEW PAGINATION LOGIC: Slice data for rendering] ---
+                                      final displayedList = filteredList
+                                          .take(_currentRenderLimit)
+                                          .toList();
+
+                                      final grouped = groupBy(displayedList,
+                                          (ExpenseTransactionModel t) {
+                                        return DateFormat('MMMM yyyy')
+                                            .format(t.date);
+                                      });
+                                      // --- [END NEW PAGINATION LOGIC] ---
+
+                                      return ListView.builder(
+                                        controller:
+                                            _scrollController, // [NEW PAGINATION LOGIC: Attached]
+                                        padding: const EdgeInsets.all(16),
+                                        itemCount: grouped.length,
+                                        itemBuilder: (context, index) {
+                                          final month =
+                                              grouped.keys.elementAt(index);
+                                          final txns = grouped[month]!;
+
+                                          return Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 12),
+                                                child: Text(
+                                                  month,
+                                                  style: const TextStyle(
+                                                      color: Colors.white54,
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      letterSpacing: 1),
+                                                ),
+                                              ),
+                                              ...txns
+                                                  .map((t) => TransactionItem(
+                                                        txn: t,
+                                                        iconData: categoryIconMap[
+                                                                t.category] ??
+                                                            Icons
+                                                                .category_outlined,
+                                                        onEdit: () =>
+                                                            _handleEdit(
+                                                                context, t),
+                                                        onDuplicate: () {
+                                                          showModalBottomSheet(
+                                                            context: context,
+                                                            isScrollControlled:
+                                                                true,
+                                                            backgroundColor:
+                                                                Colors
+                                                                    .transparent,
+                                                            builder: (_) =>
+                                                                NewExpenseScreen(
+                                                              txnToEdit: t,
+                                                              isDuplicate:
+                                                                  true, // Passes the new flag!
+                                                            ),
+                                                          );
+                                                        },
+                                                        onDelete: () =>
+                                                            _handleDeleteTransaction(
+                                                                context, t),
+                                                      ))
+                                                  .toList(),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    },
+                                  );
+                                }),
                           ),
                         ],
                       ),

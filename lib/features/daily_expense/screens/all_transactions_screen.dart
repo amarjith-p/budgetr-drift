@@ -55,7 +55,8 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   }
 
   void _updateStream() {
-    _transactionsStream = _service.getFilteredTransactions(_criteria);
+    _transactionsStream = _service.getFilteredTransactions(
+        _criteria); // Restored your native DB Filter Stream
   }
 
   void _onScroll() {
@@ -240,133 +241,172 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                       for (var acc in accountSnapshot.data!) acc.id: acc
                   };
 
+                  // --- [NEW INJECTION: Invisible Balance Map Builder] ---
                   return StreamBuilder<List<ExpenseTransactionModel>>(
-                    stream: _transactionsStream,
-                    builder: (context, txnSnapshot) {
-                      if (txnSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                            child: FuturisticLoader(
-                                size: 80, label: "COMPILING GLOBAL LEDGER..."));
-                      }
+                      stream: _service
+                          .getAllTransactions(), // Used ONLY to compute proper math
+                      builder: (context, allTxnSnapshot) {
+                        Map<String, double> balanceMap = {};
+                        if (allTxnSnapshot.hasData && accountSnapshot.hasData) {
+                          double globalBal = accountSnapshot.data!.fold(
+                              0.0, (sum, acc) => sum + acc.currentBalance);
+                          double tempBal = globalBal;
+                          for (var t in allTxnSnapshot.data!) {
+                            balanceMap[t.id] = tempBal;
+                            if (t.type == 'Expense' || t.type == 'Transfer Out')
+                              tempBal += t.amount;
+                            else if (t.type == 'Income' ||
+                                t.type == 'Transfer In') tempBal -= t.amount;
+                          }
+                        }
 
-                      // Fetch Raw Data
-                      var allTransactions = txnSnapshot.data ?? [];
+                        // Return your perfectly untouched original filtered stream
+                        return StreamBuilder<List<ExpenseTransactionModel>>(
+                          stream: _transactionsStream,
+                          builder: (context, txnSnapshot) {
+                            if (txnSnapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                  child: FuturisticLoader(
+                                      size: 80,
+                                      label: "COMPILING GLOBAL LEDGER..."));
+                            }
 
-                      // [FIXED] Apply Strict Memory Filter to prevent "Past Commitments"
-                      allTransactions = _applyFilters(allTransactions);
+                            // Fetch Raw Data
+                            var allTransactions = txnSnapshot.data ?? [];
 
-                      if (!_criteria.hasFilters) {
-                        _allCachedTransactions = allTransactions;
-                      } else if (_allCachedTransactions.isEmpty) {
-                        _allCachedTransactions = allTransactions;
-                      }
+                            // Apply Strict Memory Filter to prevent "Past Commitments"
+                            allTransactions = _applyFilters(allTransactions);
 
-                      if (allTransactions.isEmpty) {
-                        return _buildEmptyState();
-                      }
+                            if (!_criteria.hasFilters) {
+                              _allCachedTransactions = allTransactions;
+                            } else if (_allCachedTransactions.isEmpty) {
+                              _allCachedTransactions = allTransactions;
+                            }
 
-                      final displayedTransactions =
-                          allTransactions.take(_currentRenderLimit).toList();
+                            if (allTransactions.isEmpty) {
+                              return _buildEmptyState();
+                            }
 
-                      final grouped = groupBy(displayedTransactions,
-                          (ExpenseTransactionModel t) {
-                        return DateFormat('MMMM yyyy').format(t.date);
-                      });
+                            final displayedTransactions = allTransactions
+                                .take(_currentRenderLimit)
+                                .toList();
 
-                      return Column(
-                        children: [
-                          // Dynamic Summary Strip
-                          _buildFilteredSummaryStrip(allTransactions),
+                            final grouped = groupBy(displayedTransactions,
+                                (ExpenseTransactionModel t) {
+                              return DateFormat('MMMM yyyy').format(t.date);
+                            });
 
-                          // CustomScrollView for Transactions
-                          Expanded(
-                            child: CustomScrollView(
-                              controller: _scrollController,
-                              physics: const BouncingScrollPhysics(),
-                              slivers: [
-                                ...grouped.entries.map((entry) {
-                                  final month = entry.key;
-                                  final txns = entry.value;
+                            return Column(
+                              children: [
+                                // Dynamic Summary Strip
+                                _buildFilteredSummaryStrip(allTransactions),
 
-                                  return SliverMainAxisGroup(
+                                // CustomScrollView for Transactions
+                                Expanded(
+                                  child: CustomScrollView(
+                                    controller: _scrollController,
+                                    physics: const BouncingScrollPhysics(),
                                     slivers: [
-                                      // The Sticky Header
-                                      SliverPersistentHeader(
-                                        pinned: true,
-                                        delegate: _MonthHeaderDelegate(month),
-                                      ),
-                                      // The List of Transactions for this month
-                                      SliverPadding(
-                                        padding: const EdgeInsets.only(
-                                            left: 20, right: 20, bottom: 12),
-                                        sliver: SliverList(
-                                          delegate: SliverChildBuilderDelegate(
-                                            (context, index) {
-                                              final txn = txns[index];
-                                              final account =
-                                                  accountMap[txn.accountId];
-                                              final accountName = account !=
-                                                      null
-                                                  ? "${account.name} - ${account.bankName}"
-                                                  : "Unknown Account";
+                                      ...grouped.entries.map((entry) {
+                                        final month = entry.key;
+                                        final txns = entry.value;
 
-                                              return TransactionItem(
-                                                txn: txn,
-                                                iconData: categoryIconMap[
-                                                        txn.category] ??
-                                                    Icons.category_outlined,
-                                                sourceAccountName: accountName,
-                                                onEdit: () {
-                                                  showModalBottomSheet(
-                                                    context: context,
-                                                    isScrollControlled: true,
-                                                    backgroundColor:
-                                                        Colors.transparent,
-                                                    builder: (ctx) =>
-                                                        NewExpenseScreen(
-                                                      txnToEdit: txn,
-                                                    ),
-                                                  );
-                                                },
-                                                onDuplicate: () {
-                                                  showModalBottomSheet(
-                                                    context: context,
-                                                    isScrollControlled: true,
-                                                    backgroundColor:
-                                                        Colors.transparent,
-                                                    builder: (_) =>
-                                                        NewExpenseScreen(
-                                                      txnToEdit: txn,
-                                                      isDuplicate: true,
-                                                    ),
-                                                  );
-                                                },
-                                                onDelete: () async {
-                                                  await _handleDelete(
-                                                      context, txn);
-                                                },
-                                              );
-                                            },
-                                            childCount: txns.length,
-                                          ),
-                                        ),
+                                        return SliverMainAxisGroup(
+                                          slivers: [
+                                            // The Sticky Header
+                                            SliverPersistentHeader(
+                                              pinned: true,
+                                              delegate:
+                                                  _MonthHeaderDelegate(month),
+                                            ),
+                                            // The List of Transactions for this month
+                                            SliverPadding(
+                                              padding: const EdgeInsets.only(
+                                                  left: 20,
+                                                  right: 20,
+                                                  bottom: 12),
+                                              sliver: SliverList(
+                                                delegate:
+                                                    SliverChildBuilderDelegate(
+                                                  (context, index) {
+                                                    final rawTxn = txns[index];
+                                                    // --- [NEW INJECTION: Pass the calculated balance] ---
+                                                    final txn = rawTxn.copyWith(
+                                                        runningBalance:
+                                                            balanceMap[
+                                                                rawTxn.id]);
+
+                                                    final account = accountMap[
+                                                        txn.accountId];
+                                                    final accountName = account !=
+                                                            null
+                                                        ? "${account.name} - ${account.bankName}"
+                                                        : "Unknown Account";
+
+                                                    return TransactionItem(
+                                                      txn: txn,
+                                                      iconData: categoryIconMap[
+                                                              txn.category] ??
+                                                          Icons
+                                                              .category_outlined,
+                                                      sourceAccountName:
+                                                          accountName,
+                                                      onEdit: () {
+                                                        showModalBottomSheet(
+                                                          context: context,
+                                                          isScrollControlled:
+                                                              true,
+                                                          backgroundColor:
+                                                              Colors
+                                                                  .transparent,
+                                                          builder: (ctx) =>
+                                                              NewExpenseScreen(
+                                                            txnToEdit: txn,
+                                                          ),
+                                                        );
+                                                      },
+                                                      onDuplicate: () {
+                                                        showModalBottomSheet(
+                                                          context: context,
+                                                          isScrollControlled:
+                                                              true,
+                                                          backgroundColor:
+                                                              Colors
+                                                                  .transparent,
+                                                          builder: (_) =>
+                                                              NewExpenseScreen(
+                                                            txnToEdit: txn,
+                                                            isDuplicate: true,
+                                                          ),
+                                                        );
+                                                      },
+                                                      onDelete: () async {
+                                                        await _handleDelete(
+                                                            context, txn);
+                                                      },
+                                                    );
+                                                  },
+                                                  childCount: txns.length,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      }).toList(),
+
+                                      // Bottom Padding
+                                      const SliverToBoxAdapter(
+                                        child: SizedBox(height: 100),
                                       ),
                                     ],
-                                  );
-                                }).toList(),
-
-                                // Bottom Padding
-                                const SliverToBoxAdapter(
-                                  child: SizedBox(height: 100),
+                                  ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  );
+                            );
+                          },
+                        );
+                      });
                 },
               );
             },
