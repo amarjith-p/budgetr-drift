@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:budget/features/backup_restore/services/backup_service.dart';
 import 'package:budget/features/recurring/services/recurring_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -50,8 +51,9 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   DateTime? _backgroundedTime;
 
+  final int _syncInactivityTimeoutMinutes = 5;
   // Set to 30 minutes
-  final int _inactivityTimeoutMinutes = 30;
+  final int _securityInactivityTimeoutMinutes = 30;
 
   @override
   void initState() {
@@ -76,14 +78,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         final timeAway = DateTime.now().difference(_backgroundedTime!);
         debugPrint("App resumed. Time away: ${timeAway.inMinutes} minutes.");
 
-        if (timeAway.inMinutes >= _inactivityTimeoutMinutes) {
-          debugPrint("Timeout reached! Running silent background sync.");
-
-          // 1. Run the logic silently without disrupting the user
+        // 1. Run Data Sync if it has been at least 5 minutes
+        if (timeAway.inMinutes >= _syncInactivityTimeoutMinutes) {
+          debugPrint("Sync Timeout reached! Running silent background sync.");
           _runSilentStartupChecks();
+        }
 
-          // 2. (Optional Security) Instantly pop back to the Home Route
-          // so sensitive screens like Vault/Net Worth are hidden, but NO loading screen is shown!
+        // 2. Strict Security Reset if it has been 30 minutes (Preserving your exact original feature)
+        if (timeAway.inMinutes >= _securityInactivityTimeoutMinutes) {
+          debugPrint("Security Timeout reached! Popping to First Route.");
           navigatorKey.currentState?.popUntil((route) => route.isFirst);
         }
 
@@ -92,18 +95,33 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
-  // [NEW] Runs the exact same checks as AppStartupScreen, but totally invisible to the user
+  // [UPDATED] Now includes the missing 12-Hour Backup Check
   Future<void> _runSilentStartupChecks() async {
+    // 1. Check Notifications
     try {
       await GetIt.I<NotificationService>().runStartupChecks();
     } catch (e) {
       debugPrint("Silent Notification Check Failed: $e");
     }
 
+    // 2. Check Recurring Payments
     try {
       await GetIt.I<RecurringService>().processDuePayments();
     } catch (e) {
       debugPrint("Silent Recurring Error: $e");
+    }
+
+    // 3. NEW: Check Overdue Backups (Mirroring background_worker.dart)
+    try {
+      final backupService = GetIt.I<BackupService>();
+      final isOverdue = await backupService.isBackupOverdue();
+
+      if (isOverdue) {
+        final systemService = GetIt.I<SystemNotificationService>();
+        await systemService.showBackupReminderNotification();
+      }
+    } catch (e) {
+      debugPrint("Silent Backup Check Error: $e");
     }
   }
 
