@@ -10,7 +10,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:rxdart/rxdart.dart'; // [NEW] Required for combineLatest2
+import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
 
 class RecurringService {
@@ -48,42 +48,33 @@ class RecurringService {
         .map((rows) => rows.map(_mapToModel).toList());
   }
 
-  // --- [FIXED] REACTIVE FORECASTING ---
+  // --- REACTIVE FORECASTING ---
 
   Stream<Map<String, double>> getForecastingStream() {
-    // 1. Stream of Accounts (Liquidity updates)
     final accountsStream = _db.select(_db.expenseAccounts).watch();
 
-    // 2. Stream of Patterns (Bill updates)
     final patternsStream = (_db.select(_db.recurringPatterns)
           ..where((t) => t.isActive.equals(true)))
         .watch();
 
-    // Combine both streams: Updates whenever EITHER changes
     return Rx.combineLatest2(accountsStream, patternsStream,
         (List<db.ExpenseAccount> accounts, List<db.RecurringPattern> patterns) {
-      // A. Calculate Total Liquidity
       double totalLiquidity = 0;
       for (var acc in accounts) {
         totalLiquidity += acc.currentBalance;
       }
 
-      // B. Calculate Bills (Next 30 Days)
       final now = DateTime.now();
       final next30 = now.add(const Duration(days: 30));
       double pendingBills = 0;
 
       for (var row in patterns) {
-        // Convert to model to use helper methods
         final p = _mapToModel(row);
         if (p.type != 'Expense') continue;
         DateTime cursor = p.nextRunAt;
 
-        // Loop to catch multiple occurrences in 30 days (e.g. Weekly)
         while (cursor.isBefore(next30)) {
           pendingBills += p.amount;
-
-          // Advance cursor
           cursor = _calculateNextRunFromBaseline(
               cursor,
               p.frequency,
@@ -328,32 +319,22 @@ class RecurringService {
       if (row.nextRunAt.isBefore(now) || row.nextRunAt.isAtSameMomentAs(now)) {
         final model = _mapToModel(row);
 
+        // [REMOVED] Standard prompts and success alerts are now handled
+        // entirely by RealTimeNotificationManager to prevent duplicates.
+
         if (model.isVariable) {
-          await _createNotification(
-              title: "Variable Bill Due: ${model.name}",
-              message: "Tap to enter amount and pay.",
-              relatedId: model.id);
           continue;
         }
 
         if (model.autoExecute) {
           await executeTransaction(model);
-          if (model.notifyBefore) {
-            await _createNotification(
-                title: "Auto-Paid: ${model.name}",
-                message: "Successfully paid ₹${model.amount}",
-                relatedId: model.id);
-          }
-        } else {
-          await _createNotification(
-              title: "Bill Due: ${model.name}",
-              message: "Amount: ₹${model.amount}. Tap to pay.",
-              relatedId: model.id);
         }
       }
     }
   }
 
+  // [KEPT] This is required for dynamic runtime errors (like low balance)
+  // that the OS scheduler cannot predict in advance.
   Future<void> _createNotification(
       {required String title,
       required String message,
@@ -417,6 +398,7 @@ class RecurringService {
     final hasFunds = await _hasSufficientFunds(
         pattern.sourceAccountId, pattern.sourceCardId, pattern.amount);
     if (!hasFunds) {
+      // [KEPT] Trigger local notification ONLY on payment failure
       await _createNotification(
           title: "Payment Failed: ${pattern.name}",
           message: "Insufficient balance/limit.",

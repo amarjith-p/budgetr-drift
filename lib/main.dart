@@ -19,6 +19,8 @@ import 'features/notifications/services/background_worker.dart';
 import 'features/notifications/services/system_notification_service.dart';
 import 'features/notifications/services/notification_service.dart';
 
+import 'core/services/task_sync_engine.dart';
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
@@ -50,9 +52,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   DateTime? _backgroundedTime;
-
-  final int _syncInactivityTimeoutMinutes = 5;
-  // Set to 30 minutes
   final int _securityInactivityTimeoutMinutes = 30;
 
   @override
@@ -74,17 +73,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         state == AppLifecycleState.hidden) {
       _backgroundedTime ??= DateTime.now();
     } else if (state == AppLifecycleState.resumed) {
+      // NEW FIX: Fire the Engine the exact moment the app is resumed.
+      // We check if GetIt is registered to prevent crashes during the splash screen.
+      if (GetIt.instance.isRegistered<RecurringService>()) {
+        TaskSyncEngine().runCatchUpTasks();
+      }
+
       if (_backgroundedTime != null) {
         final timeAway = DateTime.now().difference(_backgroundedTime!);
-        debugPrint("App resumed. Time away: ${timeAway.inMinutes} minutes.");
 
-        // 1. Run Data Sync if it has been at least 5 minutes
-        if (timeAway.inMinutes >= _syncInactivityTimeoutMinutes) {
-          debugPrint("Sync Timeout reached! Running silent background sync.");
-          _runSilentStartupChecks();
-        }
-
-        // 2. Strict Security Reset if it has been 30 minutes (Preserving your exact original feature)
+        // Strict Security Reset (Untouched)
         if (timeAway.inMinutes >= _securityInactivityTimeoutMinutes) {
           debugPrint("Security Timeout reached! Popping to First Route.");
           navigatorKey.currentState?.popUntil((route) => route.isFirst);
@@ -95,38 +93,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
-  // [UPDATED] Now includes the missing 12-Hour Backup Check
-  Future<void> _runSilentStartupChecks() async {
-    // 1. Check Notifications
-    try {
-      await GetIt.I<NotificationService>().runStartupChecks();
-    } catch (e) {
-      debugPrint("Silent Notification Check Failed: $e");
-    }
-
-    // 2. Check Recurring Payments
-    try {
-      await GetIt.I<RecurringService>().processDuePayments();
-    } catch (e) {
-      debugPrint("Silent Recurring Error: $e");
-    }
-
-    // 3. NEW: Check Overdue Backups (Mirroring background_worker.dart)
-    try {
-      final backupService = GetIt.I<BackupService>();
-      final isOverdue = await backupService.isBackupOverdue();
-
-      if (isOverdue) {
-        final systemService = GetIt.I<SystemNotificationService>();
-        await systemService.showBackupReminderNotification();
-      }
-    } catch (e) {
-      debugPrint("Silent Backup Check Error: $e");
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Wrapper removed. Back to your original, clean MaterialApp
     return MaterialApp(
       debugShowCheckedModeBanner: true,
       title: 'FinStack 360',
@@ -141,7 +110,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 }
 
-// ... Keep your existing AppStartupScreen exactly as it is ...
 class AppStartupScreen extends StatefulWidget {
   const AppStartupScreen({super.key});
 
@@ -173,21 +141,12 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
     try {
       await ServiceLocator.init();
 
+      // Cold start trigger. Runs right after DB is loaded.
+      await TaskSyncEngine().runCatchUpTasks();
+
       final systemService = GetIt.I<SystemNotificationService>();
       await systemService.init();
       await systemService.requestPermissions();
-
-      try {
-        await GetIt.I<NotificationService>().runStartupChecks();
-      } catch (e) {
-        debugPrint("Notification Check Failed: $e");
-      }
-
-      try {
-        await GetIt.I<RecurringService>().processDuePayments();
-      } catch (e) {
-        debugPrint("Startup Recurring Error: $e");
-      }
 
       bool launchDailyExpense = false;
       try {
