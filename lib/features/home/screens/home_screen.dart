@@ -48,7 +48,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final expenseService = locator<ExpenseService>();
   final dashboardService = locator<DashboardService>();
   final creditService = locator<CreditService>();
@@ -70,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkBackupStatus();
 
     // [NEW] Combine the Live Cards Data with the Live Linked Bank Accounts Data
@@ -88,6 +89,13 @@ class _HomeScreenState extends State<HomeScreen> {
       // Return true if there's a shortfall and there's actually a debt
       return (allocatedFunds - totalDebt <= -0.000001) && (totalDebt > 0.01);
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _toolsPageController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkBackupStatus() async {
@@ -838,6 +846,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontWeight: FontWeight.w600)),
       ],
     );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // The app just came back from the background. Re-evaluate the backup!
+      _checkBackupStatus();
+    }
   }
 }
 
