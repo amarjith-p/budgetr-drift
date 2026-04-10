@@ -143,9 +143,9 @@ flutter:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/icon/finstack.png"
+  image_path: "assets/icon/fs360.png"
   adaptive_icon_background: "#0D1B2A" 
-  adaptive_icon_foreground: "assets/icon/finstack.png"
+  adaptive_icon_foreground: "assets/icon/fs360.png"
 
   # FIX FOR IOS: Removes transparency (iOS icons must be opaque)
   remove_alpha_ios: true
@@ -156,10 +156,10 @@ flutter_native_splash:
   color: "#0D1B2A"
 
   # The image to show on the splash screen
-  image: assets/icon/finstack.png
+  image: assets/icon/fs360.png
   
 
   # Special configuration for Android 12+
   android_12:
     color: "#0D1B2A"
-    image: assets/icon/finstack.png
+    image: assets/icon/fs360.png

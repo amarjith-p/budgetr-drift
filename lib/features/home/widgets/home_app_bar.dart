@@ -42,7 +42,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 width: 1.5,
               ),
               image: const DecorationImage(
-                image: AssetImage('assets/images/finstack.png'),
+                image: AssetImage('assets/images/fs360.png'),
                 fit: BoxFit.cover,
               ),
               boxShadow: [
