@@ -21,14 +21,48 @@ class GhostTransactionsScreen extends StatefulWidget {
       _GhostTransactionsScreenState();
 }
 
-class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
+// --- NEW: Added WidgetsBindingObserver mixin ---
+class _GhostTransactionsScreenState extends State<GhostTransactionsScreen>
+    with WidgetsBindingObserver {
   final AppDatabase _db = locator<AppDatabase>();
   bool _hasNotificationPermission = true;
 
   @override
   void initState() {
     super.initState();
+    // --- NEW: Register the lifecycle observer ---
+    WidgetsBinding.instance.addObserver(this);
     _checkPermissions();
+  }
+
+  @override
+  void dispose() {
+    // --- NEW: Clean up the observer ---
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // --- NEW: Listen for the app resuming from the Android settings ---
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // The app just came back to the foreground. Re-verify the permission.
+      _refreshPermissionUI();
+    }
+  }
+
+  Future<void> _refreshPermissionUI() async {
+    bool isGranted = await NotificationListenerService.isPermissionGranted();
+    if (mounted) {
+      setState(() {
+        _hasNotificationPermission = isGranted;
+      });
+
+      // If they granted it in the settings, ensure the listener boots up immediately
+      if (isGranted) {
+        GhostListenerService().initializeListeners();
+      }
+    }
   }
 
   Future<void> _checkPermissions() async {
@@ -45,8 +79,6 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D12),
       body: SafeArea(
-        // We moved the StreamBuilder up to wrap the Column,
-        // so the AppBar knows if it should show the Clear All button.
         child: StreamBuilder<List<GhostTransactionEntry>>(
           stream: (_db.select(_db.ghostTransactions)
                 ..where((tbl) => tbl.status.equals('PENDING'))
@@ -65,7 +97,6 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
                   title: 'Ghost Transactions',
                   subtitle: 'Pending unverified entries',
                   onLeadingPressed: () => Navigator.pop(context),
-                  // --- NEW: CLEAR ALL BUTTON ---
                   trailingIcon: hasGhosts ? Icons.delete_sweep_rounded : null,
                   onTrailingPressed: hasGhosts
                       ? () => _showClearAllSheet(ghosts.length)
@@ -83,7 +114,6 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
     );
   }
 
-  // Extracted list building logic to keep the build method clean
   Widget _buildListContent(AsyncSnapshot<List<GhostTransactionEntry>> snapshot,
       List<GhostTransactionEntry> ghosts) {
     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -107,7 +137,6 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
     );
   }
 
-  // --- NEW: BULK CLEAR ALL BOTTOM SHEET ---
   void _showClearAllSheet(int count) {
     showModalBottomSheet(
       context: context,
@@ -186,16 +215,13 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
     );
   }
 
-  // --- NEW: BULK DATABASE UPDATE ---
   Future<void> _clearAllGhosts() async {
-    // This executes a single SQL query that instantly updates ALL pending rows to 'DISMISSED'
     await (_db.update(_db.ghostTransactions)
           ..where((tbl) => tbl.status.equals('PENDING')))
         .write(
             const GhostTransactionsCompanion(status: drift.Value('DISMISSED')));
   }
 
-  // --- INDIVIDUAL DELETE BOTTOM SHEET ---
   void _showDeleteSheet(GhostTransactionEntry ghost) {
     showModalBottomSheet(
       context: context,
@@ -251,7 +277,7 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () async {
-                      Navigator.pop(ctx); // Pop current sheet first
+                      Navigator.pop(ctx);
                       final partner = await _updateStatus(ghost, 'DISMISSED');
                       if (partner != null && mounted) {
                         _showPairResolutionSheet(partner, 'DISMISSED');
@@ -277,7 +303,6 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
     );
   }
 
-  // --- DAILY EXPENSE ROUTING & SUCCESS BOTTOM SHEET ---
   Future<void> _routeToDailyExpense(GhostTransactionEntry ghost) async {
     String accountId = '';
     String? linkedCreditCardId;
@@ -290,14 +315,12 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
       }
     }
 
-    // --- UPDATED: Proper Type & Category Mapping ---
     String mappedType = 'Expense';
     String mappedCategory = 'Ghost Transaction';
 
     if (ghost.detectedType == 'Credit') {
       mappedType = 'Income';
     } else if (ghost.detectedType == 'Transfer') {
-      // 'Transfer Out' triggers the Transfer segment control in NewExpenseScreen
       mappedType = 'Transfer Out';
       mappedCategory = 'Transfer';
     }
@@ -308,8 +331,8 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
       linkedCreditCardId: linkedCreditCardId,
       amount: ghost.detectedAmount ?? 0.0,
       date: ghost.detectedDate ?? DateTime.now(),
-      type: mappedType, // Now safely passes Transfer Out
-      category: mappedCategory, // Pre-sets the category to Transfer
+      type: mappedType,
+      category: mappedCategory,
       subCategory: 'General',
       bucket: 'Unallocated',
       notes: ghost.rawText,
@@ -382,7 +405,7 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () async {
-                      Navigator.pop(ctx); // Pop current sheet first
+                      Navigator.pop(ctx);
                       final partner = await _updateStatus(ghost, 'APPROVED');
                       if (partner != null && mounted) {
                         _showPairResolutionSheet(partner, 'APPROVED');
@@ -408,7 +431,6 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
     );
   }
 
-  // --- NEW: TRANSFER PAIR RESOLUTION SHEET ---
   void _showPairResolutionSheet(
       GhostTransactionEntry partner, String statusApplied) {
     String actionText = statusApplied == 'APPROVED' ? 'saved' : 'deleted';
@@ -510,7 +532,7 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  "To automatically catch background bank notifications, FinStack 360 requires Notification Access.",
+                  "To automatically catch background transaction notifications, FinStack 360 requires The Notification Access.\n\nNote: We only read the title and body of transaction-related notifications, and we do not collect any personal data or share it with third parties.\n\nPlease grant access by selecting 'FinStack 360' in the list and toggle Allow Notification Access to ON.\n\nRESTART THE APP MANUALLY AFTER GRANTING PERMISSION.",
                   style: TextStyle(
                       color: Colors.white70, fontSize: 13, height: 1.4),
                 ),
@@ -531,9 +553,10 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
               onPressed: () async {
                 await GhostListenerService()
                     .checkAndRequestNotificationPermission();
-                _checkPermissions();
+                // Removed the immediate _checkPermissions() call here because the
+                // native intent now handles bridging and didChangeAppLifecycleState will catch the return
               },
-              child: const Text("Enable Access (App will restart)"),
+              child: const Text("Allow Access"),
             ),
           )
         ],
@@ -559,19 +582,17 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
 
   Future<GhostTransactionEntry?> _updateStatus(
       GhostTransactionEntry ghost, String newStatus) async {
-    // 1. Update the transaction the user actually interacted with
     await (_db.update(_db.ghostTransactions)
           ..where((tbl) => tbl.id.equals(ghost.id)))
         .write(GhostTransactionsCompanion(status: drift.Value(newStatus)));
 
-    // 2. Check if a pending transfer partner exists and return it to the UI
     if (ghost.detectedType == 'Transfer' && ghost.detectedAmount != null) {
       return await (_db.select(_db.ghostTransactions)
             ..where((tbl) =>
                 tbl.detectedType.equals('Transfer') &
                 tbl.detectedAmount.equals(ghost.detectedAmount!) &
                 tbl.status.equals('PENDING') &
-                tbl.id.equals(ghost.id).not()) // .not() used here
+                tbl.id.equals(ghost.id).not())
             ..orderBy([
               (t) => drift.OrderingTerm(
                   expression: t.id, mode: drift.OrderingMode.desc)

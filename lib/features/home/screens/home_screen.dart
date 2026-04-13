@@ -344,20 +344,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildCompactQuickActionGrid(BuildContext context) {
     final List<Widget> page1 = [
+      _buildVerticalActionChip(context, "Pending Txns", Icons.access_time,
+          const Color(0xFF2DC653), const GhostTransactionsScreen()),
+      _buildVerticalActionChip(context, "Investments", Icons.insights_rounded,
+          const Color(0xFFFF7F11), const PortfolioDashboard()),
       _buildVerticalActionChip(
           context,
           "Goals & Loans",
           Icons.rocket_launch_rounded,
           const Color(0xFFE63946),
           const GoalsLoansDashboard()),
-      _buildVerticalActionChip(context, "Investments", Icons.insights_rounded,
-          const Color(0xFFFF7F11), const PortfolioDashboard()),
       _buildVerticalActionChip(context, "Net Worth", Icons.diamond_rounded,
           const Color(0xFFFFB703), const NetWorthScreen()),
       _buildVerticalActionChip(context, "Balance Sheet", Icons.balance_sharp,
           const Color(0xFF9D4EDD), const BalanceSheetScreen()),
-      _buildVerticalActionChip(context, "Settlements", Icons.fact_check_rounded,
-          const Color(0xFF2DC653), const SettlementScreen()),
       _buildVerticalActionChip(
           context,
           "Recurring Txns",
@@ -373,18 +373,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           Icons.flight_takeoff_rounded,
           const Color(0xFF00B4D8),
           const TripDashboardScreen()),
+      _buildVerticalActionChip(context, "Settlements", Icons.fact_check_rounded,
+          const Color(0xFF9C6644), const SettlementScreen()),
+
+      _buildVerticalActionChip(context, "Secure Vault", Icons.security_rounded,
+          const Color(0xFFF72585), const VaultAuthScreen()),
+      _buildVerticalActionChip(context, "Budget Buckets", Icons.widgets_rounded,
+          const Color(0xFFFFE066), const SettingsScreen()),
       _buildVerticalActionChip(
           context,
           "Live Portfolio",
           Icons.bar_chart_rounded,
           const Color(0xFF4361EE),
           const InvestmentScreen()),
-      _buildVerticalActionChip(context, "Secure Vault", Icons.security_rounded,
-          const Color(0xFFF72585), const VaultAuthScreen()),
-      _buildVerticalActionChip(context, "Budget Buckets", Icons.widgets_rounded,
-          const Color(0xFFFFE066), const SettingsScreen()),
-      _buildVerticalActionChip(context, "Pending Txns", Icons.pending_actions,
-          const Color(0xFF9C6644), const GhostTransactionsScreen()),
       _buildVerticalActionChip(
           context,
           "Settings",

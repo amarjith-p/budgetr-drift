@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart' hide OrderBy;
 import 'package:telephony/telephony.dart' hide Value;
 import 'package:notification_listener_service/notification_listener_service.dart';
+import 'package:permission_handler/permission_handler.dart'; // [NEW] Added for stable permission requests
+import 'package:flutter/services.dart';
 import 'transaction_parser_service.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/service_locator.dart';
@@ -8,17 +10,25 @@ import '../../../core/services/service_locator.dart';
 class GhostListenerService {
   final Telephony telephony = Telephony.instance;
   final AppDatabase _db = locator<AppDatabase>();
+  static const MethodChannel _settingsChannel =
+      MethodChannel('com.amarjith.budgetr/settings');
 
   static bool _isInitialized = false;
   static final List<Map<String, dynamic>> _recentProcessingCache = [];
 
   Future<void> initializeListeners() async {
-    // ... (Keep existing initializeListeners and sweepMissedSms code exactly as is) ...
     if (_isInitialized) return;
     _isInitialized = true;
 
-    bool? smsPermissionsGranted = await telephony.requestPhoneAndSmsPermissions;
-    if (smsPermissionsGranted != null && smsPermissionsGranted) {
+    // --- FIX: BYPASS THE TELEPHONY PLUGIN'S BUGGY PERMISSION REQUESTER ---
+    // We use permission_handler directly. This prevents the telephony plugin
+    // from intercepting the Notification permission results and crashing the app.
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.sms,
+      Permission.phone,
+    ].request();
+
+    if (statuses[Permission.sms]!.isGranted) {
       telephony.listenIncomingSms(
         onNewMessage: (SmsMessage message) {
           if (message.body != null) {
@@ -39,7 +49,6 @@ class GhostListenerService {
   }
 
   Future<void> sweepMissedSms() async {
-    // ... (Keep existing sweepMissedSms code exactly as is) ...
     try {
       final cutoffMillis = DateTime.now()
           .subtract(const Duration(days: 2))
@@ -79,17 +88,21 @@ class GhostListenerService {
   }
 
   Future<bool> checkAndRequestNotificationPermission() async {
-    // ... (Keep existing checkAndRequestNotificationPermission) ...
     bool status = await NotificationListenerService.isPermissionGranted();
     if (!status) {
-      await NotificationListenerService.requestPermission();
-      status = await NotificationListenerService.isPermissionGranted();
+      try {
+        // --- FIX: BYPASS THE PLUGIN BUG ---
+        // We use our custom native channel to safely open the settings menu.
+        // This prevents the plugin's onActivityResult from crashing the app!
+        await _settingsChannel.invokeMethod('openNotificationListenerSettings');
+      } catch (e) {
+        print("Could not open settings: $e");
+      }
     }
     return status;
   }
 
   bool _isFinancialNotification(String text) {
-    // ... (Keep existing _isFinancialNotification) ...
     String lower = text.toLowerCase();
     return lower.contains('credited') ||
         lower.contains('debited') ||
@@ -124,7 +137,6 @@ class GhostListenerService {
       final last4Digits = parsedData['last4Digits'] as String?;
       final rawLower = rawText.toLowerCase();
 
-      // ... (Keep existing Account Matching Logic exactly as is) ...
       bool smsIndicatesCreditCard =
           rawLower.contains('credit card') || rawLower.contains('cc');
 
@@ -198,9 +210,6 @@ class GhostListenerService {
         'time': DateTime.now(),
       });
 
-      // ==========================================
-      // NEW: TRANSFER PAIR DETECTION LOGIC
-      // ==========================================
       String finalDetectedType = parsedData['type'] as String;
       double parsedAmount = parsedData['amount'] as double;
 
@@ -208,21 +217,16 @@ class GhostListenerService {
         String oppositeType =
             finalDetectedType == 'Credit' ? 'Debit' : 'Credit';
 
-        // 1. Look for a PENDING transaction of the OPPOSITE type with the EXACT same amount
         final complementaryTx = await (_db.select(_db.ghostTransactions)
               ..where((tbl) =>
                   tbl.detectedAmount.equals(parsedAmount) &
                   tbl.detectedType.equals(oppositeType) &
                   tbl.status.equals('PENDING'))
-              ..orderBy([
-                (t) => OrderingTerm.desc(t.id)
-              ]) // Check the most recent one first
+              ..orderBy([(t) => OrderingTerm.desc(t.id)])
               ..limit(1))
             .getSingleOrNull();
 
         if (complementaryTx != null) {
-          // 2. Validate using the 12-digit UPI Reference number (if present)
-          // This ensures we don't accidentally link two unrelated ₹100 payments
           RegExp upiRegex = RegExp(r'(\d{12})');
           Match? currentRefMatch = upiRegex.firstMatch(rawText);
 
@@ -230,19 +234,16 @@ class GhostListenerService {
 
           if (currentRefMatch != null) {
             String currentRef = currentRefMatch.group(1)!;
-            // If the complementary text also contains this 12 digit UTR, it's a 100% match
             if (complementaryTx.rawText.contains(currentRef)) {
               isConfirmedTransfer = true;
             }
           } else {
-            // Fallback: If no 12-digit ref is found, assume it's a transfer if they arrived very close in time.
             isConfirmedTransfer = true;
           }
 
           if (isConfirmedTransfer) {
             finalDetectedType = 'Transfer';
 
-            // 3. Update the existing pending "half" of the transfer to also say 'Transfer'
             await (_db.update(_db.ghostTransactions)
                   ..where((tbl) => tbl.id.equals(complementaryTx.id)))
                 .write(GhostTransactionsCompanion(
@@ -251,9 +252,7 @@ class GhostListenerService {
           }
         }
       }
-      // ==========================================
 
-      // 4. Save to Database with the updated finalDetectedType
       await _db
           .into(_db.ghostTransactions)
           .insert(GhostTransactionsCompanion.insert(
@@ -261,8 +260,7 @@ class GhostListenerService {
             source: uniqueMessageId,
             detectedAmount: Value(parsedAmount),
             detectedDate: Value(parsedData['date'] as DateTime),
-            detectedType:
-                Value(finalDetectedType), // Will be 'Transfer' if matched!
+            detectedType: Value(finalDetectedType),
             detectedAccount: Value(matchedAccountName),
             detectedAccountId: Value(matchedAccountId),
             isCreditCardMatch: Value(isCreditCard),

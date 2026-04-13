@@ -24,6 +24,9 @@ import 'core/services/task_sync_engine.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+// Global bootstrap flag to prevent concurrent permission crashes
+// bool isAppBootstrapped = false;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -74,7 +77,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         state == AppLifecycleState.hidden) {
       _backgroundedTime ??= DateTime.now();
     } else if (state == AppLifecycleState.resumed) {
-      // --- FIX: ONLY RUN SWEEPS IF APP IS FULLY LOADED ---
+      // Safe lifecycle sweep: Only runs when the user is actually interacting with the app
+      // if (isAppBootstrapped) {
       if (GetIt.instance.isRegistered<RecurringService>()) {
         TaskSyncEngine().runCatchUpTasks();
         GhostListenerService().sweepMissedSms();
@@ -83,7 +87,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       if (_backgroundedTime != null) {
         final timeAway = DateTime.now().difference(_backgroundedTime!);
 
-        // Strict Security Reset (Untouched)
         if (timeAway.inMinutes >= _securityInactivityTimeoutMinutes) {
           debugPrint("Security Timeout reached! Popping to First Route.");
           navigatorKey.currentState?.popUntil((route) => route.isFirst);
@@ -141,17 +144,24 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
     try {
       await ServiceLocator.init();
 
-      // Cold start trigger. Runs right after DB is loaded.
+      // Cold start trigger
       await TaskSyncEngine().runCatchUpTasks();
-      final ghostService = GhostListenerService();
 
-      // This will trigger the OS Dialog. Because isAppBootstrapped is false,
-      // the lifecycle observer will safely ignore the "Resume" when the user clicks Allow!
-      await ghostService.initializeListeners();
-
+      // ====================================================================
+      // FIX: REVERSED INITIALIZATION ORDER
+      // ====================================================================
+      // 1. Initialize and request System Notifications FIRST.
+      // This prevents the telephony plugin from intercepting this dialog's broadcast.
       final systemService = GetIt.I<SystemNotificationService>();
       await systemService.init();
       await systemService.requestPermissions();
+
+      // 2. Initialize Telephony LAST.
+      // Since no other permission dialogs trigger after this, the plugin's
+      // dangling memory bug will never be triggered.
+      final ghostService = GhostListenerService();
+      await ghostService.initializeListeners();
+      // ====================================================================
 
       bool launchDailyExpense = false;
       try {
@@ -165,6 +175,9 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
 
       await Future.delayed(const Duration(milliseconds: 1500));
 
+      // App is safely booted
+      // isAppBootstrapped = true;
+
       if (launchDailyExpense) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const DailyExpenseScreen()),
@@ -177,6 +190,7 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
       }
     } catch (e) {
       if (mounted) {
+        // isAppBootstrapped = true;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
