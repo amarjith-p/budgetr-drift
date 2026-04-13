@@ -63,8 +63,14 @@ class GhostListenerService {
 
   void _startNotificationStream() {
     NotificationListenerService.notificationsStream.listen((event) {
-      if (event.content != null && _isFinancialNotification(event.content!)) {
-        _processAndStore(event.content!,
+      // 1. Combine title and content to capture split UPI/Wallet notification data
+      String fullNotificationText = [event.title, event.content]
+          .where((e) => e != null && e.isNotEmpty)
+          .join(' . ');
+
+      if (fullNotificationText.isNotEmpty &&
+          _isFinancialNotification(fullNotificationText)) {
+        _processAndStore(fullNotificationText,
             "NOTIF_${event.id ?? DateTime.now().millisecondsSinceEpoch}");
       }
     });
@@ -79,13 +85,20 @@ class GhostListenerService {
     return status;
   }
 
+  // 2. Expanded filter to ensure UPI and cashback notifications aren't ignored
   bool _isFinancialNotification(String text) {
     String lower = text.toLowerCase();
     return lower.contains('credited') ||
         lower.contains('debited') ||
         lower.contains('rs.') ||
         lower.contains('inr') ||
-        lower.contains('spent');
+        lower.contains('₹') ||
+        lower.contains('spent') ||
+        lower.contains('received') ||
+        lower.contains('sent') ||
+        lower.contains('cashback') ||
+        lower.contains('refund') ||
+        lower.contains('paid');
   }
 
   Future<void> _processAndStore(String rawText, String uniqueMessageId) async {
@@ -185,14 +198,11 @@ class GhostListenerService {
         'time': DateTime.now(),
       });
 
-      // --- FIX: REMOVED 'drift.' FROM ALL OF THESE ---
-      // 3. Save to Database
       await _db
           .into(_db.ghostTransactions)
           .insert(GhostTransactionsCompanion.insert(
             rawText: rawText,
-            source:
-                uniqueMessageId, // <-- THE FIX: Removed Value() wrapper here
+            source: uniqueMessageId,
             detectedAmount: Value(parsedData['amount'] as double),
             detectedDate: Value(parsedData['date'] as DateTime),
             detectedType: Value(parsedData['type'] as String),
