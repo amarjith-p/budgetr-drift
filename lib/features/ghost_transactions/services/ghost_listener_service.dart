@@ -63,15 +63,17 @@ class GhostListenerService {
 
   void _startNotificationStream() {
     NotificationListenerService.notificationsStream.listen((event) {
-      // 1. Combine title and content to capture split UPI/Wallet notification data
       String fullNotificationText = [event.title, event.content]
           .where((e) => e != null && e.isNotEmpty)
           .join(' . ');
 
       if (fullNotificationText.isNotEmpty &&
           _isFinancialNotification(fullNotificationText)) {
-        _processAndStore(fullNotificationText,
-            "NOTIF_${event.id ?? DateTime.now().millisecondsSinceEpoch}");
+        // FIX: Ignore event.id entirely. Apps reuse it. Generate a truly unique ID.
+        String secureId =
+            "NOTIF_${DateTime.now().millisecondsSinceEpoch}_${fullNotificationText.hashCode}";
+
+        _processAndStore(fullNotificationText, secureId);
       }
     });
   }
@@ -182,18 +184,14 @@ class GhostListenerService {
       }
 
       _recentProcessingCache.removeWhere((entry) =>
-          DateTime.now().difference(entry['time'] as DateTime).inSeconds > 15);
+          DateTime.now().difference(entry['time'] as DateTime).inSeconds > 10);
 
-      String txSignature =
-          "${parsedData['amount']}_${parsedData['type']}_$matchedAccountName";
-
-      bool isRecentDuplicate = _recentProcessingCache.any((entry) =>
-          entry['signature'] == txSignature || entry['rawText'] == rawText);
+      bool isRecentDuplicate =
+          _recentProcessingCache.any((entry) => entry['rawText'] == rawText);
 
       if (isRecentDuplicate) return;
 
       _recentProcessingCache.add({
-        'signature': txSignature,
         'rawText': rawText,
         'time': DateTime.now(),
       });
