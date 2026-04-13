@@ -13,6 +13,7 @@ class GhostListenerService {
   static final List<Map<String, dynamic>> _recentProcessingCache = [];
 
   Future<void> initializeListeners() async {
+    // ... (Keep existing initializeListeners and sweepMissedSms code exactly as is) ...
     if (_isInitialized) return;
     _isInitialized = true;
 
@@ -38,6 +39,7 @@ class GhostListenerService {
   }
 
   Future<void> sweepMissedSms() async {
+    // ... (Keep existing sweepMissedSms code exactly as is) ...
     try {
       final cutoffMillis = DateTime.now()
           .subtract(const Duration(days: 2))
@@ -69,16 +71,15 @@ class GhostListenerService {
 
       if (fullNotificationText.isNotEmpty &&
           _isFinancialNotification(fullNotificationText)) {
-        // FIX: Ignore event.id entirely. Apps reuse it. Generate a truly unique ID.
         String secureId =
             "NOTIF_${DateTime.now().millisecondsSinceEpoch}_${fullNotificationText.hashCode}";
-
         _processAndStore(fullNotificationText, secureId);
       }
     });
   }
 
   Future<bool> checkAndRequestNotificationPermission() async {
+    // ... (Keep existing checkAndRequestNotificationPermission) ...
     bool status = await NotificationListenerService.isPermissionGranted();
     if (!status) {
       await NotificationListenerService.requestPermission();
@@ -87,8 +88,8 @@ class GhostListenerService {
     return status;
   }
 
-  // 2. Expanded filter to ensure UPI and cashback notifications aren't ignored
   bool _isFinancialNotification(String text) {
+    // ... (Keep existing _isFinancialNotification) ...
     String lower = text.toLowerCase();
     return lower.contains('credited') ||
         lower.contains('debited') ||
@@ -123,6 +124,7 @@ class GhostListenerService {
       final last4Digits = parsedData['last4Digits'] as String?;
       final rawLower = rawText.toLowerCase();
 
+      // ... (Keep existing Account Matching Logic exactly as is) ...
       bool smsIndicatesCreditCard =
           rawLower.contains('credit card') || rawLower.contains('cc');
 
@@ -184,7 +186,7 @@ class GhostListenerService {
       }
 
       _recentProcessingCache.removeWhere((entry) =>
-          DateTime.now().difference(entry['time'] as DateTime).inSeconds > 10);
+          DateTime.now().difference(entry['time'] as DateTime).inSeconds > 2);
 
       bool isRecentDuplicate =
           _recentProcessingCache.any((entry) => entry['rawText'] == rawText);
@@ -196,14 +198,71 @@ class GhostListenerService {
         'time': DateTime.now(),
       });
 
+      // ==========================================
+      // NEW: TRANSFER PAIR DETECTION LOGIC
+      // ==========================================
+      String finalDetectedType = parsedData['type'] as String;
+      double parsedAmount = parsedData['amount'] as double;
+
+      if (finalDetectedType == 'Credit' || finalDetectedType == 'Debit') {
+        String oppositeType =
+            finalDetectedType == 'Credit' ? 'Debit' : 'Credit';
+
+        // 1. Look for a PENDING transaction of the OPPOSITE type with the EXACT same amount
+        final complementaryTx = await (_db.select(_db.ghostTransactions)
+              ..where((tbl) =>
+                  tbl.detectedAmount.equals(parsedAmount) &
+                  tbl.detectedType.equals(oppositeType) &
+                  tbl.status.equals('PENDING'))
+              ..orderBy([
+                (t) => OrderingTerm.desc(t.id)
+              ]) // Check the most recent one first
+              ..limit(1))
+            .getSingleOrNull();
+
+        if (complementaryTx != null) {
+          // 2. Validate using the 12-digit UPI Reference number (if present)
+          // This ensures we don't accidentally link two unrelated ₹100 payments
+          RegExp upiRegex = RegExp(r'(\d{12})');
+          Match? currentRefMatch = upiRegex.firstMatch(rawText);
+
+          bool isConfirmedTransfer = false;
+
+          if (currentRefMatch != null) {
+            String currentRef = currentRefMatch.group(1)!;
+            // If the complementary text also contains this 12 digit UTR, it's a 100% match
+            if (complementaryTx.rawText.contains(currentRef)) {
+              isConfirmedTransfer = true;
+            }
+          } else {
+            // Fallback: If no 12-digit ref is found, assume it's a transfer if they arrived very close in time.
+            isConfirmedTransfer = true;
+          }
+
+          if (isConfirmedTransfer) {
+            finalDetectedType = 'Transfer';
+
+            // 3. Update the existing pending "half" of the transfer to also say 'Transfer'
+            await (_db.update(_db.ghostTransactions)
+                  ..where((tbl) => tbl.id.equals(complementaryTx.id)))
+                .write(GhostTransactionsCompanion(
+              detectedType: const Value('Transfer'),
+            ));
+          }
+        }
+      }
+      // ==========================================
+
+      // 4. Save to Database with the updated finalDetectedType
       await _db
           .into(_db.ghostTransactions)
           .insert(GhostTransactionsCompanion.insert(
             rawText: rawText,
             source: uniqueMessageId,
-            detectedAmount: Value(parsedData['amount'] as double),
+            detectedAmount: Value(parsedAmount),
             detectedDate: Value(parsedData['date'] as DateTime),
-            detectedType: Value(parsedData['type'] as String),
+            detectedType:
+                Value(finalDetectedType), // Will be 'Transfer' if matched!
             detectedAccount: Value(matchedAccountName),
             detectedAccountId: Value(matchedAccountId),
             isCreditCardMatch: Value(isCreditCard),

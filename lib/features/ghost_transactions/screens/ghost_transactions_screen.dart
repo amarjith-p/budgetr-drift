@@ -274,7 +274,7 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
     );
   }
 
-  // --- DAILY EXPENSE ROUTING & SUCCESS BOTTOM SHEET ---
+// --- DAILY EXPENSE ROUTING & SUCCESS BOTTOM SHEET ---
   Future<void> _routeToDailyExpense(GhostTransactionEntry ghost) async {
     String accountId = '';
     String? linkedCreditCardId;
@@ -287,14 +287,26 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
       }
     }
 
+    // --- UPDATED: Proper Type & Category Mapping ---
+    String mappedType = 'Expense';
+    String mappedCategory = 'Ghost Transaction';
+
+    if (ghost.detectedType == 'Credit') {
+      mappedType = 'Income';
+    } else if (ghost.detectedType == 'Transfer') {
+      // 'Transfer Out' triggers the Transfer segment control in NewExpenseScreen
+      mappedType = 'Transfer Out';
+      mappedCategory = 'Transfer';
+    }
+
     final dummyTxn = ExpenseTransactionModel(
       id: 'ghost_temp_${ghost.id}',
       accountId: accountId,
       linkedCreditCardId: linkedCreditCardId,
       amount: ghost.detectedAmount ?? 0.0,
       date: ghost.detectedDate ?? DateTime.now(),
-      type: ghost.detectedType == 'Credit' ? 'Income' : 'Expense',
-      category: 'Ghost Transaction',
+      type: mappedType, // Now safely passes Transfer Out
+      category: mappedCategory, // Pre-sets the category to Transfer
       subCategory: 'General',
       bucket: 'Unallocated',
       notes: ghost.rawText,

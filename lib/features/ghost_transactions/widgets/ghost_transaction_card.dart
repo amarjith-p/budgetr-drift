@@ -25,11 +25,28 @@ class _GhostTransactionCardState extends State<GhostTransactionCard> {
 
   @override
   Widget build(BuildContext context) {
+    // --- UPDATED: Handle 3 distinct states ---
     bool isCredit = widget.ghost.detectedType == 'Credit';
-    Color typeColor = isCredit ? Colors.greenAccent : Colors.redAccent;
-    IconData typeIcon =
-        isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded;
-    String sign = isCredit ? '+' : '-';
+    bool isTransfer = widget.ghost.detectedType == 'Transfer';
+
+    Color typeColor;
+    IconData typeIcon;
+    String sign;
+
+    if (isTransfer) {
+      typeColor = Colors.blueAccent;
+      typeIcon = Icons.swap_horiz_rounded;
+      sign = ''; // No plus or minus for transfers
+    } else if (isCredit) {
+      typeColor = Colors.greenAccent;
+      typeIcon = Icons.arrow_downward_rounded;
+      sign = '+';
+    } else {
+      // Defaults to Debit
+      typeColor = Colors.redAccent;
+      typeIcon = Icons.arrow_upward_rounded;
+      sign = '-';
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -108,7 +125,6 @@ class _GhostTransactionCardState extends State<GhostTransactionCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // --- UPDATED TITLE: Now shows the Account Name ---
                           Text(
                             widget.ghost.detectedAccount ?? 'Unknown Account',
                             style: const TextStyle(
@@ -119,7 +135,6 @@ class _GhostTransactionCardState extends State<GhostTransactionCard> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 6),
-                          // --- UPDATED SUBTITLE: Now shows "Unverified Ghost" ---
                           Row(
                             children: [
                               Icon(
@@ -132,7 +147,9 @@ class _GhostTransactionCardState extends State<GhostTransactionCard> {
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  "Unverified Ghost",
+                                  isTransfer
+                                      ? "Unverified Transfer"
+                                      : "Unverified Ghost",
                                   style: TextStyle(
                                       color: Colors.white.withOpacity(0.6),
                                       fontSize: 11),
@@ -149,7 +166,8 @@ class _GhostTransactionCardState extends State<GhostTransactionCard> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          "$sign ₹ ${widget.ghost.detectedAmount?.toStringAsFixed(2) ?? "0.00"}",
+                          // Space added dynamically only if sign exists
+                          "${sign.isNotEmpty ? '$sign ' : ''}₹ ${widget.ghost.detectedAmount?.toStringAsFixed(2) ?? "0.00"}",
                           style: TextStyle(
                               color: typeColor,
                               fontWeight: FontWeight.bold,
