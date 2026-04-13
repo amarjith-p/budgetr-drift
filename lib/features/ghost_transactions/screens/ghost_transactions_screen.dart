@@ -250,9 +250,12 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      _updateStatus(ghost.id, 'DISMISSED');
-                      Navigator.pop(ctx);
+                    onPressed: () async {
+                      Navigator.pop(ctx); // Pop current sheet first
+                      final partner = await _updateStatus(ghost, 'DISMISSED');
+                      if (partner != null && mounted) {
+                        _showPairResolutionSheet(partner, 'DISMISSED');
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent,
@@ -274,7 +277,7 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
     );
   }
 
-// --- DAILY EXPENSE ROUTING & SUCCESS BOTTOM SHEET ---
+  // --- DAILY EXPENSE ROUTING & SUCCESS BOTTOM SHEET ---
   Future<void> _routeToDailyExpense(GhostTransactionEntry ghost) async {
     String accountId = '';
     String? linkedCreditCardId;
@@ -378,8 +381,94 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx); // Pop current sheet first
+                      final partner = await _updateStatus(ghost, 'APPROVED');
+                      if (partner != null && mounted) {
+                        _showPairResolutionSheet(partner, 'APPROVED');
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text("Yes, Clear it",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- NEW: TRANSFER PAIR RESOLUTION SHEET ---
+  void _showPairResolutionSheet(
+      GhostTransactionEntry partner, String statusApplied) {
+    String actionText = statusApplied == 'APPROVED' ? 'saved' : 'deleted';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Color(0xff1B263B),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Icon(Icons.sync_alt_rounded,
+                size: 48, color: Colors.blueAccent),
+            const SizedBox(height: 16),
+            const Text(
+              "Matching Transfer Found",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "We found the other half of this transfer from ${partner.detectedAccount ?? 'another account'}. Since you $actionText the first one, do you want to clear this one too?",
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      foregroundColor: Colors.white60,
+                    ),
+                    child: const Text("Keep it"),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
                     onPressed: () {
-                      _updateStatus(ghost.id, 'APPROVED');
+                      _updateStatus(partner, statusApplied);
                       Navigator.pop(ctx);
                     },
                     style: ElevatedButton.styleFrom(
@@ -468,8 +557,28 @@ class _GhostTransactionsScreenState extends State<GhostTransactionsScreen> {
     );
   }
 
-  Future<void> _updateStatus(int id, String newStatus) async {
-    await (_db.update(_db.ghostTransactions)..where((tbl) => tbl.id.equals(id)))
+  Future<GhostTransactionEntry?> _updateStatus(
+      GhostTransactionEntry ghost, String newStatus) async {
+    // 1. Update the transaction the user actually interacted with
+    await (_db.update(_db.ghostTransactions)
+          ..where((tbl) => tbl.id.equals(ghost.id)))
         .write(GhostTransactionsCompanion(status: drift.Value(newStatus)));
+
+    // 2. Check if a pending transfer partner exists and return it to the UI
+    if (ghost.detectedType == 'Transfer' && ghost.detectedAmount != null) {
+      return await (_db.select(_db.ghostTransactions)
+            ..where((tbl) =>
+                tbl.detectedType.equals('Transfer') &
+                tbl.detectedAmount.equals(ghost.detectedAmount!) &
+                tbl.status.equals('PENDING') &
+                tbl.id.equals(ghost.id).not()) // .not() used here
+            ..orderBy([
+              (t) => drift.OrderingTerm(
+                  expression: t.id, mode: drift.OrderingMode.desc)
+            ])
+            ..limit(1))
+          .getSingleOrNull();
+    }
+    return null;
   }
 }
