@@ -10,6 +10,7 @@ import '../../features/notifications/database/notification_tables.dart';
 import 'package:budget/features/investments/database/investment_tables.dart';
 import 'package:budget/features/investments/database/passive_income_tables.dart';
 import 'package:budget/features/trip_mode/database/trip_tables.dart';
+import 'package:budget/features/ghost_transactions/database/ghost_transactions_table.dart';
 
 part 'app_database.g.dart';
 
@@ -43,6 +44,7 @@ part 'app_database.g.dart';
     VaultRecords,
     BalanceSheetEntries,
     CategoryBudgets,
+    GhostTransactions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -53,7 +55,7 @@ class AppDatabase extends _$AppDatabase {
 
   // [NEW] Incremented schemaVersion from 24 to 25
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 26;
 
   @override
   MigrationStrategy get migration {
@@ -169,6 +171,9 @@ class AppDatabase extends _$AppDatabase {
               await m.addColumn(categoryBudgets, categoryBudgets.subCategories);
             }
           }
+        }
+        if (from < 26) {
+          await safeCreateTable(ghostTransactions);
         }
       },
     );

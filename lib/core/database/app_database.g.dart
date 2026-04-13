@@ -14704,6 +14704,548 @@ class CategoryBudgetsCompanion extends UpdateCompanion<CategoryBudget> {
   }
 }
 
+class $GhostTransactionsTable extends GhostTransactions
+    with TableInfo<$GhostTransactionsTable, GhostTransactionEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GhostTransactionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _rawTextMeta =
+      const VerificationMeta('rawText');
+  @override
+  late final GeneratedColumn<String> rawText = GeneratedColumn<String>(
+      'raw_text', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+      'source', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _detectedAmountMeta =
+      const VerificationMeta('detectedAmount');
+  @override
+  late final GeneratedColumn<double> detectedAmount = GeneratedColumn<double>(
+      'detected_amount', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _detectedDateMeta =
+      const VerificationMeta('detectedDate');
+  @override
+  late final GeneratedColumn<DateTime> detectedDate = GeneratedColumn<DateTime>(
+      'detected_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _detectedTypeMeta =
+      const VerificationMeta('detectedType');
+  @override
+  late final GeneratedColumn<String> detectedType = GeneratedColumn<String>(
+      'detected_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _detectedAccountMeta =
+      const VerificationMeta('detectedAccount');
+  @override
+  late final GeneratedColumn<String> detectedAccount = GeneratedColumn<String>(
+      'detected_account', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _detectedAccountIdMeta =
+      const VerificationMeta('detectedAccountId');
+  @override
+  late final GeneratedColumn<String> detectedAccountId =
+      GeneratedColumn<String>('detected_account_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isCreditCardMatchMeta =
+      const VerificationMeta('isCreditCardMatch');
+  @override
+  late final GeneratedColumn<bool> isCreditCardMatch = GeneratedColumn<bool>(
+      'is_credit_card_match', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_credit_card_match" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('PENDING'));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        rawText,
+        source,
+        detectedAmount,
+        detectedDate,
+        detectedType,
+        detectedAccount,
+        detectedAccountId,
+        isCreditCardMatch,
+        status
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ghost_transactions';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<GhostTransactionEntry> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('raw_text')) {
+      context.handle(_rawTextMeta,
+          rawText.isAcceptableOrUnknown(data['raw_text']!, _rawTextMeta));
+    } else if (isInserting) {
+      context.missing(_rawTextMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(_sourceMeta,
+          source.isAcceptableOrUnknown(data['source']!, _sourceMeta));
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('detected_amount')) {
+      context.handle(
+          _detectedAmountMeta,
+          detectedAmount.isAcceptableOrUnknown(
+              data['detected_amount']!, _detectedAmountMeta));
+    }
+    if (data.containsKey('detected_date')) {
+      context.handle(
+          _detectedDateMeta,
+          detectedDate.isAcceptableOrUnknown(
+              data['detected_date']!, _detectedDateMeta));
+    }
+    if (data.containsKey('detected_type')) {
+      context.handle(
+          _detectedTypeMeta,
+          detectedType.isAcceptableOrUnknown(
+              data['detected_type']!, _detectedTypeMeta));
+    }
+    if (data.containsKey('detected_account')) {
+      context.handle(
+          _detectedAccountMeta,
+          detectedAccount.isAcceptableOrUnknown(
+              data['detected_account']!, _detectedAccountMeta));
+    }
+    if (data.containsKey('detected_account_id')) {
+      context.handle(
+          _detectedAccountIdMeta,
+          detectedAccountId.isAcceptableOrUnknown(
+              data['detected_account_id']!, _detectedAccountIdMeta));
+    }
+    if (data.containsKey('is_credit_card_match')) {
+      context.handle(
+          _isCreditCardMatchMeta,
+          isCreditCardMatch.isAcceptableOrUnknown(
+              data['is_credit_card_match']!, _isCreditCardMatchMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  GhostTransactionEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return GhostTransactionEntry(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      rawText: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}raw_text'])!,
+      source: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source'])!,
+      detectedAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}detected_amount']),
+      detectedDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}detected_date']),
+      detectedType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}detected_type']),
+      detectedAccount: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}detected_account']),
+      detectedAccountId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}detected_account_id']),
+      isCreditCardMatch: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}is_credit_card_match'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+    );
+  }
+
+  @override
+  $GhostTransactionsTable createAlias(String alias) {
+    return $GhostTransactionsTable(attachedDatabase, alias);
+  }
+}
+
+class GhostTransactionEntry extends DataClass
+    implements Insertable<GhostTransactionEntry> {
+  final int id;
+  final String rawText;
+  final String source;
+  final double? detectedAmount;
+  final DateTime? detectedDate;
+  final String? detectedType;
+  final String? detectedAccount;
+  final String? detectedAccountId;
+  final bool isCreditCardMatch;
+  final String status;
+  const GhostTransactionEntry(
+      {required this.id,
+      required this.rawText,
+      required this.source,
+      this.detectedAmount,
+      this.detectedDate,
+      this.detectedType,
+      this.detectedAccount,
+      this.detectedAccountId,
+      required this.isCreditCardMatch,
+      required this.status});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['raw_text'] = Variable<String>(rawText);
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || detectedAmount != null) {
+      map['detected_amount'] = Variable<double>(detectedAmount);
+    }
+    if (!nullToAbsent || detectedDate != null) {
+      map['detected_date'] = Variable<DateTime>(detectedDate);
+    }
+    if (!nullToAbsent || detectedType != null) {
+      map['detected_type'] = Variable<String>(detectedType);
+    }
+    if (!nullToAbsent || detectedAccount != null) {
+      map['detected_account'] = Variable<String>(detectedAccount);
+    }
+    if (!nullToAbsent || detectedAccountId != null) {
+      map['detected_account_id'] = Variable<String>(detectedAccountId);
+    }
+    map['is_credit_card_match'] = Variable<bool>(isCreditCardMatch);
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  GhostTransactionsCompanion toCompanion(bool nullToAbsent) {
+    return GhostTransactionsCompanion(
+      id: Value(id),
+      rawText: Value(rawText),
+      source: Value(source),
+      detectedAmount: detectedAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detectedAmount),
+      detectedDate: detectedDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detectedDate),
+      detectedType: detectedType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detectedType),
+      detectedAccount: detectedAccount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detectedAccount),
+      detectedAccountId: detectedAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detectedAccountId),
+      isCreditCardMatch: Value(isCreditCardMatch),
+      status: Value(status),
+    );
+  }
+
+  factory GhostTransactionEntry.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return GhostTransactionEntry(
+      id: serializer.fromJson<int>(json['id']),
+      rawText: serializer.fromJson<String>(json['rawText']),
+      source: serializer.fromJson<String>(json['source']),
+      detectedAmount: serializer.fromJson<double?>(json['detectedAmount']),
+      detectedDate: serializer.fromJson<DateTime?>(json['detectedDate']),
+      detectedType: serializer.fromJson<String?>(json['detectedType']),
+      detectedAccount: serializer.fromJson<String?>(json['detectedAccount']),
+      detectedAccountId:
+          serializer.fromJson<String?>(json['detectedAccountId']),
+      isCreditCardMatch: serializer.fromJson<bool>(json['isCreditCardMatch']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'rawText': serializer.toJson<String>(rawText),
+      'source': serializer.toJson<String>(source),
+      'detectedAmount': serializer.toJson<double?>(detectedAmount),
+      'detectedDate': serializer.toJson<DateTime?>(detectedDate),
+      'detectedType': serializer.toJson<String?>(detectedType),
+      'detectedAccount': serializer.toJson<String?>(detectedAccount),
+      'detectedAccountId': serializer.toJson<String?>(detectedAccountId),
+      'isCreditCardMatch': serializer.toJson<bool>(isCreditCardMatch),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  GhostTransactionEntry copyWith(
+          {int? id,
+          String? rawText,
+          String? source,
+          Value<double?> detectedAmount = const Value.absent(),
+          Value<DateTime?> detectedDate = const Value.absent(),
+          Value<String?> detectedType = const Value.absent(),
+          Value<String?> detectedAccount = const Value.absent(),
+          Value<String?> detectedAccountId = const Value.absent(),
+          bool? isCreditCardMatch,
+          String? status}) =>
+      GhostTransactionEntry(
+        id: id ?? this.id,
+        rawText: rawText ?? this.rawText,
+        source: source ?? this.source,
+        detectedAmount:
+            detectedAmount.present ? detectedAmount.value : this.detectedAmount,
+        detectedDate:
+            detectedDate.present ? detectedDate.value : this.detectedDate,
+        detectedType:
+            detectedType.present ? detectedType.value : this.detectedType,
+        detectedAccount: detectedAccount.present
+            ? detectedAccount.value
+            : this.detectedAccount,
+        detectedAccountId: detectedAccountId.present
+            ? detectedAccountId.value
+            : this.detectedAccountId,
+        isCreditCardMatch: isCreditCardMatch ?? this.isCreditCardMatch,
+        status: status ?? this.status,
+      );
+  GhostTransactionEntry copyWithCompanion(GhostTransactionsCompanion data) {
+    return GhostTransactionEntry(
+      id: data.id.present ? data.id.value : this.id,
+      rawText: data.rawText.present ? data.rawText.value : this.rawText,
+      source: data.source.present ? data.source.value : this.source,
+      detectedAmount: data.detectedAmount.present
+          ? data.detectedAmount.value
+          : this.detectedAmount,
+      detectedDate: data.detectedDate.present
+          ? data.detectedDate.value
+          : this.detectedDate,
+      detectedType: data.detectedType.present
+          ? data.detectedType.value
+          : this.detectedType,
+      detectedAccount: data.detectedAccount.present
+          ? data.detectedAccount.value
+          : this.detectedAccount,
+      detectedAccountId: data.detectedAccountId.present
+          ? data.detectedAccountId.value
+          : this.detectedAccountId,
+      isCreditCardMatch: data.isCreditCardMatch.present
+          ? data.isCreditCardMatch.value
+          : this.isCreditCardMatch,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GhostTransactionEntry(')
+          ..write('id: $id, ')
+          ..write('rawText: $rawText, ')
+          ..write('source: $source, ')
+          ..write('detectedAmount: $detectedAmount, ')
+          ..write('detectedDate: $detectedDate, ')
+          ..write('detectedType: $detectedType, ')
+          ..write('detectedAccount: $detectedAccount, ')
+          ..write('detectedAccountId: $detectedAccountId, ')
+          ..write('isCreditCardMatch: $isCreditCardMatch, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      rawText,
+      source,
+      detectedAmount,
+      detectedDate,
+      detectedType,
+      detectedAccount,
+      detectedAccountId,
+      isCreditCardMatch,
+      status);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GhostTransactionEntry &&
+          other.id == this.id &&
+          other.rawText == this.rawText &&
+          other.source == this.source &&
+          other.detectedAmount == this.detectedAmount &&
+          other.detectedDate == this.detectedDate &&
+          other.detectedType == this.detectedType &&
+          other.detectedAccount == this.detectedAccount &&
+          other.detectedAccountId == this.detectedAccountId &&
+          other.isCreditCardMatch == this.isCreditCardMatch &&
+          other.status == this.status);
+}
+
+class GhostTransactionsCompanion
+    extends UpdateCompanion<GhostTransactionEntry> {
+  final Value<int> id;
+  final Value<String> rawText;
+  final Value<String> source;
+  final Value<double?> detectedAmount;
+  final Value<DateTime?> detectedDate;
+  final Value<String?> detectedType;
+  final Value<String?> detectedAccount;
+  final Value<String?> detectedAccountId;
+  final Value<bool> isCreditCardMatch;
+  final Value<String> status;
+  const GhostTransactionsCompanion({
+    this.id = const Value.absent(),
+    this.rawText = const Value.absent(),
+    this.source = const Value.absent(),
+    this.detectedAmount = const Value.absent(),
+    this.detectedDate = const Value.absent(),
+    this.detectedType = const Value.absent(),
+    this.detectedAccount = const Value.absent(),
+    this.detectedAccountId = const Value.absent(),
+    this.isCreditCardMatch = const Value.absent(),
+    this.status = const Value.absent(),
+  });
+  GhostTransactionsCompanion.insert({
+    this.id = const Value.absent(),
+    required String rawText,
+    required String source,
+    this.detectedAmount = const Value.absent(),
+    this.detectedDate = const Value.absent(),
+    this.detectedType = const Value.absent(),
+    this.detectedAccount = const Value.absent(),
+    this.detectedAccountId = const Value.absent(),
+    this.isCreditCardMatch = const Value.absent(),
+    this.status = const Value.absent(),
+  })  : rawText = Value(rawText),
+        source = Value(source);
+  static Insertable<GhostTransactionEntry> custom({
+    Expression<int>? id,
+    Expression<String>? rawText,
+    Expression<String>? source,
+    Expression<double>? detectedAmount,
+    Expression<DateTime>? detectedDate,
+    Expression<String>? detectedType,
+    Expression<String>? detectedAccount,
+    Expression<String>? detectedAccountId,
+    Expression<bool>? isCreditCardMatch,
+    Expression<String>? status,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (rawText != null) 'raw_text': rawText,
+      if (source != null) 'source': source,
+      if (detectedAmount != null) 'detected_amount': detectedAmount,
+      if (detectedDate != null) 'detected_date': detectedDate,
+      if (detectedType != null) 'detected_type': detectedType,
+      if (detectedAccount != null) 'detected_account': detectedAccount,
+      if (detectedAccountId != null) 'detected_account_id': detectedAccountId,
+      if (isCreditCardMatch != null) 'is_credit_card_match': isCreditCardMatch,
+      if (status != null) 'status': status,
+    });
+  }
+
+  GhostTransactionsCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? rawText,
+      Value<String>? source,
+      Value<double?>? detectedAmount,
+      Value<DateTime?>? detectedDate,
+      Value<String?>? detectedType,
+      Value<String?>? detectedAccount,
+      Value<String?>? detectedAccountId,
+      Value<bool>? isCreditCardMatch,
+      Value<String>? status}) {
+    return GhostTransactionsCompanion(
+      id: id ?? this.id,
+      rawText: rawText ?? this.rawText,
+      source: source ?? this.source,
+      detectedAmount: detectedAmount ?? this.detectedAmount,
+      detectedDate: detectedDate ?? this.detectedDate,
+      detectedType: detectedType ?? this.detectedType,
+      detectedAccount: detectedAccount ?? this.detectedAccount,
+      detectedAccountId: detectedAccountId ?? this.detectedAccountId,
+      isCreditCardMatch: isCreditCardMatch ?? this.isCreditCardMatch,
+      status: status ?? this.status,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (rawText.present) {
+      map['raw_text'] = Variable<String>(rawText.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (detectedAmount.present) {
+      map['detected_amount'] = Variable<double>(detectedAmount.value);
+    }
+    if (detectedDate.present) {
+      map['detected_date'] = Variable<DateTime>(detectedDate.value);
+    }
+    if (detectedType.present) {
+      map['detected_type'] = Variable<String>(detectedType.value);
+    }
+    if (detectedAccount.present) {
+      map['detected_account'] = Variable<String>(detectedAccount.value);
+    }
+    if (detectedAccountId.present) {
+      map['detected_account_id'] = Variable<String>(detectedAccountId.value);
+    }
+    if (isCreditCardMatch.present) {
+      map['is_credit_card_match'] = Variable<bool>(isCreditCardMatch.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GhostTransactionsCompanion(')
+          ..write('id: $id, ')
+          ..write('rawText: $rawText, ')
+          ..write('source: $source, ')
+          ..write('detectedAmount: $detectedAmount, ')
+          ..write('detectedDate: $detectedDate, ')
+          ..write('detectedType: $detectedType, ')
+          ..write('detectedAccount: $detectedAccount, ')
+          ..write('detectedAccountId: $detectedAccountId, ')
+          ..write('isCreditCardMatch: $isCreditCardMatch, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -14749,6 +15291,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $BalanceSheetEntriesTable(this);
   late final $CategoryBudgetsTable categoryBudgets =
       $CategoryBudgetsTable(this);
+  late final $GhostTransactionsTable ghostTransactions =
+      $GhostTransactionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -14781,7 +15325,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         tripExclusions,
         vaultRecords,
         balanceSheetEntries,
-        categoryBudgets
+        categoryBudgets,
+        ghostTransactions
       ];
 }
 
@@ -22807,6 +23352,262 @@ typedef $$CategoryBudgetsTableProcessedTableManager = ProcessedTableManager<
     ),
     CategoryBudget,
     PrefetchHooks Function()>;
+typedef $$GhostTransactionsTableCreateCompanionBuilder
+    = GhostTransactionsCompanion Function({
+  Value<int> id,
+  required String rawText,
+  required String source,
+  Value<double?> detectedAmount,
+  Value<DateTime?> detectedDate,
+  Value<String?> detectedType,
+  Value<String?> detectedAccount,
+  Value<String?> detectedAccountId,
+  Value<bool> isCreditCardMatch,
+  Value<String> status,
+});
+typedef $$GhostTransactionsTableUpdateCompanionBuilder
+    = GhostTransactionsCompanion Function({
+  Value<int> id,
+  Value<String> rawText,
+  Value<String> source,
+  Value<double?> detectedAmount,
+  Value<DateTime?> detectedDate,
+  Value<String?> detectedType,
+  Value<String?> detectedAccount,
+  Value<String?> detectedAccountId,
+  Value<bool> isCreditCardMatch,
+  Value<String> status,
+});
+
+class $$GhostTransactionsTableFilterComposer
+    extends Composer<_$AppDatabase, $GhostTransactionsTable> {
+  $$GhostTransactionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get rawText => $composableBuilder(
+      column: $table.rawText, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get detectedAmount => $composableBuilder(
+      column: $table.detectedAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get detectedDate => $composableBuilder(
+      column: $table.detectedDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get detectedType => $composableBuilder(
+      column: $table.detectedType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get detectedAccount => $composableBuilder(
+      column: $table.detectedAccount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get detectedAccountId => $composableBuilder(
+      column: $table.detectedAccountId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isCreditCardMatch => $composableBuilder(
+      column: $table.isCreditCardMatch,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+}
+
+class $$GhostTransactionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $GhostTransactionsTable> {
+  $$GhostTransactionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get rawText => $composableBuilder(
+      column: $table.rawText, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get detectedAmount => $composableBuilder(
+      column: $table.detectedAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get detectedDate => $composableBuilder(
+      column: $table.detectedDate,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get detectedType => $composableBuilder(
+      column: $table.detectedType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get detectedAccount => $composableBuilder(
+      column: $table.detectedAccount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get detectedAccountId => $composableBuilder(
+      column: $table.detectedAccountId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isCreditCardMatch => $composableBuilder(
+      column: $table.isCreditCardMatch,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+}
+
+class $$GhostTransactionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $GhostTransactionsTable> {
+  $$GhostTransactionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get rawText =>
+      $composableBuilder(column: $table.rawText, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<double> get detectedAmount => $composableBuilder(
+      column: $table.detectedAmount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get detectedDate => $composableBuilder(
+      column: $table.detectedDate, builder: (column) => column);
+
+  GeneratedColumn<String> get detectedType => $composableBuilder(
+      column: $table.detectedType, builder: (column) => column);
+
+  GeneratedColumn<String> get detectedAccount => $composableBuilder(
+      column: $table.detectedAccount, builder: (column) => column);
+
+  GeneratedColumn<String> get detectedAccountId => $composableBuilder(
+      column: $table.detectedAccountId, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCreditCardMatch => $composableBuilder(
+      column: $table.isCreditCardMatch, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+}
+
+class $$GhostTransactionsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $GhostTransactionsTable,
+    GhostTransactionEntry,
+    $$GhostTransactionsTableFilterComposer,
+    $$GhostTransactionsTableOrderingComposer,
+    $$GhostTransactionsTableAnnotationComposer,
+    $$GhostTransactionsTableCreateCompanionBuilder,
+    $$GhostTransactionsTableUpdateCompanionBuilder,
+    (
+      GhostTransactionEntry,
+      BaseReferences<_$AppDatabase, $GhostTransactionsTable,
+          GhostTransactionEntry>
+    ),
+    GhostTransactionEntry,
+    PrefetchHooks Function()> {
+  $$GhostTransactionsTableTableManager(
+      _$AppDatabase db, $GhostTransactionsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GhostTransactionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GhostTransactionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$GhostTransactionsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> rawText = const Value.absent(),
+            Value<String> source = const Value.absent(),
+            Value<double?> detectedAmount = const Value.absent(),
+            Value<DateTime?> detectedDate = const Value.absent(),
+            Value<String?> detectedType = const Value.absent(),
+            Value<String?> detectedAccount = const Value.absent(),
+            Value<String?> detectedAccountId = const Value.absent(),
+            Value<bool> isCreditCardMatch = const Value.absent(),
+            Value<String> status = const Value.absent(),
+          }) =>
+              GhostTransactionsCompanion(
+            id: id,
+            rawText: rawText,
+            source: source,
+            detectedAmount: detectedAmount,
+            detectedDate: detectedDate,
+            detectedType: detectedType,
+            detectedAccount: detectedAccount,
+            detectedAccountId: detectedAccountId,
+            isCreditCardMatch: isCreditCardMatch,
+            status: status,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String rawText,
+            required String source,
+            Value<double?> detectedAmount = const Value.absent(),
+            Value<DateTime?> detectedDate = const Value.absent(),
+            Value<String?> detectedType = const Value.absent(),
+            Value<String?> detectedAccount = const Value.absent(),
+            Value<String?> detectedAccountId = const Value.absent(),
+            Value<bool> isCreditCardMatch = const Value.absent(),
+            Value<String> status = const Value.absent(),
+          }) =>
+              GhostTransactionsCompanion.insert(
+            id: id,
+            rawText: rawText,
+            source: source,
+            detectedAmount: detectedAmount,
+            detectedDate: detectedDate,
+            detectedType: detectedType,
+            detectedAccount: detectedAccount,
+            detectedAccountId: detectedAccountId,
+            isCreditCardMatch: isCreditCardMatch,
+            status: status,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$GhostTransactionsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $GhostTransactionsTable,
+    GhostTransactionEntry,
+    $$GhostTransactionsTableFilterComposer,
+    $$GhostTransactionsTableOrderingComposer,
+    $$GhostTransactionsTableAnnotationComposer,
+    $$GhostTransactionsTableCreateCompanionBuilder,
+    $$GhostTransactionsTableUpdateCompanionBuilder,
+    (
+      GhostTransactionEntry,
+      BaseReferences<_$AppDatabase, $GhostTransactionsTable,
+          GhostTransactionEntry>
+    ),
+    GhostTransactionEntry,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -22868,4 +23669,6 @@ class $AppDatabaseManager {
       $$BalanceSheetEntriesTableTableManager(_db, _db.balanceSheetEntries);
   $$CategoryBudgetsTableTableManager get categoryBudgets =>
       $$CategoryBudgetsTableTableManager(_db, _db.categoryBudgets);
+  $$GhostTransactionsTableTableManager get ghostTransactions =>
+      $$GhostTransactionsTableTableManager(_db, _db.ghostTransactions);
 }

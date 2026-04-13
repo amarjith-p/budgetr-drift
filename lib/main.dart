@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:budget/features/backup_restore/services/backup_service.dart';
+import 'package:budget/features/ghost_transactions/services/ghost_listener_service.dart';
 import 'package:budget/features/recurring/services/recurring_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -73,10 +74,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         state == AppLifecycleState.hidden) {
       _backgroundedTime ??= DateTime.now();
     } else if (state == AppLifecycleState.resumed) {
-      // NEW FIX: Fire the Engine the exact moment the app is resumed.
-      // We check if GetIt is registered to prevent crashes during the splash screen.
+      // --- FIX: ONLY RUN SWEEPS IF APP IS FULLY LOADED ---
       if (GetIt.instance.isRegistered<RecurringService>()) {
         TaskSyncEngine().runCatchUpTasks();
+        GhostListenerService().sweepMissedSms();
       }
 
       if (_backgroundedTime != null) {
@@ -95,7 +96,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // Wrapper removed. Back to your original, clean MaterialApp
     return MaterialApp(
       debugShowCheckedModeBanner: true,
       title: 'FinStack 360',
@@ -143,6 +143,11 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
 
       // Cold start trigger. Runs right after DB is loaded.
       await TaskSyncEngine().runCatchUpTasks();
+      final ghostService = GhostListenerService();
+
+      // This will trigger the OS Dialog. Because isAppBootstrapped is false,
+      // the lifecycle observer will safely ignore the "Resume" when the user clicks Allow!
+      await ghostService.initializeListeners();
 
       final systemService = GetIt.I<SystemNotificationService>();
       await systemService.init();
@@ -182,7 +187,7 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xff0D1B2A),
+      backgroundColor: const Color(0xff0D1B2A),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

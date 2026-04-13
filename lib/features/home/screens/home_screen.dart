@@ -1,5 +1,6 @@
 import 'package:budget/features/backup_restore/screens/backup_screen.dart';
 import 'package:budget/features/balance_sheet/screens/balance_sheet_screen.dart';
+import 'package:budget/features/ghost_transactions/screens/ghost_transactions_screen.dart';
 import 'package:budget/features/investments/screens/portfolio_dashboard.dart';
 import 'package:budget/features/notifications/services/system_notification_service.dart';
 import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
@@ -382,12 +383,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const Color(0xFFF72585), const VaultAuthScreen()),
       _buildVerticalActionChip(context, "Budget Buckets", Icons.widgets_rounded,
           const Color(0xFFFFE066), const SettingsScreen()),
-      _buildVerticalActionChip(
-          context,
-          "Backup & Restore",
-          Icons.settings_backup_restore_rounded,
-          const Color(0xFF9C6644),
-          const BackupScreen()),
+      _buildVerticalActionChip(context, "Pending Txns", Icons.pending_actions,
+          const Color(0xFF9C6644), const GhostTransactionsScreen()),
       _buildVerticalActionChip(
           context,
           "Settings",

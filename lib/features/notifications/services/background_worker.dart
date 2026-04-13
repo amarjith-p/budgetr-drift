@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import 'notification_check_logic.dart';
 import 'system_notification_service.dart';
-import '../../backup_restore/services/backup_service.dart'; // <-- Add this import
+import '../../backup_restore/services/backup_service.dart';
 
 const String kBackgroundCheckTask = "com.budgetr.background_check";
 
@@ -30,16 +30,16 @@ void callbackDispatcher() {
       await logic.checkInvestmentHealth();
       await logic.checkGoalLoanState();
 
-      // -------------------------------------------------
-      // 5. NEW: Background Backup Overdue Check
-      // -------------------------------------------------
+      // 5. Background Backup Overdue Check
       final backupService = BackupService();
       final isOverdue = await backupService.isBackupOverdue();
 
       if (isOverdue) {
         await systemService.showBackupReminderNotification();
       }
-      // -------------------------------------------------
+
+      // Note: Closed-app Ghost Transactions are safely handled via
+      // the Telephony Headless Background Service in ghost_listener_service.dart
 
       return Future.value(true);
     } catch (e) {
