@@ -657,9 +657,28 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
     }
   }
 
+  // ===========================================================================
+  // [FIXED] Proper String formatting with Switch Statement
+  // ===========================================================================
   String _formatType(InvestmentType type) {
-    String label = type.toString().split('.').last;
-    return label[0].toUpperCase() + label.substring(1);
+    switch (type) {
+      case InvestmentType.mutualFund:
+        return "Mutual Fund";
+      case InvestmentType.stocks:
+        return "Stocks";
+      case InvestmentType.bonds:
+        return "Bonds";
+      case InvestmentType.fixedDeposit:
+        return "Fixed Deposit";
+      case InvestmentType.recurringDeposit:
+        return "Recurring Deposit";
+      case InvestmentType.p2pLending:
+        return "P2P Lending";
+      case InvestmentType.savingsAccount:
+        return "Savings Account";
+      case InvestmentType.others:
+        return "Others";
+    }
   }
 }
 
