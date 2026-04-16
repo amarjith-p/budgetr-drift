@@ -32,9 +32,16 @@ class InvestmentDto {
   final String? purpose;
   final String? notes;
 
-  // [NEW]
   final String? specialId;
   final double? targetAmount;
+
+  // ===========================================================================
+  // [NEW] INVESTMENT CLOSURE PROPERTIES
+  // ===========================================================================
+  final String status;
+  final double? realizedValue;
+  final DateTime? closureDate;
+  final String? closureReason;
 
   // Dashboard Aggregates
   final double totalInvestedAmount;
@@ -62,7 +69,11 @@ class InvestmentDto {
     this.purpose,
     this.notes,
     this.specialId,
-    this.targetAmount, // [NEW]
+    this.targetAmount,
+    this.status = 'active', // Default to active
+    this.realizedValue,
+    this.closureDate,
+    this.closureReason,
     this.totalInvestedAmount = 0.0,
     this.currentMarketValue = 0.0,
     this.totalGainLoss = 0.0,

@@ -6,14 +6,18 @@ import 'package:budget/features/investments/services/passive_income_service.dart
 import 'package:budget/features/investments/widgets/income/passive_income_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:intl/intl.dart'; // [NEW] Import intl
+import 'package:intl/intl.dart';
 
 class PassiveIncomeHistorySheet extends StatelessWidget {
   final int investmentId;
+  final bool isClosed; // [NEW] Flag to lock controls
 
-  const PassiveIncomeHistorySheet({super.key, required this.investmentId});
+  const PassiveIncomeHistorySheet({
+    super.key,
+    required this.investmentId,
+    this.isClosed = false, // [NEW] Default to false
+  });
 
-  // [NEW] Helper method to format currency to Indian format
   String _formatAmount(double amount, {bool showPlusSign = false}) {
     final format =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
@@ -56,18 +60,22 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                       fontSize: 18,
                       fontWeight: FontWeight.bold),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle, color: Colors.amber),
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) =>
-                          PassiveIncomeSheet(investmentId: investmentId),
-                    );
-                  },
-                )
+                // =============================================================
+                // [UPDATED] Hide the "Add" button completely if asset is closed
+                // =============================================================
+                if (!isClosed)
+                  IconButton(
+                    icon: const Icon(Icons.add_circle, color: Colors.amber),
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) =>
+                            PassiveIncomeSheet(investmentId: investmentId),
+                      );
+                    },
+                  )
               ],
             ),
           ),
@@ -91,10 +99,66 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final log = snapshot.data![index];
 
+                      // [NEW] Isolate the card UI
+                      Widget logCard = Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Text("₹",
+                                  style: TextStyle(
+                                      color: Colors.amber,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    log.type.toUpperCase(),
+                                    style: TextStyle(
+                                        color: Colors.white.withOpacity(0.5),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  Text(
+                                    DateFormat('dd MMM yyyy').format(log.date),
+                                    style: const TextStyle(
+                                        color: Colors.white70, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              _formatAmount(log.amount, showPlusSign: true),
+                              style: const TextStyle(
+                                  color: Colors.amber,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      // =======================================================
+                      // [UPDATED] Bypass Slidable if closed to prevent deleting
+                      // =======================================================
+                      if (isClosed) {
+                        return logCard;
+                      }
+
                       return Slidable(
                         key: ValueKey(log.id),
-
-                        // --- SWIPE LEFT: DELETE ACTION ---
                         endActionPane: ActionPane(
                           motion: const ScrollMotion(),
                           extentRatio: 0.25,
@@ -113,59 +177,7 @@ class PassiveIncomeHistorySheet extends StatelessWidget {
                             ),
                           ],
                         ),
-
-                        // --- MAIN CONTENT ---
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Text("₹",
-                                    style: TextStyle(
-                                        color: Colors.amber,
-                                        fontWeight: FontWeight.bold)),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      log.type.toUpperCase(),
-                                      style: TextStyle(
-                                          color: Colors.white.withOpacity(0.5),
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    Text(
-                                      DateFormat('dd MMM yyyy')
-                                          .format(log.date),
-                                      style: const TextStyle(
-                                          color: Colors.white70, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                _formatAmount(log.amount,
-                                    showPlusSign: true), // [UPDATED]
-                                style: const TextStyle(
-                                    color: Colors.amber,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16),
-                              ),
-                            ],
-                          ),
-                        ),
+                        child: logCard,
                       );
                     },
                   ),

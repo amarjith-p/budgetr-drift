@@ -35,6 +35,15 @@ class PortfolioService {
         } else {
           runningCurrentValue += txn.amountInvested;
           runningTotalInvested += txn.amountInvested;
+
+          // ===================================================================
+          // [NEW] ZERO-FLOOR CAP: Prevents the negative principal bug globally
+          // If a user withdraws more than they invested (withdrawing profits),
+          // the principal hits zero and stops.
+          // ===================================================================
+          if (runningTotalInvested < 0) {
+            runningTotalInvested = 0.0;
+          }
         }
 
         final double currentGain = runningCurrentValue - runningTotalInvested;
@@ -73,7 +82,8 @@ class PortfolioService {
                 purpose: Value(dto.purpose),
                 notes: Value(dto.notes),
                 specialId: Value(dto.specialId),
-                targetAmount: Value(dto.targetAmount), // [NEW]
+                targetAmount: Value(dto.targetAmount),
+                status: const Value('active'),
               ));
 
       await _db
@@ -109,6 +119,63 @@ class PortfolioService {
         ));
 
     await _recalculateChain(investmentId);
+  }
+
+  // ===========================================================================
+  //  [UPDATED] SAFE WITHDRAWAL: Flat Math for Cash-Based Clarity
+  // ===========================================================================
+  Future<void> logSafeWithdrawal(
+      int investmentId, double withdrawalAmount, DateTime date) async {
+    final allInvestments = await watchAllInvestments().first;
+    final inv = allInvestments.firstWhere((e) => e.id == investmentId);
+
+    await _db.transaction(() async {
+      // 1. Log EXACTLY what the user requested to withdraw
+      await _db
+          .into(_db.investmentTransactions)
+          .insert(InvestmentTransactionsCompanion.insert(
+            investmentId: investmentId,
+            transactionDate: date,
+            transactionType: 'withdrawn',
+            amountInvested: Value(-withdrawalAmount),
+            currentValueSnapshot: 0.0,
+            calculatedGainLoss: const Value(0.0),
+          ));
+
+      // 2. Reduce the current market value by a flat amount
+      double newMarketValue = inv.currentMarketValue - withdrawalAmount;
+      if (newMarketValue < 0) newMarketValue = 0;
+
+      await _db
+          .into(_db.investmentTransactions)
+          .insert(InvestmentTransactionsCompanion.insert(
+            investmentId: investmentId,
+            transactionDate: date
+                .add(const Duration(seconds: 1)), // Slight offset for sorting
+            transactionType: 'valueUpdate',
+            amountInvested: const Value(0.0),
+            currentValueSnapshot: newMarketValue,
+            calculatedGainLoss: const Value(0.0),
+          ));
+    });
+
+    await _recalculateChain(investmentId);
+  }
+
+  // ===========================================================================
+  //  INVESTMENT CLOSURE
+  // ===========================================================================
+  Future<void> closeInvestment(int investmentId, double realizationAmount,
+      DateTime date, String reason) async {
+    await (_db.update(_db.investments)..where((t) => t.id.equals(investmentId)))
+        .write(InvestmentsCompanion(
+      status: const Value('closed'),
+      isActive: const Value(false),
+      realizedValue: Value(realizationAmount),
+      closureDate: Value(date),
+      closureReason: Value(reason),
+    ));
+    await logValueUpdate(investmentId, realizationAmount, date);
   }
 
   Future<void> logValueUpdate(
@@ -148,7 +215,11 @@ class PortfolioService {
           purpose: Value(dto.purpose),
           notes: Value(dto.notes),
           specialId: Value(dto.specialId),
-          targetAmount: Value(dto.targetAmount), // [NEW]
+          targetAmount: Value(dto.targetAmount),
+          status: Value(dto.status),
+          realizedValue: Value(dto.realizedValue),
+          closureDate: Value(dto.closureDate),
+          closureReason: Value(dto.closureReason),
         ));
   }
 
@@ -160,8 +231,6 @@ class PortfolioService {
       await (_db.delete(_db.investments)..where((t) => t.id.equals(id))).go();
     });
   }
-
-  // --- SWIPE ACTIONS ---
 
   Future<void> deleteTransaction(int transactionId) async {
     final txn = await (_db.select(_db.investmentTransactions)
@@ -240,6 +309,8 @@ class PortfolioService {
         if (t.transactionType == 'invested' ||
             t.transactionType == 'withdrawn') {
           totalInvested += t.amountInvested;
+          // Apply the same cap here for the DTO snapshot to match the chain
+          if (totalInvested < 0) totalInvested = 0.0;
           xirrFlows.add(XirrTransaction(t.transactionDate, -t.amountInvested));
         }
       }
@@ -313,7 +384,11 @@ class PortfolioService {
       purpose: row.purpose,
       notes: row.notes,
       specialId: row.specialId,
-      targetAmount: row.targetAmount, // [NEW]
+      targetAmount: row.targetAmount,
+      status: row.status,
+      realizedValue: row.realizedValue,
+      closureDate: row.closureDate,
+      closureReason: row.closureReason,
       totalInvestedAmount: totalInvested,
       currentMarketValue: currentVal,
       totalGainLoss: gain,

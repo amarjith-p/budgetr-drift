@@ -11104,6 +11104,31 @@ class $InvestmentsTable extends Investments
   late final GeneratedColumn<String> specialId = GeneratedColumn<String>(
       'special_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('active'));
+  static const VerificationMeta _realizedValueMeta =
+      const VerificationMeta('realizedValue');
+  @override
+  late final GeneratedColumn<double> realizedValue = GeneratedColumn<double>(
+      'realized_value', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _closureDateMeta =
+      const VerificationMeta('closureDate');
+  @override
+  late final GeneratedColumn<DateTime> closureDate = GeneratedColumn<DateTime>(
+      'closure_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _closureReasonMeta =
+      const VerificationMeta('closureReason');
+  @override
+  late final GeneratedColumn<String> closureReason = GeneratedColumn<String>(
+      'closure_reason', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -11124,7 +11149,11 @@ class $InvestmentsTable extends Investments
         purpose,
         notes,
         targetAmount,
-        specialId
+        specialId,
+        status,
+        realizedValue,
+        closureDate,
+        closureReason
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -11235,6 +11264,28 @@ class $InvestmentsTable extends Investments
       context.handle(_specialIdMeta,
           specialId.isAcceptableOrUnknown(data['special_id']!, _specialIdMeta));
     }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('realized_value')) {
+      context.handle(
+          _realizedValueMeta,
+          realizedValue.isAcceptableOrUnknown(
+              data['realized_value']!, _realizedValueMeta));
+    }
+    if (data.containsKey('closure_date')) {
+      context.handle(
+          _closureDateMeta,
+          closureDate.isAcceptableOrUnknown(
+              data['closure_date']!, _closureDateMeta));
+    }
+    if (data.containsKey('closure_reason')) {
+      context.handle(
+          _closureReasonMeta,
+          closureReason.isAcceptableOrUnknown(
+              data['closure_reason']!, _closureReasonMeta));
+    }
     return context;
   }
 
@@ -11282,6 +11333,14 @@ class $InvestmentsTable extends Investments
           .read(DriftSqlType.double, data['${effectivePrefix}target_amount']),
       specialId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}special_id']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      realizedValue: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}realized_value']),
+      closureDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}closure_date']),
+      closureReason: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}closure_reason']),
     );
   }
 
@@ -11311,6 +11370,10 @@ class Investment extends DataClass implements Insertable<Investment> {
   final String? notes;
   final double? targetAmount;
   final String? specialId;
+  final String status;
+  final double? realizedValue;
+  final DateTime? closureDate;
+  final String? closureReason;
   const Investment(
       {required this.id,
       required this.name,
@@ -11330,7 +11393,11 @@ class Investment extends DataClass implements Insertable<Investment> {
       this.purpose,
       this.notes,
       this.targetAmount,
-      this.specialId});
+      this.specialId,
+      required this.status,
+      this.realizedValue,
+      this.closureDate,
+      this.closureReason});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -11378,6 +11445,16 @@ class Investment extends DataClass implements Insertable<Investment> {
     }
     if (!nullToAbsent || specialId != null) {
       map['special_id'] = Variable<String>(specialId);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || realizedValue != null) {
+      map['realized_value'] = Variable<double>(realizedValue);
+    }
+    if (!nullToAbsent || closureDate != null) {
+      map['closure_date'] = Variable<DateTime>(closureDate);
+    }
+    if (!nullToAbsent || closureReason != null) {
+      map['closure_reason'] = Variable<String>(closureReason);
     }
     return map;
   }
@@ -11427,6 +11504,16 @@ class Investment extends DataClass implements Insertable<Investment> {
       specialId: specialId == null && nullToAbsent
           ? const Value.absent()
           : Value(specialId),
+      status: Value(status),
+      realizedValue: realizedValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(realizedValue),
+      closureDate: closureDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(closureDate),
+      closureReason: closureReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(closureReason),
     );
   }
 
@@ -11454,6 +11541,10 @@ class Investment extends DataClass implements Insertable<Investment> {
       notes: serializer.fromJson<String?>(json['notes']),
       targetAmount: serializer.fromJson<double?>(json['targetAmount']),
       specialId: serializer.fromJson<String?>(json['specialId']),
+      status: serializer.fromJson<String>(json['status']),
+      realizedValue: serializer.fromJson<double?>(json['realizedValue']),
+      closureDate: serializer.fromJson<DateTime?>(json['closureDate']),
+      closureReason: serializer.fromJson<String?>(json['closureReason']),
     );
   }
   @override
@@ -11479,6 +11570,10 @@ class Investment extends DataClass implements Insertable<Investment> {
       'notes': serializer.toJson<String?>(notes),
       'targetAmount': serializer.toJson<double?>(targetAmount),
       'specialId': serializer.toJson<String?>(specialId),
+      'status': serializer.toJson<String>(status),
+      'realizedValue': serializer.toJson<double?>(realizedValue),
+      'closureDate': serializer.toJson<DateTime?>(closureDate),
+      'closureReason': serializer.toJson<String?>(closureReason),
     };
   }
 
@@ -11501,7 +11596,11 @@ class Investment extends DataClass implements Insertable<Investment> {
           Value<String?> purpose = const Value.absent(),
           Value<String?> notes = const Value.absent(),
           Value<double?> targetAmount = const Value.absent(),
-          Value<String?> specialId = const Value.absent()}) =>
+          Value<String?> specialId = const Value.absent(),
+          String? status,
+          Value<double?> realizedValue = const Value.absent(),
+          Value<DateTime?> closureDate = const Value.absent(),
+          Value<String?> closureReason = const Value.absent()}) =>
       Investment(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -11529,6 +11628,12 @@ class Investment extends DataClass implements Insertable<Investment> {
         targetAmount:
             targetAmount.present ? targetAmount.value : this.targetAmount,
         specialId: specialId.present ? specialId.value : this.specialId,
+        status: status ?? this.status,
+        realizedValue:
+            realizedValue.present ? realizedValue.value : this.realizedValue,
+        closureDate: closureDate.present ? closureDate.value : this.closureDate,
+        closureReason:
+            closureReason.present ? closureReason.value : this.closureReason,
       );
   Investment copyWithCompanion(InvestmentsCompanion data) {
     return Investment(
@@ -11565,6 +11670,15 @@ class Investment extends DataClass implements Insertable<Investment> {
           ? data.targetAmount.value
           : this.targetAmount,
       specialId: data.specialId.present ? data.specialId.value : this.specialId,
+      status: data.status.present ? data.status.value : this.status,
+      realizedValue: data.realizedValue.present
+          ? data.realizedValue.value
+          : this.realizedValue,
+      closureDate:
+          data.closureDate.present ? data.closureDate.value : this.closureDate,
+      closureReason: data.closureReason.present
+          ? data.closureReason.value
+          : this.closureReason,
     );
   }
 
@@ -11589,32 +11703,41 @@ class Investment extends DataClass implements Insertable<Investment> {
           ..write('purpose: $purpose, ')
           ..write('notes: $notes, ')
           ..write('targetAmount: $targetAmount, ')
-          ..write('specialId: $specialId')
+          ..write('specialId: $specialId, ')
+          ..write('status: $status, ')
+          ..write('realizedValue: $realizedValue, ')
+          ..write('closureDate: $closureDate, ')
+          ..write('closureReason: $closureReason')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      name,
-      type,
-      subType,
-      providerName,
-      providerWebsite,
-      startDate,
-      endDate,
-      expectedReturn,
-      isActive,
-      folioNumber,
-      units,
-      brokerName,
-      linkedBankName,
-      linkedBankAccount,
-      purpose,
-      notes,
-      targetAmount,
-      specialId);
+  int get hashCode => Object.hashAll([
+        id,
+        name,
+        type,
+        subType,
+        providerName,
+        providerWebsite,
+        startDate,
+        endDate,
+        expectedReturn,
+        isActive,
+        folioNumber,
+        units,
+        brokerName,
+        linkedBankName,
+        linkedBankAccount,
+        purpose,
+        notes,
+        targetAmount,
+        specialId,
+        status,
+        realizedValue,
+        closureDate,
+        closureReason
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -11637,7 +11760,11 @@ class Investment extends DataClass implements Insertable<Investment> {
           other.purpose == this.purpose &&
           other.notes == this.notes &&
           other.targetAmount == this.targetAmount &&
-          other.specialId == this.specialId);
+          other.specialId == this.specialId &&
+          other.status == this.status &&
+          other.realizedValue == this.realizedValue &&
+          other.closureDate == this.closureDate &&
+          other.closureReason == this.closureReason);
 }
 
 class InvestmentsCompanion extends UpdateCompanion<Investment> {
@@ -11660,6 +11787,10 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
   final Value<String?> notes;
   final Value<double?> targetAmount;
   final Value<String?> specialId;
+  final Value<String> status;
+  final Value<double?> realizedValue;
+  final Value<DateTime?> closureDate;
+  final Value<String?> closureReason;
   const InvestmentsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -11680,6 +11811,10 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     this.notes = const Value.absent(),
     this.targetAmount = const Value.absent(),
     this.specialId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.realizedValue = const Value.absent(),
+    this.closureDate = const Value.absent(),
+    this.closureReason = const Value.absent(),
   });
   InvestmentsCompanion.insert({
     this.id = const Value.absent(),
@@ -11701,6 +11836,10 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     this.notes = const Value.absent(),
     this.targetAmount = const Value.absent(),
     this.specialId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.realizedValue = const Value.absent(),
+    this.closureDate = const Value.absent(),
+    this.closureReason = const Value.absent(),
   })  : name = Value(name),
         type = Value(type),
         providerName = Value(providerName),
@@ -11725,6 +11864,10 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     Expression<String>? notes,
     Expression<double>? targetAmount,
     Expression<String>? specialId,
+    Expression<String>? status,
+    Expression<double>? realizedValue,
+    Expression<DateTime>? closureDate,
+    Expression<String>? closureReason,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -11746,6 +11889,10 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       if (notes != null) 'notes': notes,
       if (targetAmount != null) 'target_amount': targetAmount,
       if (specialId != null) 'special_id': specialId,
+      if (status != null) 'status': status,
+      if (realizedValue != null) 'realized_value': realizedValue,
+      if (closureDate != null) 'closure_date': closureDate,
+      if (closureReason != null) 'closure_reason': closureReason,
     });
   }
 
@@ -11768,7 +11915,11 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       Value<String?>? purpose,
       Value<String?>? notes,
       Value<double?>? targetAmount,
-      Value<String?>? specialId}) {
+      Value<String?>? specialId,
+      Value<String>? status,
+      Value<double?>? realizedValue,
+      Value<DateTime?>? closureDate,
+      Value<String?>? closureReason}) {
     return InvestmentsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
@@ -11789,6 +11940,10 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       notes: notes ?? this.notes,
       targetAmount: targetAmount ?? this.targetAmount,
       specialId: specialId ?? this.specialId,
+      status: status ?? this.status,
+      realizedValue: realizedValue ?? this.realizedValue,
+      closureDate: closureDate ?? this.closureDate,
+      closureReason: closureReason ?? this.closureReason,
     );
   }
 
@@ -11852,6 +12007,18 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     if (specialId.present) {
       map['special_id'] = Variable<String>(specialId.value);
     }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (realizedValue.present) {
+      map['realized_value'] = Variable<double>(realizedValue.value);
+    }
+    if (closureDate.present) {
+      map['closure_date'] = Variable<DateTime>(closureDate.value);
+    }
+    if (closureReason.present) {
+      map['closure_reason'] = Variable<String>(closureReason.value);
+    }
     return map;
   }
 
@@ -11876,7 +12043,11 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
           ..write('purpose: $purpose, ')
           ..write('notes: $notes, ')
           ..write('targetAmount: $targetAmount, ')
-          ..write('specialId: $specialId')
+          ..write('specialId: $specialId, ')
+          ..write('status: $status, ')
+          ..write('realizedValue: $realizedValue, ')
+          ..write('closureDate: $closureDate, ')
+          ..write('closureReason: $closureReason')
           ..write(')'))
         .toString();
   }
@@ -21327,6 +21498,10 @@ typedef $$InvestmentsTableCreateCompanionBuilder = InvestmentsCompanion
   Value<String?> notes,
   Value<double?> targetAmount,
   Value<String?> specialId,
+  Value<String> status,
+  Value<double?> realizedValue,
+  Value<DateTime?> closureDate,
+  Value<String?> closureReason,
 });
 typedef $$InvestmentsTableUpdateCompanionBuilder = InvestmentsCompanion
     Function({
@@ -21349,6 +21524,10 @@ typedef $$InvestmentsTableUpdateCompanionBuilder = InvestmentsCompanion
   Value<String?> notes,
   Value<double?> targetAmount,
   Value<String?> specialId,
+  Value<String> status,
+  Value<double?> realizedValue,
+  Value<DateTime?> closureDate,
+  Value<String?> closureReason,
 });
 
 final class $$InvestmentsTableReferences
@@ -21445,6 +21624,18 @@ class $$InvestmentsTableFilterComposer
   ColumnFilters<String> get specialId => $composableBuilder(
       column: $table.specialId, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get realizedValue => $composableBuilder(
+      column: $table.realizedValue, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get closureDate => $composableBuilder(
+      column: $table.closureDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get closureReason => $composableBuilder(
+      column: $table.closureReason, builder: (column) => ColumnFilters(column));
+
   Expression<bool> investmentTransactionsRefs(
       Expression<bool> Function($$InvestmentTransactionsTableFilterComposer f)
           f) {
@@ -21540,6 +21731,20 @@ class $$InvestmentsTableOrderingComposer
 
   ColumnOrderings<String> get specialId => $composableBuilder(
       column: $table.specialId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get realizedValue => $composableBuilder(
+      column: $table.realizedValue,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get closureDate => $composableBuilder(
+      column: $table.closureDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get closureReason => $composableBuilder(
+      column: $table.closureReason,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$InvestmentsTableAnnotationComposer
@@ -21608,6 +21813,18 @@ class $$InvestmentsTableAnnotationComposer
   GeneratedColumn<String> get specialId =>
       $composableBuilder(column: $table.specialId, builder: (column) => column);
 
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<double> get realizedValue => $composableBuilder(
+      column: $table.realizedValue, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get closureDate => $composableBuilder(
+      column: $table.closureDate, builder: (column) => column);
+
+  GeneratedColumn<String> get closureReason => $composableBuilder(
+      column: $table.closureReason, builder: (column) => column);
+
   Expression<T> investmentTransactionsRefs<T extends Object>(
       Expression<T> Function($$InvestmentTransactionsTableAnnotationComposer a)
           f) {
@@ -21674,6 +21891,10 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<double?> targetAmount = const Value.absent(),
             Value<String?> specialId = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<double?> realizedValue = const Value.absent(),
+            Value<DateTime?> closureDate = const Value.absent(),
+            Value<String?> closureReason = const Value.absent(),
           }) =>
               InvestmentsCompanion(
             id: id,
@@ -21695,6 +21916,10 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             notes: notes,
             targetAmount: targetAmount,
             specialId: specialId,
+            status: status,
+            realizedValue: realizedValue,
+            closureDate: closureDate,
+            closureReason: closureReason,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -21716,6 +21941,10 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<double?> targetAmount = const Value.absent(),
             Value<String?> specialId = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<double?> realizedValue = const Value.absent(),
+            Value<DateTime?> closureDate = const Value.absent(),
+            Value<String?> closureReason = const Value.absent(),
           }) =>
               InvestmentsCompanion.insert(
             id: id,
@@ -21737,6 +21966,10 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             notes: notes,
             targetAmount: targetAmount,
             specialId: specialId,
+            status: status,
+            realizedValue: realizedValue,
+            closureDate: closureDate,
+            closureReason: closureReason,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

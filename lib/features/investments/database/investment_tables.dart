@@ -23,8 +23,16 @@ class Investments extends Table {
   TextColumn get purpose => text().nullable()();
   TextColumn get notes => text().nullable()();
   RealColumn get targetAmount => real().nullable()();
-  // [NEW] Special ID for filtering
   TextColumn get specialId => text().nullable()();
+
+  // ===========================================================================
+  // [NEW] INVESTMENT CLOSURES SUPPORT
+  // ===========================================================================
+  TextColumn get status =>
+      text().withDefault(const Constant('active'))(); // 'active', 'closed'
+  RealColumn get realizedValue => real().nullable()();
+  DateTimeColumn get closureDate => dateTime().nullable()();
+  TextColumn get closureReason => text().nullable()();
 }
 
 @DataClassName('InvestmentTransaction')

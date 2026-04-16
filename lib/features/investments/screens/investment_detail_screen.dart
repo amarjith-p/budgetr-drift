@@ -12,6 +12,7 @@ import 'package:budget/features/investments/widgets/investment_history_list.dart
 import 'package:budget/features/investments/widgets/log_transaction_sheet.dart';
 import 'package:budget/features/investments/widgets/income/passive_income_card.dart';
 import 'package:budget/features/investments/widgets/income/passive_income_history_sheet.dart';
+import 'package:budget/features/investments/widgets/compact_calculator_keyboard.dart';
 
 import 'package:budget/features/investments/utils/investment_analytics_engine.dart';
 import 'package:budget/features/investments/widgets/analytics/core_financial_stats.dart';
@@ -21,6 +22,7 @@ import 'package:budget/features/investments/widgets/analytics/target_progress_ba
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:math_expressions/math_expressions.dart';
 
 class InvestmentDetailScreen extends StatelessWidget {
   final int investmentId;
@@ -37,114 +39,105 @@ class InvestmentDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: BudgetrColors.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            ModernAppBar(
-              title: investmentName,
-              subtitle: "ASSET DETAILS",
-              trailingIcon: Icons.more_vert_rounded,
-              onTrailingPressed: () => _showOptions(context),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // 1. Smart Header & Feature Cards
-                    StreamBuilder<List<InvestmentDto>>(
-                      stream: GetIt.I<PortfolioService>().watchAllInvestments(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) return const SizedBox.shrink();
-                        final matches = snapshot.data!
-                            .where((i) => i.id == investmentId)
-                            .toList();
-                        if (matches.isEmpty) return const SizedBox.shrink();
+        child: StreamBuilder<List<InvestmentDto>>(
+            stream: GetIt.I<PortfolioService>().watchAllInvestments(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox.shrink();
+              final matches =
+                  snapshot.data!.where((i) => i.id == investmentId).toList();
+              if (matches.isEmpty) return const SizedBox.shrink();
 
-                        final investment = matches.first;
+              final investment = matches.first;
+              final isClosed = investment.status == 'closed';
 
-                        return Column(
-                          children: [
-                            // Main Stats & Chart
-                            InvestmentHeaderCard(investment: investment),
-
-                            const SizedBox(height: 16),
-
-                            // Passive Income Card
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: PassiveIncomeCard(
-                                investmentId: investmentId,
-                                totalInvested: investment.totalInvestedAmount,
-                                onTap: () => _showPassiveIncomeHistory(context),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // 2. History Section Title
-                    const Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                      child: Row(
+              return Column(
+                children: [
+                  ModernAppBar(
+                    title: investmentName,
+                    subtitle: isClosed ? "CLOSED ASSET" : "ASSET DETAILS",
+                    trailingIcon: Icons.more_vert_rounded,
+                    onTrailingPressed: () => _showOptions(context, investment),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
                         children: [
-                          Icon(Icons.history_rounded,
-                              color: Colors.white54, size: 16),
-                          SizedBox(width: 8),
-                          Text(
-                            "TRANSACTION HISTORY",
-                            style: TextStyle(
-                              color: Colors.white38,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.5,
+                          InvestmentHeaderCard(investment: investment),
+                          const SizedBox(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: PassiveIncomeCard(
+                              investmentId: investmentId,
+                              totalInvested: investment.totalInvestedAmount,
+                              // [UPDATED] Passing the isClosed flag here
+                              onTap: () =>
+                                  _showPassiveIncomeHistory(context, isClosed),
                             ),
                           ),
+                          const SizedBox(height: 24),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 8),
+                            child: Row(
+                              children: [
+                                Icon(Icons.history_rounded,
+                                    color: Colors.white54, size: 16),
+                                SizedBox(width: 8),
+                                Text(
+                                  "TRANSACTION HISTORY",
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          StreamBuilder<List<InvestmentLogDto>>(
+                            stream: GetIt.I<PortfolioService>()
+                                .watchInvestmentDetails(investmentId),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData) {
+                                return const Center(
+                                    child: FuturisticLoader(
+                                        size: 80,
+                                        label: "ANALYZING ASSET TELEMETRY..."));
+                              }
+                              return InvestmentHistoryList(
+                                  logs: snapshot.data!, isClosed: isClosed);
+                            },
+                          ),
+                          const SizedBox(height: 100),
                         ],
                       ),
                     ),
-
-                    // 3. History List
-                    StreamBuilder<List<InvestmentLogDto>>(
-                      stream: GetIt.I<PortfolioService>()
-                          .watchInvestmentDetails(investmentId),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return const Center(
-                              child: FuturisticLoader(
-                            size: 80,
-                            label: "ANALYZING ASSET TELEMETRY...",
-                          ));
-                        }
-                        return InvestmentHistoryList(logs: snapshot.data!);
-                      },
-                    ),
-
-                    const SizedBox(height: 100),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+                  ),
+                  if (!isClosed) _buildBottomActions(context),
+                ],
+              );
+            }),
       ),
-      bottomSheet: _buildBottomActions(context),
     );
   }
 
-  void _showPassiveIncomeHistory(BuildContext context) {
+  // ===========================================================================
+  // [UPDATED] Now accepts the isClosed flag to pass to the sheet
+  // ===========================================================================
+  void _showPassiveIncomeHistory(BuildContext context, bool isClosed) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => PassiveIncomeHistorySheet(investmentId: investmentId),
+      builder: (ctx) => PassiveIncomeHistorySheet(
+        investmentId: investmentId,
+        isClosed: isClosed, // [NEW] Pass the lock flag
+      ),
     );
   }
 
-  void _showOptions(BuildContext context) {
+  void _showOptions(BuildContext context, InvestmentDto investment) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -165,15 +158,27 @@ class InvestmentDetailScreen extends StatelessWidget {
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(2)),
               ),
-              ListTile(
-                leading: const Icon(Icons.edit_rounded, color: Colors.white),
-                title: const Text("Edit Investment",
-                    style: TextStyle(color: Colors.white)),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  _handleEdit(context);
-                },
-              ),
+              if (investment.status != 'closed')
+                ListTile(
+                  leading: const Icon(Icons.edit_rounded, color: Colors.white),
+                  title: const Text("Edit Asset",
+                      style: TextStyle(color: Colors.white)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    _handleEdit(context);
+                  },
+                ),
+              if (investment.status != 'closed')
+                ListTile(
+                  leading: const Icon(Icons.check_circle_outline,
+                      color: BudgetrColors.success),
+                  title: const Text("Close Asset",
+                      style: TextStyle(color: BudgetrColors.success)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    _showCloseAssetSheet(context, investment);
+                  },
+                ),
               ListTile(
                 leading:
                     const Icon(Icons.delete_rounded, color: Colors.redAccent),
@@ -189,6 +194,15 @@ class InvestmentDetailScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showCloseAssetSheet(BuildContext context, InvestmentDto investment) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => CloseInvestmentSheet(investment: investment),
     );
   }
 
@@ -274,7 +288,164 @@ class InvestmentDetailScreen extends StatelessWidget {
   }
 }
 
-// --- HEADER WIDGET (UPDATED TO FETCH LOGS) ---
+class CloseInvestmentSheet extends StatefulWidget {
+  final InvestmentDto investment;
+
+  const CloseInvestmentSheet({super.key, required this.investment});
+
+  @override
+  State<CloseInvestmentSheet> createState() => _CloseInvestmentSheetState();
+}
+
+class _CloseInvestmentSheetState extends State<CloseInvestmentSheet> {
+  final _amountController = TextEditingController();
+  final _reasonController = TextEditingController();
+  DateTime _selectedDate = DateTime.now();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController.text = widget.investment.currentMarketValue.toString();
+  }
+
+  double? _evaluateFinalAmount() {
+    try {
+      String expression =
+          _amountController.text.replaceAll('×', '*').replaceAll('÷', '/');
+      if (expression.isEmpty) return null;
+      Parser p = Parser();
+      Expression exp = p.parse(expression);
+      ContextModel cm = ContextModel();
+      return exp.evaluate(EvaluationType.REAL, cm);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> _processClosure() async {
+    final amount = _evaluateFinalAmount();
+    if (amount == null || amount < 0) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await GetIt.I<PortfolioService>().closeInvestment(
+        widget.investment.id!,
+        amount,
+        _selectedDate,
+        _reasonController.text.trim().isEmpty
+            ? "Closed"
+            : _reasonController.text.trim(),
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: true,
+      bottom: false,
+      child: Container(
+        padding: EdgeInsets.only(
+          top: 40,
+          left: 20,
+          right: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1B263B),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.lock_outline,
+                      color: BudgetrColors.success, size: 20),
+                  const SizedBox(width: 8),
+                  const Text("CLOSE INVESTMENT",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                  "Record the final realized amount and mark this asset as completed.",
+                  style: TextStyle(color: Colors.white54, fontSize: 12)),
+              const SizedBox(height: 24),
+              const Text("Final Realized Amount",
+                  style: TextStyle(color: Colors.white70, fontSize: 14)),
+              TextField(
+                controller: _amountController,
+                readOnly: true,
+                style: const TextStyle(
+                    color: BudgetrColors.success,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  prefixText: "₹ ",
+                  prefixStyle: TextStyle(
+                      color: BudgetrColors.success.withOpacity(0.5),
+                      fontSize: 32),
+                  border: InputBorder.none,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _reasonController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: "Reason (e.g., Profit Booking, Stop Loss)",
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  filled: true,
+                  fillColor: Colors.black12,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 16),
+              CompactCalculatorKeyboard(controller: _amountController),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: BudgetrColors.success,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: _isLoading ? null : _processClosure,
+                  child: _isLoading
+                      ? const FuturisticLoader(size: 20)
+                      : const Text("FINALIZE & CLOSE ASSET",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class InvestmentHeaderCard extends StatefulWidget {
   final InvestmentDto investment;
@@ -291,114 +462,109 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
   @override
   Widget build(BuildContext context) {
     final investment = widget.investment;
+    final isClosed = investment.status == 'closed';
 
-    // [NEW] Wrap the entire card in a StreamBuilder so the Cockpit gets access to history logs
     return StreamBuilder<List<InvestmentLogDto>>(
       stream:
           GetIt.I<PortfolioService>().watchInvestmentDetails(investment.id!),
       builder: (context, snapshot) {
         final logs = snapshot.data ?? [];
 
-        return GlassCard(
-          borderRadius: 16,
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _showChart ? "GROWTH TREND" : "CURRENT VALUE",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
+        return Opacity(
+          opacity: isClosed ? 0.8 : 1.0,
+          child: GlassCard(
+            borderRadius: 16,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _showChart
+                          ? "GROWTH TREND"
+                          : (isClosed ? "REALIZED VALUE" : "CURRENT VALUE"),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.4),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
                     ),
-                  ),
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => setState(() => _showChart = !_showChart),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            _showChart
-                                ? Icons.home_outlined
-                                : Icons.show_chart_rounded,
-                            color: Colors.white70,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: () => _showInfoSheet(context, investment),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.info_outline_rounded,
-                            color: Colors.white54,
-                            size: 16,
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => setState(() => _showChart = !_showChart),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              _showChart
+                                  ? Icons.home_outlined
+                                  : Icons.show_chart_rounded,
+                              color: Colors.white70,
+                              size: 16,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  )
-                ],
-              ),
-              const SizedBox(height: 16),
-              AnimatedCrossFade(
-                // Pass logs down into the Cockpit and Chart
-                firstChild: _buildCockpitView(investment, logs),
-                secondChild: _buildChartView(logs),
-                crossFadeState: _showChart
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 300),
-              ),
-            ],
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () => _showInfoSheet(context, investment),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.info_outline_rounded,
+                              color: Colors.white54,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+                const SizedBox(height: 16),
+                AnimatedCrossFade(
+                  firstChild: _buildCockpitView(investment, logs),
+                  secondChild: _buildChartView(logs),
+                  crossFadeState: _showChart
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  duration: const Duration(milliseconds: 300),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  // --- NEW: COCKPIT VIEW COMPOSITION ---
   Widget _buildCockpitView(
       InvestmentDto investment, List<InvestmentLogDto> logs) {
-    // 1. Generate Intelligence (Now using Transaction Logs)
     final insight = InvestmentAnalyticsEngine.analyze(investment, logs);
 
     return Column(
       children: [
-        // Zone 1: Core Stats (Preserved Logic)
         CoreFinancialStats(investment: investment),
-
-        // Zone 2 & 3 only show if Target is configured
         if (investment.targetAmount != null &&
-            investment.targetAmount! > 0) ...[
+            investment.targetAmount! > 0 &&
+            investment.status != 'closed') ...[
           const SizedBox(height: 32),
-
-          // Zone 2: Target Visualizer
           TargetProgressBar(
             current: investment.currentMarketValue,
             target: investment.targetAmount!,
             projected: insight.projectedValue,
           ),
-
           const SizedBox(height: 16),
-
-          // Zone 3: Advisor Card
           SmartInsightBox(insight: insight),
         ]
       ],
@@ -423,13 +589,12 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
   }
 
   void _showInfoSheet(BuildContext context, InvestmentDto item) {
-    // ... [UNCHANGED FROM PREVIOUS VERSION] ...
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.75, // Slightly taller
+        height: MediaQuery.of(context).size.height * 0.75,
         decoration: const BoxDecoration(
           color: Color(0xFF1B263B),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -448,13 +613,11 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              item.name.toUpperCase(),
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold),
-            ),
+            Text(item.name.toUpperCase(),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
             Text(
               "ASSET INFORMATION",
               style: TextStyle(
@@ -467,10 +630,14 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
             Expanded(
               child: ListView(
                 children: [
+                  _buildInfoRow("Status", item.status.toUpperCase()),
+                  if (item.status == 'closed')
+                    _buildInfoRow("Closure Reason", item.closureReason),
+                  if (item.status == 'closed' && item.closureDate != null)
+                    _buildInfoRow("Closure Date",
+                        DateFormat('dd MMM yyyy').format(item.closureDate!)),
                   _buildInfoRow("Provider", item.providerName),
                   _buildInfoRow("Type", item.displayType),
-
-                  // Display Target Amount and Special ID
                   if (item.targetAmount != null && item.targetAmount! > 0)
                     _buildInfoRow(
                         "Target Amount",
@@ -479,7 +646,6 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
                             .format(item.targetAmount!)),
                   if (item.specialId != null && item.specialId!.isNotEmpty)
                     _buildInfoRow("Special ID", item.specialId!),
-
                   _buildInfoRow("Start Date",
                       DateFormat('dd MMM yyyy').format(item.startDate)),
                   if (item.endDate != null)
@@ -524,20 +690,16 @@ class _InvestmentHeaderCardState extends State<InvestmentHeaderCard> {
         children: [
           SizedBox(
             width: 120,
-            child: Text(
-              label,
-              style:
-                  TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
-            ),
+            child: Text(label,
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.4), fontSize: 13)),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600),
-            ),
+            child: Text(value,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600)),
           ),
         ],
       ),

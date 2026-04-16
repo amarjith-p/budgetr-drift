@@ -53,9 +53,9 @@ class AppDatabase extends _$AppDatabase {
 
   AppDatabase._internal() : super(_openConnection());
 
-  // [NEW] Incremented schemaVersion from 24 to 25
+  // [NEW] Incremented schemaVersion from 26 to 27 for Investment Closures
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 27;
 
   @override
   MigrationStrategy get migration {
@@ -159,7 +159,6 @@ class AppDatabase extends _$AppDatabase {
           await safeCreateTable(categoryBudgets);
         }
 
-        // [NEW] Schema migration for subCategories in Custom Matrix Budgets
         if (from < 25) {
           if (existingTables.contains(categoryBudgets.actualTableName)) {
             final tableInfo = await customSelect(
@@ -174,6 +173,30 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 26) {
           await safeCreateTable(ghostTransactions);
+        }
+
+        // [NEW] Schema migration for Investment Closures
+        if (from < 27) {
+          if (existingTables.contains(investments.actualTableName)) {
+            final tableInfo = await customSelect(
+                    "PRAGMA table_info('${investments.actualTableName}')")
+                .get();
+            final existingColumns =
+                tableInfo.map((row) => row.read<String>('name')).toSet();
+
+            if (!existingColumns.contains('status')) {
+              await m.addColumn(investments, investments.status);
+            }
+            if (!existingColumns.contains('realized_value')) {
+              await m.addColumn(investments, investments.realizedValue);
+            }
+            if (!existingColumns.contains('closure_date')) {
+              await m.addColumn(investments, investments.closureDate);
+            }
+            if (!existingColumns.contains('closure_reason')) {
+              await m.addColumn(investments, investments.closureReason);
+            }
+          }
         }
       },
     );
