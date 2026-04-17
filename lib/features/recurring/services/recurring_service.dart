@@ -574,7 +574,7 @@ class RecurringService {
             accountId: pattern.sourceAccountId ?? '',
             amount: pattern.amount,
             date: DateTime.now(),
-            bucket: 'Unallocated',
+            bucket: 'Income',
             type: 'Income',
             category: pattern.category,
             subCategory: pattern.subCategory,
