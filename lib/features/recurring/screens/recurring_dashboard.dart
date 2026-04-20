@@ -8,6 +8,7 @@ import 'package:budget/features/recurring/services/recurring_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 class RecurringDashboard extends StatelessWidget {
   const RecurringDashboard({super.key});
@@ -270,7 +271,7 @@ class RecurringDashboard extends StatelessWidget {
 }
 
 // ============================================================================
-// [NEW] STATEFUL TIMELINE CARD TO HANDLE LIVE COUNTDOWNS
+// STATEFUL TIMELINE CARD TO HANDLE LIVE COUNTDOWNS & SLIDABLE
 // ============================================================================
 class _TimelineCard extends StatefulWidget {
   final RecurringPatternModel item;
@@ -310,7 +311,7 @@ class _TimelineCardState extends State<_TimelineCard> {
         Color statusColor;
         String statusText;
 
-        // [MODIFIED] Live Countdown Logic
+        // Live Countdown Logic
         if (isOverdue) {
           statusColor = Colors.redAccent;
           statusText = "OVERDUE";
@@ -325,179 +326,204 @@ class _TimelineCardState extends State<_TimelineCard> {
           statusText = "IN ${diff.inDays} DAYS";
         }
 
-        // [MODIFIED] Enable button only if the payment is strictly Due (Time has arrived/passed)
         final isDue = isOverdue;
 
-        return GestureDetector(
-          onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => RecurringEditorScreen(pattern: item))),
-          child: GlassCard(
-            borderRadius: 8,
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(4),
-            child: Column(
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Slidable(
+            key: ValueKey(item.id),
+            // [MODIFIED] Switched to startActionPane for Right Swipe
+            startActionPane: ActionPane(
+              motion: const StretchMotion(),
+              extentRatio: 0.25,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(8))),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                          DateFormat('MMM dd • hh:mm a').format(item.nextRunAt),
-                          style: TextStyle(
-                              color: statusColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12)),
-                      Text(statusText,
-                          style: TextStyle(
-                              color: statusColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900)),
-                    ],
-                  ),
+                SlidableAction(
+                  onPressed: (context) {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                RecurringEditorScreen(pattern: item)));
+                  },
+                  // [MODIFIED] Matched Edit UI Color with Transaction Item standard
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  icon: Icons.edit_rounded,
+                  label: 'Edit',
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        padding: hasLogo
-                            ? const EdgeInsets.all(4)
-                            : const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            shape: BoxShape.circle),
-                        child: hasLogo
-                            ? ClipOval(
-                                child: Image.network(logoUrl,
-                                    errorBuilder: (c, e, s) => const Icon(
-                                        Icons.receipt_long,
-                                        color: Colors.white)))
-                            : Icon(
-                                item.type == 'Income'
-                                    ? Icons.arrow_downward
-                                    : Icons.receipt_long,
-                                color: Colors.white),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.name,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14)),
-                            Row(children: [
-                              if (item.isVariable)
-                                Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 4, vertical: 2),
-                                    margin: const EdgeInsets.only(right: 6),
-                                    decoration: BoxDecoration(
-                                        color: Colors.orange.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(4)),
-                                    child: const Text("VARIABLE",
-                                        style: TextStyle(
-                                            fontSize: 8,
-                                            color: Colors.orange))),
-                              Expanded(
-                                child: Text("${item.category} • ${item.bucket}",
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                    style: TextStyle(
-                                        color: Colors.white.withOpacity(0.5),
-                                        fontSize: 12)),
-                              ),
-                            ])
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 80),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            item.isVariable
-                                ? const Text("Waiting",
-                                    style: TextStyle(
-                                        color: Colors.orange, fontSize: 14))
-                                : FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                        "₹${item.amount.toStringAsFixed(2)}",
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16)),
-                                  ),
-                            const SizedBox(height: 4),
-                            if (item.isVariable || !item.autoExecute)
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: isDue
-                                        ? Colors.white10
-                                        : Colors.white10.withOpacity(0.05),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8),
-                                    minimumSize: const Size(60, 24)),
-                                onPressed: isDue
-                                    ? () {
-                                        if (item.isVariable) {
-                                          widget.onPayVariable();
-                                        } else {
-                                          GetIt.I<RecurringService>()
-                                              .manualExecute(item.id);
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(const SnackBar(
-                                                  content:
-                                                      Text("Processing...")));
-                                        }
-                                      }
-                                    : null,
-                                child: Text("PAY NOW",
-                                    style: TextStyle(
-                                        fontSize: 10,
-                                        color: isDue
-                                            ? Colors.white
-                                            : Colors.white30)),
-                              )
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (diff.inDays <= 3 && !isOverdue)
-                  InkWell(
-                      onTap: () {
-                        GetIt.I<RecurringService>().skipNextOccurrence(item.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("Skipped next occurrence")));
-                      },
-                      child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          alignment: Alignment.center,
-                          decoration: const BoxDecoration(
-                              border: Border(
-                                  top: BorderSide(color: Colors.white10))),
-                          child: const Text("Skip Next Occurrence",
-                              style: TextStyle(
-                                  color: Colors.white38, fontSize: 10))))
               ],
+            ),
+            child: GlassCard(
+              borderRadius: 8,
+              margin: EdgeInsets.zero, // Padding moved up to Slidable wrapper
+              padding: const EdgeInsets.all(4),
+              child: Column(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8))),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                            DateFormat('MMM dd • hh:mm a')
+                                .format(item.nextRunAt),
+                            style: TextStyle(
+                                color: statusColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12)),
+                        Text(statusText,
+                            style: TextStyle(
+                                color: statusColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900)),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          padding: hasLogo
+                              ? const EdgeInsets.all(4)
+                              : const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              shape: BoxShape.circle),
+                          child: hasLogo
+                              ? ClipOval(
+                                  child: Image.network(logoUrl,
+                                      errorBuilder: (c, e, s) => const Icon(
+                                          Icons.receipt_long,
+                                          color: Colors.white)))
+                              : Icon(
+                                  item.type == 'Income'
+                                      ? Icons.arrow_downward
+                                      : Icons.receipt_long,
+                                  color: Colors.white),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item.name,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14)),
+                              Row(children: [
+                                if (item.isVariable)
+                                  Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4, vertical: 2),
+                                      margin: const EdgeInsets.only(right: 6),
+                                      decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(4)),
+                                      child: const Text("VARIABLE",
+                                          style: TextStyle(
+                                              fontSize: 8,
+                                              color: Colors.orange))),
+                                Expanded(
+                                  child: Text(
+                                      "${item.category} • ${item.bucket}",
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                          color: Colors.white.withOpacity(0.5),
+                                          fontSize: 12)),
+                                ),
+                              ])
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 80),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              item.isVariable
+                                  ? const Text("Waiting",
+                                      style: TextStyle(
+                                          color: Colors.orange, fontSize: 14))
+                                  : FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                          "₹${item.amount.toStringAsFixed(2)}",
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16)),
+                                    ),
+                              const SizedBox(height: 4),
+                              if (item.isVariable || !item.autoExecute)
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: isDue
+                                          ? Colors.white10
+                                          : Colors.white10.withOpacity(0.05),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8),
+                                      minimumSize: const Size(60, 24)),
+                                  onPressed: isDue
+                                      ? () {
+                                          if (item.isVariable) {
+                                            widget.onPayVariable();
+                                          } else {
+                                            GetIt.I<RecurringService>()
+                                                .manualExecute(item.id);
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(const SnackBar(
+                                                    content:
+                                                        Text("Processing...")));
+                                          }
+                                        }
+                                      : null,
+                                  child: Text("PAY NOW",
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: isDue
+                                              ? Colors.white
+                                              : Colors.white30)),
+                                )
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (diff.inDays <= 3 && !isOverdue)
+                    InkWell(
+                        onTap: () {
+                          GetIt.I<RecurringService>()
+                              .skipNextOccurrence(item.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text("Skipped next occurrence")));
+                        },
+                        child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                                border: Border(
+                                    top: BorderSide(color: Colors.white10))),
+                            child: const Text("Skip Next Occurrence",
+                                style: TextStyle(
+                                    color: Colors.white38, fontSize: 10))))
+                ],
+              ),
             ),
           ),
         );
@@ -523,8 +549,6 @@ class _VariablePaySheetState extends State<_VariablePaySheet> {
 
   @override
   Widget build(BuildContext context) {
-    // [FIX] Wrapped BottomSheet content in a SingleChildScrollView to prevent
-    // RenderFlex Overflow when the keyboard appears on smaller screens.
     return SingleChildScrollView(
       child: Container(
         decoration: BoxDecoration(

@@ -137,7 +137,7 @@ class _ModernReminderSheetState extends State<ModernReminderSheet> {
                         color: Colors.redAccent, fontWeight: FontWeight.bold),
                   ),
                   validator: (value) => (value == null || value.isEmpty)
-                      ? "Title is required"
+                      ? "Reminder Title is Required"
                       : null,
                 ),
 

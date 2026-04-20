@@ -48,8 +48,7 @@ class ReminderGlassCard extends StatelessWidget {
               foregroundColor: Colors.white,
               icon: Icons.edit_outlined,
               label: 'Edit',
-              borderRadius:
-                  const BorderRadius.horizontal(left: Radius.circular(8)),
+              borderRadius: BorderRadius.circular(8),
             ),
           ],
         ),
@@ -66,8 +65,7 @@ class ReminderGlassCard extends StatelessWidget {
               foregroundColor: Colors.white,
               icon: Icons.delete_outline,
               label: 'Delete',
-              borderRadius:
-                  const BorderRadius.horizontal(right: Radius.circular(8)),
+              borderRadius: BorderRadius.circular(8),
             ),
           ],
         ),
