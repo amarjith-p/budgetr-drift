@@ -189,7 +189,7 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const NotificationManagerScreen(),
+                              builder: (_) => const InvestmentScreen(),
                             ),
                           ),
                         ),
