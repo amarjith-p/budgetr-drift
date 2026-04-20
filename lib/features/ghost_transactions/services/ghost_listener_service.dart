@@ -72,15 +72,22 @@ class GhostListenerService {
   void _startNotificationStream() {
     NotificationListenerService.notificationsStream.listen((event) {
       // ============================================================================
-      // [UPDATED] OS-LEVEL IGNORE LIST
+      // [UPDATED] OS-LEVEL IGNORE LIST & NATIVE SMS EXCLUSION
       // WhatsApp is explicitly ALLOWED to pass through because banks send alerts there.
       // Personal WhatsApp chats will be filtered out downstream by the Confidence Engine.
+      //
+      // [NEW]: We now EXCLUDE native SMS apps (messaging, mms) to prevent duplicate
+      // entries since the dedicated SMS listener already handles them natively.
       // ============================================================================
       if (event.packageName != null &&
           (event.packageName!.contains('telegram') ||
               event.packageName!.contains('instagram') ||
               event.packageName!.contains('facebook') ||
-              event.packageName!.contains('snapchat'))) return;
+              event.packageName!.contains('snapchat') ||
+              event.packageName!
+                  .contains('messaging') || // Google & Samsung Messages
+              event.packageName!.contains('mms')))
+        return; // Generic/Native MMS apps
 
       String fullNotificationText = [event.title, event.content]
           .where((e) => e != null && e.isNotEmpty)
