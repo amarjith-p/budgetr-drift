@@ -4,6 +4,7 @@ import 'package:budget/features/ghost_transactions/screens/ghost_transactions_sc
 import 'package:budget/features/investments/screens/portfolio_dashboard.dart';
 import 'package:budget/features/notifications/services/system_notification_service.dart';
 import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
+import 'package:budget/features/reminders/screens/reminders_dashboard_screen.dart';
 import 'package:budget/features/settings/screens/category_manager_screen.dart';
 import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:budget/features/settlement/screens/settlement_screen.dart';
@@ -344,8 +345,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildCompactQuickActionGrid(BuildContext context) {
     final List<Widget> page1 = [
-      _buildVerticalActionChip(context, "Pending Txns", Icons.access_time,
-          const Color(0xFF2DC653), const GhostTransactionsScreen()),
+      _buildVerticalActionChip(
+          context,
+          "Pending Txns",
+          Icons.pending_actions_rounded,
+          const Color(0xFF2DC653),
+          const GhostTransactionsScreen()),
       _buildVerticalActionChip(context, "Investments", Icons.insights_rounded,
           const Color(0xFFFF7F11), const PortfolioDashboard()),
       _buildVerticalActionChip(
@@ -380,12 +385,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const Color(0xFFF72585), const VaultAuthScreen()),
       _buildVerticalActionChip(context, "Budget Buckets", Icons.widgets_rounded,
           const Color(0xFFFFE066), const SettingsScreen()),
-      _buildVerticalActionChip(
-          context,
-          "Live Portfolio",
-          Icons.bar_chart_rounded,
-          const Color(0xFF4361EE),
-          const InvestmentScreen()),
+      _buildVerticalActionChip(context, "Reminders", Icons.access_alarm,
+          const Color(0xFF4361EE), const RemindersDashboardScreen()),
       _buildVerticalActionChip(
           context,
           "Settings",

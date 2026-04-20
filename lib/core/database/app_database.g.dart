@@ -15417,6 +15417,357 @@ class GhostTransactionsCompanion
   }
 }
 
+class $RemindersTableTable extends RemindersTable
+    with TableInfo<$RemindersTableTable, ReminderEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RemindersTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      additionalChecks:
+          GeneratedColumn.checkTextLength(minTextLength: 1, maxTextLength: 100),
+      type: DriftSqlType.string,
+      requiredDuringInsert: true);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _targetDateMeta =
+      const VerificationMeta('targetDate');
+  @override
+  late final GeneratedColumn<DateTime> targetDate = GeneratedColumn<DateTime>(
+      'target_date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _isNotificationEnabledMeta =
+      const VerificationMeta('isNotificationEnabled');
+  @override
+  late final GeneratedColumn<bool> isNotificationEnabled =
+      GeneratedColumn<bool>('is_notification_enabled', aliasedName, false,
+          type: DriftSqlType.bool,
+          requiredDuringInsert: false,
+          defaultConstraints: GeneratedColumn.constraintIsAlways(
+              'CHECK ("is_notification_enabled" IN (0, 1))'),
+          defaultValue: const Constant(true));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, title, notes, targetDate, isNotificationEnabled, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reminders_table';
+  @override
+  VerificationContext validateIntegrity(Insertable<ReminderEntry> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('target_date')) {
+      context.handle(
+          _targetDateMeta,
+          targetDate.isAcceptableOrUnknown(
+              data['target_date']!, _targetDateMeta));
+    } else if (isInserting) {
+      context.missing(_targetDateMeta);
+    }
+    if (data.containsKey('is_notification_enabled')) {
+      context.handle(
+          _isNotificationEnabledMeta,
+          isNotificationEnabled.isAcceptableOrUnknown(
+              data['is_notification_enabled']!, _isNotificationEnabledMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReminderEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReminderEntry(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      targetDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}target_date'])!,
+      isNotificationEnabled: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool,
+          data['${effectivePrefix}is_notification_enabled'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $RemindersTableTable createAlias(String alias) {
+    return $RemindersTableTable(attachedDatabase, alias);
+  }
+}
+
+class ReminderEntry extends DataClass implements Insertable<ReminderEntry> {
+  final int id;
+  final String title;
+  final String? notes;
+  final DateTime targetDate;
+  final bool isNotificationEnabled;
+  final DateTime createdAt;
+  const ReminderEntry(
+      {required this.id,
+      required this.title,
+      this.notes,
+      required this.targetDate,
+      required this.isNotificationEnabled,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['target_date'] = Variable<DateTime>(targetDate);
+    map['is_notification_enabled'] = Variable<bool>(isNotificationEnabled);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  RemindersTableCompanion toCompanion(bool nullToAbsent) {
+    return RemindersTableCompanion(
+      id: Value(id),
+      title: Value(title),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      targetDate: Value(targetDate),
+      isNotificationEnabled: Value(isNotificationEnabled),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ReminderEntry.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReminderEntry(
+      id: serializer.fromJson<int>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      targetDate: serializer.fromJson<DateTime>(json['targetDate']),
+      isNotificationEnabled:
+          serializer.fromJson<bool>(json['isNotificationEnabled']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'title': serializer.toJson<String>(title),
+      'notes': serializer.toJson<String?>(notes),
+      'targetDate': serializer.toJson<DateTime>(targetDate),
+      'isNotificationEnabled': serializer.toJson<bool>(isNotificationEnabled),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ReminderEntry copyWith(
+          {int? id,
+          String? title,
+          Value<String?> notes = const Value.absent(),
+          DateTime? targetDate,
+          bool? isNotificationEnabled,
+          DateTime? createdAt}) =>
+      ReminderEntry(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        notes: notes.present ? notes.value : this.notes,
+        targetDate: targetDate ?? this.targetDate,
+        isNotificationEnabled:
+            isNotificationEnabled ?? this.isNotificationEnabled,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  ReminderEntry copyWithCompanion(RemindersTableCompanion data) {
+    return ReminderEntry(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      targetDate:
+          data.targetDate.present ? data.targetDate.value : this.targetDate,
+      isNotificationEnabled: data.isNotificationEnabled.present
+          ? data.isNotificationEnabled.value
+          : this.isNotificationEnabled,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReminderEntry(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('notes: $notes, ')
+          ..write('targetDate: $targetDate, ')
+          ..write('isNotificationEnabled: $isNotificationEnabled, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, title, notes, targetDate, isNotificationEnabled, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReminderEntry &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.notes == this.notes &&
+          other.targetDate == this.targetDate &&
+          other.isNotificationEnabled == this.isNotificationEnabled &&
+          other.createdAt == this.createdAt);
+}
+
+class RemindersTableCompanion extends UpdateCompanion<ReminderEntry> {
+  final Value<int> id;
+  final Value<String> title;
+  final Value<String?> notes;
+  final Value<DateTime> targetDate;
+  final Value<bool> isNotificationEnabled;
+  final Value<DateTime> createdAt;
+  const RemindersTableCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.targetDate = const Value.absent(),
+    this.isNotificationEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  RemindersTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String title,
+    this.notes = const Value.absent(),
+    required DateTime targetDate,
+    this.isNotificationEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  })  : title = Value(title),
+        targetDate = Value(targetDate);
+  static Insertable<ReminderEntry> custom({
+    Expression<int>? id,
+    Expression<String>? title,
+    Expression<String>? notes,
+    Expression<DateTime>? targetDate,
+    Expression<bool>? isNotificationEnabled,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (notes != null) 'notes': notes,
+      if (targetDate != null) 'target_date': targetDate,
+      if (isNotificationEnabled != null)
+        'is_notification_enabled': isNotificationEnabled,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  RemindersTableCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? title,
+      Value<String?>? notes,
+      Value<DateTime>? targetDate,
+      Value<bool>? isNotificationEnabled,
+      Value<DateTime>? createdAt}) {
+    return RemindersTableCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      notes: notes ?? this.notes,
+      targetDate: targetDate ?? this.targetDate,
+      isNotificationEnabled:
+          isNotificationEnabled ?? this.isNotificationEnabled,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (targetDate.present) {
+      map['target_date'] = Variable<DateTime>(targetDate.value);
+    }
+    if (isNotificationEnabled.present) {
+      map['is_notification_enabled'] =
+          Variable<bool>(isNotificationEnabled.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemindersTableCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('notes: $notes, ')
+          ..write('targetDate: $targetDate, ')
+          ..write('isNotificationEnabled: $isNotificationEnabled, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -15464,6 +15815,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CategoryBudgetsTable(this);
   late final $GhostTransactionsTable ghostTransactions =
       $GhostTransactionsTable(this);
+  late final $RemindersTableTable remindersTable = $RemindersTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -15497,7 +15849,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         vaultRecords,
         balanceSheetEntries,
         categoryBudgets,
-        ghostTransactions
+        ghostTransactions,
+        remindersTable
       ];
 }
 
@@ -23841,6 +24194,191 @@ typedef $$GhostTransactionsTableProcessedTableManager = ProcessedTableManager<
     ),
     GhostTransactionEntry,
     PrefetchHooks Function()>;
+typedef $$RemindersTableTableCreateCompanionBuilder = RemindersTableCompanion
+    Function({
+  Value<int> id,
+  required String title,
+  Value<String?> notes,
+  required DateTime targetDate,
+  Value<bool> isNotificationEnabled,
+  Value<DateTime> createdAt,
+});
+typedef $$RemindersTableTableUpdateCompanionBuilder = RemindersTableCompanion
+    Function({
+  Value<int> id,
+  Value<String> title,
+  Value<String?> notes,
+  Value<DateTime> targetDate,
+  Value<bool> isNotificationEnabled,
+  Value<DateTime> createdAt,
+});
+
+class $$RemindersTableTableFilterComposer
+    extends Composer<_$AppDatabase, $RemindersTableTable> {
+  $$RemindersTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get targetDate => $composableBuilder(
+      column: $table.targetDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isNotificationEnabled => $composableBuilder(
+      column: $table.isNotificationEnabled,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$RemindersTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $RemindersTableTable> {
+  $$RemindersTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get targetDate => $composableBuilder(
+      column: $table.targetDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isNotificationEnabled => $composableBuilder(
+      column: $table.isNotificationEnabled,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$RemindersTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RemindersTableTable> {
+  $$RemindersTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get targetDate => $composableBuilder(
+      column: $table.targetDate, builder: (column) => column);
+
+  GeneratedColumn<bool> get isNotificationEnabled => $composableBuilder(
+      column: $table.isNotificationEnabled, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$RemindersTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $RemindersTableTable,
+    ReminderEntry,
+    $$RemindersTableTableFilterComposer,
+    $$RemindersTableTableOrderingComposer,
+    $$RemindersTableTableAnnotationComposer,
+    $$RemindersTableTableCreateCompanionBuilder,
+    $$RemindersTableTableUpdateCompanionBuilder,
+    (
+      ReminderEntry,
+      BaseReferences<_$AppDatabase, $RemindersTableTable, ReminderEntry>
+    ),
+    ReminderEntry,
+    PrefetchHooks Function()> {
+  $$RemindersTableTableTableManager(
+      _$AppDatabase db, $RemindersTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RemindersTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RemindersTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RemindersTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<DateTime> targetDate = const Value.absent(),
+            Value<bool> isNotificationEnabled = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) =>
+              RemindersTableCompanion(
+            id: id,
+            title: title,
+            notes: notes,
+            targetDate: targetDate,
+            isNotificationEnabled: isNotificationEnabled,
+            createdAt: createdAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String title,
+            Value<String?> notes = const Value.absent(),
+            required DateTime targetDate,
+            Value<bool> isNotificationEnabled = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) =>
+              RemindersTableCompanion.insert(
+            id: id,
+            title: title,
+            notes: notes,
+            targetDate: targetDate,
+            isNotificationEnabled: isNotificationEnabled,
+            createdAt: createdAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$RemindersTableTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $RemindersTableTable,
+    ReminderEntry,
+    $$RemindersTableTableFilterComposer,
+    $$RemindersTableTableOrderingComposer,
+    $$RemindersTableTableAnnotationComposer,
+    $$RemindersTableTableCreateCompanionBuilder,
+    $$RemindersTableTableUpdateCompanionBuilder,
+    (
+      ReminderEntry,
+      BaseReferences<_$AppDatabase, $RemindersTableTable, ReminderEntry>
+    ),
+    ReminderEntry,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -23904,4 +24442,6 @@ class $AppDatabaseManager {
       $$CategoryBudgetsTableTableManager(_db, _db.categoryBudgets);
   $$GhostTransactionsTableTableManager get ghostTransactions =>
       $$GhostTransactionsTableTableManager(_db, _db.ghostTransactions);
+  $$RemindersTableTableTableManager get remindersTable =>
+      $$RemindersTableTableTableManager(_db, _db.remindersTable);
 }

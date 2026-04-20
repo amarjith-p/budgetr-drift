@@ -179,6 +179,20 @@ class _ConfigurationMenuScreenState extends State<ConfigurationMenuScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        _buildMenuCard(
+                          context,
+                          title: "Live Portfolio",
+                          subtitle: "Track Stocks & Mutual Funds ",
+                          icon: Icons.bar_chart_rounded,
+                          color: const Color(0xFF00B4D8),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const NotificationManagerScreen(),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 32),
 
                         // SECTION: DATA

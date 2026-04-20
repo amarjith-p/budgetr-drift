@@ -1,6 +1,7 @@
 // lib/core/database/app_database.dart
 
 import 'dart:io';
+import 'package:budget/features/reminders/database/reminders_table.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
@@ -45,6 +46,7 @@ part 'app_database.g.dart';
     BalanceSheetEntries,
     CategoryBudgets,
     GhostTransactions,
+    RemindersTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -55,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
 
   // [NEW] Incremented schemaVersion from 26 to 27 for Investment Closures
   @override
-  int get schemaVersion => 27;
+  int get schemaVersion => 28;
 
   @override
   MigrationStrategy get migration {
@@ -197,6 +199,9 @@ class AppDatabase extends _$AppDatabase {
               await m.addColumn(investments, investments.closureReason);
             }
           }
+        }
+        if (from < 28) {
+          await safeCreateTable(remindersTable);
         }
       },
     );

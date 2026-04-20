@@ -1,8 +1,10 @@
 // lib/core/services/service_locator.dart
 
 import 'package:budget/core/database/app_database.dart';
+import 'package:budget/core/services/exact_time_scheduler.dart';
 import 'package:budget/features/balance_sheet/services/balance_sheet_service.dart';
 import 'package:budget/features/recurring/services/recurring_service.dart';
+import 'package:budget/features/reminders/services/reminder_service.dart';
 import 'package:budget/features/trip_mode/services/trip_report_service.dart';
 import 'package:budget/features/trip_mode/services/trip_service.dart';
 import 'package:budget/features/vault/services/vault_auth_service.dart';
@@ -63,6 +65,9 @@ class ServiceLocator {
     locator.registerLazySingleton<VaultAuthService>(() => VaultAuthService());
     locator.registerLazySingleton<BalanceSheetService>(
         () => BalanceSheetService());
+    GetIt.I
+        .registerLazySingleton<ExactTimeScheduler>(() => ExactTimeScheduler());
+    GetIt.I.registerLazySingleton<ReminderService>(() => ReminderService());
 
     // [NEW] Custom Budget Service Registration
     locator.registerLazySingleton<CategoryBudgetService>(
