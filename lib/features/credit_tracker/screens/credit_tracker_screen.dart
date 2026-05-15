@@ -48,7 +48,8 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
   String _selectedSort = 'Balance (High to Low)';
 
   final List<String> _sortOptions = [
-    'Name (A-Z)',
+    'Payment Pending First',
+    'Card Name (A-Z)',
     'Balance (High to Low)',
     'Balance (Low to High)',
     'Due Date (Ascending)',
@@ -78,15 +79,48 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
       final a = aData.card;
       final b = bData.card;
       switch (_selectedSort) {
+        case 'Payment Pending First':
+          final bool aIsPending = aData.statementBalance > 0;
+          final bool bIsPending = bData.statementBalance > 0;
+
+          // 1. Prioritize pending payments to the top
+          if (aIsPending && !bIsPending) return -1;
+          if (!aIsPending && bIsPending) return 1;
+
+          // 2. Helper to calculate actual days remaining from today
+          int getDaysUntil(int day) {
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            var target = DateTime(now.year, now.month, day);
+
+            // If the day has already passed this month, the due date is next month
+            if (target.isBefore(today)) {
+              target = DateTime(now.year, now.month + 1, day);
+            }
+            return target.difference(today).inDays;
+          }
+
+          // 3. Sort ascending by who is due the soonest (smallest days remaining first)
+          return getDaysUntil(a.dueDate).compareTo(getDaysUntil(b.dueDate));
+
         case 'Balance (High to Low)':
           return b.currentBalance.compareTo(a.currentBalance);
         case 'Balance (Low to High)':
           return a.currentBalance.compareTo(b.currentBalance);
         case 'Due Date (Ascending)':
-          return a.dueDate.compareTo(b.dueDate);
+          int getDaysUntil(int day) {
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            var target = DateTime(now.year, now.month, day);
+            if (target.isBefore(today)) {
+              target = DateTime(now.year, now.month + 1, day);
+            }
+            return target.difference(today).inDays;
+          }
+          return getDaysUntil(a.dueDate).compareTo(getDaysUntil(b.dueDate));
         case 'Bill Date (Ascending)':
           return a.billDate.compareTo(b.billDate);
-        case 'Name (A-Z)':
+        case 'Card Name (A-Z)':
         default:
           return a.name.toLowerCase().compareTo(b.name.toLowerCase());
       }
@@ -345,47 +379,83 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.only(top: 24, bottom: 32),
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E293B),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                "Sort Cards By",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ..._sortOptions.map((option) {
-                final isSelected = _selectedSort == option;
-                return Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? _accentColor.withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
+        return SingleChildScrollView(
+          child: Container(
+            padding: EdgeInsets.only(
+              top: 12,
+              bottom: MediaQuery.of(context).padding.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E293B), // Deep modern premium background
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // --- Modern Drag Handle ---
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  child: ListTile(
+                ),
+
+                // --- Header ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: _accentColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.sort_rounded,
+                            color: _accentColor, size: 22),
+                      ),
+                      const SizedBox(width: 16),
+                      const Text(
+                        "Sort Strategy",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // --- Options List ---
+                ..._sortOptions.map((option) {
+                  final isSelected = _selectedSort == option;
+
+                  // Assign relevant icons to each sorting strategy
+                  IconData getIconForOption(String opt) {
+                    if (opt.contains('Payment'))
+                      return Icons.priority_high_rounded;
+                    if (opt.contains('Due'))
+                      return Icons.event_available_rounded;
+                    if (opt.contains('Bill')) return Icons.receipt_long_rounded;
+                    if (opt.contains('High'))
+                      return Icons.keyboard_double_arrow_down_rounded;
+                    if (opt.contains('Low'))
+                      return Icons.keyboard_double_arrow_up_rounded;
+                    return Icons.sort_by_alpha_rounded;
+                  }
+
+                  return GestureDetector(
                     onTap: () {
                       HapticFeedback.selectionClick();
                       setState(() {
@@ -393,21 +463,65 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                       });
                       Navigator.pop(context);
                     },
-                    title: Text(
-                      option,
-                      style: TextStyle(
-                        color: isSelected ? _accentColor : Colors.white,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.w500,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? _accentColor.withOpacity(0.08)
+                            : Colors.white.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected
+                              ? _accentColor.withOpacity(0.4)
+                              : Colors.white.withOpacity(0.05),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            getIconForOption(option),
+                            color: isSelected ? _accentColor : Colors.white54,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              option,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.8),
+                                fontSize: 15,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          AnimatedScale(
+                            scale: isSelected ? 1.0 : 0.8,
+                            duration: const Duration(milliseconds: 200),
+                            child: Icon(
+                              isSelected
+                                  ? Icons.radio_button_checked_rounded
+                                  : Icons.radio_button_off_rounded,
+                              color: isSelected ? _accentColor : Colors.white24,
+                              size: 22,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    trailing: isSelected
-                        ? Icon(Icons.check_circle_rounded, color: _accentColor)
-                        : null,
-                  ),
-                );
-              }),
-            ],
+                  );
+                }),
+              ],
+            ),
           ),
         );
       },

@@ -347,10 +347,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final List<Widget> page1 = [
       _buildVerticalActionChip(
           context,
-          "Pending Txns",
-          Icons.pending_actions_rounded,
-          const Color(0xFF2DC653),
-          const GhostTransactionsScreen()),
+          "Trip Mode",
+          Icons.flight_takeoff_rounded,
+          const Color(0xFF00B4D8),
+          const TripDashboardScreen()),
       _buildVerticalActionChip(context, "Investments", Icons.insights_rounded,
           const Color(0xFFFF7F11), const PortfolioDashboard()),
       _buildVerticalActionChip(
@@ -374,10 +374,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final List<Widget> page2 = [
       _buildVerticalActionChip(
           context,
-          "Trip Mode",
-          Icons.flight_takeoff_rounded,
-          const Color(0xFF00B4D8),
-          const TripDashboardScreen()),
+          "Pending Txns",
+          Icons.pending_actions_rounded,
+          const Color(0xFF2DC653),
+          const GhostTransactionsScreen()),
       _buildVerticalActionChip(context, "Settlements", Icons.fact_check_rounded,
           const Color(0xFF9C6644), const SettlementScreen()),
 

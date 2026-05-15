@@ -557,7 +557,7 @@ class _NewCreditTransactionScreenState
         children: [
           _buildSegment("Expense", Colors.redAccent, activeColor),
           _buildSegment("Income", Colors.greenAccent, activeColor,
-              label: "Payment"),
+              label: "Payment/Income"),
         ],
       ),
     );
