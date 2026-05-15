@@ -133,6 +133,12 @@ class _CashFlowCardState extends State<CashFlowCard> {
               } else if (txn is CreditTransactionModel) {
                 if (txn.type == 'Expense') {
                   expense += txn.amount;
+                } else if (txn.type == 'Income') {
+                  // Allow credit income (like cashback) BUT exclude bill repayments
+                  final cat = txn.category.toLowerCase();
+                  if (cat != 'repayment' && cat != 'payment') {
+                    income += txn.amount;
+                  }
                 }
               }
             }

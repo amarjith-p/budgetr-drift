@@ -205,11 +205,17 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
     Map<String, double>? bucketLimits,
   }) {
     final targetTxns = allTxns.where((t) {
-      final bool isCredit = t is CreditTransactionModel;
-      final String type = isCredit ? t.type : t.type;
-      if (type == 'Income' && isCredit) return false;
-      if (forIncome) return type == 'Income';
-      return type == 'Expense';
+      if (t is CreditTransactionModel) {
+        // Exclude Credit Card Repayments/Payments from Income
+        if (t.type == 'Income') {
+          final cat = t.category.toLowerCase();
+          if (cat == 'repayment' || cat == 'payment') return false;
+        }
+        return forIncome ? t.type == 'Income' : t.type == 'Expense';
+      } else if (t is ExpenseTransactionModel) {
+        return forIncome ? t.type == 'Income' : t.type == 'Expense';
+      }
+      return false;
     }).toList();
 
     final groupedByMain = groupBy(targetTxns, (t) {
@@ -509,17 +515,25 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
 
                                   double totalIncome = 0;
                                   double totalExpense = 0;
+
                                   for (var t in displayedTxns) {
-                                    final bool isCredit =
-                                        t is CreditTransactionModel;
-                                    final String type =
-                                        isCredit ? t.type : t.type;
-                                    final double amount =
-                                        isCredit ? t.amount : t.amount;
-                                    if (type == 'Income' && !isCredit) {
-                                      totalIncome += amount;
-                                    } else if (type == 'Expense') {
-                                      totalExpense += amount;
+                                    if (t is CreditTransactionModel) {
+                                      if (t.type == 'Income') {
+                                        // Skip credit card bill repayments
+                                        final cat = t.category.toLowerCase();
+                                        if (cat == 'repayment' ||
+                                            cat == 'payment') continue;
+
+                                        totalIncome += t.amount;
+                                      } else if (t.type == 'Expense') {
+                                        totalExpense += t.amount;
+                                      }
+                                    } else if (t is ExpenseTransactionModel) {
+                                      if (t.type == 'Income') {
+                                        totalIncome += t.amount;
+                                      } else if (t.type == 'Expense') {
+                                        totalExpense += t.amount;
+                                      }
                                     }
                                   }
                                   final currentTotal =

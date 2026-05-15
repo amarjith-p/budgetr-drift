@@ -150,7 +150,7 @@ class BackupService {
     final lastBackup = DateTime.parse(lastStr);
     final diff = DateTime.now().difference(lastBackup);
 
-    return diff.inHours > 12;
+    return diff.inHours > 24;
   }
 
   Future<bool> checkAndResetRestoreFlag() async {
