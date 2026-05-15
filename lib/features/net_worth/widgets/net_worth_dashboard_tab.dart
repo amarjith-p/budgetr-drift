@@ -26,41 +26,11 @@ class NetWorthDashboardTab extends StatefulWidget {
 class _NetWorthDashboardTabState extends State<NetWorthDashboardTab> {
   final _netWorthService = GetIt.I<NetWorthService>();
   final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
-  final _shortCurrency = NumberFormat.compactCurrency(
-    symbol: '₹',
-    locale: 'en_IN',
-  );
+  // final _shortCurrency = NumberFormat.compactCurrency(
+  //     symbol: '₹', locale: 'en_IN', decimalDigits: 2);
   final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
 
   Future<void> _deleteRecord(String id) async {
-    // bool confirm = await showDialog(
-    //       context: context,
-    //       builder: (ctx) => AlertDialog(
-    //         backgroundColor: BudgetrColors.cardSurface,
-    //         title: Text('Delete Record?', style: BudgetrStyles.h2),
-    //         content: Text('This cannot be undone.', style: BudgetrStyles.body),
-    //         actions: [
-    //           TextButton(
-    //             onPressed: () => Navigator.pop(ctx, false),
-    //             child: const Text(
-    //               'Cancel',
-    //               style: TextStyle(color: Colors.white70),
-    //             ),
-    //           ),
-    //           TextButton(
-    //             onPressed: () => Navigator.pop(ctx, true),
-    //             child: const Text(
-    //               'Delete',
-    //               style: TextStyle(color: BudgetrColors.error),
-    //             ),
-    //           ),
-    //         ],
-    //       ),
-    //     ) ??
-    //     false;
-
-    // if (confirm) await _netWorthService.deleteNetWorthRecord(id);
-
     showStatusSheet(
       context: context,
       title: "Delete Record?",
@@ -112,9 +82,8 @@ class _NetWorthDashboardTabState extends State<NetWorthDashboardTab> {
         }
         tableData = tableData.reversed.toList();
 
-        if (records.isEmpty) return _buildEmptyState();
-
-        double current = sortedRecords.last.amount;
+        double current =
+            sortedRecords.isNotEmpty ? sortedRecords.last.amount : 0.0;
         double previous = sortedRecords.length > 1
             ? sortedRecords[sortedRecords.length - 2].amount
             : 0;
@@ -149,192 +118,237 @@ class _NetWorthDashboardTabState extends State<NetWorthDashboardTab> {
                       ),
                       child: Column(
                         children: [
-                          Text(
-                            "CURRENT NET WORTH",
-                            style: BudgetrStyles.caption.copyWith(
-                              color: BudgetrColors.accent,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _currencyFormat.format(current),
-                            style: BudgetrStyles.h1.copyWith(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (sortedRecords.length > 1)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: (growth >= 0
-                                        ? BudgetrColors.success
-                                        : BudgetrColors.error)
-                                    .withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                          StreamBuilder<double>(
+                            stream:
+                                _netWorthService.getAutoCalculatedNetWorth(),
+                            builder: (context, autoSnapshot) {
+                              final autoNw = autoSnapshot.data ?? 0.0;
+                              return Column(
                                 children: [
-                                  Icon(
-                                    growth >= 0
-                                        ? Icons.trending_up
-                                        : Icons.trending_down,
-                                    color: growth >= 0
-                                        ? BudgetrColors.success
-                                        : BudgetrColors.error,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
                                   Text(
-                                    "${growth >= 0 ? '+' : ''}${_shortCurrency.format(growth)}",
-                                    style: TextStyle(
-                                      color: growth >= 0
-                                          ? BudgetrColors.success
-                                          : BudgetrColors.error,
-                                      fontWeight: FontWeight.bold,
+                                    "LIVE CALCULATED NET WORTH",
+                                    style: BudgetrStyles.caption.copyWith(
+                                      color: BudgetrColors.success,
                                       fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _currencyFormat.format(autoNw),
+                                    style: BudgetrStyles.h1.copyWith(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    "Derived from all your active financial modules",
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      color: Colors.white54,
                                     ),
                                   ),
                                 ],
+                              );
+                            },
+                          ),
+                          if (records.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            const Divider(color: Colors.white24),
+                            const SizedBox(height: 16),
+                            Text(
+                              "LAST RECORDED NET WORTH",
+                              style: BudgetrStyles.caption.copyWith(
+                                color: BudgetrColors.accent,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.5,
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _currencyFormat.format(current),
+                              style: BudgetrStyles.h1.copyWith(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (sortedRecords.length > 1)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: (growth >= 0
+                                          ? BudgetrColors.success
+                                          : BudgetrColors.error)
+                                      .withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      growth >= 0
+                                          ? Icons.trending_up
+                                          : Icons.trending_down,
+                                      color: growth >= 0
+                                          ? BudgetrColors.success
+                                          : BudgetrColors.error,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "${growth >= 0 ? '+' : ''}${_currencyFormat.format(growth)}",
+                                      style: TextStyle(
+                                        color: growth >= 0
+                                            ? BudgetrColors.success
+                                            : BudgetrColors.error,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
                         ],
                       ),
                     ),
 
                     const SizedBox(height: 24),
 
-                    // --- Chart ---
-                    NetWorthChart(
-                      sortedRecords: sortedRecords,
-                      currencyFormat: _currencyFormat,
-                      accentColor: BudgetrColors.accent,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // --- History Table ---
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "History Log",
-                        style: BudgetrStyles.h3.copyWith(
-                          color: Colors.white.withOpacity(0.7),
-                        ),
+                    if (records.isEmpty)
+                      _buildEmptyStateContents()
+                    else ...[
+                      // --- Chart ---
+                      NetWorthChart(
+                        sortedRecords: sortedRecords,
+                        currencyFormat: _currencyFormat,
+                        accentColor: BudgetrColors.accent,
                       ),
-                    ),
-                    const SizedBox(height: 12),
 
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: BudgetrColors.cardSurface.withOpacity(0.6),
-                        borderRadius: BudgetrStyles.radiusM,
-                        border: BudgetrStyles.glassBorder,
-                      ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: MaterialStateProperty.all(
-                            Colors.white.withOpacity(0.05),
+                      const SizedBox(height: 24),
+
+                      // --- History Table ---
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "History Log",
+                          style: BudgetrStyles.h3.copyWith(
+                            color: Colors.white.withOpacity(0.7),
                           ),
-                          columnSpacing: 24,
-                          columns: [
-                            DataColumn(
-                              label: Text(
-                                'DATE',
-                                style: BudgetrStyles.caption.copyWith(
-                                  color: BudgetrColors.accent,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'NET WORTH',
-                                style: BudgetrStyles.caption.copyWith(
-                                  color: BudgetrColors.accent,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              numeric: true,
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'DIFFERENCE',
-                                style: BudgetrStyles.caption.copyWith(
-                                  color: BudgetrColors.accent,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              numeric: true,
-                            ),
-                            const DataColumn(label: Text('')),
-                          ],
-                          rows: tableData.map((data) {
-                            final record = data['record'] as NetWorthRecord;
-                            final diff = data['diff'] as double;
-
-                            return DataRow(
-                              cells: [
-                                DataCell(
-                                  Text(
-                                    _dateFormat.format(record.date),
-                                    style: BudgetrStyles.body.copyWith(
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    _currencyFormat.format(record.amount),
-                                    style: BudgetrStyles.body.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    diff == 0
-                                        ? '-'
-                                        : '${diff > 0 ? '+' : ''}${_currencyFormat.format(diff)}',
-                                    style: TextStyle(
-                                      color: diff > 0
-                                          ? BudgetrColors.success
-                                          : (diff < 0
-                                              ? BudgetrColors.error
-                                              : Colors.white30),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete_outline,
-                                      size: 18,
-                                      color: Colors.white30,
-                                    ),
-                                    onPressed: () => _deleteRecord(record.id),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 12),
+
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: BudgetrColors.cardSurface.withOpacity(0.6),
+                          borderRadius: BudgetrStyles.radiusM,
+                          border: BudgetrStyles.glassBorder,
+                        ),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: DataTable(
+                            headingRowColor: WidgetStateProperty.all(
+                              Colors.white.withOpacity(0.05),
+                            ),
+                            columnSpacing: 24,
+                            columns: [
+                              DataColumn(
+                                label: Text(
+                                  'DATE',
+                                  style: BudgetrStyles.caption.copyWith(
+                                    color: BudgetrColors.accent,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'NET WORTH',
+                                  style: BudgetrStyles.caption.copyWith(
+                                    color: BudgetrColors.accent,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                numeric: true,
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  'DIFFERENCE',
+                                  style: BudgetrStyles.caption.copyWith(
+                                    color: BudgetrColors.accent,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                numeric: true,
+                              ),
+                              const DataColumn(label: Text('')),
+                            ],
+                            rows: tableData.map((data) {
+                              final record = data['record'] as NetWorthRecord;
+                              final diff = data['diff'] as double;
+
+                              return DataRow(
+                                cells: [
+                                  DataCell(
+                                    Text(
+                                      _dateFormat.format(record.date),
+                                      style: BudgetrStyles.body.copyWith(
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      _currencyFormat.format(record.amount),
+                                      style: BudgetrStyles.body.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(
+                                      diff == 0
+                                          ? '-'
+                                          : '${diff > 0 ? '+' : ''}${_currencyFormat.format(diff)}',
+                                      style: TextStyle(
+                                        color: diff > 0
+                                            ? BudgetrColors.success
+                                            : (diff < 0
+                                                ? BudgetrColors.error
+                                                : Colors.white30),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        size: 18,
+                                        color: Colors.white30,
+                                      ),
+                                      onPressed: () => _deleteRecord(record.id),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -392,62 +406,34 @@ class _NetWorthDashboardTabState extends State<NetWorthDashboardTab> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: BudgetrColors.accent.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.currency_rupee,
-              size: 48,
-              color: BudgetrColors.accent,
-            ),
+  Widget _buildEmptyStateContents() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const SizedBox(height: 40),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: BudgetrColors.accent.withOpacity(0.1),
+            shape: BoxShape.circle,
           ),
-          const SizedBox(height: 24),
-          Text("Start Tracking Wealth", style: BudgetrStyles.h2),
-          const SizedBox(height: 8),
-          Text(
-            "Add your assets and liabilities\nto see your net worth grow.",
-            textAlign: TextAlign.center,
-            style: BudgetrStyles.body.copyWith(
-              color: Colors.white.withOpacity(0.5),
-            ),
+          child: const Icon(
+            Icons.currency_rupee,
+            size: 48,
+            color: BudgetrColors.accent,
           ),
-          const SizedBox(height: 40),
-          GestureDetector(
-            onTap: () => _showInputSheet(),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              decoration: BoxDecoration(
-                gradient: BudgetrColors.primaryGradient,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: BudgetrStyles.glowBoxShadow(BudgetrColors.accent),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.add, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    "Add First Entry",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        ),
+        const SizedBox(height: 24),
+        Text("Start Tracking Wealth", style: BudgetrStyles.h2),
+        const SizedBox(height: 8),
+        Text(
+          "Add your assets and liabilities\nto start logging your net worth history.",
+          textAlign: TextAlign.center,
+          style: BudgetrStyles.body.copyWith(
+            color: Colors.white.withOpacity(0.5),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

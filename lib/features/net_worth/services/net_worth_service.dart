@@ -1,12 +1,87 @@
 import 'package:drift/drift.dart';
+import 'package:get_it/get_it.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart' as db;
 import '../../../core/models/net_worth_model.dart';
 import '../../../core/models/net_worth_split_model.dart';
 
+// --- Imports for Auto-Calculated Net Worth ---
+import '../../daily_expense/services/expense_service.dart';
+import '../../investments/services/portfolio_service.dart';
+import '../../credit_tracker/services/credit_service.dart';
+import '../../goals_loans/services/goal_loan_service.dart';
+
 class NetWorthService {
   final db.AppDatabase _db = db.AppDatabase.instance;
   final _uuid = const Uuid();
+
+  // --- Auto-Calculated Net Worth Stream ---
+  // --- Auto-Calculated Net Worth Stream ---
+  Stream<double> getAutoCalculatedNetWorth() {
+    final expenseService = GetIt.I<ExpenseService>();
+    final portfolioService = GetIt.I<PortfolioService>();
+    final creditService = GetIt.I<CreditService>();
+    final goalLoanService = GetIt.I<GoalLoanService>();
+
+    return Rx.combineLatest4(
+      expenseService.getAccounts(),
+      portfolioService.watchAllInvestments(),
+      creditService.getSmartCreditCardsDashboard(),
+      goalLoanService.getActiveLoans(),
+      (
+        accounts,
+        investments,
+        creditCardDataList,
+        loans,
+      ) {
+        // 1. Total Account Balance (Assets)
+        double totalAccountBalance = 0;
+        for (var acc in accounts) {
+          totalAccountBalance += acc.currentBalance;
+        }
+
+        // 2. Total Portfolio Value (Assets)
+        double totalPortfolioValue = 0;
+        for (var inv in investments) {
+          if (inv.status != 'closed') {
+            totalPortfolioValue += inv.currentMarketValue;
+          }
+        }
+
+        // 3. Total Payable Credit (Liabilities)
+        double totalPayable = 0;
+        for (var cardData in creditCardDataList) {
+          // FIX: Use the pure database 'currentBalance' instead of the UI-clamped dashboard values.
+          totalPayable += cardData.card.currentBalance;
+        }
+
+        // 4. Total Outstanding Loans (Liabilities) & Lent Money (Assets)
+        double totalLoanOutstanding = 0; // Liabilities
+        double totalLentAssets = 0; // Assets
+
+        for (var loan in loans) {
+          if (!loan.isClosed) {
+            if (loan.type == 'BORROWED') {
+              // Money you owe
+              totalLoanOutstanding += loan.remaining;
+            } else if (loan.type == 'LENT') {
+              // Money owed TO you (Asset)
+              // FIX: This must be added to your net worth, not subtracted!
+              totalLentAssets += loan.remaining;
+            }
+          }
+        }
+
+        // NEW FORMULA: (Bank Balances + Investments + Lent Money) - (Credit Card Bills + Borrowed Loans)
+        double totalAssets =
+            totalAccountBalance + totalPortfolioValue + totalLentAssets;
+        double totalLiabilities = totalPayable + totalLoanOutstanding;
+
+        return totalAssets - totalLiabilities;
+      },
+    );
+  }
 
   // --- Total Net Worth ---
 
@@ -39,48 +114,6 @@ class NetWorthService {
   Future<void> deleteNetWorthRecord(String id) async {
     await (_db.delete(_db.netWorthRecords)..where((t) => t.id.equals(id))).go();
   }
-
-  // // --- Net Worth Splits ---
-
-  // Stream<List<NetWorthSplit>> getNetWorthSplits() {
-  //   return (_db.select(_db.netWorthSplits)
-  //         ..orderBy([
-  //           (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)
-  //         ]))
-  //       .watch()
-  //       .map((rows) => rows
-  //           .map((r) => NetWorthSplit(
-  //                 id: r.id,
-  //                 date: r.date,
-  //                 netIncome: r.netIncome,
-  //                 netExpense: r.netExpense,
-  //                 capitalGain: r.capitalGain,
-  //                 capitalLoss: r.capitalLoss,
-  //                 nonCalcIncome: r.nonCalcIncome,
-  //                 nonCalcExpense: r.nonCalcExpense,
-  //               ))
-  //           .toList());
-  // }
-
-  // Future<void> addNetWorthSplit(NetWorthSplit split) async {
-  //   final id = split.id.isNotEmpty ? split.id : _uuid.v4();
-
-  //   await _db.into(_db.netWorthSplits).insert(db.NetWorthSplitsCompanion.insert(
-  //         id: id,
-  //         date: split.date,
-  //         // Using Value() wrappers since these columns have defaults in the new schema
-  //         netIncome: Value(split.netIncome),
-  //         netExpense: Value(split.netExpense),
-  //         capitalGain: Value(split.capitalGain),
-  //         capitalLoss: Value(split.capitalLoss),
-  //         nonCalcIncome: Value(split.nonCalcIncome),
-  //         nonCalcExpense: Value(split.nonCalcExpense),
-  //       ));
-  // }
-
-  // Future<void> deleteNetWorthSplit(String id) async {
-  //   await (_db.delete(_db.netWorthSplits)..where((t) => t.id.equals(id))).go();
-  // }
 
   // Map DB Row to Domain Model
   NetWorthSplitModel _mapSplit(db.NetWorthSplit row) {
