@@ -106,7 +106,7 @@ class SystemNotificationService {
   // -------------------------------------------------------------
   Future<void> showBackupReminderNotification() async {
     const String bodyText =
-        'It has been over 12 hours since your last backup. Please open FinStack 360 to secure your data.';
+        'It has been over 24 hours since your last backup. Please open FinStack 360 to secure your data.';
 
     final androidDetails = AndroidNotificationDetails(
       'backup_alerts_channel_v1',
