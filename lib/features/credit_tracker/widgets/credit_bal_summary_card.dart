@@ -1,16 +1,17 @@
+// lib/features/credit_tracker/widgets/credit_bal_summary_card.dart
+
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../daily_expense/models/expense_models.dart';
 
-class CreditSummaryCard extends StatelessWidget {
+class CreditBalSummaryCard extends StatelessWidget {
   final double totalPayable;
   final double totalSurplus;
   final List<ExpenseAccountModel> linkedAccounts;
   final NumberFormat currencyFormat;
   final VoidCallback onLinkAccountTapped;
 
-  const CreditSummaryCard({
+  const CreditBalSummaryCard({
     super.key,
     required this.totalPayable,
     required this.totalSurplus,
@@ -41,7 +42,7 @@ class CreditSummaryCard extends StatelessWidget {
     double allocatedFunds =
         linkedAccounts.fold(0.0, (sum, acc) => sum + acc.currentBalance);
 
-    // --- NEW: 3-STATE STATUS LOGIC ---
+    // --- 3-STATE STATUS LOGIC ---
     double difference = allocatedFunds - totalPayable;
 
     String statusLabel;
@@ -138,17 +139,6 @@ class CreditSummaryCard extends StatelessWidget {
                   const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
               child: Row(
                 children: [
-                  // Container(
-                  //   padding: const EdgeInsets.all(8),
-                  //   decoration: BoxDecoration(
-                  //     color: Colors.white.withOpacity(0.05),
-                  //     borderRadius: BorderRadius.circular(8),
-                  //   ),
-                  //   child: const FaIcon(FontAwesomeIcons.chessKnight,
-                  //       color: Color(0xFF4CC9F0), size: 16),
-                  // ),
-                  // const SizedBox(width: 12),
-
                   // This Expanded pushes the amount and icon completely to the right
                   Expanded(
                     child: Column(

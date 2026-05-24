@@ -1,3 +1,5 @@
+// lib/features/credit_tracker/models/credit_models.dart
+
 class CreditCardModel {
   final String id;
   final String name;
@@ -97,7 +99,8 @@ enum SmartCyclePhase {
   noActivity, // Balance is 0
   paymentDue, // In grace period, Statement Balance > 0
   statementPaid, // In grace period, Statement Balance paid off
-  unbilledSpending // Normal spending phase
+  unbilledSpending, // Normal spending phase
+  overdue // [NEW] Missed due date, Statement Balance still > 0
 }
 
 class SmartCycleInfo {

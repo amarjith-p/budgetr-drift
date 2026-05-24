@@ -1,3 +1,5 @@
+// lib/features/credit_tracker/widgets/credit_summary_card.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/credit_models.dart';
@@ -22,10 +24,11 @@ class CreditSummaryCard extends StatelessWidget {
   double _calculateTotal(List<CreditTransactionModel> txns) {
     double total = 0;
     for (var t in txns) {
-      if (t.type == 'Expense')
+      if (t.type == 'Expense') {
         total += t.amount;
-      else
+      } else {
         total -= t.amount;
+      }
     }
     return total;
   }
@@ -35,10 +38,16 @@ class CreditSummaryCard extends StatelessWidget {
     final currency =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
 
-    // Calculate Due Date
-    final actualDueDate =
+    // Calculate Due Date safely normalized to Midnight for accurate day comparison
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final actualDueDateRaw =
         BillingCycleUtils.getDueDateForStatement(lastBillDate, card.dueDate);
-    final daysRemaining = actualDueDate.difference(DateTime.now()).inDays;
+    final actualDueDate = DateTime(
+        actualDueDateRaw.year, actualDueDateRaw.month, actualDueDateRaw.day);
+
+    final daysRemaining = actualDueDate.difference(today).inDays;
 
     final billExpenses = lastBillTxns
         .where((t) =>
@@ -78,14 +87,14 @@ class CreditSummaryCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFF1B263B), const Color(0xff0D1B2A)],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1B263B), Color(0xff0D1B2A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white.withOpacity(0.3)),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))
         ],
       ),
@@ -95,7 +104,7 @@ class CreditSummaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   "NEW SPENDS",
                   style: TextStyle(
                       color: Colors.white54,
@@ -118,7 +127,7 @@ class CreditSummaryCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   isOverPaid ? "Adjusted with Surplus" : "Current Cycle",
-                  style: TextStyle(color: Colors.white38, fontSize: 11),
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
                 ),
               ],
             ),
@@ -132,7 +141,7 @@ class CreditSummaryCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
+                    const Text(
                       "LAST BILL",
                       style: TextStyle(
                           color: Colors.white54,
@@ -147,7 +156,7 @@ class CreditSummaryCard extends StatelessWidget {
                         decoration: BoxDecoration(
                             color: Colors.green.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(4)),
-                        child: Text("PAID",
+                        child: const Text("PAID",
                             style: TextStyle(
                                 color: Colors.greenAccent,
                                 fontSize: 10,
@@ -174,17 +183,22 @@ class CreditSummaryCard extends StatelessWidget {
                       : (isPaidOff
                           ? "Settled fully"
                           : "Bill: ${currency.format(billAmount)}  •  Paid: ${currency.format(totalPaid)}"),
-                  style: TextStyle(color: Colors.white38, fontSize: 11),
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
                 ),
+                // [NEW] OVERDUE LOGIC UI IMPLEMENTATION
                 if (!isOverPaid && !isPaidOff)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
-                      "Due: ${DateFormat('dd MMM').format(actualDueDate)}",
+                      daysRemaining < 0
+                          ? "OVERDUE BY ${daysRemaining.abs()} DAYS"
+                          : "Due: ${DateFormat('dd MMM').format(actualDueDate)}",
                       style: TextStyle(
-                        color: daysRemaining < 3
+                        color: daysRemaining < 0
                             ? Colors.redAccent
-                            : Colors.orangeAccent,
+                            : (daysRemaining <= 3
+                                ? Colors.orangeAccent
+                                : Colors.white70),
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),

@@ -186,7 +186,6 @@ class SmartCreditCardListItem extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          // --- [FIXED] Constrained Box + FittedBox for auto-scaling amount font ---
                           Container(
                             constraints: const BoxConstraints(maxWidth: 110),
                             child: FittedBox(
@@ -400,6 +399,14 @@ class _SmartCycleProgressBar extends StatelessWidget {
             ? "Payment Due Today"
             : "Payment Due in ${info.daysRemaining} $dayWord";
         icon = Icons.warning_amber_rounded;
+        break;
+
+      // [NEW] Overdue implementation mapped to the UI
+      case SmartCyclePhase.overdue:
+        fillColor = Colors.redAccent;
+        label =
+            "OVERDUE BY ${info.daysRemaining} ${info.daysRemaining == 1 ? 'DAY' : 'DAYS'}";
+        icon = Icons.error_outline_rounded;
         break;
 
       case SmartCyclePhase.statementPaid:
@@ -653,7 +660,6 @@ class CreditCardListItem extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          // --- [FIXED] Constrained Box + FittedBox for auto-scaling amount font ---
                           Container(
                             constraints: const BoxConstraints(maxWidth: 110),
                             child: FittedBox(

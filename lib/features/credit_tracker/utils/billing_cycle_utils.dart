@@ -1,3 +1,5 @@
+// lib/features/credit_tracker/utils/billing_cycle_utils.dart
+
 import 'package:intl/intl.dart';
 import '../models/credit_models.dart';
 
@@ -57,8 +59,44 @@ class BillingCycleUtils {
     final isInGracePeriod =
         !today.isBefore(lastBillDate) && !today.isAfter(currentDueDate);
 
-    // 2. We are inside the Payment Window
-    if (isInGracePeriod) {
+    // [NEW] Check if the due date has passed
+    final isPastDue = today.isAfter(currentDueDate);
+
+    // =======================================================
+    // 2. OVERDUE ZONE: Past Due Date but before Next Statement
+    // =======================================================
+    if (isPastDue) {
+      if (data.statementBalance > 0.01) {
+        // Danger: User missed the payment!
+        final daysOverdue = today.difference(currentDueDate).inDays;
+
+        return SmartCycleInfo(
+          phase: SmartCyclePhase.overdue,
+          startDate: currentDueDate,
+          endDate: nextBillDate,
+          daysRemaining: daysOverdue, // For Overdue, this acts as 'Days Late'
+          progress: 1.0, // 100% progress (Maxed out / Red Alert)
+        );
+      } else {
+        // User paid off the statement and due date passed, waiting for next bill
+        final totalDays = nextBillDate.difference(currentDueDate).inDays;
+        final daysPassed = today.difference(currentDueDate).inDays;
+        final daysRemaining = nextBillDate.difference(today).inDays;
+        double progress = totalDays > 0 ? daysPassed / totalDays : 1.0;
+
+        return SmartCycleInfo(
+          phase: SmartCyclePhase.unbilledSpending,
+          startDate: currentDueDate,
+          endDate: nextBillDate,
+          daysRemaining: daysRemaining < 0 ? 0 : daysRemaining,
+          progress: progress.clamp(0.0, 1.0),
+        );
+      }
+    }
+    // =======================================================
+    // 3. PAYMENT WINDOW: Inside the Grace Period
+    // =======================================================
+    else if (isInGracePeriod) {
       // Still owe statement money
       if (data.statementBalance > 0.01) {
         final totalDays = currentDueDate.difference(lastBillDate).inDays;
@@ -94,7 +132,9 @@ class BillingCycleUtils {
         );
       }
     }
-    // 3. We are in the normal Spending Phase (Waiting for next bill)
+    // =======================================================
+    // 4. UNBILLED SPENDING: Normal usage phase
+    // =======================================================
     else {
       DateTime start = currentDueDate;
       DateTime end = nextBillDate;

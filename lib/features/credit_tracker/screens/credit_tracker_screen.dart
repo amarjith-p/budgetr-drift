@@ -198,7 +198,8 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
                                   stream: _payableAccountsStream ??
                                       Stream.value([]),
                                   builder: (context, accountSnapshot) {
-                                    return CreditSummaryCard(
+                                    // --- [FIX APPLIED HERE] Corrected class name to CreditBalSummaryCard ---
+                                    return CreditBalSummaryCard(
                                       totalPayable: totalDebt,
                                       totalSurplus: -totalSurplus,
                                       linkedAccounts:
@@ -443,15 +444,19 @@ class _CreditTrackerScreenState extends State<CreditTrackerScreen> {
 
                   // Assign relevant icons to each sorting strategy
                   IconData getIconForOption(String opt) {
-                    if (opt.contains('Payment'))
+                    if (opt.contains('Payment')) {
                       return Icons.priority_high_rounded;
-                    if (opt.contains('Due'))
+                    }
+                    if (opt.contains('Due')) {
                       return Icons.event_available_rounded;
+                    }
                     if (opt.contains('Bill')) return Icons.receipt_long_rounded;
-                    if (opt.contains('High'))
+                    if (opt.contains('High')) {
                       return Icons.keyboard_double_arrow_down_rounded;
-                    if (opt.contains('Low'))
+                    }
+                    if (opt.contains('Low')) {
                       return Icons.keyboard_double_arrow_up_rounded;
+                    }
                     return Icons.sort_by_alpha_rounded;
                   }
 
