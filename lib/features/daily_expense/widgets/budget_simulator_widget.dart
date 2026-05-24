@@ -12,6 +12,8 @@ import '../services/expense_service.dart';
 import '../../credit_tracker/models/credit_models.dart';
 import '../../credit_tracker/services/credit_service.dart';
 import '../../dashboard/services/dashboard_service.dart';
+import 'dart:async';
+import 'package:rxdart/rxdart.dart';
 
 class BudgetSimulatorWidget extends StatefulWidget {
   const BudgetSimulatorWidget({super.key});
@@ -34,51 +36,72 @@ class _BudgetSimulatorWidgetState extends State<BudgetSimulatorWidget> {
   FinancialRecord? _currentBudgetRecord;
   String _selectedPeriod = 'This Month';
 
+  StreamSubscription? _subscription;
+
   @override
   void initState() {
     super.initState();
     _loadAllData();
   }
 
-  Future<void> _loadAllData() async {
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  void _loadAllData() {
     setState(() => _isLoading = true);
+
+    // Cancel any existing subscription if the user changes the period
+    _subscription?.cancel();
+
     try {
       final range = _getDateRange();
-      final expensesStream = _expenseService.getAllTransactions();
-      final creditStream = _creditService.getAllTransactions();
 
-      final expenses = await expensesStream.first;
-      final credits = await creditStream.first;
-      final budgetRecord = await _dashboardService.getRecordForMonth(
-          range.start.year, range.start.month);
+      // Listen to both streams continuously
+      _subscription = Rx.combineLatest2(
+        _expenseService.getAllTransactions(),
+        _creditService.getAllTransactions(),
+        (expenses, credits) => [...expenses, ...credits],
+      ).listen((allTransactions) async {
+        try {
+          // Fetch the budget record inside the listener
+          final budgetRecord = await _dashboardService.getRecordForMonth(
+              range.start.year, range.start.month);
 
-      if (mounted) {
-        final List<dynamic> all = [...expenses, ...credits];
-        final Set<String> buckets = {};
+          if (mounted) {
+            final Set<String> buckets = {};
 
-        // A. From Transactions
-        for (var t in all) {
-          final date = _getDate(t);
-          if (date.isAfter(range.start.subtract(const Duration(seconds: 1))) &&
-              date.isBefore(range.end.add(const Duration(seconds: 1)))) {
-            String bucket = _getBucket(t);
-            if (_getType(t) == 'Expense' && bucket.isNotEmpty)
-              buckets.add(bucket);
+            // A. From Transactions
+            for (var t in allTransactions) {
+              final date = _getDate(t);
+              if (date.isAfter(
+                      range.start.subtract(const Duration(seconds: 1))) &&
+                  date.isBefore(range.end.add(const Duration(seconds: 1)))) {
+                String bucket = _getBucket(t);
+                if (_getType(t) == 'Expense' && bucket.isNotEmpty) {
+                  buckets.add(bucket);
+                }
+              }
+            }
+
+            // B. From Budget
+            if (budgetRecord != null) {
+              buckets.addAll(budgetRecord.allocations.keys);
+            }
+
+            setState(() {
+              _combinedTransactions = allTransactions;
+              _allBuckets = buckets.toList()..sort();
+              _currentBudgetRecord = budgetRecord;
+              _isLoading = false;
+            });
           }
+        } catch (e) {
+          if (mounted) setState(() => _isLoading = false);
         }
-
-        // B. From Budget
-        if (budgetRecord != null) {
-          buckets.addAll(budgetRecord.allocations.keys);
-        }
-
-        setState(() {
-          _combinedTransactions = all;
-          _allBuckets = buckets.toList()..sort();
-          _currentBudgetRecord = budgetRecord;
-          _isLoading = false;
-        });
-      }
+      });
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
