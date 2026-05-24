@@ -22,7 +22,6 @@ class _CreditSummaryAnalyticsWidgetState
   final CreditService _creditService = GetIt.I<CreditService>();
 
   // --- INTERACTIVE FILTER STATE ---
-  // Empty by default to hide the active list breakdown.
   final Set<String> _activeFilters = {};
 
   // --- DANGER ZONE ANIMATION ---
@@ -37,7 +36,6 @@ class _CreditSummaryAnalyticsWidgetState
   @override
   void initState() {
     super.initState();
-    // Setup the breathing animation for the Border Glow
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -61,7 +59,6 @@ class _CreditSummaryAnalyticsWidgetState
     }
   }
 
-  // --- EXACT LOGICAL MAPPING TO THE SMART ENGINE ---
   (String, Color) _getSmartCardStatus(CreditCardDashboardData data) {
     final info = BillingCycleUtils.getSmartCycleInfo(data);
 
@@ -79,7 +76,6 @@ class _CreditSummaryAnalyticsWidgetState
     }
   }
 
-  // --- SMART SORTING WEIGHTS ---
   int _getStatusPriority(String status) {
     switch (status) {
       case 'Overdue':
@@ -141,7 +137,6 @@ class _CreditSummaryAnalyticsWidgetState
 
           final cardsData = snapshot.data!;
 
-          // --- METRICS CALCULATION ---
           double totalPayable = 0.0;
           double statementDue = 0.0;
 
@@ -172,7 +167,6 @@ class _CreditSummaryAnalyticsWidgetState
               paidCount++;
             }
 
-            // Exclude 'No Spend' cards from tracking completely
             if (status != 'No Spend') {
               enrichedCards.add({
                 'data': data,
@@ -182,19 +176,15 @@ class _CreditSummaryAnalyticsWidgetState
             }
           }
 
-          // --- 1. FILTERING ---
           var displayCards = enrichedCards
               .where((c) => _activeFilters.contains(c['status'] as String))
               .toList();
 
-          // --- 2. MULTI-LEVEL SORTING ---
           displayCards.sort((a, b) {
-            // Priority 1: Danger Level (Overdue > Billed > Pending > Paid)
             int pA = _getStatusPriority(a['status'] as String);
             int pB = _getStatusPriority(b['status'] as String);
             if (pA != pB) return pA.compareTo(pB);
 
-            // Priority 2: Outstanding Balance (High to Low)
             double balA =
                 (a['data'] as CreditCardDashboardData).card.currentBalance;
             double balB =
@@ -210,7 +200,6 @@ class _CreditSummaryAnalyticsWidgetState
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- HEADER ---
                   Row(
                     children: [
                       Container(
@@ -242,8 +231,6 @@ class _CreditSummaryAnalyticsWidgetState
                     ],
                   ),
                   const SizedBox(height: 24),
-
-                  // --- TOP HIGHLIGHTS ---
                   Row(
                     children: [
                       Expanded(
@@ -267,8 +254,6 @@ class _CreditSummaryAnalyticsWidgetState
                     ],
                   ),
                   const SizedBox(height: 24),
-
-                  // --- 2x2 STATUS GRID ---
                   const Text(
                     "CARD STATUS OVERVIEW",
                     style: TextStyle(
@@ -279,7 +264,6 @@ class _CreditSummaryAnalyticsWidgetState
                     ),
                   ),
                   const SizedBox(height: 12),
-
                   Column(
                     children: [
                       Row(
@@ -327,9 +311,6 @@ class _CreditSummaryAnalyticsWidgetState
                       ),
                     ],
                   ),
-
-                  // --- FILTERED LIST EXPANSION ---
-                  // Completely hidden until a status is tapped.
                   AnimatedSize(
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOutCubic,
@@ -385,17 +366,74 @@ class _CreditSummaryAnalyticsWidgetState
                                   final statusColor = item['color'] as Color;
                                   final card = data.card;
 
-                                  final daysToBill =
-                                      _calculateDaysRemaining(card.billDate);
-                                  final daysToDue =
-                                      _calculateDaysRemaining(card.dueDate);
+                                  final smartInfo =
+                                      BillingCycleUtils.getSmartCycleInfo(data);
+
+                                  Widget dynamicDateRow;
+
+                                  if (smartInfo.phase ==
+                                      SmartCyclePhase.overdue) {
+                                    dynamicDateRow = Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildDateInfo('Overdue By',
+                                            '${smartInfo.daysRemaining} Days',
+                                            valueColor: _overdueColor),
+                                        Container(
+                                            width: 1,
+                                            height: 16,
+                                            color: Colors.white10),
+                                        _buildDateInfo('Next Bill',
+                                            '${_calculateDaysRemaining(card.billDate)} Days'),
+                                      ],
+                                    );
+                                  } else if (smartInfo.phase ==
+                                      SmartCyclePhase.paymentDue) {
+                                    dynamicDateRow = Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildDateInfo(
+                                            'Due In',
+                                            smartInfo.daysRemaining == 0
+                                                ? 'Today'
+                                                : '${smartInfo.daysRemaining} Days',
+                                            valueColor: _billedColor),
+                                        Container(
+                                            width: 1,
+                                            height: 16,
+                                            color: Colors.white10),
+                                        _buildDateInfo('Next Bill',
+                                            '${_calculateDaysRemaining(card.billDate)} Days'),
+                                      ],
+                                    );
+                                  } else {
+                                    dynamicDateRow = Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildDateInfo(
+                                            'Bill In',
+                                            smartInfo.daysRemaining == 0
+                                                ? 'Today'
+                                                : '${smartInfo.daysRemaining} Days'),
+                                        Container(
+                                            width: 1,
+                                            height: 16,
+                                            color: Colors.white10),
+                                        _buildDateInfo('Next Due',
+                                            '${_calculateDaysRemaining(card.dueDate)} Days'),
+                                      ],
+                                    );
+                                  }
 
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 12),
                                     padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.02),
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
                                           color:
                                               Colors.white.withOpacity(0.04)),
@@ -486,20 +524,7 @@ class _CreditSummaryAnalyticsWidgetState
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                           ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceAround,
-                                            children: [
-                                              _buildDateInfo(
-                                                  'Bill In', daysToBill),
-                                              Container(
-                                                  width: 1,
-                                                  height: 16,
-                                                  color: Colors.white10),
-                                              _buildDateInfo(
-                                                  'Due In', daysToDue),
-                                            ],
-                                          ),
+                                          child: dynamicDateRow,
                                         ),
                                       ],
                                     ),
@@ -524,7 +549,7 @@ class _CreditSummaryAnalyticsWidgetState
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
@@ -556,25 +581,40 @@ class _CreditSummaryAnalyticsWidgetState
     );
   }
 
-  // --- 2x2 GRID CARD WITH BORDER GLOW & REDUCED HEIGHT ---
+  // --- UPDATED VISUAL HIERARCHY: NO BACKGROUND GLOW ON SELECTION ---
   Widget _buildInteractiveGridCard(
       String label, int count, Color color, IconData icon, double pulseValue) {
     final bool isZero = count == 0;
     final bool isSelected = _activeFilters.contains(label);
     final Color displayColor = isZero ? Colors.white24 : color;
 
-    // Trigger Danger Zone animations only if there are cards pending
     final bool isDangerZone =
         !isZero && (label == 'Overdue' || label == 'Billed');
 
-    // Dynamic border logic for the pulsing glow effect
     Color activeBorderColor;
+    double borderWidth = 1.0;
+    List<BoxShadow>? activeShadow;
+
+    // Background remains static to avoid full card glow
+    final Color bgColor = Colors.white.withOpacity(0.02);
+
+    // The Danger glow remains entirely dependent on condition, independent of selection
+    if (isDangerZone) {
+      activeShadow = [
+        BoxShadow(
+            color: displayColor.withOpacity(0.15 * pulseValue), blurRadius: 6)
+      ];
+    }
+
     if (isSelected && !isZero) {
-      activeBorderColor = displayColor.withOpacity(0.6);
+      // SELECTION: Solid bright border, slightly thicker
+      activeBorderColor = displayColor;
+      borderWidth = 1.5;
     } else if (isDangerZone) {
-      // The subtle pulsing border
+      // DANGER ZONE (unselected): Pulsing subtle border
       activeBorderColor = displayColor.withOpacity(0.2 + (0.7 * pulseValue));
     } else {
+      // NORMAL
       activeBorderColor = isZero
           ? Colors.white.withOpacity(0.02)
           : Colors.white.withOpacity(0.08);
@@ -584,27 +624,12 @@ class _CreditSummaryAnalyticsWidgetState
       onTap: isZero ? null : () => _toggleFilter(label),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(
-            horizontal: 14, vertical: 12), // Reduced height
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected && !isZero
-              ? displayColor.withOpacity(0.1)
-              : Colors.white.withOpacity(0.02),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: activeBorderColor,
-            width: isDangerZone || isSelected
-                ? 1.5
-                : 1.0, // Slightly thicker for glow
-          ),
-          // Subtle drop shadow matching the border color to enhance the "glow"
-          boxShadow: isDangerZone
-              ? [
-                  BoxShadow(
-                      color: displayColor.withOpacity(0.15 * pulseValue),
-                      blurRadius: 6)
-                ]
-              : null,
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: activeBorderColor, width: borderWidth),
+          boxShadow: activeShadow, // Applies only if danger conditions are met
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,22 +637,30 @@ class _CreditSummaryAnalyticsWidgetState
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(
-                  icon,
-                  color: displayColor.withOpacity(isZero ? 0.3 : 0.8),
-                  size: 16,
+                Row(
+                  children: [
+                    Icon(
+                      icon,
+                      color: displayColor.withOpacity(isZero ? 0.3 : 0.8),
+                      size: 16,
+                    ),
+                    if (isSelected) ...[
+                      const SizedBox(width: 6),
+                      Icon(Icons.check_circle, color: displayColor, size: 14),
+                    ]
+                  ],
                 ),
                 Text(
                   count.toString(),
                   style: TextStyle(
                     color: displayColor,
                     fontWeight: FontWeight.w900,
-                    fontSize: 18, // Slightly reduced
+                    fontSize: 18,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8), // Reduced gap
+            const SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
@@ -657,14 +690,14 @@ class _CreditSummaryAnalyticsWidgetState
     );
   }
 
-  Widget _buildDateInfo(String label, int days) {
+  Widget _buildDateInfo(String label, String value, {Color? valueColor}) {
     return Row(
       children: [
         Text('$label: ',
             style: const TextStyle(color: Colors.white38, fontSize: 10)),
-        Text(days == 0 ? 'Today' : '$days Days',
-            style: const TextStyle(
-                color: Colors.white70,
+        Text(value,
+            style: TextStyle(
+                color: valueColor ?? Colors.white70,
                 fontSize: 11,
                 fontWeight: FontWeight.bold)),
       ],

@@ -574,11 +574,31 @@ class _NewCreditTransactionScreenState
             ? null
             : () => setState(() {
                   _type = value;
-                  _category = null;
-                  _subCategory = null;
-                  if (_type == 'Income') _selectedBucket = null;
+
+                  if (_type == 'Income') {
+                    _selectedBucket = null;
+
+                    // --- NEW LOGIC: Auto-select Repayment ---
+                    try {
+                      final repaymentCat = _allCategories.firstWhere((c) =>
+                          c.name.toLowerCase() == 'repayment' &&
+                          c.type == 'Income');
+                      _category = repaymentCat.name;
+                      _subCategory =
+                          null; // Resets sub-category to prompt user or default
+                    } catch (e) {
+                      // Fallback if "Repayment" category doesn't exist
+                      _category = null;
+                      _subCategory = null;
+                    }
+                  } else {
+                    // Reset when switching back to Expense
+                    _category = null;
+                    _subCategory = null;
+                  }
                 }),
         child: AnimatedContainer(
+          // ... (rest of the existing UI code for the segment)
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
             color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
