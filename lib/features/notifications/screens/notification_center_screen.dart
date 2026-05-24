@@ -1,10 +1,12 @@
 import 'package:budget/core/widgets/status_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // [NEW IMPORT] For HapticFeedback
+import 'package:flutter_slidable/flutter_slidable.dart'; // [NEW IMPORT] For Slidable
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import '../services/notification_service.dart';
 import '../../../core/database/app_database.dart';
-import '../../../core/widgets/glass_card.dart'; // [NEW IMPORT]
+import '../../../core/widgets/glass_card.dart';
 
 class NotificationCenterScreen extends StatelessWidget {
   const NotificationCenterScreen({super.key});
@@ -15,8 +17,6 @@ class NotificationCenterScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xff0D1B2A),
-      // [FIX] Removed standard AppBar
-      // Switched to SafeArea > Column layout for Modern Header
       body: SafeArea(
         child: Column(
           children: [
@@ -54,19 +54,36 @@ class NotificationCenterScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     itemBuilder: (context, index) {
                       final item = list[index];
-                      return Dismissible(
-                        key: Key(item.id),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          color: Colors.redAccent.withOpacity(0.8),
-                          child: const Icon(Icons.delete, color: Colors.white),
+                      // [UPDATED] Using Slidable instead of Dismissible
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                            bottom: 12), // Moved margin here
+                        child: Slidable(
+                          key: ValueKey(item.id),
+                          endActionPane: ActionPane(
+                            motion: const DrawerMotion(),
+                            extentRatio: 0.3,
+                            children: [
+                              SlidableAction(
+                                onPressed: (context) {
+                                  HapticFeedback.mediumImpact();
+                                  notificationService
+                                      .deleteNotification(item.id);
+                                },
+                                backgroundColor:
+                                    Colors.redAccent.withOpacity(0.9),
+                                foregroundColor: Colors.white,
+                                icon: Icons.delete_sweep_rounded,
+                                label: 'Clear',
+                                borderRadius: const BorderRadius.horizontal(
+                                    right: Radius.circular(12),
+                                    left: Radius.circular(
+                                        12)), // Matches tile radius
+                              ),
+                            ],
+                          ),
+                          child: _NotificationTile(item: item),
                         ),
-                        onDismissed: (_) {
-                          notificationService.deleteNotification(item.id);
-                        },
-                        child: _NotificationTile(item: item),
                       );
                     },
                   );
@@ -79,7 +96,7 @@ class NotificationCenterScreen extends StatelessWidget {
     );
   }
 
-  // --- NEW: Modern Header Implementation ---
+  // --- Modern Header Implementation ---
   Widget _buildModernHeader(
       BuildContext context, NotificationService notificationService) {
     return Padding(
@@ -194,7 +211,7 @@ class _NotificationTile extends StatelessWidget {
         GetIt.I<NotificationService>().markAsRead(item.id);
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        // [REMOVED] margin: const EdgeInsets.only(bottom: 12) -> Moved to Padding wrapping Slidable
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isUnread
@@ -282,7 +299,6 @@ class _NotificationTile extends StatelessWidget {
 
   IconData _getIcon(String type) {
     switch (type) {
-      // Goals & Loans [NEW]
       case 'goal_achieved':
         return Icons.emoji_events_rounded;
       case 'goal_deadline':
@@ -291,22 +307,16 @@ class _NotificationTile extends StatelessWidget {
         return Icons.warning_rounded;
       case 'loan_due':
         return Icons.calendar_month_rounded;
-
-      // Investment
       case 'inv_stale':
         return Icons.access_time_filled_rounded;
       case 'inv_milestone':
         return Icons.emoji_events_rounded;
       case 'inv_volatility':
         return Icons.show_chart_rounded;
-
-      // Backup
       case 'backup_overdue':
         return Icons.cloud_off_rounded;
       case 'restore_success':
         return Icons.cloud_done_rounded;
-
-      // Daily Expense
       case 'negative_balance':
         return Icons.money_off_csred_rounded;
       case 'low_balance':
@@ -315,8 +325,6 @@ class _NotificationTile extends StatelessWidget {
         return Icons.history_toggle_off_rounded;
       case 'daily_spike':
         return Icons.whatshot_rounded;
-
-      // Credit
       case 'limit_exceeded':
         return Icons.warning_amber_rounded;
       case 'high_util':
@@ -325,8 +333,6 @@ class _NotificationTile extends StatelessWidget {
         return Icons.calendar_today_rounded;
       case 'statement':
         return Icons.receipt_long_rounded;
-
-      // Dashboard
       case 'budget_not_set':
         return Icons.pie_chart_outline;
       case 'budget_closure_pending':
@@ -337,7 +343,6 @@ class _NotificationTile extends StatelessWidget {
         return Icons.analytics_outlined;
       case 'global_overrun':
         return Icons.money_off_rounded;
-
       default:
         return Icons.notifications;
     }
@@ -345,22 +350,18 @@ class _NotificationTile extends StatelessWidget {
 
   Color _getIconColor(String type) {
     switch (type) {
-      // Critical / Success
       case 'limit_exceeded':
       case 'global_overrun':
       case 'bucket_overflow':
       case 'negative_balance':
       case 'daily_spike':
       case 'inv_volatility':
-      case 'loan_overdue': // [NEW]
+      case 'loan_overdue':
         return Colors.redAccent;
-
       case 'restore_success':
       case 'inv_milestone':
-      case 'goal_achieved': // [NEW]
+      case 'goal_achieved':
         return Colors.greenAccent;
-
-      // Warning
       case 'high_util':
       case 'due_date':
       case 'budget_approaching':
@@ -369,15 +370,12 @@ class _NotificationTile extends StatelessWidget {
       case 'forgot_log':
       case 'backup_overdue':
       case 'inv_stale':
-      case 'goal_deadline': // [NEW]
-      case 'loan_due': // [NEW]
+      case 'goal_deadline':
+      case 'loan_due':
         return Colors.orangeAccent;
-
-      // Info
       case 'statement':
       case 'budget_not_set':
         return Colors.blueAccent;
-
       default:
         return Colors.grey;
     }
