@@ -1,4 +1,5 @@
 import 'package:budget/features/daily_expense/widgets/budget_simulator_widget.dart';
+import 'package:budget/features/daily_expense/widgets/credit_card_summary.dart';
 import 'package:budget/features/daily_expense/widgets/unified_spending_chart.dart';
 import 'package:flutter/material.dart'; // NEW Import
 
@@ -12,6 +13,7 @@ class ExpenseAnalyticsScreen extends StatelessWidget {
       physics: const BouncingScrollPhysics(),
       children: [
         const UnifiedSpendingChart(),
+        const CreditSummaryAnalyticsWidget(),
         const BudgetSimulatorWidget(),
       ],
     );
