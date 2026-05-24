@@ -6,6 +6,8 @@ import 'package:budget/features/notifications/services/system_notification_servi
 import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
 import 'package:budget/features/reminders/screens/reminders_dashboard_screen.dart';
 import 'package:budget/features/settings/screens/category_manager_screen.dart';
+// Add this with your other service imports
+import '../../net_worth/services/net_worth_service.dart';
 import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:budget/features/settlement/screens/settlement_screen.dart';
 import 'package:budget/features/trip_mode/screens/trip_dashboard_screen.dart';
@@ -55,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final dashboardService = locator<DashboardService>();
   final creditService = locator<CreditService>();
   final settingsService = locator<SettingsService>();
+  final netWorthService = locator<NetWorthService>();
 
   bool _isBalanceVisible = false;
   final BackupService _backupService = BackupService();
@@ -583,20 +586,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return StreamBuilder(
       stream: Rx.combineLatest3(
-        expenseService.watchTotalBalance(),
+        // [UPDATED] Use Auto-Calculated Net Worth instead of Account Balance
+        netWorthService.getAutoCalculatedNetWorth(),
         dashboardService.getMonthlyTransactions(now.year, now.month),
         dashboardService.getFinancialRecords(),
-        (double balance, List<DashboardTransaction> txns,
+        (double netWorth, List<DashboardTransaction> txns,
                 List<FinancialRecord> records) =>
-            [balance, txns, records],
+            [netWorth, txns, records],
       ),
       builder: (context, snapshot) {
-        double currentBalance = 0.0;
+        double currentNetWorth = 0.0;
         double monthlyBudget = 0.0;
         double totalSpent = 0.0;
 
         if (snapshot.hasData) {
-          currentBalance = snapshot.data![0] as double;
+          currentNetWorth = snapshot.data![0] as double;
           final txns = snapshot.data![1] as List<DashboardTransaction>;
           final records = snapshot.data![2] as List<FinancialRecord>;
 
@@ -665,7 +669,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     padding: const EdgeInsets.only(top: 4),
                     child: Row(
                       children: [
-                        Text("Total Account Balance",
+                        // [UPDATED] Changed the Title
+                        Text("Total Net Worth",
                             style: GoogleFonts.robotoSlab(
                                 color: Colors.white70, fontSize: 13)),
                         const SizedBox(width: 8),
@@ -680,7 +685,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
                             color: Colors.white54,
-                            size: 16,
+                            size: 18,
                           ),
                         ),
                       ],
@@ -750,16 +755,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ],
               ),
+              // [UPDATED] Bound the visibility variable to currentNetWorth
               Text(
                   _isBalanceVisible
-                      ? "₹ ${currentBalance.toStringAsFixed(2)}"
-                      : "₹ ${"*" * currentBalance.toStringAsFixed(2).length}",
+                      ? "₹ ${currentNetWorth.toStringAsFixed(2)}"
+                      : "₹ ${"*" * currentNetWorth.toStringAsFixed(2).length}",
                   style: GoogleFonts.openSans(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1)),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
