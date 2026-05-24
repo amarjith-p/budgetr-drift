@@ -603,33 +603,40 @@ class _NewCreditTransactionScreenState
     return GestureDetector(
       onTap: _switchToCalculator,
       child: Container(
+        height: 85,
         color: Colors.transparent,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        // 1. ADDED HORIZONTAL PADDING: Keeps text from hitting the screen edges
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 32),
         alignment: Alignment.center,
-        child: IntrinsicWidth(
-          child: IgnorePointer(
-            ignoring: true,
-            child: TextField(
-              controller: _amountCtrl,
-              focusNode: _amountNode,
-              readOnly: true,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.w700,
-                color: hasError ? Colors.redAccent : typeColor,
-                height: 1.1,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: "0",
-                hintStyle: const TextStyle(color: Colors.white12),
-                prefixText: "₹ ",
-                prefixStyle: TextStyle(
-                    fontSize: 48,
-                    color: hasError ? Colors.redAccent : Colors.white24,
-                    fontWeight: FontWeight.w300),
-                contentPadding: EdgeInsets.zero,
+        // 2. ADDED FITTEDBOX: Automatically scales down the content if it exceeds the container's width
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: IntrinsicWidth(
+            child: IgnorePointer(
+              ignoring: true,
+              child: TextField(
+                controller: _amountCtrl,
+                focusNode: _amountNode,
+                readOnly: true,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.w700,
+                  color: hasError ? Colors.redAccent : typeColor,
+                  height: 1.1,
+                ),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  hintText: "0",
+                  hintStyle: const TextStyle(color: Colors.white12),
+                  prefixText: "₹ ",
+                  prefixStyle: TextStyle(
+                      fontSize: 48,
+                      color: hasError ? Colors.redAccent : Colors.white24,
+                      fontWeight: FontWeight.w300),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
             ),
           ),
