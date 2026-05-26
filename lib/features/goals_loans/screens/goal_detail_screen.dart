@@ -123,7 +123,11 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     // [FIX] Pass liveGoal id
-                    child: _buildTransactionForm(liveGoal.id, color),
+                    child: _buildTransactionForm(
+                        liveGoal.id, 
+                        color, 
+                        liveGoal.currentAmount >= liveGoal.targetAmount
+                    ),
                   ),
                 ),
                 const SliverToBoxAdapter(
@@ -272,6 +276,10 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                               ],
                             ),
                             const SizedBox(height: 6),
+                            FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child:
                             Text("₹${currencyFmt.format(currentVal)}",
                                 style: TextStyle(
                                     color: isSurplus
@@ -279,26 +287,37 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                                         : Colors.white,
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold,
-                                    letterSpacing: -0.5)),
+                                    letterSpacing: -0.5)),),
                           ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                              border: isSurplus
-                                  ? Border.all(
-                                      color: statusColor.withOpacity(0.3))
-                                  : null),
-                          child: Text(
-                              "${(rawProgress * 100).toStringAsFixed(1)}%",
-                              style: TextStyle(
-                                  color: statusColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14)),
-                        ),
+                        // 1. Wrap the Container in a Flexible so it yields space if the row gets crowded
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: isSurplus
+                                    ? Border.all(
+                                        color: statusColor.withOpacity(0.3))
+                                    : null,
+                              ),
+                              // 2. Wrap the Text in a FittedBox to shrink the font if it hits the edges
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.center,
+                                child: Text(
+                                  "${(rawProgress * 100).toStringAsFixed(1)}%",
+                                  style: TextStyle(
+                                    color: statusColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -606,7 +625,8 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
     );
   }
 
-  Widget _buildTransactionForm(String goalId, Color accentColor) {
+// [FIX] Added isClosed parameter
+  Widget _buildTransactionForm(String goalId, Color accentColor, bool isClosed) {
     final isRevalue = _inputMode == 1;
     final hint = isRevalue ? "Enter Current Value (₹)" : "Enter Amount (₹)";
     final helper = isRevalue
@@ -634,10 +654,12 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
               Expanded(
                 child: TextField(
                   controller: _amountCtrl,
+                  // [FIX] Disable text field if closed
+                  enabled: !isClosed, 
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
-                  style: const TextStyle(
-                      color: Colors.white,
+                  style: TextStyle(
+                      color: isClosed ? Colors.white38 : Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.bold),
                   decoration: InputDecoration(
@@ -663,7 +685,8 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () async {
+                  // [FIX] Prevent date picking if closed
+                  onTap: isClosed ? null : () async {
                     final d = await showDatePicker(
                         context: context,
                         initialDate: _txnDate,
@@ -682,22 +705,26 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_today,
-                            size: 14, color: Colors.white70),
+                        Icon(Icons.calendar_today,
+                            size: 14, color: isClosed ? Colors.white24 : Colors.white70),
                         const SizedBox(width: 8),
                         Text(DateFormat('dd/MM/yyyy').format(_txnDate),
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12)),
+                            style: TextStyle(
+                                color: isClosed ? Colors.white38 : Colors.white, 
+                                fontSize: 12)),
                       ],
                     ),
                   ),
                 ),
                 const Spacer(),
                 ElevatedButton(
-                  onPressed:
-                      _isAdding ? null : () => _submitTransaction(goalId),
+                  // [FIX] Disable button if adding OR if the goal is closed
+                  onPressed: (_isAdding || isClosed) ? null : () => _submitTransaction(goalId),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
+                    backgroundColor: isClosed ? Colors.white12 : accentColor,
+                    disabledBackgroundColor: Colors.white12,
+                    foregroundColor: isClosed ? Colors.white38 : Colors.white,
+                    disabledForegroundColor: Colors.white38,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(
@@ -710,9 +737,7 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
                       : Text(isRevalue ? "UPDATE VALUE" : "DEPOSIT",
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold)),
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -782,20 +807,30 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           if (principal != 0)
+                          Flexible(child: 
+                          FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child:
                             Text(
                                 "${principal > 0 ? '+' : ''}${NumberFormat('#,##0.00').format(principal)}",
                                 style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 14)),
+                                    fontSize: 14)),),),
                           if (log.interestComponent != 0)
+                          Flexible(child:
+                          FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child:
                             Text(
                                 "${log.interestComponent > 0 ? '+' : ''}${NumberFormat('#,##0.00').format(log.interestComponent)} (P&L)",
                                 style: TextStyle(
                                     color: log.interestComponent >= 0
                                         ? BudgetrColors.success
                                         : BudgetrColors.error,
-                                    fontSize: 11)),
+                                    fontSize: 11)),),),
                         ],
                       ),
                       const SizedBox(width: 16),
@@ -825,13 +860,17 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis),
         const SizedBox(height: 4),
+        FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child:
         Text(
           "₹${NumberFormat('#,##0.00').format(val)}",
           style: TextStyle(
               color: valueColor, fontSize: 15, fontWeight: FontWeight.bold),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-        ),
+        ),),
       ],
     );
   }

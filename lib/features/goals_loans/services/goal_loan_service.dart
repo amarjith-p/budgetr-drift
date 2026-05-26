@@ -293,6 +293,8 @@ class GoalLoanService {
     _triggerNotificationSync(); // [NEW HOOK]
   }
 
+  // --- REPLACE addLoanPayment AND deleteLoanLog WITH THESE ---
+
   Future<void> addLoanPayment(
       String loanId, double amount, String type, DateTime date) async {
     await _db.transaction(() async {
@@ -310,15 +312,14 @@ class GoalLoanService {
             ..where((t) => t.id.equals(loanId)))
           .getSingle();
       final newPaid = loan.paidAmount + amount;
-      final isClosed = newPaid >= loan.totalAmount;
 
+      // [FIX] Blocked automatic closure. The loan stays open even if overpaid.
       await (_db.update(_db.loans)..where((t) => t.id.equals(loanId)))
           .write(db.LoansCompanion(
         paidAmount: Value(newPaid),
-        isClosed: Value(isClosed),
       ));
     });
-    _triggerNotificationSync(); // [NEW HOOK]
+    _triggerNotificationSync();
   }
 
   Future<void> deleteLoanLog(String logId) async {
@@ -331,17 +332,23 @@ class GoalLoanService {
           .getSingle();
 
       final newPaid = loan.paidAmount - log.amount;
-      final isClosed = newPaid >= loan.totalAmount;
 
       await (_db.delete(_db.assetLogs)..where((t) => t.id.equals(logId))).go();
 
+      // [FIX] Blocked automatic closure logic here as well.
       await (_db.update(_db.loans)..where((t) => t.id.equals(loan.id)))
           .write(db.LoansCompanion(
         paidAmount: Value(newPaid),
-        isClosed: Value(isClosed),
       ));
     });
-    _triggerNotificationSync(); // [NEW HOOK]
+    _triggerNotificationSync(); 
+  }
+
+  // [NEW] Manual status toggle
+  Future<void> toggleLoanClosure(String loanId, bool isClosed) async {
+    await (_db.update(_db.loans)..where((t) => t.id.equals(loanId)))
+        .write(db.LoansCompanion(isClosed: Value(isClosed)));
+    _triggerNotificationSync();
   }
 
   Stream<List<AssetLogModel>> getLogsForParent(String parentId) {
