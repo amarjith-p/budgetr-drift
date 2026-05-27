@@ -188,7 +188,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: ['All', 'Pending', 'Overdue', 'Settled'].map((filter) {
+              children: ['All', 'Pending', 'Overdue', 'Settled', 'Forgiven'].map((filter) {
                 bool isSelected = _currentFilter == filter;
                 return GestureDetector(
                   onTap: () {
@@ -262,10 +262,10 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
               liabilities.fold(0.0, (sum, item) => sum + item.amount);
 
           pendingReceivables = assets
-              .where((e) => !e.isSettled && isIOU(e))
+              .where((e) => !e.isSettled && !e.isForgiven && isIOU(e)) // [UPDATED] Check isForgiven
               .fold(0.0, (sum, e) => sum + (e.amount - e.settledAmount));
           pendingPayables = liabilities
-              .where((e) => !e.isSettled && isIOU(e))
+              .where((e) => !e.isSettled && !e.isForgiven && isIOU(e)) // [UPDATED] Check isForgiven
               .fold(0.0, (sum, e) => sum + (e.amount - e.settledAmount));
         }
 
@@ -631,12 +631,15 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                       .contains(_searchQuery.toLowerCase()) ??
                   false);
           bool matchesFilter = true;
-          if (_currentFilter == 'Pending') matchesFilter = !e.isSettled;
-          if (_currentFilter == 'Settled') matchesFilter = e.isSettled;
-          if (_currentFilter == 'Overdue')
+          if (_currentFilter == 'Pending') matchesFilter = !e.isSettled && !e.isForgiven; // [UPDATED]
+          if (_currentFilter == 'Settled') matchesFilter = e.isSettled && !e.isForgiven; // [UPDATED]
+          if (_currentFilter == 'Forgiven') matchesFilter = e.isForgiven; // [NEW]
+          if (_currentFilter == 'Overdue') {
             matchesFilter = e.dueDate != null &&
                 e.dueDate!.isBefore(DateTime.now()) &&
-                !e.isSettled;
+                !e.isSettled && 
+                !e.isForgiven; // [UPDATED]
+          }
           return matchesSearch && matchesFilter;
         }).toList();
 
@@ -713,9 +716,8 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
 
                     int daysOverdue = 0;
                     bool isOverdue = false;
-                    if (entry.dueDate != null && !entry.isSettled) {
-                      daysOverdue =
-                          DateTime.now().difference(entry.dueDate!).inDays;
+                    if (entry.dueDate != null && !entry.isSettled && !entry.isForgiven) {
+                      daysOverdue = DateTime.now().difference(entry.dueDate!).inDays;
                       isOverdue = daysOverdue > 0;
                     }
 
@@ -765,25 +767,39 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                         ),
                         endActionPane: ActionPane(
                           motion: const ScrollMotion(),
-                          extentRatio: 0.30,
+                          extentRatio: (isTrackable && !entry.isSettled) ? 0.60 : 0.30,
                           children: [
+                            if (isTrackable && !entry.isSettled)
+                              SlidableAction(
+                                onPressed: (_) async {
+                                  _searchFocusNode.unfocus();
+                                  HapticFeedback.mediumImpact();
+                                  await _service.updateForgiven(entry.id, !entry.isForgiven);
+                                },
+                                backgroundColor: Colors.blueGrey,
+                                foregroundColor: Colors.white,
+                                icon: entry.isForgiven ? Icons.undo_rounded : Icons.money_off_rounded,
+                                label: entry.isForgiven ? 'Undo' : 'Forgive',
+                                borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
+                              ),
                             SlidableAction(
-                              onPressed: (_) =>
-                                  _showDeleteSheet(context, entry.id),
+                              onPressed: (_) => _showDeleteSheet(context, entry.id),
                               backgroundColor: BudgetrColors.error,
                               foregroundColor: Colors.white,
                               label: 'Delete',
                               icon: Icons.delete_rounded,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: (isTrackable && !entry.isSettled)
+                                  ? const BorderRadius.horizontal(right: Radius.circular(8))
+                                  : BorderRadius.circular(8),
                             ),
                           ],
                         ),
                         child: Opacity(
-                          opacity: entry.isSettled ? 0.4 : 1.0,
+                          opacity: (entry.isSettled || entry.isForgiven) ? 0.4 : 1.0,
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                                color: entry.isSettled
+                                color: (entry.isSettled || entry.isForgiven)
                                     ? Colors.white.withOpacity(0.01)
                                     : Colors.white.withOpacity(0.02),
                                 borderRadius: BorderRadius.circular(8),
@@ -836,7 +852,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 15,
-                                              decoration: entry.isSettled
+                                              decoration: (entry.isSettled || entry.isForgiven)
                                                   ? TextDecoration.lineThrough
                                                   : null)),
                                       const SizedBox(height: 4),
@@ -944,7 +960,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                                     const SizedBox(width: 4),
                                                     Text(
                                                         isOverdue
-                                                            ? "$daysOverdue Days Overdue"
+                                                            ? "$daysOverdue Days Overdue (${DateFormat('MMM dd, yyyy').format(entry.dueDate!)})"
                                                             : "Due ${DateFormat('MMM dd, yyyy').format(entry.dueDate!)}",
                                                         style: TextStyle(
                                                             color: isOverdue
@@ -1042,18 +1058,18 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                             padding: const EdgeInsets.symmetric(
                                                 horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
-                                                color: entry.isSettled
+                                                color: (entry.isSettled || entry.isForgiven)
                                                     ? Colors.white10
-                                                    : themeColor
-                                                        .withOpacity(0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(4)),
+                                                    : themeColor.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(4)),
                                             child: Text(
-                                                entry.isSettled
-                                                    ? "CLEARED"
-                                                    : (isAsset ? "DR" : "CR"),
+                                                entry.isForgiven 
+                                                    ? "FORGIVEN"
+                                                    : entry.isSettled
+                                                        ? "CLEARED"
+                                                        : (isAsset ? "DR" : "CR"),
                                                 style: TextStyle(
-                                                    color: entry.isSettled
+                                                    color: (entry.isSettled || entry.isForgiven)
                                                         ? Colors.white54
                                                         : themeColor,
                                                     fontSize: 9,

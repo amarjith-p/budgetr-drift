@@ -13887,6 +13887,16 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
+  static const VerificationMeta _isForgivenMeta =
+      const VerificationMeta('isForgiven');
+  @override
+  late final GeneratedColumn<bool> isForgiven = GeneratedColumn<bool>(
+      'is_forgiven', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_forgiven" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -13899,7 +13909,8 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
         contactName,
         dueDate,
         isSettled,
-        settledAmount
+        settledAmount,
+        isForgiven
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -13970,6 +13981,12 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
           settledAmount.isAcceptableOrUnknown(
               data['settled_amount']!, _settledAmountMeta));
     }
+    if (data.containsKey('is_forgiven')) {
+      context.handle(
+          _isForgivenMeta,
+          isForgiven.isAcceptableOrUnknown(
+              data['is_forgiven']!, _isForgivenMeta));
+    }
     return context;
   }
 
@@ -14001,6 +14018,8 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
           .read(DriftSqlType.bool, data['${effectivePrefix}is_settled'])!,
       settledAmount: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}settled_amount'])!,
+      isForgiven: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_forgiven'])!,
     );
   }
 
@@ -14023,6 +14042,7 @@ class BalanceSheetEntry extends DataClass
   final DateTime? dueDate;
   final bool isSettled;
   final double settledAmount;
+  final bool isForgiven;
   const BalanceSheetEntry(
       {required this.id,
       required this.title,
@@ -14034,7 +14054,8 @@ class BalanceSheetEntry extends DataClass
       this.contactName,
       this.dueDate,
       required this.isSettled,
-      required this.settledAmount});
+      required this.settledAmount,
+      required this.isForgiven});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -14055,6 +14076,7 @@ class BalanceSheetEntry extends DataClass
     }
     map['is_settled'] = Variable<bool>(isSettled);
     map['settled_amount'] = Variable<double>(settledAmount);
+    map['is_forgiven'] = Variable<bool>(isForgiven);
     return map;
   }
 
@@ -14076,6 +14098,7 @@ class BalanceSheetEntry extends DataClass
           : Value(dueDate),
       isSettled: Value(isSettled),
       settledAmount: Value(settledAmount),
+      isForgiven: Value(isForgiven),
     );
   }
 
@@ -14094,6 +14117,7 @@ class BalanceSheetEntry extends DataClass
       dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
       isSettled: serializer.fromJson<bool>(json['isSettled']),
       settledAmount: serializer.fromJson<double>(json['settledAmount']),
+      isForgiven: serializer.fromJson<bool>(json['isForgiven']),
     );
   }
   @override
@@ -14111,6 +14135,7 @@ class BalanceSheetEntry extends DataClass
       'dueDate': serializer.toJson<DateTime?>(dueDate),
       'isSettled': serializer.toJson<bool>(isSettled),
       'settledAmount': serializer.toJson<double>(settledAmount),
+      'isForgiven': serializer.toJson<bool>(isForgiven),
     };
   }
 
@@ -14125,7 +14150,8 @@ class BalanceSheetEntry extends DataClass
           Value<String?> contactName = const Value.absent(),
           Value<DateTime?> dueDate = const Value.absent(),
           bool? isSettled,
-          double? settledAmount}) =>
+          double? settledAmount,
+          bool? isForgiven}) =>
       BalanceSheetEntry(
         id: id ?? this.id,
         title: title ?? this.title,
@@ -14138,6 +14164,7 @@ class BalanceSheetEntry extends DataClass
         dueDate: dueDate.present ? dueDate.value : this.dueDate,
         isSettled: isSettled ?? this.isSettled,
         settledAmount: settledAmount ?? this.settledAmount,
+        isForgiven: isForgiven ?? this.isForgiven,
       );
   BalanceSheetEntry copyWithCompanion(BalanceSheetEntriesCompanion data) {
     return BalanceSheetEntry(
@@ -14155,6 +14182,8 @@ class BalanceSheetEntry extends DataClass
       settledAmount: data.settledAmount.present
           ? data.settledAmount.value
           : this.settledAmount,
+      isForgiven:
+          data.isForgiven.present ? data.isForgiven.value : this.isForgiven,
     );
   }
 
@@ -14171,14 +14200,15 @@ class BalanceSheetEntry extends DataClass
           ..write('contactName: $contactName, ')
           ..write('dueDate: $dueDate, ')
           ..write('isSettled: $isSettled, ')
-          ..write('settledAmount: $settledAmount')
+          ..write('settledAmount: $settledAmount, ')
+          ..write('isForgiven: $isForgiven')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, title, amount, entryType, category, date,
-      notes, contactName, dueDate, isSettled, settledAmount);
+      notes, contactName, dueDate, isSettled, settledAmount, isForgiven);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -14193,7 +14223,8 @@ class BalanceSheetEntry extends DataClass
           other.contactName == this.contactName &&
           other.dueDate == this.dueDate &&
           other.isSettled == this.isSettled &&
-          other.settledAmount == this.settledAmount);
+          other.settledAmount == this.settledAmount &&
+          other.isForgiven == this.isForgiven);
 }
 
 class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
@@ -14208,6 +14239,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
   final Value<DateTime?> dueDate;
   final Value<bool> isSettled;
   final Value<double> settledAmount;
+  final Value<bool> isForgiven;
   final Value<int> rowid;
   const BalanceSheetEntriesCompanion({
     this.id = const Value.absent(),
@@ -14221,6 +14253,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     this.dueDate = const Value.absent(),
     this.isSettled = const Value.absent(),
     this.settledAmount = const Value.absent(),
+    this.isForgiven = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   BalanceSheetEntriesCompanion.insert({
@@ -14235,6 +14268,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     this.dueDate = const Value.absent(),
     this.isSettled = const Value.absent(),
     this.settledAmount = const Value.absent(),
+    this.isForgiven = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         title = Value(title),
@@ -14254,6 +14288,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     Expression<DateTime>? dueDate,
     Expression<bool>? isSettled,
     Expression<double>? settledAmount,
+    Expression<bool>? isForgiven,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -14268,6 +14303,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
       if (dueDate != null) 'due_date': dueDate,
       if (isSettled != null) 'is_settled': isSettled,
       if (settledAmount != null) 'settled_amount': settledAmount,
+      if (isForgiven != null) 'is_forgiven': isForgiven,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -14284,6 +14320,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
       Value<DateTime?>? dueDate,
       Value<bool>? isSettled,
       Value<double>? settledAmount,
+      Value<bool>? isForgiven,
       Value<int>? rowid}) {
     return BalanceSheetEntriesCompanion(
       id: id ?? this.id,
@@ -14297,6 +14334,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
       dueDate: dueDate ?? this.dueDate,
       isSettled: isSettled ?? this.isSettled,
       settledAmount: settledAmount ?? this.settledAmount,
+      isForgiven: isForgiven ?? this.isForgiven,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -14337,6 +14375,9 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     if (settledAmount.present) {
       map['settled_amount'] = Variable<double>(settledAmount.value);
     }
+    if (isForgiven.present) {
+      map['is_forgiven'] = Variable<bool>(isForgiven.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -14357,6 +14398,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
           ..write('dueDate: $dueDate, ')
           ..write('isSettled: $isSettled, ')
           ..write('settledAmount: $settledAmount, ')
+          ..write('isForgiven: $isForgiven, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -23432,6 +23474,7 @@ typedef $$BalanceSheetEntriesTableCreateCompanionBuilder
   Value<DateTime?> dueDate,
   Value<bool> isSettled,
   Value<double> settledAmount,
+  Value<bool> isForgiven,
   Value<int> rowid,
 });
 typedef $$BalanceSheetEntriesTableUpdateCompanionBuilder
@@ -23447,6 +23490,7 @@ typedef $$BalanceSheetEntriesTableUpdateCompanionBuilder
   Value<DateTime?> dueDate,
   Value<bool> isSettled,
   Value<double> settledAmount,
+  Value<bool> isForgiven,
   Value<int> rowid,
 });
 
@@ -23491,6 +23535,9 @@ class $$BalanceSheetEntriesTableFilterComposer
 
   ColumnFilters<double> get settledAmount => $composableBuilder(
       column: $table.settledAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isForgiven => $composableBuilder(
+      column: $table.isForgiven, builder: (column) => ColumnFilters(column));
 }
 
 class $$BalanceSheetEntriesTableOrderingComposer
@@ -23535,6 +23582,9 @@ class $$BalanceSheetEntriesTableOrderingComposer
   ColumnOrderings<double> get settledAmount => $composableBuilder(
       column: $table.settledAmount,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isForgiven => $composableBuilder(
+      column: $table.isForgiven, builder: (column) => ColumnOrderings(column));
 }
 
 class $$BalanceSheetEntriesTableAnnotationComposer
@@ -23578,6 +23628,9 @@ class $$BalanceSheetEntriesTableAnnotationComposer
 
   GeneratedColumn<double> get settledAmount => $composableBuilder(
       column: $table.settledAmount, builder: (column) => column);
+
+  GeneratedColumn<bool> get isForgiven => $composableBuilder(
+      column: $table.isForgiven, builder: (column) => column);
 }
 
 class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
@@ -23621,6 +23674,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             Value<DateTime?> dueDate = const Value.absent(),
             Value<bool> isSettled = const Value.absent(),
             Value<double> settledAmount = const Value.absent(),
+            Value<bool> isForgiven = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               BalanceSheetEntriesCompanion(
@@ -23635,6 +23689,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             dueDate: dueDate,
             isSettled: isSettled,
             settledAmount: settledAmount,
+            isForgiven: isForgiven,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -23649,6 +23704,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             Value<DateTime?> dueDate = const Value.absent(),
             Value<bool> isSettled = const Value.absent(),
             Value<double> settledAmount = const Value.absent(),
+            Value<bool> isForgiven = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               BalanceSheetEntriesCompanion.insert(
@@ -23663,6 +23719,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             dueDate: dueDate,
             isSettled: isSettled,
             settledAmount: settledAmount,
+            isForgiven: isForgiven,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

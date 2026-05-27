@@ -11,7 +11,8 @@ class BalanceSheetModel {
   final String? contactName;
   final DateTime? dueDate;
   final bool isSettled;
-  final double settledAmount; // [NEW] Track partial payments
+  final double settledAmount; 
+  final bool isForgiven; // [NEW]
 
   BalanceSheetModel({
     required this.id,
@@ -24,6 +25,7 @@ class BalanceSheetModel {
     this.contactName,
     this.dueDate,
     this.isSettled = false,
-    this.settledAmount = 0.0, // Default to 0
+    this.settledAmount = 0.0,
+    this.isForgiven = false, // [NEW] Default to false
   });
 }

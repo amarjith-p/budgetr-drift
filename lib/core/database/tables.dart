@@ -518,6 +518,7 @@ class BalanceSheetEntries extends Table {
 
   // Partial Settlement Tracking
   RealColumn get settledAmount => real().withDefault(const Constant(0.0))();
+  BoolColumn get isForgiven => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};

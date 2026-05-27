@@ -24,6 +24,7 @@ class BalanceSheetService {
       dueDate: row.dueDate,
       isSettled: row.isSettled,
       settledAmount: row.settledAmount,
+      isForgiven: row.isForgiven, // [NEW] Map value
     );
   }
 
@@ -88,10 +89,9 @@ class BalanceSheetService {
             dueDate: Value(entry.dueDate),
             isSettled: Value(entry.isSettled),
             settledAmount: Value(entry.settledAmount),
+            isForgiven: Value(entry.isForgiven), // [NEW]
           ),
         );
-
-    // [NEW HOOK] Resync alarms after addition
     _triggerNotificationSync();
   }
 
@@ -108,9 +108,8 @@ class BalanceSheetService {
       dueDate: Value(entry.dueDate),
       isSettled: Value(entry.isSettled),
       settledAmount: Value(entry.settledAmount),
+      isForgiven: Value(entry.isForgiven), // [NEW]
     ));
-
-    // [NEW HOOK] Resync alarms after edit
     _triggerNotificationSync();
   }
 
@@ -138,5 +137,12 @@ class BalanceSheetService {
   Future<void> _triggerNotificationSync() async {
     final allEntries = await fetchAllEntries();
     await _scheduler.syncNotifications(allEntries);
+  }
+  Future<void> updateForgiven(String id, bool isForgiven) async {
+    await (_db.update(_db.balanceSheetEntries)..where((t) => t.id.equals(id)))
+        .write(db.BalanceSheetEntriesCompanion(
+      isForgiven: Value(isForgiven),
+    ));
+    _triggerNotificationSync();
   }
 }
