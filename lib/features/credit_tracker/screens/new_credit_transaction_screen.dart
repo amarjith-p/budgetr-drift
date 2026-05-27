@@ -617,7 +617,7 @@ class _NewCreditTransactionScreenState
     );
   }
 
-  Widget _buildHeroAmount(Color typeColor) {
+ Widget _buildHeroAmount(Color typeColor) {
     bool hasError =
         _attemptedSave && (double.tryParse(_amountCtrl.text) ?? 0) <= 0;
     return GestureDetector(
@@ -625,38 +625,40 @@ class _NewCreditTransactionScreenState
       child: Container(
         height: 85,
         color: Colors.transparent,
-        // 1. ADDED HORIZONTAL PADDING: Keeps text from hitting the screen edges
+        // Added padding to prevent wide text from hitting the screen edges
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 32),
         alignment: Alignment.center,
-        // 2. ADDED FITTEDBOX: Automatically scales down the content if it exceeds the container's width
         child: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.center,
           child: IntrinsicWidth(
-            child: IgnorePointer(
-              ignoring: true,
-              child: TextField(
-                controller: _amountCtrl,
-                focusNode: _amountNode,
-                readOnly: true,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.w700,
-                  color: hasError ? Colors.redAccent : typeColor,
-                  height: 1.1,
-                ),
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: "0",
-                  hintStyle: const TextStyle(color: Colors.white12),
-                  prefixText: "₹ ",
-                  prefixStyle: TextStyle(
-                      fontSize: 48,
-                      color: hasError ? Colors.redAccent : Colors.white24,
-                      fontWeight: FontWeight.w300),
-                  contentPadding: EdgeInsets.zero,
-                ),
+            // [FIXED] Removed the IgnorePointer wrapper so touch events reach the field
+            child: TextField(
+              controller: _amountCtrl,
+              focusNode: _amountNode,
+              readOnly: true,
+              showCursor: true, 
+              autofocus: true,
+              // [NEW] Manually trigger the custom calculator when the text is tapped
+              onTap: _switchToCalculator, 
+              
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.w700,
+                color: hasError ? Colors.redAccent : typeColor,
+                height: 1.1,
+              ),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: "0",
+                hintStyle: const TextStyle(color: Colors.white12),
+                prefixText: "₹ ",
+                prefixStyle: TextStyle(
+                    fontSize: 48,
+                    color: hasError ? Colors.redAccent : Colors.white24,
+                    fontWeight: FontWeight.w300),
+                contentPadding: EdgeInsets.zero,
               ),
             ),
           ),

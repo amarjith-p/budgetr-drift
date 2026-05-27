@@ -25,6 +25,7 @@ class BalanceSheetService {
       isSettled: row.isSettled,
       settledAmount: row.settledAmount,
       isForgiven: row.isForgiven, // [NEW] Map value
+      isReconciled: row.isReconciled,
     );
   }
 
@@ -90,6 +91,7 @@ class BalanceSheetService {
             isSettled: Value(entry.isSettled),
             settledAmount: Value(entry.settledAmount),
             isForgiven: Value(entry.isForgiven), // [NEW]
+            isReconciled: Value(entry.isReconciled),
           ),
         );
     _triggerNotificationSync();
@@ -109,6 +111,7 @@ class BalanceSheetService {
       isSettled: Value(entry.isSettled),
       settledAmount: Value(entry.settledAmount),
       isForgiven: Value(entry.isForgiven), // [NEW]
+      isReconciled: Value(entry.isReconciled),
     ));
     _triggerNotificationSync();
   }
@@ -142,6 +145,13 @@ class BalanceSheetService {
     await (_db.update(_db.balanceSheetEntries)..where((t) => t.id.equals(id)))
         .write(db.BalanceSheetEntriesCompanion(
       isForgiven: Value(isForgiven),
+    ));
+    _triggerNotificationSync();
+  }
+  Future<void> updateReconciled(String id, bool isReconciled) async {
+    await (_db.update(_db.balanceSheetEntries)..where((t) => t.id.equals(id)))
+        .write(db.BalanceSheetEntriesCompanion(
+      isReconciled: Value(isReconciled),
     ));
     _triggerNotificationSync();
   }

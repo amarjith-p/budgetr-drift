@@ -52,6 +52,7 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
         'Emergency Fund',
         'Money Lent',
         'Asset Lent', // Explicitly added Asset Lent
+        'Interest Receivable', // [NEW]
         'Cash',
         'Stocks & Mutual Funds',
         'Bonds & FDs',
@@ -74,6 +75,7 @@ class _AddBalanceEntrySheetState extends State<AddBalanceEntrySheet> {
         'Buy Now Pay Later',
         'Money Borrowed',
         'Asset Borrowed', // Explicitly added Asset Borrowed
+        'Interest Payable', // [NEW]
         'Personal Loans',
         'EMI / Consumer Loans',
         'Mortgages',

@@ -57,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
 
   // [NEW] Incremented schemaVersion from 26 to 27 for Investment Closures
   @override
-  int get schemaVersion => 29;
+  int get schemaVersion => 30;
 
   @override
   MigrationStrategy get migration {
@@ -213,6 +213,19 @@ class AppDatabase extends _$AppDatabase {
 
             if (!existingColumns.contains('is_forgiven')) {
               await m.addColumn(balanceSheetEntries, balanceSheetEntries.isForgiven);
+            }
+          }
+        }
+        if (from < 30) {
+          if (existingTables.contains(balanceSheetEntries.actualTableName)) {
+            final tableInfo = await customSelect(
+                    "PRAGMA table_info('${balanceSheetEntries.actualTableName}')")
+                .get();
+            final existingColumns =
+                tableInfo.map((row) => row.read<String>('name')).toSet();
+
+            if (!existingColumns.contains('is_reconciled')) {
+              await m.addColumn(balanceSheetEntries, balanceSheetEntries.isReconciled);
             }
           }
         }

@@ -13,6 +13,7 @@ class BalanceSheetModel {
   final bool isSettled;
   final double settledAmount; 
   final bool isForgiven; // [NEW]
+  final bool isReconciled;
 
   BalanceSheetModel({
     required this.id,
@@ -27,5 +28,6 @@ class BalanceSheetModel {
     this.isSettled = false,
     this.settledAmount = 0.0,
     this.isForgiven = false, // [NEW] Default to false
+    this.isReconciled = false,
   });
 }

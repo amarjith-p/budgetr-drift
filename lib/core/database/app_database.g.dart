@@ -13897,6 +13897,16 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_forgiven" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _isReconciledMeta =
+      const VerificationMeta('isReconciled');
+  @override
+  late final GeneratedColumn<bool> isReconciled = GeneratedColumn<bool>(
+      'is_reconciled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_reconciled" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -13910,7 +13920,8 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
         dueDate,
         isSettled,
         settledAmount,
-        isForgiven
+        isForgiven,
+        isReconciled
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -13987,6 +13998,12 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
           isForgiven.isAcceptableOrUnknown(
               data['is_forgiven']!, _isForgivenMeta));
     }
+    if (data.containsKey('is_reconciled')) {
+      context.handle(
+          _isReconciledMeta,
+          isReconciled.isAcceptableOrUnknown(
+              data['is_reconciled']!, _isReconciledMeta));
+    }
     return context;
   }
 
@@ -14020,6 +14037,8 @@ class $BalanceSheetEntriesTable extends BalanceSheetEntries
           .read(DriftSqlType.double, data['${effectivePrefix}settled_amount'])!,
       isForgiven: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_forgiven'])!,
+      isReconciled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_reconciled'])!,
     );
   }
 
@@ -14043,6 +14062,7 @@ class BalanceSheetEntry extends DataClass
   final bool isSettled;
   final double settledAmount;
   final bool isForgiven;
+  final bool isReconciled;
   const BalanceSheetEntry(
       {required this.id,
       required this.title,
@@ -14055,7 +14075,8 @@ class BalanceSheetEntry extends DataClass
       this.dueDate,
       required this.isSettled,
       required this.settledAmount,
-      required this.isForgiven});
+      required this.isForgiven,
+      required this.isReconciled});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -14077,6 +14098,7 @@ class BalanceSheetEntry extends DataClass
     map['is_settled'] = Variable<bool>(isSettled);
     map['settled_amount'] = Variable<double>(settledAmount);
     map['is_forgiven'] = Variable<bool>(isForgiven);
+    map['is_reconciled'] = Variable<bool>(isReconciled);
     return map;
   }
 
@@ -14099,6 +14121,7 @@ class BalanceSheetEntry extends DataClass
       isSettled: Value(isSettled),
       settledAmount: Value(settledAmount),
       isForgiven: Value(isForgiven),
+      isReconciled: Value(isReconciled),
     );
   }
 
@@ -14118,6 +14141,7 @@ class BalanceSheetEntry extends DataClass
       isSettled: serializer.fromJson<bool>(json['isSettled']),
       settledAmount: serializer.fromJson<double>(json['settledAmount']),
       isForgiven: serializer.fromJson<bool>(json['isForgiven']),
+      isReconciled: serializer.fromJson<bool>(json['isReconciled']),
     );
   }
   @override
@@ -14136,6 +14160,7 @@ class BalanceSheetEntry extends DataClass
       'isSettled': serializer.toJson<bool>(isSettled),
       'settledAmount': serializer.toJson<double>(settledAmount),
       'isForgiven': serializer.toJson<bool>(isForgiven),
+      'isReconciled': serializer.toJson<bool>(isReconciled),
     };
   }
 
@@ -14151,7 +14176,8 @@ class BalanceSheetEntry extends DataClass
           Value<DateTime?> dueDate = const Value.absent(),
           bool? isSettled,
           double? settledAmount,
-          bool? isForgiven}) =>
+          bool? isForgiven,
+          bool? isReconciled}) =>
       BalanceSheetEntry(
         id: id ?? this.id,
         title: title ?? this.title,
@@ -14165,6 +14191,7 @@ class BalanceSheetEntry extends DataClass
         isSettled: isSettled ?? this.isSettled,
         settledAmount: settledAmount ?? this.settledAmount,
         isForgiven: isForgiven ?? this.isForgiven,
+        isReconciled: isReconciled ?? this.isReconciled,
       );
   BalanceSheetEntry copyWithCompanion(BalanceSheetEntriesCompanion data) {
     return BalanceSheetEntry(
@@ -14184,6 +14211,9 @@ class BalanceSheetEntry extends DataClass
           : this.settledAmount,
       isForgiven:
           data.isForgiven.present ? data.isForgiven.value : this.isForgiven,
+      isReconciled: data.isReconciled.present
+          ? data.isReconciled.value
+          : this.isReconciled,
     );
   }
 
@@ -14201,14 +14231,27 @@ class BalanceSheetEntry extends DataClass
           ..write('dueDate: $dueDate, ')
           ..write('isSettled: $isSettled, ')
           ..write('settledAmount: $settledAmount, ')
-          ..write('isForgiven: $isForgiven')
+          ..write('isForgiven: $isForgiven, ')
+          ..write('isReconciled: $isReconciled')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, title, amount, entryType, category, date,
-      notes, contactName, dueDate, isSettled, settledAmount, isForgiven);
+  int get hashCode => Object.hash(
+      id,
+      title,
+      amount,
+      entryType,
+      category,
+      date,
+      notes,
+      contactName,
+      dueDate,
+      isSettled,
+      settledAmount,
+      isForgiven,
+      isReconciled);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -14224,7 +14267,8 @@ class BalanceSheetEntry extends DataClass
           other.dueDate == this.dueDate &&
           other.isSettled == this.isSettled &&
           other.settledAmount == this.settledAmount &&
-          other.isForgiven == this.isForgiven);
+          other.isForgiven == this.isForgiven &&
+          other.isReconciled == this.isReconciled);
 }
 
 class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
@@ -14240,6 +14284,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
   final Value<bool> isSettled;
   final Value<double> settledAmount;
   final Value<bool> isForgiven;
+  final Value<bool> isReconciled;
   final Value<int> rowid;
   const BalanceSheetEntriesCompanion({
     this.id = const Value.absent(),
@@ -14254,6 +14299,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     this.isSettled = const Value.absent(),
     this.settledAmount = const Value.absent(),
     this.isForgiven = const Value.absent(),
+    this.isReconciled = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   BalanceSheetEntriesCompanion.insert({
@@ -14269,6 +14315,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     this.isSettled = const Value.absent(),
     this.settledAmount = const Value.absent(),
     this.isForgiven = const Value.absent(),
+    this.isReconciled = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         title = Value(title),
@@ -14289,6 +14336,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     Expression<bool>? isSettled,
     Expression<double>? settledAmount,
     Expression<bool>? isForgiven,
+    Expression<bool>? isReconciled,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -14304,6 +14352,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
       if (isSettled != null) 'is_settled': isSettled,
       if (settledAmount != null) 'settled_amount': settledAmount,
       if (isForgiven != null) 'is_forgiven': isForgiven,
+      if (isReconciled != null) 'is_reconciled': isReconciled,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -14321,6 +14370,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
       Value<bool>? isSettled,
       Value<double>? settledAmount,
       Value<bool>? isForgiven,
+      Value<bool>? isReconciled,
       Value<int>? rowid}) {
     return BalanceSheetEntriesCompanion(
       id: id ?? this.id,
@@ -14335,6 +14385,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
       isSettled: isSettled ?? this.isSettled,
       settledAmount: settledAmount ?? this.settledAmount,
       isForgiven: isForgiven ?? this.isForgiven,
+      isReconciled: isReconciled ?? this.isReconciled,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -14378,6 +14429,9 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
     if (isForgiven.present) {
       map['is_forgiven'] = Variable<bool>(isForgiven.value);
     }
+    if (isReconciled.present) {
+      map['is_reconciled'] = Variable<bool>(isReconciled.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -14399,6 +14453,7 @@ class BalanceSheetEntriesCompanion extends UpdateCompanion<BalanceSheetEntry> {
           ..write('isSettled: $isSettled, ')
           ..write('settledAmount: $settledAmount, ')
           ..write('isForgiven: $isForgiven, ')
+          ..write('isReconciled: $isReconciled, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -23475,6 +23530,7 @@ typedef $$BalanceSheetEntriesTableCreateCompanionBuilder
   Value<bool> isSettled,
   Value<double> settledAmount,
   Value<bool> isForgiven,
+  Value<bool> isReconciled,
   Value<int> rowid,
 });
 typedef $$BalanceSheetEntriesTableUpdateCompanionBuilder
@@ -23491,6 +23547,7 @@ typedef $$BalanceSheetEntriesTableUpdateCompanionBuilder
   Value<bool> isSettled,
   Value<double> settledAmount,
   Value<bool> isForgiven,
+  Value<bool> isReconciled,
   Value<int> rowid,
 });
 
@@ -23538,6 +23595,9 @@ class $$BalanceSheetEntriesTableFilterComposer
 
   ColumnFilters<bool> get isForgiven => $composableBuilder(
       column: $table.isForgiven, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isReconciled => $composableBuilder(
+      column: $table.isReconciled, builder: (column) => ColumnFilters(column));
 }
 
 class $$BalanceSheetEntriesTableOrderingComposer
@@ -23585,6 +23645,10 @@ class $$BalanceSheetEntriesTableOrderingComposer
 
   ColumnOrderings<bool> get isForgiven => $composableBuilder(
       column: $table.isForgiven, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isReconciled => $composableBuilder(
+      column: $table.isReconciled,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$BalanceSheetEntriesTableAnnotationComposer
@@ -23631,6 +23695,9 @@ class $$BalanceSheetEntriesTableAnnotationComposer
 
   GeneratedColumn<bool> get isForgiven => $composableBuilder(
       column: $table.isForgiven, builder: (column) => column);
+
+  GeneratedColumn<bool> get isReconciled => $composableBuilder(
+      column: $table.isReconciled, builder: (column) => column);
 }
 
 class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
@@ -23675,6 +23742,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             Value<bool> isSettled = const Value.absent(),
             Value<double> settledAmount = const Value.absent(),
             Value<bool> isForgiven = const Value.absent(),
+            Value<bool> isReconciled = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               BalanceSheetEntriesCompanion(
@@ -23690,6 +23758,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             isSettled: isSettled,
             settledAmount: settledAmount,
             isForgiven: isForgiven,
+            isReconciled: isReconciled,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -23705,6 +23774,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             Value<bool> isSettled = const Value.absent(),
             Value<double> settledAmount = const Value.absent(),
             Value<bool> isForgiven = const Value.absent(),
+            Value<bool> isReconciled = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               BalanceSheetEntriesCompanion.insert(
@@ -23720,6 +23790,7 @@ class $$BalanceSheetEntriesTableTableManager extends RootTableManager<
             isSettled: isSettled,
             settledAmount: settledAmount,
             isForgiven: isForgiven,
+            isReconciled: isReconciled,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

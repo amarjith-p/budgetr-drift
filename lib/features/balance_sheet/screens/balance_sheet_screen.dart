@@ -39,6 +39,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
 
   final FocusNode _searchFocusNode = FocusNode();
   final TextEditingController _searchController = TextEditingController();
+  bool _isSummaryExpanded = false;
 
   String _searchQuery = '';
   String _currentFilter = 'All';
@@ -188,7 +189,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: ['All', 'Pending', 'Overdue', 'Settled', 'Forgiven'].map((filter) {
+              children: ['All', 'Pending', 'Overdue', 'Settled', 'Forgiven', 'Reconciled'].map((filter) {
                 bool isSelected = _currentFilter == filter;
                 return GestureDetector(
                   onTap: () {
@@ -227,30 +228,28 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
     );
   }
 
-  Widget _buildCompactGlowingSummary() {
+Widget _buildCompactGlowingSummary() {
     return StreamBuilder(
       stream: Rx.combineLatest2(
         _service.watchAssets(),
         _service.watchLiabilities(),
-        (List<BalanceSheetModel> assets, List<BalanceSheetModel> liabilities) =>
-            [assets, liabilities],
+        (List<BalanceSheetModel> assets, List<BalanceSheetModel> liabilities) => [assets, liabilities],
       ),
       builder: (context, snapshot) {
         double totalAssets = 0;
         double totalLiabilities = 0;
         double pendingReceivables = 0;
         double pendingPayables = 0;
+        
+        // [NEW] Metrics
+        double totalSettledIn = 0;
+        double totalSettledOut = 0;
+        double totalReconciled = 0;
 
         bool isIOU(BalanceSheetModel e) {
           return (e.contactName != null && e.contactName!.trim().isNotEmpty) ||
               e.dueDate != null ||
-              [
-                'Money Lent',
-                'Receivables',
-                'Money Borrowed',
-                'Personal Loans',
-                'Payables'
-              ].contains(e.category);
+              ['Money Lent', 'Receivables', 'Money Borrowed', 'Personal Loans', 'Payables'].contains(e.category);
         }
 
         if (snapshot.hasData) {
@@ -258,260 +257,179 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
           final liabilities = snapshot.data![1];
 
           totalAssets = assets.fold(0.0, (sum, item) => sum + item.amount);
-          totalLiabilities =
-              liabilities.fold(0.0, (sum, item) => sum + item.amount);
+          totalLiabilities = liabilities.fold(0.0, (sum, item) => sum + item.amount);
 
-          pendingReceivables = assets
-              .where((e) => !e.isSettled && !e.isForgiven && isIOU(e)) // [UPDATED] Check isForgiven
-              .fold(0.0, (sum, e) => sum + (e.amount - e.settledAmount));
-          pendingPayables = liabilities
-              .where((e) => !e.isSettled && !e.isForgiven && isIOU(e)) // [UPDATED] Check isForgiven
-              .fold(0.0, (sum, e) => sum + (e.amount - e.settledAmount));
+          for (var e in assets) {
+            if (isIOU(e)) {
+              if (!e.isSettled && !e.isForgiven) pendingReceivables += (e.amount - e.settledAmount);
+              totalSettledIn += e.settledAmount;
+            } else if (e.isReconciled) {
+              totalReconciled += e.amount;
+            }
+          }
+          
+          for (var e in liabilities) {
+            if (isIOU(e)) {
+              if (!e.isSettled && !e.isForgiven) pendingPayables += (e.amount - e.settledAmount);
+              totalSettledOut += e.settledAmount;
+            } else if (e.isReconciled) {
+              totalReconciled += e.amount;
+            }
+          }
         }
 
         double netEquity = totalAssets - totalLiabilities;
         Color equityColor = netEquity >= 0 ? _assetColor : _liabilityColor;
 
-        return Container(
-          margin: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: BoxDecoration(
-            color: _surfaceColor.withOpacity(0.6),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: equityColor.withOpacity(0.3), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                  color: equityColor.withOpacity(0.15),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8))
-            ],
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    flex: 5,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("NET EQUITY",
-                            style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 2)),
-                        const SizedBox(height: 4),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(_currency.format(netEquity),
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -1,
-                                  shadows: [
-                                    Shadow(
-                                        color: equityColor.withOpacity(0.6),
-                                        blurRadius: 15)
-                                  ])),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                      height: 36,
-                      width: 1,
-                      color: Colors.white.withOpacity(0.1),
-                      margin: const EdgeInsets.symmetric(horizontal: 16)),
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                    width: 6,
-                                    height: 6,
-                                    decoration: BoxDecoration(
-                                        color: _assetColor,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                              color: _assetColor, blurRadius: 4)
-                                        ])),
-                                const SizedBox(width: 6),
-                                const Text("ASSETS",
-                                    style: TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 1)),
-                              ],
-                            ),
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(_currency.format(totalAssets),
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                    width: 6,
-                                    height: 6,
-                                    decoration: BoxDecoration(
-                                        color: _liabilityColor,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                              color: _liabilityColor,
-                                              blurRadius: 4)
-                                        ])),
-                                const SizedBox(width: 6),
-                                const Text("LIAB.",
-                                    style: TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 1)),
-                              ],
-                            ),
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                      _currency.format(totalLiabilities),
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (pendingReceivables > 0 || pendingPayables > 0) ...[
-                const SizedBox(height: 16),
-                Divider(height: 1, color: Colors.white.withOpacity(0.1)),
-                const SizedBox(height: 12),
+        return GestureDetector(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _isSummaryExpanded = !_isSummaryExpanded);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            margin: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: _surfaceColor.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: equityColor.withOpacity(0.3), width: 1.5),
+              boxShadow: [
+                BoxShadow(color: equityColor.withOpacity(0.15), blurRadius: 24, offset: const Offset(0, 8))
+              ],
+            ),
+            child: Column(
+              children: [
                 Row(
                   children: [
-                    if (pendingReceivables > 0)
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 12),
-                          decoration: BoxDecoration(
-                              color: _assetColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                  color: _assetColor.withOpacity(0.2))),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text("NET EQUITY",
+                                  style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                              const SizedBox(width: 4),
+                              Icon(_isSummaryExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, 
+                                  color: Colors.white38, size: 14)
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(_currency.format(netEquity),
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -1,
+                                    shadows: [Shadow(color: equityColor.withOpacity(0.6), blurRadius: 15)])),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(height: 36, width: 1, color: Colors.white.withOpacity(0.1), margin: const EdgeInsets.symmetric(horizontal: 16)),
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.call_received_rounded,
-                                      color: _assetColor, size: 12),
-                                  const SizedBox(width: 4),
-                                  Text("TO RECEIVE",
-                                      style: TextStyle(
-                                          color: _assetColor,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.5)),
+                                  Container(width: 6, height: 6, decoration: BoxDecoration(color: _assetColor, shape: BoxShape.circle)),
+                                  const SizedBox(width: 6),
+                                  const Text("ASSETS", style: TextStyle(color: Colors.white54, fontSize: 9, fontWeight: FontWeight.w700)),
                                 ],
                               ),
-                              const SizedBox(height: 2),
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                    _currency.format(pendingReceivables),
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold)),
-                              ),
+                              Expanded(child: Align(alignment: Alignment.centerRight, child: FittedBox(fit: BoxFit.scaleDown, child: Text(_currency.format(totalAssets), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))))),
                             ],
                           ),
-                        ),
-                      ),
-                    if (pendingReceivables > 0 && pendingPayables > 0)
-                      const SizedBox(width: 12),
-                    if (pendingPayables > 0)
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 12),
-                          decoration: BoxDecoration(
-                              color: _liabilityColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                  color: _liabilityColor.withOpacity(0.2))),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.call_made_rounded,
-                                      color: _liabilityColor, size: 12),
-                                  const SizedBox(width: 4),
-                                  Text("TO PAY",
-                                      style: TextStyle(
-                                          color: _liabilityColor,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.5)),
+                                  Container(width: 6, height: 6, decoration: BoxDecoration(color: _liabilityColor, shape: BoxShape.circle)),
+                                  const SizedBox(width: 6),
+                                  const Text("LIAB.", style: TextStyle(color: Colors.white54, fontSize: 9, fontWeight: FontWeight.w700)),
                                 ],
                               ),
-                              const SizedBox(height: 2),
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: Text(_currency.format(pendingPayables),
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold)),
-                              ),
+                              Expanded(child: Align(alignment: Alignment.centerRight, child: FittedBox(fit: BoxFit.scaleDown, child: Text(_currency.format(totalLiabilities), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))))),
                             ],
                           ),
-                        ),
+                        ],
                       ),
+                    ),
                   ],
-                )
-              ]
-            ],
+                ),
+                
+                // [NEW] EXPANDED METRICS SECTION
+                if (_isSummaryExpanded) ...[
+                  const SizedBox(height: 16),
+                  Divider(height: 1, color: Colors.white.withOpacity(0.1)),
+                  const SizedBox(height: 16),
+                  
+                  // Row 1: Pending Payables & Receivables
+                  Row(
+                    children: [
+                      _buildMetricBox("TO RECEIVE", pendingReceivables, _assetColor, Icons.call_received_rounded),
+                      const SizedBox(width: 12),
+                      _buildMetricBox("TO PAY", pendingPayables, _liabilityColor, Icons.call_made_rounded),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Row 2: Settled / Reconciled Stats
+                  Row(
+                    children: [
+                      _buildMetricBox("SETTLED", (totalSettledIn + totalSettledOut), Colors.amberAccent, Icons.handshake_rounded),
+                      const SizedBox(width: 12),
+                      _buildMetricBox("RECONCILED", totalReconciled, Colors.tealAccent, Icons.fact_check_rounded),
+                    ],
+                  )
+                ]
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  // [NEW] Helper widget for the expanded summary grid
+  Widget _buildMetricBox(String title, double amount, Color color, IconData icon) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+            color: color.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withOpacity(0.15))),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 12),
+                const SizedBox(width: 4),
+                Text(title, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+              ],
+            ),
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(_currency.format(amount),
+                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -558,6 +476,8 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
         return Icons.front_hand_rounded;
       case 'Asset Lent':
         return Icons.inventory_2_rounded;
+      case 'Interest Receivable':
+        return Icons.percent_rounded;
       case 'Receivables':
         return Icons.call_received_rounded;
       case 'Stocks & Mutual Funds':
@@ -590,6 +510,8 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
         return Icons.request_quote_rounded;
       case 'Asset Borrowed':
         return Icons.inventory_rounded;
+      case 'Interest Payable':
+        return Icons.percent_rounded;
       case 'Personal Loans':
         return Icons.handshake_rounded;
       case 'EMI / Consumer Loans':
@@ -626,19 +548,17 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
         var filtered = allEntries.where((e) {
           bool matchesSearch = _searchQuery.isEmpty ||
               e.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-              (e.contactName
-                      ?.toLowerCase()
-                      .contains(_searchQuery.toLowerCase()) ??
-                  false);
+              (e.contactName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+          
           bool matchesFilter = true;
-          if (_currentFilter == 'Pending') matchesFilter = !e.isSettled && !e.isForgiven; // [UPDATED]
-          if (_currentFilter == 'Settled') matchesFilter = e.isSettled && !e.isForgiven; // [UPDATED]
-          if (_currentFilter == 'Forgiven') matchesFilter = e.isForgiven; // [NEW]
+          if (_currentFilter == 'Pending') matchesFilter = !e.isSettled && !e.isForgiven && !e.isReconciled;
+          if (_currentFilter == 'Settled') matchesFilter = e.isSettled;
+          if (_currentFilter == 'Forgiven') matchesFilter = e.isForgiven;
+          if (_currentFilter == 'Reconciled') matchesFilter = e.isReconciled;
           if (_currentFilter == 'Overdue') {
             matchesFilter = e.dueDate != null &&
                 e.dueDate!.isBefore(DateTime.now()) &&
-                !e.isSettled && 
-                !e.isForgiven; // [UPDATED]
+                !e.isSettled && !e.isForgiven && !e.isReconciled;
           }
           return matchesSearch && matchesFilter;
         }).toList();
@@ -729,7 +649,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                         key: ValueKey(entry.id),
                         startActionPane: ActionPane(
                           motion: const ScrollMotion(),
-                          extentRatio: isTrackable ? 0.5 : 0.25,
+                          extentRatio: 0.65,
                           children: [
                             SlidableAction(
                               onPressed: (_) => _showEditSheet(context, entry),
@@ -737,10 +657,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                               foregroundColor: Colors.white,
                               icon: Icons.edit_rounded,
                               label: 'Edit',
-                              borderRadius: isTrackable
-                                  ? const BorderRadius.horizontal(
-                                      left: Radius.circular(8))
-                                  : BorderRadius.circular(8),
+                              borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
                             ),
                             if (isTrackable)
                               SlidableAction(
@@ -748,20 +665,30 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                   _searchFocusNode.unfocus();
                                   HapticFeedback.mediumImpact();
                                   if (entry.isSettled) {
-                                    await _service.updateSettlement(
-                                        entry.id, 0.0, false);
+                                    await _service.updateSettlement(entry.id, 0.0, false);
                                   } else {
                                     _showPartialSettleDialog(context, entry);
                                   }
                                 },
                                 backgroundColor: BudgetrColors.success,
                                 foregroundColor: Colors.black,
-                                icon: entry.isSettled
-                                    ? Icons.undo_rounded
-                                    : Icons.check_circle_rounded,
+                                icon: entry.isSettled ? Icons.undo_rounded : Icons.check_circle_rounded,
                                 label: entry.isSettled ? 'Undo' : 'Settle',
-                                borderRadius: const BorderRadius.horizontal(
-                                    right: Radius.circular(8)),
+                                borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
+                              )
+                              else 
+                              // [NEW] RECONCILE ACTION FOR NON-TRACKABLE ENTRIES
+                              SlidableAction(
+                                onPressed: (_) async {
+                                  _searchFocusNode.unfocus();
+                                  HapticFeedback.mediumImpact();
+                                  await _service.updateReconciled(entry.id, !entry.isReconciled);
+                                },
+                                backgroundColor: Colors.tealAccent.shade700,
+                                foregroundColor: Colors.black,
+                                icon: entry.isReconciled ? Icons.undo_rounded : Icons.fact_check_rounded,
+                                label: entry.isReconciled ? 'Undo' : 'Reconcile',
+                                borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
                               ),
                           ],
                         ),
@@ -842,12 +769,15 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 16),
+                                // --- MIDDLE COLUMN (Title, Category, Dates, Notes) ---
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
+                                      // 1. TITLE (Added maxLines & ellipsis)
                                       Text(entry.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -856,8 +786,9 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                                   ? TextDecoration.lineThrough
                                                   : null)),
                                       const SizedBox(height: 4),
-                                      if (entry.contactName != null &&
-                                          entry.contactName!.isNotEmpty) ...[
+                                      
+                                      // 2. CONTACT / CATEGORY (Wrapped texts in Flexible)
+                                      if (entry.contactName != null && entry.contactName!.isNotEmpty) ...[
                                         InkWell(
                                           onTap: () {
                                             _searchFocusNode.unfocus();
@@ -865,156 +796,112 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                             showModalBottomSheet(
                                               context: context,
                                               isScrollControlled: true,
-                                              backgroundColor:
-                                                  Colors.transparent,
-                                              builder: (_) =>
-                                                  ContactLedgerSheet(
-                                                      contactName:
-                                                          entry.contactName!),
+                                              backgroundColor: Colors.transparent,
+                                              builder: (_) => ContactLedgerSheet(contactName: entry.contactName!),
                                             );
                                           },
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
-                                                color: Colors.white
-                                                    .withOpacity(0.05),
-                                                borderRadius:
-                                                    BorderRadius.circular(4)),
+                                                color: Colors.white.withOpacity(0.05),
+                                                borderRadius: BorderRadius.circular(4)),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(Icons.person_rounded,
-                                                    color: themeColor
-                                                        .withOpacity(0.8),
-                                                    size: 10),
+                                                Icon(Icons.person_rounded, color: themeColor.withOpacity(0.8), size: 10),
                                                 const SizedBox(width: 4),
-                                                Text(entry.contactName!,
-                                                    style: const TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 10,
-                                                        fontWeight:
-                                                            FontWeight.w600)),
+                                                Flexible( // <--- FIX: Prevents long contact names from overflowing
+                                                  child: Text(entry.contactName!,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)),
+                                                ),
                                               ],
                                             ),
                                           ),
                                         ),
                                       ] else ...[
                                         Row(
+                                          mainAxisSize: MainAxisSize.min, // <--- FIX: Keeps Row tight
                                           children: [
-                                            Icon(iconData,
-                                                color:
-                                                    themeColor.withOpacity(0.8),
-                                                size: 12),
+                                            Icon(iconData, color: themeColor.withOpacity(0.8), size: 12),
                                             const SizedBox(width: 4),
-                                            Text(entry.category,
-                                                style: const TextStyle(
-                                                    color: Colors.white54,
-                                                    fontSize: 12)),
+                                            Flexible( // <--- FIX: Prevents long category names from overflowing
+                                              child: Text(entry.category, 
+                                                  maxLines: 1, 
+                                                  overflow: TextOverflow.ellipsis, 
+                                                  style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                            ),
                                           ],
                                         )
                                       ],
-                                      if ((entry.dueDate != null &&
-                                              !entry.isSettled) ||
-                                          (entry.notes != null &&
-                                              entry.notes!
-                                                  .trim()
-                                                  .isNotEmpty)) ...[
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
+                                      
+                                      // 3. DATE & NOTES (Wrapped Date text in Flexible)
+                                      if ((entry.dueDate != null && !entry.isSettled && !entry.isForgiven && !entry.isReconciled) ||
+                                          (entry.notes != null && entry.notes!.trim().isNotEmpty)) ...[
+                                        const SizedBox(height: 6),
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            if (entry.dueDate != null &&
-                                                !entry.isSettled) ...[
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2),
-                                                decoration: BoxDecoration(
-                                                    color: isOverdue
-                                                        ? BudgetrColors.error
-                                                            .withOpacity(0.2)
-                                                        : Colors.orangeAccent
-                                                            .withOpacity(0.2),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            4)),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                        isOverdue
-                                                            ? Icons
-                                                                .warning_rounded
-                                                            : Icons
-                                                                .schedule_rounded,
-                                                        color: isOverdue
-                                                            ? BudgetrColors
-                                                                .error
-                                                            : Colors
-                                                                .orangeAccent,
-                                                        size: 10),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                        isOverdue
-                                                            ? "$daysOverdue Days Overdue (${DateFormat('MMM dd, yyyy').format(entry.dueDate!)})"
-                                                            : "Due ${DateFormat('MMM dd, yyyy').format(entry.dueDate!)}",
-                                                        style: TextStyle(
-                                                            color: isOverdue
-                                                                ? BudgetrColors
-                                                                    .error
-                                                                : Colors
-                                                                    .orangeAccent,
-                                                            fontSize: 9,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .bold)),
-                                                  ],
+                                            // DUE DATE SECTION
+                                            if (entry.dueDate != null && !entry.isSettled && !entry.isForgiven && !entry.isReconciled)
+                                              Padding(
+                                                padding: const EdgeInsets.only(bottom: 6), 
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                      color: isOverdue ? BudgetrColors.error.withOpacity(0.2) : Colors.orangeAccent.withOpacity(0.2),
+                                                      borderRadius: BorderRadius.circular(4)),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(isOverdue ? Icons.warning_rounded : Icons.schedule_rounded,
+                                                          color: isOverdue ? BudgetrColors.error : Colors.orangeAccent, size: 10),
+                                                      const SizedBox(width: 4),
+                                                      Flexible( // <--- FIX: Prevents long Due Date strings from overflowing
+                                                        child: Text(
+                                                            isOverdue
+                                                                ? "$daysOverdue Day(s) (${DateFormat('MMM dd, yy').format(entry.dueDate!)})"
+                                                                : "Due ${DateFormat('MMM dd, yyyy').format(entry.dueDate!)}",
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow.ellipsis,
+                                                            style: TextStyle(
+                                                                color: isOverdue ? BudgetrColors.error : Colors.orangeAccent,
+                                                                fontSize: 9,
+                                                                fontWeight: FontWeight.bold)),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
-                                              if (entry.notes != null &&
-                                                  entry.notes!
-                                                      .trim()
-                                                      .isNotEmpty)
-                                                const SizedBox(width: 8),
-                                            ],
-                                            if (entry.notes != null &&
-                                                entry.notes!.trim().isNotEmpty)
-                                              Expanded(
-                                                child: Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
-                                                  children: [
-                                                    const Icon(
-                                                        Icons
-                                                            .sticky_note_2_rounded,
-                                                        color: Colors.white24,
-                                                        size: 10),
-                                                    const SizedBox(width: 4),
-                                                    Expanded(
-                                                      child: Text(
-                                                        entry.notes!.trim(),
-                                                        style: const TextStyle(
-                                                            color:
-                                                                Colors.white38,
-                                                            fontSize: 11),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
+                                              
+                                            // NOTES SECTION
+                                            if (entry.notes != null && entry.notes!.trim().isNotEmpty)
+                                              Row(
+                                                crossAxisAlignment: CrossAxisAlignment.start, 
+                                                children: [
+                                                  const Padding(
+                                                    padding: EdgeInsets.only(top: 2.0), 
+                                                    child: Icon(Icons.sticky_note_2_rounded, color: Colors.white24, size: 10),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Expanded(
+                                                    child: Text(
+                                                      entry.notes!.trim(),
+                                                      style: const TextStyle(color: Colors.white54, fontSize: 11, height: 1.3),
+                                                      maxLines: 3, 
+                                                      overflow: TextOverflow.ellipsis,
                                                     ),
-                                                  ],
-                                                ),
+                                                  ),
+                                                ],
                                               ),
                                           ],
                                         ),
-                                      ]
+                                      ],
                                     ],
                                   ),
                                 ),
+                                
                                 const SizedBox(width: 8),
                                 Container(
                                   constraints: BoxConstraints(
@@ -1065,9 +952,11 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                             child: Text(
                                                 entry.isForgiven 
                                                     ? "FORGIVEN"
-                                                    : entry.isSettled
-                                                        ? "CLEARED"
-                                                        : (isAsset ? "DR" : "CR"),
+                                                    : entry.isReconciled 
+                                                        ? "RECONCILED"
+                                                        : entry.isSettled
+                                                            ? "CLEARED"
+                                                            : (isAsset ? "DR" : "CR"),
                                                 style: TextStyle(
                                                     color: (entry.isSettled || entry.isForgiven)
                                                         ? Colors.white54

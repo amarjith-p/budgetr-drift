@@ -79,13 +79,22 @@ class BalanceSheetExportService {
     ]);
 
     for (var e in entries) {
-      double remaining = e.isSettled ? 0 : (e.amount - e.settledAmount);
-      String status = e.isSettled
-          ? "CLEARED"
-          : ((e.dueDate != null && e.dueDate!.isBefore(DateTime.now()))
-              ? "OVERDUE"
-              : "PENDING");
-
+      // [UPDATED] Remaining is 0 if settled, forgiven, or reconciled
+      double remaining = (e.isSettled || e.isForgiven || e.isReconciled) 
+          ? 0 
+          : (e.amount - e.settledAmount);
+          
+      // [UPDATED] Status check hierarchy
+      String status = "PENDING";
+      if (e.isForgiven) {
+        status = "FORGIVEN";
+      } else if (e.isReconciled) {
+        status = "RECONCILED";
+      } else if (e.isSettled) {
+        status = "CLEARED";
+      } else if (e.dueDate != null && e.dueDate!.isBefore(DateTime.now())) {
+        status = "OVERDUE";
+      }
       rows.add([
         DateFormat('yyyy-MM-dd').format(e.date),
         e.title,
@@ -132,12 +141,20 @@ class BalanceSheetExportService {
       'Status'
     ];
     final data = entries.map((e) {
-      double remaining = e.isSettled ? 0 : (e.amount - e.settledAmount);
-      String status = e.isSettled
-          ? "CLEARED"
-          : ((e.dueDate != null && e.dueDate!.isBefore(DateTime.now()))
-              ? "OVERDUE"
-              : "PENDING");
+      double remaining = (e.isSettled || e.isForgiven || e.isReconciled) 
+          ? 0 
+          : (e.amount - e.settledAmount);
+          
+      String status = "PENDING";
+      if (e.isForgiven) {
+        status = "FORGIVEN";
+      } else if (e.isReconciled) {
+        status = "RECONCILED";
+      } else if (e.isSettled) {
+        status = "CLEARED";
+      } else if (e.dueDate != null && e.dueDate!.isBefore(DateTime.now())) {
+        status = "OVERDUE";
+      }
       return [
         DateFormat('dd MMM yyyy').format(e.date),
         e.title,
