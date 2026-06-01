@@ -61,6 +61,9 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
   bool _isLoading = false;
   bool _isEditMode = false;
 
+  // [NEW] Track Net Worth Exclusion Preference
+  bool _excludeFromNetWorth = false;
+
   // [NEW] Smart Warning State
   bool _userDismissedWarning = false;
   bool _isProjectionReady = false;
@@ -96,6 +99,8 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
       _selectedType = item!.type;
       _startDate = item.startDate;
       _endDate = item.endDate;
+      // Load existing preference
+      _excludeFromNetWorth = item.excludeFromNetWorth; 
     }
 
     // [NEW] Attach listeners to instantly check if AI fields are filled
@@ -259,6 +264,10 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
                         padding: const EdgeInsets.all(20),
                         child: Column(
                           children: [
+                            // [NEW] Toggle Switch placed cleanly at the top of the financial card
+                            _buildExcludeToggle(),
+                            const SizedBox(height: 16),
+                            
                             if (!_isEditMode) ...[
                               _buildTextField(
                                 controller: _amountController,
@@ -486,6 +495,41 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
           fontWeight: FontWeight.w900,
           letterSpacing: 2.0,
         ),
+      ),
+    );
+  }
+
+  // [NEW] The toggle to omit it from Net Worth Calculations
+  Widget _buildExcludeToggle() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: SwitchListTile(
+        title: const Text(
+          'Exclude from Net Worth',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          'Track this asset silently. It won\'t affect your overall balance.',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.5),
+            fontSize: 12,
+          ),
+        ),
+        activeColor: BudgetrColors.accent,
+        value: _excludeFromNetWorth,
+        onChanged: (bool value) {
+          setState(() {
+            _excludeFromNetWorth = value;
+          });
+        },
       ),
     );
   }
@@ -901,6 +945,8 @@ class _AddInvestmentScreenState extends State<AddInvestmentScreen> {
         notes: _notesController.text.trim(),
         specialId: _specialIdController.text.trim(),
         targetAmount: targetAmount,
+        // [NEW] Map UI state to the DTO
+        excludeFromNetWorth: _excludeFromNetWorth,
       );
 
       if (_isEditMode) {

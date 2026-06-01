@@ -34,6 +34,7 @@ class InvestmentDto {
 
   final String? specialId;
   final double? targetAmount;
+  final bool excludeFromNetWorth;
 
   // ===========================================================================
   // [NEW] INVESTMENT CLOSURE PROPERTIES
@@ -70,6 +71,7 @@ class InvestmentDto {
     this.notes,
     this.specialId,
     this.targetAmount,
+    this.excludeFromNetWorth = false,
     this.status = 'active', // Default to active
     this.realizedValue,
     this.closureDate,

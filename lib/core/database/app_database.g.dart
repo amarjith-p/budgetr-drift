@@ -11104,6 +11104,16 @@ class $InvestmentsTable extends Investments
   late final GeneratedColumn<String> specialId = GeneratedColumn<String>(
       'special_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _excludeFromNetWorthMeta =
+      const VerificationMeta('excludeFromNetWorth');
+  @override
+  late final GeneratedColumn<bool> excludeFromNetWorth = GeneratedColumn<bool>(
+      'exclude_from_net_worth', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("exclude_from_net_worth" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -11150,6 +11160,7 @@ class $InvestmentsTable extends Investments
         notes,
         targetAmount,
         specialId,
+        excludeFromNetWorth,
         status,
         realizedValue,
         closureDate,
@@ -11264,6 +11275,12 @@ class $InvestmentsTable extends Investments
       context.handle(_specialIdMeta,
           specialId.isAcceptableOrUnknown(data['special_id']!, _specialIdMeta));
     }
+    if (data.containsKey('exclude_from_net_worth')) {
+      context.handle(
+          _excludeFromNetWorthMeta,
+          excludeFromNetWorth.isAcceptableOrUnknown(
+              data['exclude_from_net_worth']!, _excludeFromNetWorthMeta));
+    }
     if (data.containsKey('status')) {
       context.handle(_statusMeta,
           status.isAcceptableOrUnknown(data['status']!, _statusMeta));
@@ -11333,6 +11350,8 @@ class $InvestmentsTable extends Investments
           .read(DriftSqlType.double, data['${effectivePrefix}target_amount']),
       specialId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}special_id']),
+      excludeFromNetWorth: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}exclude_from_net_worth'])!,
       status: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
       realizedValue: attachedDatabase.typeMapping
@@ -11370,6 +11389,7 @@ class Investment extends DataClass implements Insertable<Investment> {
   final String? notes;
   final double? targetAmount;
   final String? specialId;
+  final bool excludeFromNetWorth;
   final String status;
   final double? realizedValue;
   final DateTime? closureDate;
@@ -11394,6 +11414,7 @@ class Investment extends DataClass implements Insertable<Investment> {
       this.notes,
       this.targetAmount,
       this.specialId,
+      required this.excludeFromNetWorth,
       required this.status,
       this.realizedValue,
       this.closureDate,
@@ -11446,6 +11467,7 @@ class Investment extends DataClass implements Insertable<Investment> {
     if (!nullToAbsent || specialId != null) {
       map['special_id'] = Variable<String>(specialId);
     }
+    map['exclude_from_net_worth'] = Variable<bool>(excludeFromNetWorth);
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || realizedValue != null) {
       map['realized_value'] = Variable<double>(realizedValue);
@@ -11504,6 +11526,7 @@ class Investment extends DataClass implements Insertable<Investment> {
       specialId: specialId == null && nullToAbsent
           ? const Value.absent()
           : Value(specialId),
+      excludeFromNetWorth: Value(excludeFromNetWorth),
       status: Value(status),
       realizedValue: realizedValue == null && nullToAbsent
           ? const Value.absent()
@@ -11541,6 +11564,8 @@ class Investment extends DataClass implements Insertable<Investment> {
       notes: serializer.fromJson<String?>(json['notes']),
       targetAmount: serializer.fromJson<double?>(json['targetAmount']),
       specialId: serializer.fromJson<String?>(json['specialId']),
+      excludeFromNetWorth:
+          serializer.fromJson<bool>(json['excludeFromNetWorth']),
       status: serializer.fromJson<String>(json['status']),
       realizedValue: serializer.fromJson<double?>(json['realizedValue']),
       closureDate: serializer.fromJson<DateTime?>(json['closureDate']),
@@ -11570,6 +11595,7 @@ class Investment extends DataClass implements Insertable<Investment> {
       'notes': serializer.toJson<String?>(notes),
       'targetAmount': serializer.toJson<double?>(targetAmount),
       'specialId': serializer.toJson<String?>(specialId),
+      'excludeFromNetWorth': serializer.toJson<bool>(excludeFromNetWorth),
       'status': serializer.toJson<String>(status),
       'realizedValue': serializer.toJson<double?>(realizedValue),
       'closureDate': serializer.toJson<DateTime?>(closureDate),
@@ -11597,6 +11623,7 @@ class Investment extends DataClass implements Insertable<Investment> {
           Value<String?> notes = const Value.absent(),
           Value<double?> targetAmount = const Value.absent(),
           Value<String?> specialId = const Value.absent(),
+          bool? excludeFromNetWorth,
           String? status,
           Value<double?> realizedValue = const Value.absent(),
           Value<DateTime?> closureDate = const Value.absent(),
@@ -11628,6 +11655,7 @@ class Investment extends DataClass implements Insertable<Investment> {
         targetAmount:
             targetAmount.present ? targetAmount.value : this.targetAmount,
         specialId: specialId.present ? specialId.value : this.specialId,
+        excludeFromNetWorth: excludeFromNetWorth ?? this.excludeFromNetWorth,
         status: status ?? this.status,
         realizedValue:
             realizedValue.present ? realizedValue.value : this.realizedValue,
@@ -11670,6 +11698,9 @@ class Investment extends DataClass implements Insertable<Investment> {
           ? data.targetAmount.value
           : this.targetAmount,
       specialId: data.specialId.present ? data.specialId.value : this.specialId,
+      excludeFromNetWorth: data.excludeFromNetWorth.present
+          ? data.excludeFromNetWorth.value
+          : this.excludeFromNetWorth,
       status: data.status.present ? data.status.value : this.status,
       realizedValue: data.realizedValue.present
           ? data.realizedValue.value
@@ -11704,6 +11735,7 @@ class Investment extends DataClass implements Insertable<Investment> {
           ..write('notes: $notes, ')
           ..write('targetAmount: $targetAmount, ')
           ..write('specialId: $specialId, ')
+          ..write('excludeFromNetWorth: $excludeFromNetWorth, ')
           ..write('status: $status, ')
           ..write('realizedValue: $realizedValue, ')
           ..write('closureDate: $closureDate, ')
@@ -11733,6 +11765,7 @@ class Investment extends DataClass implements Insertable<Investment> {
         notes,
         targetAmount,
         specialId,
+        excludeFromNetWorth,
         status,
         realizedValue,
         closureDate,
@@ -11761,6 +11794,7 @@ class Investment extends DataClass implements Insertable<Investment> {
           other.notes == this.notes &&
           other.targetAmount == this.targetAmount &&
           other.specialId == this.specialId &&
+          other.excludeFromNetWorth == this.excludeFromNetWorth &&
           other.status == this.status &&
           other.realizedValue == this.realizedValue &&
           other.closureDate == this.closureDate &&
@@ -11787,6 +11821,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
   final Value<String?> notes;
   final Value<double?> targetAmount;
   final Value<String?> specialId;
+  final Value<bool> excludeFromNetWorth;
   final Value<String> status;
   final Value<double?> realizedValue;
   final Value<DateTime?> closureDate;
@@ -11811,6 +11846,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     this.notes = const Value.absent(),
     this.targetAmount = const Value.absent(),
     this.specialId = const Value.absent(),
+    this.excludeFromNetWorth = const Value.absent(),
     this.status = const Value.absent(),
     this.realizedValue = const Value.absent(),
     this.closureDate = const Value.absent(),
@@ -11836,6 +11872,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     this.notes = const Value.absent(),
     this.targetAmount = const Value.absent(),
     this.specialId = const Value.absent(),
+    this.excludeFromNetWorth = const Value.absent(),
     this.status = const Value.absent(),
     this.realizedValue = const Value.absent(),
     this.closureDate = const Value.absent(),
@@ -11864,6 +11901,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     Expression<String>? notes,
     Expression<double>? targetAmount,
     Expression<String>? specialId,
+    Expression<bool>? excludeFromNetWorth,
     Expression<String>? status,
     Expression<double>? realizedValue,
     Expression<DateTime>? closureDate,
@@ -11889,6 +11927,8 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       if (notes != null) 'notes': notes,
       if (targetAmount != null) 'target_amount': targetAmount,
       if (specialId != null) 'special_id': specialId,
+      if (excludeFromNetWorth != null)
+        'exclude_from_net_worth': excludeFromNetWorth,
       if (status != null) 'status': status,
       if (realizedValue != null) 'realized_value': realizedValue,
       if (closureDate != null) 'closure_date': closureDate,
@@ -11916,6 +11956,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       Value<String?>? notes,
       Value<double?>? targetAmount,
       Value<String?>? specialId,
+      Value<bool>? excludeFromNetWorth,
       Value<String>? status,
       Value<double?>? realizedValue,
       Value<DateTime?>? closureDate,
@@ -11940,6 +11981,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       notes: notes ?? this.notes,
       targetAmount: targetAmount ?? this.targetAmount,
       specialId: specialId ?? this.specialId,
+      excludeFromNetWorth: excludeFromNetWorth ?? this.excludeFromNetWorth,
       status: status ?? this.status,
       realizedValue: realizedValue ?? this.realizedValue,
       closureDate: closureDate ?? this.closureDate,
@@ -12007,6 +12049,9 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     if (specialId.present) {
       map['special_id'] = Variable<String>(specialId.value);
     }
+    if (excludeFromNetWorth.present) {
+      map['exclude_from_net_worth'] = Variable<bool>(excludeFromNetWorth.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -12044,6 +12089,7 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
           ..write('notes: $notes, ')
           ..write('targetAmount: $targetAmount, ')
           ..write('specialId: $specialId, ')
+          ..write('excludeFromNetWorth: $excludeFromNetWorth, ')
           ..write('status: $status, ')
           ..write('realizedValue: $realizedValue, ')
           ..write('closureDate: $closureDate, ')
@@ -21948,6 +21994,7 @@ typedef $$InvestmentsTableCreateCompanionBuilder = InvestmentsCompanion
   Value<String?> notes,
   Value<double?> targetAmount,
   Value<String?> specialId,
+  Value<bool> excludeFromNetWorth,
   Value<String> status,
   Value<double?> realizedValue,
   Value<DateTime?> closureDate,
@@ -21974,6 +22021,7 @@ typedef $$InvestmentsTableUpdateCompanionBuilder = InvestmentsCompanion
   Value<String?> notes,
   Value<double?> targetAmount,
   Value<String?> specialId,
+  Value<bool> excludeFromNetWorth,
   Value<String> status,
   Value<double?> realizedValue,
   Value<DateTime?> closureDate,
@@ -22073,6 +22121,10 @@ class $$InvestmentsTableFilterComposer
 
   ColumnFilters<String> get specialId => $composableBuilder(
       column: $table.specialId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get excludeFromNetWorth => $composableBuilder(
+      column: $table.excludeFromNetWorth,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnFilters(column));
@@ -22182,6 +22234,10 @@ class $$InvestmentsTableOrderingComposer
   ColumnOrderings<String> get specialId => $composableBuilder(
       column: $table.specialId, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get excludeFromNetWorth => $composableBuilder(
+      column: $table.excludeFromNetWorth,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnOrderings(column));
 
@@ -22263,6 +22319,9 @@ class $$InvestmentsTableAnnotationComposer
   GeneratedColumn<String> get specialId =>
       $composableBuilder(column: $table.specialId, builder: (column) => column);
 
+  GeneratedColumn<bool> get excludeFromNetWorth => $composableBuilder(
+      column: $table.excludeFromNetWorth, builder: (column) => column);
+
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
@@ -22341,6 +22400,7 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<double?> targetAmount = const Value.absent(),
             Value<String?> specialId = const Value.absent(),
+            Value<bool> excludeFromNetWorth = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<double?> realizedValue = const Value.absent(),
             Value<DateTime?> closureDate = const Value.absent(),
@@ -22366,6 +22426,7 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             notes: notes,
             targetAmount: targetAmount,
             specialId: specialId,
+            excludeFromNetWorth: excludeFromNetWorth,
             status: status,
             realizedValue: realizedValue,
             closureDate: closureDate,
@@ -22391,6 +22452,7 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             Value<String?> notes = const Value.absent(),
             Value<double?> targetAmount = const Value.absent(),
             Value<String?> specialId = const Value.absent(),
+            Value<bool> excludeFromNetWorth = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<double?> realizedValue = const Value.absent(),
             Value<DateTime?> closureDate = const Value.absent(),
@@ -22416,6 +22478,7 @@ class $$InvestmentsTableTableManager extends RootTableManager<
             notes: notes,
             targetAmount: targetAmount,
             specialId: specialId,
+            excludeFromNetWorth: excludeFromNetWorth,
             status: status,
             realizedValue: realizedValue,
             closureDate: closureDate,

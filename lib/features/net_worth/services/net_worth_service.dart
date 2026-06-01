@@ -18,6 +18,7 @@ class NetWorthService {
 
   // --- Auto-Calculated Net Worth Stream ---
   // --- Auto-Calculated Net Worth Stream ---
+// --- Auto-Calculated Net Worth Stream ---
   Stream<double> getAutoCalculatedNetWorth() {
     final expenseService = GetIt.I<ExpenseService>();
     final portfolioService = GetIt.I<PortfolioService>();
@@ -44,7 +45,8 @@ class NetWorthService {
         // 2. Total Portfolio Value (Assets)
         double totalPortfolioValue = 0;
         for (var inv in investments) {
-          if (inv.status != 'closed') {
+          // UPDATED: Check both status AND the new excludeFromNetWorth flag
+          if (inv.status != 'closed' && inv.excludeFromNetWorth != true) {
             totalPortfolioValue += inv.currentMarketValue;
           }
         }

@@ -24,7 +24,7 @@ class Investments extends Table {
   TextColumn get notes => text().nullable()();
   RealColumn get targetAmount => real().nullable()();
   TextColumn get specialId => text().nullable()();
-
+  BoolColumn get excludeFromNetWorth => boolean().withDefault(const Constant(false))();
   // ===========================================================================
   // [NEW] INVESTMENT CLOSURES SUPPORT
   // ===========================================================================

@@ -31,8 +31,9 @@ class PortfolioItemCard extends StatelessWidget {
         ? "https://www.google.com/s2/favicons?domain=${investment.providerWebsite}&sz=64"
         : "";
 
-    // [NEW] Status check for Opacity dimming
+    // Status checks
     final isClosed = investment.status == 'closed';
+    final isExcluded = investment.excludeFromNetWorth;
 
     return GestureDetector(
       onTap: onTap,
@@ -69,20 +70,34 @@ class PortfolioItemCard extends StatelessWidget {
                         color: Colors.white.withOpacity(0.5)),
               ),
               const SizedBox(width: 16),
+              
+              // ==========================================
+              // [FIXED] Wrapped in Expanded + Wrap Layout
+              // ==========================================
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                    child: Text(
                       investment.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
+                    ),),
+                    const SizedBox(height: 6),
+                    
+                    // Replaced Row with Wrap to prevent horizontal overflow
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -100,11 +115,8 @@ class PortfolioItemCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        // =======================================================
-                        // [NEW] CLOSED CHIP BADGE
-                        // =======================================================
-                        if (isClosed) ...[
-                          const SizedBox(width: 6),
+                        // CLOSED CHIP BADGE
+                        if (isClosed)
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
@@ -124,19 +136,53 @@ class PortfolioItemCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                        ],
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            investment.providerName,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.4),
-                              fontSize: 12,
+                        // EXCLUDED CHIP BADGE
+                        if (isExcluded)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.1)),
+                              borderRadius: BorderRadius.circular(4),
                             ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(
+                                  Icons.visibility_off_outlined,
+                                  size: 10,
+                                  color: Colors.white54,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  "EXCLUDED FROM NET WORTH",
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),),
                           ),
-                        ),
                       ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      investment.totalInvestedAmount > 0
+                          ? "Invested: ${_formatAmount(investment.totalInvestedAmount)}"
+                          : "No investments yet",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.4),
+                        fontSize: 10,
+                      ),
                     ),
                   ],
                 ),

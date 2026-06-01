@@ -55,9 +55,9 @@ class AppDatabase extends _$AppDatabase {
 
   AppDatabase._internal() : super(_openConnection());
 
-  // [NEW] Incremented schemaVersion from 26 to 27 for Investment Closures
+  // [NEW] Incremented schemaVersion to 31 for Exclude from Net Worth option
   @override
-  int get schemaVersion => 30;
+  int get schemaVersion => 31;
 
   @override
   MigrationStrategy get migration {
@@ -177,7 +177,6 @@ class AppDatabase extends _$AppDatabase {
           await safeCreateTable(ghostTransactions);
         }
 
-        // [NEW] Schema migration for Investment Closures
         if (from < 27) {
           if (existingTables.contains(investments.actualTableName)) {
             final tableInfo = await customSelect(
@@ -226,6 +225,24 @@ class AppDatabase extends _$AppDatabase {
 
             if (!existingColumns.contains('is_reconciled')) {
               await m.addColumn(balanceSheetEntries, balanceSheetEntries.isReconciled);
+            }
+          }
+        }
+
+        // =====================================================================
+        // [NEW] Schema 31 Migration: Add excludeFromNetWorth to investments
+        // =====================================================================
+        if (from < 31) {
+          if (existingTables.contains(investments.actualTableName)) {
+            final tableInfo = await customSelect(
+                    "PRAGMA table_info('${investments.actualTableName}')")
+                .get();
+            final existingColumns =
+                tableInfo.map((row) => row.read<String>('name')).toSet();
+
+            // Drift internally converts camelCase column names to snake_case
+            if (!existingColumns.contains('exclude_from_net_worth')) {
+              await m.addColumn(investments, investments.excludeFromNetWorth);
             }
           }
         }

@@ -84,6 +84,8 @@ class PortfolioService {
                 specialId: Value(dto.specialId),
                 targetAmount: Value(dto.targetAmount),
                 status: const Value('active'),
+                // [NEW] Map exclude flag on creation
+                excludeFromNetWorth: Value(dto.excludeFromNetWorth),
               ));
 
       await _db
@@ -220,6 +222,8 @@ class PortfolioService {
           realizedValue: Value(dto.realizedValue),
           closureDate: Value(dto.closureDate),
           closureReason: Value(dto.closureReason),
+          // [NEW] Map exclude flag on update
+          excludeFromNetWorth: Value(dto.excludeFromNetWorth),
         ));
   }
 
@@ -389,6 +393,8 @@ class PortfolioService {
       realizedValue: row.realizedValue,
       closureDate: row.closureDate,
       closureReason: row.closureReason,
+      // [NEW] Map exclude flag when reading from DB
+      excludeFromNetWorth: row.excludeFromNetWorth,
       totalInvestedAmount: totalInvested,
       currentMarketValue: currentVal,
       totalGainLoss: gain,
