@@ -150,6 +150,8 @@ class IconConstants {
       ]),
       IconMetadata(Icons.redeem, ['coupon', 'voucher', 'discount', 'offer']),
       IconMetadata(Icons.category, ['general', 'other', 'misc', 'box']),
+      IconMetadata(Icons.help_outline, ['help', 'other', 'misc', 'unknown']),
+      IconMetadata(Icons.money_off, ['untracked', 'money', 'unknown', 'lost']),
       IconMetadata(Icons.currency_bitcoin, [
         'crypto',
         'bitcoin',
