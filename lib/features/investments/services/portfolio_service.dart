@@ -5,9 +5,95 @@ import 'package:budget/features/investments/models/investment_log_dto.dart';
 import 'package:budget/features/investments/utils/xirr_calculator.dart';
 import 'package:drift/drift.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:budget/features/investments/utils/xirr_calculator.dart';
 
 class PortfolioService {
   final AppDatabase _db = AppDatabase.instance;
+
+  // ===========================================================================
+  //  ADVANCED ANALYTICS (NEW)
+  // ===========================================================================
+  
+// [UPDATED] Now accepts the filtered IDs from the UI
+  Future<Map<String, double>> getAdvancedPortfolioAnalytics(List<int> filteredInvestmentIds) async {
+    // If the filter results in an empty list, return 0 instantly
+    if (filteredInvestmentIds.isEmpty) {
+      return {'xirr': 0.0, 'drawdown': 0.0};
+    }
+
+    List<XirrTransaction> allCashFlows = [];
+    List<InvestmentLogDto> allLogs = []; 
+    double currentTotalValue = 0.0;
+
+    // 1. Gather logs ONLY for the investments that passed the UI filter
+    for (var invId in filteredInvestmentIds) {
+      final rows = await (_db.select(_db.investmentTransactions)
+            ..where((t) => t.investmentId.equals(invId)))
+          .get();
+
+      if (rows.isNotEmpty) {
+        final logs = rows.map((row) => InvestmentLogDto(
+          id: row.id,
+          investmentId: row.investmentId,
+          date: row.transactionDate,
+          type: row.transactionType,
+          amountInvested: row.amountInvested,
+          currentValue: row.currentValueSnapshot,
+          gainLoss: row.calculatedGainLoss,
+        )).toList();
+
+        // Sort descending to grab the latest snapshot for the total value
+        logs.sort((a, b) => b.date.compareTo(a.date));
+        currentTotalValue += logs.first.currentValue;
+        
+        allLogs.addAll(logs);
+      }
+    }
+
+    // 2. Sort ALL filtered logs chronologically (oldest to newest)
+    allLogs.sort((a, b) => a.date.compareTo(b.date));
+
+    Map<int, double> runningAssetValues = {};
+    double runningPortfolioValue = 0.0;
+    
+    // --- UNITIZATION (NAV) SETUP ---
+    double nav = 100.0; 
+    List<double> navHistory = [100.0];
+
+    // 3. Replay history day-by-day for the filtered assets
+    for (var log in allLogs) {
+      if (log.type == 'invested' || log.type == 'withdrawn') {
+        allCashFlows.add(XirrTransaction(log.date, -log.amountInvested));
+      }
+
+      double previousAssetValue = runningAssetValues[log.investmentId] ?? 0.0;
+      double newAssetValue = log.currentValue;
+      
+      double marketMovement = (newAssetValue - previousAssetValue) - log.amountInvested;
+
+      if (runningPortfolioValue > 0 && marketMovement != 0) {
+        double growthFactor = (runningPortfolioValue + marketMovement) / runningPortfolioValue;
+        nav = nav * growthFactor;
+        navHistory.add(nav);
+      }
+
+      runningAssetValues[log.investmentId] = newAssetValue;
+      runningPortfolioValue = runningAssetValues.values.fold(0.0, (sum, value) => sum + value);
+    }
+
+    // 4. Append today's total value for XIRR
+    if (currentTotalValue > 0) {
+      allCashFlows.add(XirrTransaction(DateTime.now(), currentTotalValue));
+    }
+
+    double portfolioXIRR = XirrCalculator.calculate(allCashFlows) ?? 0.0;
+    double maxDrawdown = XirrCalculator.calculateMaxDrawdown(navHistory);
+
+    return {
+      'xirr': portfolioXIRR,
+      'drawdown': maxDrawdown,
+    };
+  }
 
   // ===========================================================================
   //  CORE: CHAIN RECALCULATION ENGINE

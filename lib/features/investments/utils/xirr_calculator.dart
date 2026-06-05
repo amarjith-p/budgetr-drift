@@ -56,6 +56,27 @@ class XirrCalculator {
 
     return null; // Did not converge
   }
+
+  /// Calculates the Maximum Drawdown (Peak to Trough drop)
+  static double calculateMaxDrawdown(List<double> historicalValues) {
+    if (historicalValues.isEmpty) return 0.0;
+
+    double peak = historicalValues[0];
+    double maxDrawdown = 0.0;
+
+    for (double value in historicalValues) {
+      if (value > peak) {
+        peak = value; // New high water mark
+      }
+      
+      double drawdown = (peak - value) / peak;
+      if (drawdown > maxDrawdown) {
+        maxDrawdown = drawdown;
+      }
+    }
+
+    return maxDrawdown * 100; // Return as a percentage
+  }
 }
 
 class XirrTransaction {
