@@ -295,8 +295,7 @@ class GoalLoanService {
 
   // --- REPLACE addLoanPayment AND deleteLoanLog WITH THESE ---
 
-  Future<void> addLoanPayment(
-      String loanId, double amount, String type, DateTime date) async {
+Future<void> addLoanPayment(String loanId, double amount, String type, DateTime date) async {
     await _db.transaction(() async {
       await _db.into(_db.assetLogs).insert(db.AssetLogsCompanion.insert(
             id: _uuid.v4(),
@@ -308,40 +307,60 @@ class GoalLoanService {
             notes: Value(type == 'EMI' ? 'Monthly EMI' : 'Extra Payment'),
           ));
 
-      final loan = await (_db.select(_db.loans)
-            ..where((t) => t.id.equals(loanId)))
-          .getSingle();
+      final loan = await (_db.select(_db.loans)..where((t) => t.id.equals(loanId))).getSingle();
       final newPaid = loan.paidAmount + amount;
 
-      // [FIX] Blocked automatic closure. The loan stays open even if overpaid.
       await (_db.update(_db.loans)..where((t) => t.id.equals(loanId)))
-          .write(db.LoansCompanion(
-        paidAmount: Value(newPaid),
-      ));
+          .write(db.LoansCompanion(paidAmount: Value(newPaid)));
     });
+
+    await _recalculateNextPaymentDate(loanId); // Synchronizes the dates perfectly
     _triggerNotificationSync();
   }
 
-  Future<void> deleteLoanLog(String logId) async {
+ Future<void> deleteLoanLog(String logId) async {
     await _db.transaction(() async {
-      final log = await (_db.select(_db.assetLogs)
-            ..where((t) => t.id.equals(logId)))
-          .getSingle();
-      final loan = await (_db.select(_db.loans)
-            ..where((t) => t.id.equals(log.parentId)))
-          .getSingle();
+      final log = await (_db.select(_db.assetLogs)..where((t) => t.id.equals(logId))).getSingle();
+      final loan = await (_db.select(_db.loans)..where((t) => t.id.equals(log.parentId))).getSingle();
 
       final newPaid = loan.paidAmount - log.amount;
 
       await (_db.delete(_db.assetLogs)..where((t) => t.id.equals(logId))).go();
-
-      // [FIX] Blocked automatic closure logic here as well.
       await (_db.update(_db.loans)..where((t) => t.id.equals(loan.id)))
-          .write(db.LoansCompanion(
-        paidAmount: Value(newPaid),
-      ));
+          .write(db.LoansCompanion(paidAmount: Value(newPaid)));
+          
+      // Recalculate after deletion to roll the date backwards safely
+      await _recalculateNextPaymentDate(loan.id); 
     });
     _triggerNotificationSync(); 
+  }
+  Future<void> _recalculateNextPaymentDate(String loanId) async {
+    final loan = await (_db.select(_db.loans)..where((t) => t.id.equals(loanId))).getSingle();
+    
+    // Count exactly how many standard EMIs have been paid
+    final emiLogs = await (_db.select(_db.assetLogs)
+      ..where((t) => t.parentId.equals(loanId) & t.type.equals('Loan_EMI')))
+      .get();
+
+    int emiCount = emiLogs.length;
+
+    // Add that exact number of months to the original start date
+    int nextMonth = loan.startDate.month + emiCount;
+    int nextYear = loan.startDate.year;
+
+    while (nextMonth > 12) {
+      nextMonth -= 12;
+      nextYear++;
+    }
+
+    // Prevent rollover bugs (e.g., Feb 31st)
+    final daysInNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
+    final clampedDay = (loan.startDate.day > daysInNextMonth) ? daysInNextMonth : loan.startDate.day;
+
+    final updatedNextDate = DateTime(nextYear, nextMonth, clampedDay);
+
+    await (_db.update(_db.loans)..where((t) => t.id.equals(loanId)))
+        .write(db.LoansCompanion(nextPaymentDate: Value(updatedNextDate)));
   }
 
   // [NEW] Manual status toggle

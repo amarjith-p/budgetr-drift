@@ -35,15 +35,23 @@ class GoalsLoansNotificationScheduler {
         final remaining = loan.totalAmount - loan.paidAmount;
         if (remaining <= 0 || loan.isClosed) continue;
 
-        final int emiDay = loan.nextPaymentDate?.day ?? loan.startDate.day;
-        DateTime nextEmiDate = _getValidDate(now.year, now.month, emiDay);
-
-        if (nextEmiDate.isBefore(DateTime(now.year, now.month, now.day))) {
-          nextEmiDate = _getValidDate(now.year, now.month + 1, emiDay);
+        DateTime nextEmiDate;
+        
+        // Respect the EXACT date computed by the database
+        if (loan.nextPaymentDate != null) {
+          nextEmiDate = loan.nextPaymentDate!;
+        } else {
+          // Fallback for older legacy entries
+          final int emiDay = loan.startDate.day;
+          nextEmiDate = _getValidDate(now.year, now.month, emiDay);
+          if (nextEmiDate.isBefore(DateTime(now.year, now.month, now.day))) {
+            nextEmiDate = _getValidDate(now.year, now.month + 1, emiDay);
+          }
         }
 
-        if (loan.dueDate != null && nextEmiDate.isAfter(loan.dueDate!))
+        if (loan.dueDate != null && nextEmiDate.isAfter(loan.dueDate!)) {
           continue;
+        }
 
         final dueTodayTrigger = _applyTime(nextEmiDate, hour, minute);
         final due1DayTrigger =

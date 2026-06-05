@@ -107,9 +107,15 @@ class NotificationCheckLogic {
       for (var loan in loans) {
         final remaining = loan.totalAmount - loan.paidAmount;
         if (loan.isClosed || remaining <= 0) continue;
-        final int emiDay = loan.nextPaymentDate?.day ?? loan.startDate.day;
+        
+        // Exact target date
+        DateTime targetDate = loan.nextPaymentDate ?? loan.startDate;
 
-        if (now.day == emiDay) {
+        // Verify the exact Year, Month, and Day
+        if (now.year == targetDate.year && 
+            now.month == targetDate.month && 
+            now.day == targetDate.day) {
+            
           final key = _getDailyKey('emi_due_history', loan.id);
           if (await _shouldNotify(key)) {
             await createNotification(
@@ -117,7 +123,7 @@ class NotificationCheckLogic {
               title: 'EMI Repayment Due',
               message: 'Your EMI for ${loan.title} is Due Today.',
               payload: loan.id,
-              pushSystem: false, // Don't pop up again, just write to DB
+              pushSystem: false, 
             );
             await _markNotified(key);
           }
