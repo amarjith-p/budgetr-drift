@@ -51,7 +51,6 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
   Widget build(BuildContext context) {
     final color = BudgetrColors.error;
 
-    // [FIX] Watch the specific Loan ID for real-time metadata updates (Name, Rate, etc.)
     return StreamBuilder<LoanModel>(
         stream: GetIt.I<GoalLoanService>().watchLoan(widget.loan.id),
         initialData: widget.loan,
@@ -76,7 +75,6 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
                 icon: const Icon(Icons.arrow_back, color: Colors.white70),
                 onPressed: () => Navigator.pop(context),
               ),
-              // [FIX] Use liveLoan.title so it updates instantly
               title: Text(liveLoan.title.toUpperCase(),
                   style: const TextStyle(
                       color: Colors.white,
@@ -98,7 +96,6 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
-                      // [FIX] Pass liveLoan to edit sheet
                       builder: (_) => AddLoanSheet(loanToEdit: liveLoan),
                     );
                   },
@@ -118,7 +115,6 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    // [FIX] Pass liveLoan to summary
                     child: _buildLoanSummary(liveLoan, color),
                   ),
                 ),
@@ -148,8 +144,7 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    // [FIX] Pass liveLoan id
-                    child: _buildTransactionForm(liveLoan.id, color,liveLoan.isClosed),
+                    child: _buildTransactionForm(liveLoan.id, color, liveLoan.isClosed),
                   ),
                 ),
                 const SliverToBoxAdapter(
@@ -181,7 +176,6 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
         });
   }
 
-  // [NEW] Helper for Unique AppBar Buttons
   Widget _buildAppBarButton(
       {required IconData icon,
       required Color color,
@@ -235,10 +229,7 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
     );
   }
 
-  // [FIX] Removed internal watchLoan, receiving liveLoan from parent
-// --- REPLACE _buildLoanSummary AND _buildSmartLoanInsights WITH THIS ---
-
-Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
+  Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
     return StreamBuilder<List<AssetLogModel>>(
       stream: GetIt.I<GoalLoanService>().getLogsForParent(liveLoan.id),
       builder: (context, snapshot) {
@@ -258,18 +249,8 @@ Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
         final currencyFmt = NumberFormat('#,##0.00');
         final totalInterest = liveLoan.totalAmount - liveLoan.principalAmount;
 
-        // [FIX] Dynamically calculate the Next EMI Date based on payments made.
-        // This ensures the date rolls over to the next month AFTER a payment is made.
-        DateTime? effectiveNextEmiDate = liveLoan.nextPaymentDate;
-        if (liveLoan.emiAmount != null && liveLoan.emiAmount! > 0) {
-          DateTime baseDate = liveLoan.nextPaymentDate ?? _addMonths(liveLoan.startDate, 1);
-          
-          // Calculate how many full EMIs the user's payments have covered
-          int emisCovered = (realPaidAmount / liveLoan.emiAmount!).floor();
-          
-          // Advance the base date by the number of covered EMIs
-          effectiveNextEmiDate = _addMonths(baseDate, emisCovered);
-        }
+        // DB controls the absolute Next EMI Date now, no frontend shifting needed.
+        DateTime targetNextEmiDate = liveLoan.nextPaymentDate ?? liveLoan.startDate;
 
         return Column(
           children: [
@@ -293,14 +274,22 @@ Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // [FIX] Wrap the column in Expanded to enforce a strict boundary
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text("Outstanding Balance",
-                                  style: TextStyle(
-                                      color: Colors.white54, fontSize: 14)),
+                              Row(
+                                children: [
+                                  const Text("Outstanding Balance",
+                                      style: TextStyle(
+                                          color: Colors.white54, fontSize: 14)),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () => setState(() => _showDetails = !_showDetails),
+                                    child: const Icon(Icons.info_outline, color: Colors.white54, size: 16),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 6),
                               FittedBox(
                                 fit: BoxFit.scaleDown,
@@ -331,7 +320,8 @@ Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
                                   fontSize: 14)),
                         ),
                       ],
-                    ),),
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: ClipRRect(
@@ -388,36 +378,6 @@ Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
                       ],
                     ),
                   ),
-                  InkWell(
-                    onTap: () => setState(() => _showDetails = !_showDetails),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.2),
-                        borderRadius: const BorderRadius.vertical(
-                            bottom: Radius.circular(16)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                              _showDetails
-                                  ? "Hide Details"
-                                  : "View Loan Details",
-                              style: const TextStyle(
-                                  color: Colors.white54, fontSize: 12)),
-                          const SizedBox(width: 8),
-                          Icon(
-                              _showDetails
-                                  ? Icons.keyboard_arrow_up
-                                  : Icons.keyboard_arrow_down,
-                              color: Colors.white54,
-                              size: 16),
-                        ],
-                      ),
-                    ),
-                  ),
                   if (_showDetails)
                     Container(
                       padding: const EdgeInsets.all(24),
@@ -437,15 +397,9 @@ Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
                           _buildDetailRow("EMI Amount",
                               "₹${NumberFormat('#,##0.00').format(liveLoan.emiAmount ?? 0)}"),
                           const SizedBox(height: 12),
-                          
-                          // [FIX] Now uses the dynamic effectiveNextEmiDate
                           _buildDetailRow(
                               "Next EMI Date",
-                              effectiveNextEmiDate != null
-                                  ? DateFormat('dd/MM/yyyy')
-                                      .format(effectiveNextEmiDate)
-                                  : "N/A"),
-                                  
+                              DateFormat('dd/MM/yyyy').format(targetNextEmiDate)),
                           const SizedBox(height: 12),
                           _buildDetailRow(
                               "Start Date",
@@ -482,7 +436,7 @@ Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
     String debtFreeLabel = "NEXT DUE";
     String debtFreeValue = "--";
 
-    if (remaining <= 0.01) { 
+    if (remaining <= 0.01 || liveLoan.isClosed) {
       statusLabel = "STATUS";
       statusValue = "Closed";
       statusColor = BudgetrColors.success;
@@ -490,63 +444,35 @@ Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
       debtFreeValue = "Achieved";
     } else if (liveLoan.emiAmount != null && liveLoan.emiAmount! > 0) {
       
-      final emi = liveLoan.emiAmount!;
-      
-      // 1. Identify the base date for the billing cycle
-      // Use DB's nextPaymentDate if available, else fallback to 1 month after start date.
-      DateTime baseDate = liveLoan.nextPaymentDate ?? _addMonths(liveLoan.startDate, 1);
-
-      // 2. Count exactly how many EMIs are strictly PAST DUE today
-      int expectedEMIs = 0;
+      // Calculate absolute difference based on the precise database pointer
+      DateTime targetDate = liveLoan.nextPaymentDate ?? liveLoan.startDate;
       final todayDay = DateTime(now.year, now.month, now.day);
-
-      while (true) {
-        DateTime pastDueCheck = _addMonths(baseDate, expectedEMIs);
-        DateTime pastDueDay = DateTime(pastDueCheck.year, pastDueCheck.month, pastDueCheck.day);
-        
-        // Only increment expected if the due date is strictly BEFORE today (it was missed)
-        if (pastDueDay.isBefore(todayDay)) {
-          expectedEMIs++;
-        } else {
-          break;
-        }
-      }
-
-      final expectedPaid = expectedEMIs * emi;
+      final nextDueDay = DateTime(targetDate.year, targetDate.month, targetDate.day);
       
-      // The current/next EMI target date is exactly baseDate + expectedEMIs
-      final nextDueDate = _addMonths(baseDate, expectedEMIs);
-      final nextDueDay = DateTime(nextDueDate.year, nextDueDate.month, nextDueDate.day);
+      int monthDiff = (nextDueDay.year - todayDay.year) * 12 + nextDueDay.month - todayDay.month;
       final daysToNextDue = nextDueDay.difference(todayDay).inDays;
 
-      // 3. Strict Overdue Check
-      if (paid < expectedPaid) {
-        final overdue = expectedPaid - paid;
-        statusLabel = "OVERDUE";
-        statusValue = "₹${NumberFormat('#,##0.00').format(overdue)}";
+      if (monthDiff < 0 || (monthDiff == 0 && nextDueDay.day < todayDay.day)) {
+        statusLabel = "STATUS";
+        statusValue = "Overdue";
         statusColor = BudgetrColors.error;
+      } else if (monthDiff == 0 || monthDiff == 1) {
+        statusLabel = "STATUS";
+        statusValue = "On Track";
+        statusColor = Colors.blueAccent;
       } else {
-        // On Track or Ahead check
-        final extraPaid = paid - expectedPaid;
-        if (extraPaid >= emi) {
-          final monthsAhead = (extraPaid / emi).floor();
-          statusLabel = "AHEAD";
-          statusValue = "$monthsAhead Mo. Ahead";
-          statusColor = const Color(0xFF00E676);
-        } else {
-          statusLabel = "STATUS";
-          statusValue = "On Track";
-          statusColor = Colors.blueAccent;
-        }
+        statusLabel = "AHEAD";
+        statusValue = "${monthDiff - 1} Mo. Ahead";
+        statusColor = const Color(0xFF00E676);
       }
 
-      // 4. Update the requested "Days Remaining" tile dynamically
       debtFreeLabel = "NEXT EMI IN";
-      if (daysToNextDue == 0) {
+      if (daysToNextDue < 0) {
+        debtFreeValue = "Past Due";
+      } else if (daysToNextDue == 0) {
         debtFreeValue = "Today";
-        // Show an orange warning if it is due today but not yet technically "Overdue"
         if (statusColor != BudgetrColors.error) {
-           statusColor = Colors.orangeAccent; 
+          statusColor = Colors.orangeAccent; 
         }
       } else if (daysToNextDue == 1) {
         debtFreeValue = "Tomorrow";
@@ -555,7 +481,6 @@ Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
       }
 
     } else {
-      // Fallback if no EMI is set
       final monthsElapsed = max(1.0, now.difference(liveLoan.startDate).inDays / 30.0);
       final avgSpeed = paid / monthsElapsed;
       if (avgSpeed > 0) {
@@ -588,7 +513,7 @@ Widget _buildLoanSummary(LoanModel liveLoan, Color themeColor) {
     );
   }
 
-Widget _buildInsightTile(
+  Widget _buildInsightTile(
       String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -616,7 +541,6 @@ Widget _buildInsightTile(
             ],
           ),
           const SizedBox(height: 6),
-          // [FIX] Add bounded FittedBox for massive overdue amounts
           SizedBox(
             width: double.infinity,
             child: FittedBox(
@@ -632,7 +556,6 @@ Widget _buildInsightTile(
     );
   }
 
-// [FIX] Added isClosed parameter
   Widget _buildTransactionForm(String loanId, Color themeColor, bool isClosed) {
     final isPrepay = _paymentMode == 1;
     final hint = isPrepay ? "Enter Extra Amount (₹)" : "EMI Amount (₹)";
@@ -662,7 +585,6 @@ Widget _buildInsightTile(
               Expanded(
                 child: TextField(
                   controller: _amountCtrl,
-                  // [FIX] Disable text field if closed
                   enabled: !isClosed, 
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
@@ -693,7 +615,6 @@ Widget _buildInsightTile(
             child: Row(
               children: [
                 GestureDetector(
-                  // [FIX] Prevent date picking if closed
                   onTap: isClosed ? null : () async {
                     final d = await showDatePicker(
                         context: context,
@@ -726,7 +647,6 @@ Widget _buildInsightTile(
                 ),
                 const Spacer(),
                 ElevatedButton(
-                  // [FIX] Disable button if adding OR if the loan is closed
                   onPressed: (_isAdding || isClosed) ? null : () => _submitTransaction(loanId),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isClosed ? Colors.white12 : btnColor,
@@ -759,8 +679,9 @@ Widget _buildInsightTile(
     return StreamBuilder<List<AssetLogModel>>(
       stream: GetIt.I<GoalLoanService>().getLogsForParent(loanId),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
+        if (!snapshot.hasData) {
           return const SliverToBoxAdapter(child: SizedBox());
+        }
         final logs = snapshot.data!;
 
         if (logs.isEmpty) {
@@ -834,7 +755,6 @@ Widget _buildInsightTile(
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // [FIX] Constrained box + FittedBox prevents overflow on massive amounts
                       Container(
                         constraints: const BoxConstraints(maxWidth: 130), 
                         child: Column(
@@ -884,16 +804,15 @@ Widget _buildInsightTile(
             maxLines: 1,
             overflow: TextOverflow.ellipsis),
         const SizedBox(height: 4),
-        
         FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child:Text(
-          "₹${NumberFormat('#,##0.00').format(val)}",
-          style: TextStyle(
-              color: valueColor, fontSize: 15, fontWeight: FontWeight.bold),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+            fit: BoxFit.scaleDown,
+            child:Text(
+              "₹${NumberFormat('#,##0.00').format(val)}",
+              style: TextStyle(
+                  color: valueColor, fontSize: 15, fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
         ),
       ],
     );
@@ -907,7 +826,6 @@ Widget _buildInsightTile(
         Text(label,
             style: const TextStyle(color: Colors.white38, fontSize: 13)),
         const SizedBox(width: 16),
-        // [FIX] Use Flexible to allow long text to either scale down or wrap safely
         Flexible(
           child: FittedBox(
             fit: BoxFit.scaleDown,
@@ -975,6 +893,7 @@ Widget _buildInsightTile(
       },
     );
   }
+
   void _confirmToggleLoanStatus(LoanModel loan) {
     final willClose = !loan.isClosed;
     _showConfirmationSheet(

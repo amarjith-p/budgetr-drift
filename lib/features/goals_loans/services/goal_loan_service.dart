@@ -297,6 +297,7 @@ class GoalLoanService {
 
 Future<void> addLoanPayment(String loanId, double amount, String type, DateTime date) async {
     await _db.transaction(() async {
+      // 1. Insert the payment log
       await _db.into(_db.assetLogs).insert(db.AssetLogsCompanion.insert(
             id: _uuid.v4(),
             parentId: loanId,
@@ -310,11 +311,35 @@ Future<void> addLoanPayment(String loanId, double amount, String type, DateTime 
       final loan = await (_db.select(_db.loans)..where((t) => t.id.equals(loanId))).getSingle();
       final newPaid = loan.paidAmount + amount;
 
+      DateTime? updatedNextDate = loan.nextPaymentDate;
+
+      // 2. Relative Shift FORWARD: Only regular EMIs advance the billing cycle
+      if (type == 'EMI') {
+        final baseDate = loan.nextPaymentDate ?? loan.startDate;
+        int nextMonth = baseDate.month + 1;
+        int nextYear = baseDate.year;
+
+        if (nextMonth > 12) {
+          nextMonth = 1;
+          nextYear++;
+        }
+
+        // Lock in the fixed EMI Day
+        final int emiDay = loan.nextPaymentDate?.day ?? loan.startDate.day;
+        final daysInNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
+        final clampedDay = (emiDay > daysInNextMonth) ? daysInNextMonth : emiDay;
+
+        updatedNextDate = DateTime(nextYear, nextMonth, clampedDay);
+      }
+
+      // 3. Update the Loan
       await (_db.update(_db.loans)..where((t) => t.id.equals(loanId)))
-          .write(db.LoansCompanion(paidAmount: Value(newPaid)));
+          .write(db.LoansCompanion(
+            paidAmount: Value(newPaid),
+            nextPaymentDate: updatedNextDate != null ? Value(updatedNextDate) : const Value.absent(),
+          ));
     });
 
-    await _recalculateNextPaymentDate(loanId); // Synchronizes the dates perfectly
     _triggerNotificationSync();
   }
 
@@ -324,15 +349,38 @@ Future<void> addLoanPayment(String loanId, double amount, String type, DateTime 
       final loan = await (_db.select(_db.loans)..where((t) => t.id.equals(log.parentId))).getSingle();
 
       final newPaid = loan.paidAmount - log.amount;
+      DateTime? updatedNextDate = loan.nextPaymentDate;
 
+      // Relative Shift BACKWARD: Only revert the date if an EMI was deleted
+      if (log.type == 'Loan_EMI') {
+        final baseDate = loan.nextPaymentDate ?? loan.startDate;
+        int prevMonth = baseDate.month - 1;
+        int prevYear = baseDate.year;
+
+        if (prevMonth < 1) {
+          prevMonth = 12;
+          prevYear--;
+        }
+
+        // Lock in the fixed EMI Day
+        final int emiDay = loan.nextPaymentDate?.day ?? loan.startDate.day;
+        final daysInPrevMonth = DateTime(prevYear, prevMonth + 1, 0).day;
+        final clampedDay = (emiDay > daysInPrevMonth) ? daysInPrevMonth : emiDay;
+
+        updatedNextDate = DateTime(prevYear, prevMonth, clampedDay);
+      }
+
+      // Execute deletion and update
       await (_db.delete(_db.assetLogs)..where((t) => t.id.equals(logId))).go();
+      
       await (_db.update(_db.loans)..where((t) => t.id.equals(loan.id)))
-          .write(db.LoansCompanion(paidAmount: Value(newPaid)));
-          
-      // Recalculate after deletion to roll the date backwards safely
-      await _recalculateNextPaymentDate(loan.id); 
+          .write(db.LoansCompanion(
+            paidAmount: Value(newPaid),
+            nextPaymentDate: updatedNextDate != null ? Value(updatedNextDate) : const Value.absent(),
+          ));
     });
-    _triggerNotificationSync(); 
+
+    _triggerNotificationSync();
   }
   Future<void> _recalculateNextPaymentDate(String loanId) async {
     final loan = await (_db.select(_db.loans)..where((t) => t.id.equals(loanId))).getSingle();

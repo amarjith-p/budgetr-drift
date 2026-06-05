@@ -3,7 +3,7 @@ import 'package:budget/core/widgets/glass_card.dart';
 import 'package:budget/features/investments/models/investment_dto.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // [NEW] Import intl for formatting
+import 'package:intl/intl.dart';
 
 class PortfolioSummaryCard extends StatefulWidget {
   final double totalInvested;
@@ -29,9 +29,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
   bool _showChart = false;
   int _touchedIndex = -1;
 
-  // [NEW] Helper method to format currency to Indian format (e.g., ₹ 1,00,000.00)
   String _formatAmount(double amount, {bool showPlusSign = false}) {
-    // Uses 'en_IN' to format according to the Indian numbering system (Lakhs, Crores)
     final format =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹ ', decimalDigits: 2);
     final formattedStr = format.format(amount.abs());
@@ -139,10 +137,16 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
 
   // --- VIEW 1: Compact Stats View ---
   Widget _buildStatsView(Color statusColor, bool isPositive) {
+    // [NEW] Calculate the counts
+    int totalCount = widget.investments.length;
+    int profitableCount =
+        widget.investments.where((i) => i.totalGainLoss > 0).length;
+    int lossCount = widget.investments.where((i) => i.totalGainLoss < 0).length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Main Value [UPDATED WITH FORMATTER]
+        // Main Value
         Text(
           _formatAmount(widget.currentValue),
           style: const TextStyle(
@@ -151,10 +155,51 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        const SizedBox(height: 8),
+
+        // [NEW] Minimalist Asset Counts Row
+        Row(
+          children: [
+            Text(
+              "$totalCount Total",
+              style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text("•", style: TextStyle(color: Colors.white24)),
+            ),
+            Icon(Icons.arrow_upward_rounded,
+                size: 12, color: BudgetrColors.success),
+            const SizedBox(width: 2),
+            Text(
+              "$profitableCount",
+              style: const TextStyle(
+                  color: BudgetrColors.success,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text("•", style: TextStyle(color: Colors.white24)),
+            ),
+            Icon(Icons.arrow_downward_rounded,
+                size: 12, color: BudgetrColors.error),
+            const SizedBox(width: 2),
+            Text(
+              "$lossCount",
+              style: const TextStyle(
+                  color: BudgetrColors.error,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+
         const SizedBox(height: 16),
-
         Container(height: 1, color: Colors.white10),
-
         const SizedBox(height: 12),
 
         // Bottom Row
@@ -163,7 +208,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
             Expanded(
               child: _buildMiniStat(
                 "INVESTED",
-                _formatAmount(widget.totalInvested), // [UPDATED]
+                _formatAmount(widget.totalInvested),
                 Colors.white70,
               ),
             ),
@@ -173,8 +218,7 @@ class _PortfolioSummaryCardState extends State<PortfolioSummaryCard> {
                 padding: const EdgeInsets.only(left: 20),
                 child: _buildMiniStat(
                   "GAIN/LOSS",
-                  _formatAmount(widget.totalGainLoss,
-                      showPlusSign: true), // [UPDATED]
+                  _formatAmount(widget.totalGainLoss, showPlusSign: true),
                   statusColor,
                 ),
               ),
