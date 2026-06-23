@@ -1,5 +1,6 @@
 import 'dart:ui'; // Added for BackdropFilter
 import 'package:budget/core/widgets/futuristic_loader.dart';
+import 'package:budget/features/daily_expense/screens/cash_flow_summary_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -628,8 +629,45 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 30),
-
+                                      const SizedBox(height: 20),
+GestureDetector(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const CashFlowSummaryScreen(),
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.symmetric(vertical: 14),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF00B4D8).withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: const Color(0xFF00B4D8).withOpacity(0.3)),
+                                          ),
+                                          child: const Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.bar_chart_outlined, color: Color(0xFF00B4D8), size: 20),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                "View Cash Flow Dashboard",
+                                                style: TextStyle(
+                                                  color: Color(0xFF00B4D8),
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                              SizedBox(width: 6),
+                                              Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF00B4D8), size: 12),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
                                       // List Header
                                       Row(
                                         mainAxisAlignment:
@@ -1069,7 +1107,7 @@ class _CategoryBreakdownScreenState extends State<CategoryBreakdownScreen> {
                 color: isActive
                     ? color.withOpacity(0.15)
                     : const Color(0xFF151D29),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                     color:
                         isActive ? color.withOpacity(0.5) : Colors.transparent,
