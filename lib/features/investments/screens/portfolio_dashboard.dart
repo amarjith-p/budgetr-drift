@@ -179,19 +179,38 @@ class _PortfolioDashboardState extends State<PortfolioDashboard> {
                   investments.sort((a, b) {
                     switch (_sortOption) {
                       case SortOption.valueHighToLow:
-                        return b.currentMarketValue
-                            .compareTo(a.currentMarketValue);
+                        int valComp = b.currentMarketValue.compareTo(a.currentMarketValue);
+                        // Tie-breaker: If values are equal, show newest added first
+                        if (valComp == 0) return (b.id ?? 0).compareTo(a.id ?? 0);
+                        return valComp;
+                        
                       case SortOption.valueLowToHigh:
-                        return a.currentMarketValue
-                            .compareTo(b.currentMarketValue);
+                        int valComp = a.currentMarketValue.compareTo(b.currentMarketValue);
+                        if (valComp == 0) return (a.id ?? 0).compareTo(b.id ?? 0);
+                        return valComp;
+                        
                       case SortOption.returnHighToLow:
-                        return b.returnPercentage.compareTo(a.returnPercentage);
+                        int retComp = b.returnPercentage.compareTo(a.returnPercentage);
+                        if (retComp == 0) return (b.id ?? 0).compareTo(a.id ?? 0);
+                        return retComp;
+                        
                       case SortOption.nameAsc:
-                        return a.name.compareTo(b.name);
+                        // Ignore case when sorting by name
+                        int nameComp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+                        if (nameComp == 0) return (b.id ?? 0).compareTo(a.id ?? 0);
+                        return nameComp;
+                        
                       case SortOption.dateNewest:
-                        return b.startDate.compareTo(a.startDate);
+                        int dateComp = b.startDate.compareTo(a.startDate);
+                        // Tie-breaker: If dates are the same, sort by highest ID (newest saved)
+                        if (dateComp == 0) return (b.id ?? 0).compareTo(a.id ?? 0);
+                        return dateComp;
+                        
                       case SortOption.dateOldest:
-                        return a.startDate.compareTo(b.startDate);
+                        int dateComp = a.startDate.compareTo(b.startDate);
+                        // Tie-breaker: If dates are the same, sort by lowest ID (oldest saved)
+                        if (dateComp == 0) return (a.id ?? 0).compareTo(b.id ?? 0);
+                        return dateComp;
                     }
                   });
 

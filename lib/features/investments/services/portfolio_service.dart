@@ -372,7 +372,10 @@ class PortfolioService {
   // ===========================================================================
 
   Stream<List<InvestmentDto>> watchAllInvestments() {
-    return _db.select(_db.investments).watch().switchMap((investmentsList) {
+    final query = _db.select(_db.investments)
+      ..orderBy([(t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc)]);
+
+    return query.watch().switchMap((investmentsList) {
       if (investmentsList.isEmpty) {
         return Stream.value([]);
       }

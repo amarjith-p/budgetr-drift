@@ -534,9 +534,9 @@ Widget _buildKPIGrid({
             
             // --- Averages & Extras (Visible ONLY for Multi-Month Ranges) ---
             if (!isSingleMonth) ...[
-              _buildKpiCard(width, "Avg Monthly Income", avgIncome, _incomeColor),
-              _buildKpiCard(width, "Avg Monthly Expense", avgExpense, _expenseColor),
-              _buildKpiCard(width, "Avg Monthly Savings", avgSavings, avgSavings >= 0 ? _incomeColor : _expenseColor),
+              _buildKpiCard(width, "Avg. Monthly Income", avgIncome, _incomeColor),
+              _buildKpiCard(width, "Avg. Monthly Expense", avgExpense, _expenseColor),
+              _buildKpiCard(width, "Avg. Monthly Savings", avgSavings, avgSavings >= 0 ? _incomeColor : _expenseColor),
               _buildKpiCard(width, "Spend vs Income", spendVsIncome, Colors.white, isPercent: true, fallbackAmount: totalIncome),
             ],
           ],
@@ -1067,8 +1067,8 @@ Widget _buildKPIGrid({
               mainAmount: _currencyFmt.format(r['sum']),
               meta1: "${r['count']} txns",
               meta2: isExpense 
-                  ? "Avg vs Income: ${_percentFmt.format(r['avgAgainstIncome'])}"
-                  : "Avg/Txn: ${_currencyFmt.format(r['avgPerTxn'])}",
+                  ? "Avg. vs Income: ${_percentFmt.format(r['avgAgainstIncome'])}"
+                  : "Avg./Txn.: ${_currencyFmt.format(r['avgPerTxn'])}",
               pct: r['pct'],
               color: themeColor,
             )),
@@ -1117,7 +1117,7 @@ Widget _buildKPIGrid({
               mainAmount: _currencyFmt.format(grandTotal),
               meta1: "${txns.length} txns",
               meta2: isExpense 
-                  ? "Avg vs Income: ${_percentFmt.format(referenceIncome > 0 ? grandTotal / referenceIncome : 0.0)}" 
+                  ? "Avg. vs Income: ${_percentFmt.format(referenceIncome > 0 ? grandTotal / referenceIncome : 0.0)}" 
                   : "",
               pct: 1.0,
               color: themeColor,

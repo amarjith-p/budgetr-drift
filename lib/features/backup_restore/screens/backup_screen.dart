@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:budget/core/widgets/futuristic_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:restart_app/restart_app.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/design/budgetr_styles.dart';
@@ -42,17 +44,30 @@ class _BackupScreenState extends State<BackupScreen> {
     }
   }
 
-  // ==========================================
-  // UPDATED BACKUP HANDLERS
-  // ==========================================
+Future<void> _handleSaveToDevice() async {
+    // --- [NEW] JUST-IN-TIME PERMISSION CHECK ---
+    if (Platform.isAndroid) {
+      // Request standard storage permission first
+      PermissionStatus status = await Permission.storage.request();
+      
+      // On Android 11+, Permission.storage is restricted. 
+      // We must request Manage External Storage to write to the Downloads folder.
+      if (!status.isGranted) {
+        PermissionStatus manageStatus = await Permission.manageExternalStorage.request();
+        if (!manageStatus.isGranted) {
+           _showError("Storage permission is required to save the backup directly to your device.");
+           return; // Abort the save process if permission is denied
+        }
+      }
+    }
 
-  Future<void> _handleSaveToDevice() async {
+    // --- PROCEED WITH SAVING ONLY IF GRANTED ---
     setState(() {
-      _loadingLabel = "COMPILING DATA MATRIX TO DEVICE..."; // [NEW]
+      _loadingLabel = "COMPILING DATA MATRIX TO DEVICE...";
       _isLoading = true;
     });
+    
     try {
-      // This now instantly saves to BudGetR/Backups/{MMM yyyy}
       final path = await _backupService.saveBackupToDevice();
 
       if (path != null && mounted) {
