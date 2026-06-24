@@ -1447,6 +1447,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
       onDismiss: () async {
         await GetIt.I<RecurringService>().deletePattern(widget.pattern!.id);
         if (mounted) {
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Plan deleted successfully."),
