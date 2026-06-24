@@ -503,14 +503,15 @@ class _TimelineCardState extends State<_TimelineCard> {
                       ],
                     ),
                   ),
-                  if (diff.inDays <= 3 && !isOverdue)
+                  // Show if it's approaching soon OR if it's an overdue variable payment
+                  if ((diff.inDays <= 3 && !isOverdue) || (isOverdue && item.isVariable))
                     InkWell(
                         onTap: () {
                           GetIt.I<RecurringService>()
                               .skipNextOccurrence(item.id);
                           ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text("Skipped next occurrence")));
+                              SnackBar(
+                                  content: Text("Skipped ${isOverdue ? 'this' : 'next'} occurrence")));
                         },
                         child: Container(
                             width: double.infinity,
@@ -519,8 +520,8 @@ class _TimelineCardState extends State<_TimelineCard> {
                             decoration: const BoxDecoration(
                                 border: Border(
                                     top: BorderSide(color: Colors.white10))),
-                            child: const Text("Skip Next Occurrence",
-                                style: TextStyle(
+                            child: Text(isOverdue ? "Skip This Occurrence" : "Skip Next Occurrence",
+                                style: const TextStyle(
                                     color: Colors.white38, fontSize: 10))))
                 ],
               ),
@@ -648,6 +649,31 @@ class _VariablePaySheetState extends State<_VariablePaySheet> {
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            
+            // --- [NEW] SKIP THIS PAYMENT BUTTON ---
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12))),
+                onPressed: () {
+                  Navigator.pop(context);
+                  GetIt.I<RecurringService>().skipNextOccurrence(widget.item.id);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text("Payment skipped for this cycle")));
+                },
+                child: const Text(
+                  "SKIP THIS PAYMENT",
+                  style: TextStyle(
+                      color: Colors.white54,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14),
                 ),
               ),
             ),

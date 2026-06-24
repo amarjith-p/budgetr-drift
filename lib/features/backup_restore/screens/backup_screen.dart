@@ -45,23 +45,33 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
 Future<void> _handleSaveToDevice() async {
-    // --- [NEW] JUST-IN-TIME PERMISSION CHECK ---
     if (Platform.isAndroid) {
-      // Request standard storage permission first
-      PermissionStatus status = await Permission.storage.request();
+      bool hasAccess = await Permission.manageExternalStorage.isGranted;
       
-      // On Android 11+, Permission.storage is restricted. 
-      // We must request Manage External Storage to write to the Downloads folder.
-      if (!status.isGranted) {
-        PermissionStatus manageStatus = await Permission.manageExternalStorage.request();
-        if (!manageStatus.isGranted) {
-           _showError("Storage permission is required to save the backup directly to your device.");
-           return; // Abort the save process if permission is denied
-        }
+      if (!hasAccess) {
+         final manageStatus = await Permission.manageExternalStorage.request();
+         hasAccess = manageStatus.isGranted;
+      }
+
+      if (!hasAccess) {
+         final storageStatus = await Permission.storage.status;
+         if (!storageStatus.isGranted) {
+            showStatusSheet(
+              context: context,
+              title: "Storage Access Needed",
+              message: "To save backups directly to your device, FinStack 360 requires Storage permission.\n\nPlease enable it manually in your App Settings.",
+              icon: Icons.settings_rounded,
+              color: Colors.amber, // Warning color
+              buttonText: "Open Settings",
+              cancelButtonText: "Cancel",
+              onDismiss: () => openAppSettings(),
+              onCancel: () {},
+            );
+            return;
+         }
       }
     }
 
-    // --- PROCEED WITH SAVING ONLY IF GRANTED ---
     setState(() {
       _loadingLabel = "COMPILING DATA MATRIX TO DEVICE...";
       _isLoading = true;
@@ -73,7 +83,6 @@ Future<void> _handleSaveToDevice() async {
       if (path != null && mounted) {
         setState(() => _lastBackupTime = DateTime.now());
 
-        // Show exactly where it was saved in the success sheet
         showStatusSheet(
           context: context,
           title: "Backup Secured",
@@ -84,7 +93,13 @@ Future<void> _handleSaveToDevice() async {
         );
       }
     } catch (e) {
-      _showError("Save failed: $e");
+      showStatusSheet(
+        context: context,
+        title: "Save Failed",
+        message: "Unable to write to the Downloads folder. Please ensure the directory exists.: $e",
+        icon: Icons.error_outline_rounded,
+        color: BudgetrColors.error,
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
