@@ -6,7 +6,6 @@ import 'package:budget/features/notifications/services/system_notification_servi
 import 'package:budget/features/recurring/screens/recurring_dashboard.dart';
 import 'package:budget/features/reminders/screens/reminders_dashboard_screen.dart';
 import 'package:budget/features/settings/screens/category_manager_screen.dart';
-// Add this with your other service imports
 import '../../net_worth/services/net_worth_service.dart';
 import 'package:budget/features/settings/screens/settings_screen.dart';
 import 'package:budget/features/settlement/screens/settlement_screen.dart';
@@ -17,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/design/budgetr_colors.dart';
 import '../../../core/services/service_locator.dart';
 
@@ -24,14 +24,14 @@ import '../../../core/services/service_locator.dart';
 import '../../daily_expense/services/expense_service.dart';
 import '../../dashboard/services/dashboard_service.dart';
 import '../../backup_restore/services/backup_service.dart';
-import '../../credit_tracker/services/credit_service.dart'; // [NEW IMPORT]
-import '../../settings/services/settings_service.dart'; // [NEW IMPORT]
+import '../../credit_tracker/services/credit_service.dart';
+import '../../settings/services/settings_service.dart';
 
 // Models
 import '../../dashboard/models/dashboard_transaction.dart';
 import '../../../core/models/financial_record_model.dart';
-import '../../credit_tracker/models/credit_models.dart'; // [NEW IMPORT]
-import '../../daily_expense/models/expense_models.dart'; // [NEW IMPORT]
+import '../../credit_tracker/models/credit_models.dart';
+import '../../daily_expense/models/expense_models.dart';
 
 // Screens
 import '../../dashboard/screens/dashboard_screen.dart';
@@ -44,6 +44,27 @@ import '../../net_worth/screens/net_worth_screen.dart';
 import '../../settings/screens/configuration_menu_screen.dart';
 
 import '../widgets/home_app_bar.dart';
+
+// ============================================================================
+// [NEW] Data Model for Grid Items
+// ============================================================================
+class HomeFeatureItem {
+  final String id;
+  final String title;
+  final IconData icon;
+  final Color color;
+  final Widget Function() pageBuilder;
+  final Stream<bool>? warningStream;
+
+  HomeFeatureItem({
+    required this.id,
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.pageBuilder,
+    this.warningStream,
+  });
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -66,11 +87,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   DateTime? _lastBackPressTime;
   final PageController _toolsPageController = PageController();
   int _currentToolPage = 0;
-
   bool _showTopBanner = false;
 
-  // [NEW] Reactive Stream to calculate Credit Shortfall Live
   late Stream<bool> _creditShortfallStream;
+
+  // ============================================================================
+  // [NEW] Feature Registry & Drag-and-Drop State Arrays
+  // ============================================================================
+  late final Map<String, HomeFeatureItem> _featureRegistry;
+
+  List<String> _topGridIds = [
+    'dashboard', 'daily_expense', 'credit_tracker', 'custom_entry'
+  ];
+  List<String> _bottomGridIds = [
+    'trip_mode', 'investments', 'goals_loans', 'net_worth', 'balance_sheet',
+    'recurring_txns', 'pending_txns', 'settlements', 'secure_vault', 'budget_buckets',
+    'reminders', 'settings'
+  ];
 
   @override
   void initState() {
@@ -78,7 +111,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _checkBackupStatus();
 
-    // [NEW] Combine the Live Cards Data with the Live Linked Bank Accounts Data
     _creditShortfallStream = Rx.combineLatest2(
         creditService.getCreditCards(),
         settingsService.watchCreditPayableAccountIds().switchMap((ids) {
@@ -91,8 +123,85 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       double allocatedFunds =
           linkedAccounts.fold(0.0, (sum, acc) => sum + acc.currentBalance);
 
-      // Return true if there's a shortfall and there's actually a debt
       return (allocatedFunds - totalDebt <= -0.000001) && (totalDebt > 0.01);
+    }).shareValue();
+
+    // Initialize all features into the registry
+    _featureRegistry = {
+      'dashboard': HomeFeatureItem(id: 'dashboard', title: "Budget Dashboard", icon: Icons.donut_large_rounded, color: const Color(0xFF4361EE), pageBuilder: () => const DashboardScreen()),
+      'daily_expense': HomeFeatureItem(id: 'daily_expense', title: "Daily Expense", icon: Icons.account_balance_wallet_rounded, color: const Color(0xFF06D6A0), pageBuilder: () => const DailyExpenseScreen()),
+      'credit_tracker': HomeFeatureItem(id: 'credit_tracker', title: "Credit Tracker", icon: Icons.credit_card_rounded, color: const Color(0xFFEF476F), pageBuilder: () => const CreditTrackerScreen(), warningStream: _creditShortfallStream),
+      'custom_entry': HomeFeatureItem(id: 'custom_entry', title: "Custom Entry", icon: Icons.post_add_rounded, color: const Color(0xFFFFD166), pageBuilder: () => const CustomEntryDashboard()),
+      'trip_mode': HomeFeatureItem(id: 'trip_mode', title: "Trip Mode", icon: Icons.flight_takeoff_rounded, color: const Color(0xFF00B4D8), pageBuilder: () => const TripDashboardScreen()),
+      'investments': HomeFeatureItem(id: 'investments', title: "Investments", icon: Icons.insights_rounded, color: const Color(0xFFFF7F11), pageBuilder: () => const PortfolioDashboard()),
+      'goals_loans': HomeFeatureItem(id: 'goals_loans', title: "Goals & Loans", icon: Icons.rocket_launch_rounded, color: const Color(0xFFE63946), pageBuilder: () => const GoalsLoansDashboard()),
+      'net_worth': HomeFeatureItem(id: 'net_worth', title: "Net Worth", icon: Icons.diamond_rounded, color: const Color(0xFFFFB703), pageBuilder: () => const NetWorthScreen()),
+      'balance_sheet': HomeFeatureItem(id: 'balance_sheet', title: "Balance Sheet", icon: Icons.balance_sharp, color: const Color(0xFF9D4EDD), pageBuilder: () => const BalanceSheetScreen()),
+      'recurring_txns': HomeFeatureItem(id: 'recurring_txns', title: "Recurring Txns", icon: Icons.autorenew_rounded, color: const Color(0xFF2EC4B6), pageBuilder: () => const RecurringDashboard()),
+      'pending_txns': HomeFeatureItem(id: 'pending_txns', title: "Pending Txns", icon: Icons.pending_actions_rounded, color: const Color(0xFF2DC653), pageBuilder: () => const GhostTransactionsScreen()),
+      'settlements': HomeFeatureItem(id: 'settlements', title: "Settlements", icon: Icons.fact_check_rounded, color: const Color(0xFF9C6644), pageBuilder: () => const SettlementScreen()),
+      'secure_vault': HomeFeatureItem(id: 'secure_vault', title: "Secure Vault", icon: Icons.security_rounded, color: const Color(0xFFF72585), pageBuilder: () => const VaultAuthScreen()),
+      'budget_buckets': HomeFeatureItem(id: 'budget_buckets', title: "Budget Buckets", icon: Icons.widgets_rounded, color: const Color(0xFFFFE066), pageBuilder: () => const SettingsScreen()),
+      'reminders': HomeFeatureItem(id: 'reminders', title: "Reminders", icon: Icons.access_alarm, color: const Color(0xFF4361EE), pageBuilder: () => const RemindersDashboardScreen()),
+      'settings': HomeFeatureItem(id: 'settings', title: "Settings", icon: Icons.tune_rounded, color: const Color.fromARGB(255, 252, 252, 252), pageBuilder: () => const ConfigurationMenuScreen()),
+    };
+
+    _loadGridOrder();
+  }
+
+  // ============================================================================
+  // [NEW] Persist Reordering Configuration
+  // ============================================================================
+  Future<void> _loadGridOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final top = prefs.getStringList('home_top_grid');
+    final bottom = prefs.getStringList('home_bottom_grid');
+
+    if (top != null && bottom != null && (top.length + bottom.length == _featureRegistry.length)) {
+      // Validation to ensure app updates don't crash old lists
+      bool valid = true;
+      for (var id in [...top, ...bottom]) {
+        if (!_featureRegistry.containsKey(id)) valid = false;
+      }
+      if (valid) {
+        setState(() {
+          _topGridIds = top;
+          _bottomGridIds = bottom;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveGridOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('home_top_grid', _topGridIds);
+    await prefs.setStringList('home_bottom_grid', _bottomGridIds);
+  }
+
+  void _swapItems(String draggedId, String targetId) {
+    if (draggedId == targetId) return;
+
+    setState(() {
+      int draggedIndexTop = _topGridIds.indexOf(draggedId);
+      int draggedIndexBottom = _bottomGridIds.indexOf(draggedId);
+      int targetIndexTop = _topGridIds.indexOf(targetId);
+      int targetIndexBottom = _bottomGridIds.indexOf(targetId);
+
+      if (draggedIndexTop != -1 && targetIndexTop != -1) {
+        _topGridIds[draggedIndexTop] = targetId;
+        _topGridIds[targetIndexTop] = draggedId;
+      } else if (draggedIndexBottom != -1 && targetIndexBottom != -1) {
+        _bottomGridIds[draggedIndexBottom] = targetId;
+        _bottomGridIds[targetIndexBottom] = draggedId;
+      } else if (draggedIndexTop != -1 && targetIndexBottom != -1) {
+        _topGridIds[draggedIndexTop] = targetId;
+        _bottomGridIds[targetIndexBottom] = draggedId;
+      } else if (draggedIndexBottom != -1 && targetIndexTop != -1) {
+        _bottomGridIds[draggedIndexBottom] = targetId;
+        _topGridIds[targetIndexTop] = draggedId;
+      }
+      _saveGridOrder();
+      HapticFeedback.lightImpact();
     });
   }
 
@@ -112,30 +221,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
 
       if (_needsBackup) {
-        // try {
-        //   // Attempt to resolve from locator if you registered it there
-        //   final notifService = locator<SystemNotificationService>();
-        //   await notifService.showInstantNotification(
-        //     id: 8888, // Unique ID for Backup Alert
-        //     title: "Backup Overdue",
-        //     body:
-        //         "Your data hasn't been backed up in over 12 hours. Tap the warning icon to secure your data.",
-        //   );
-        // } catch (_) {
-        //   // Fallback: Create a direct instance if it's not in the service locator
-        //   final notifService = SystemNotificationService();
-        //   await notifService.init();
-        //   await notifService.showInstantNotification(
-        //     id: 8888,
-        //     title: "Backup Overdue",
-        //     body:
-        //         "Your data hasn't been backed up in over 12 hours. Tap the warning icon to secure your data.",
-        //   );
-        // }
         Future.delayed(const Duration(seconds: 8), () {
-          if (mounted) {
-            setState(() => _showTopBanner = false);
-          }
+          if (mounted) setState(() => _showTopBanner = false);
         });
       }
     }
@@ -161,16 +248,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           duration: const Duration(seconds: 2),
           content: Row(
             children: [
-              const Icon(Icons.warning_amber_rounded,
-                  color: Color(0xFFFF9F1C), size: 24),
+              const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF9F1C), size: 24),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   "Press back again to exit",
-                  style: GoogleFonts.robotoSlab(
-                    color: const Color(0xFF1B263B),
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: GoogleFonts.robotoSlab(color: const Color(0xFF1B263B), fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -200,10 +283,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           body: Stack(
             children: [
-              _buildAmbientGlow(
-                  Alignment.topRight, BudgetrColors.accent.withOpacity(0.15)),
-              _buildAmbientGlow(Alignment.bottomLeft,
-                  const Color(0xFF4361EE).withOpacity(0.1)),
+              _buildAmbientGlow(Alignment.topRight, BudgetrColors.accent.withOpacity(0.15)),
+              _buildAmbientGlow(Alignment.bottomLeft, const Color(0xFF4361EE).withOpacity(0.1)),
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -211,26 +292,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 10),
-
-                      // 2. FINANCIAL OVERVIEW
                       _buildFinancialOverview(),
-
                       const SizedBox(height: 20),
-
-                      // 3. FINANCE TODAY
-                      _buildSectionHeader("Finance Today"),
+                      _buildSectionHeader("Finance Today", showHint: true),
                       const SizedBox(height: 12),
-                      Expanded(
-                        child: _buildFlexibleFeatureGrid(context),
-                      ),
-
+                      Expanded(child: _buildFlexibleFeatureGrid(context)),
                       const SizedBox(height: 20),
-
-                      // 4. MORE TOOLS
                       _buildSectionHeader("More Tools"),
                       const SizedBox(height: 12),
                       _buildCompactQuickActionGrid(context),
-
                       const SizedBox(height: 12),
                     ],
                   ),
@@ -239,46 +309,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 600),
                 curve: Curves.elasticOut,
-                top: _showTopBanner
-                    ? MediaQuery.of(context).padding.top + 55
-                    : -120,
+                top: _showTopBanner ? MediaQuery.of(context).padding.top + 55 : -120,
                 left: 20,
                 right: 20,
                 child: Material(
                   color: Colors.transparent,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: Colors.redAccent.withOpacity(0.95),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
-                        BoxShadow(
-                          color: Colors.redAccent.withOpacity(0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        )
+                        BoxShadow(color: Colors.redAccent.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))
                       ],
                     ),
                     child: Row(
                       children: [
-                        // const Icon(Icons.arrow_upward_rounded,
-                        //     color: Colors.white, size: 24),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             "Data Backup Overdue! Click the ⚠️ icon above to backup now.",
-                            style: GoogleFonts.robotoSlab(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
+                            style: GoogleFonts.robotoSlab(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                           ),
                         ),
                         GestureDetector(
                           onTap: () => setState(() => _showTopBanner = false),
-                          child: const Icon(Icons.close_rounded,
-                              color: Colors.white70, size: 24),
+                          child: const Icon(Icons.close_rounded, color: Colors.white70, size: 24),
                         ),
                       ],
                     ),
@@ -290,29 +346,73 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ));
   }
 
+  // ============================================================================
+  // [NEW] Dynamic Draggable Wrapper Component
+  // ============================================================================
+  Widget _buildDraggableSlot(String id, {required bool isTop}) {
+    final feature = _featureRegistry[id]!;
+
+    return DragTarget<String>(
+      onWillAcceptWithDetails: (data) => data.data != id,
+      onAcceptWithDetails: (data) => _swapItems(data.data, id),
+      builder: (context, candidateData, rejectedData) {
+        final isHovered = candidateData.isNotEmpty;
+
+        // Render based on location
+        // Render based on location
+        Widget card = isTop
+            ? _buildCompactCard(context, feature.title, feature.icon, feature.color, feature.pageBuilder(), warningStream: feature.warningStream)
+            : _buildVerticalActionChip(context, feature.title, feature.icon, feature.color, feature.pageBuilder(), warningStream: feature.warningStream);
+
+        // Add a subtle border when hovering to drop
+        if (isHovered) {
+          card = Container(
+            foregroundDecoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.8), width: 2),
+            ),
+            child: card,
+          );
+        }
+
+        return LongPressDraggable<String>(
+          key: ValueKey(id), // <--- ADDED KEY TO PREVENT WIDGET STATE GLITCHES
+          data: id,
+          delay: const Duration(milliseconds: 250),
+          onDragStarted: () => HapticFeedback.mediumImpact(),
+          feedback: Material(
+            color: Colors.transparent,
+            child: Opacity(
+              opacity: 0.85,
+              child: Transform.scale(
+                scale: 1.05,
+                child: SizedBox(
+                  width: isTop ? (MediaQuery.of(context).size.width - 56) / 2 : (MediaQuery.of(context).size.width - 64) / 3,
+                  height: isTop ? 140 : 90,
+                  child: isTop
+                      ? _buildCompactCard(context, feature.title, feature.icon, feature.color, const SizedBox(), warningStream: feature.warningStream)
+                      : _buildVerticalActionChip(context, feature.title, feature.icon, feature.color, const SizedBox()),
+                ),
+              ),
+            ),
+          ),
+          childWhenDragging: Opacity(opacity: 0.3, child: card),
+          child: card,
+        );
+      },
+    );
+  }
+
   Widget _buildFlexibleFeatureGrid(BuildContext context) {
     return Column(
       children: [
         Expanded(
           child: Row(
             children: [
-              Expanded(
-                child: _buildCompactCard(
-                    context,
-                    "Budget Dashboard",
-                    Icons.donut_large_rounded,
-                    const Color(0xFF4361EE),
-                    const DashboardScreen()),
-              ),
+              Expanded(child: _buildDraggableSlot(_topGridIds[0], isTop: true)),
               const SizedBox(width: 16),
-              Expanded(
-                child: _buildCompactCard(
-                    context,
-                    "Daily Expense",
-                    Icons.account_balance_wallet_rounded,
-                    const Color(0xFF06D6A0),
-                    const DailyExpenseScreen()),
-              ),
+              Expanded(child: _buildDraggableSlot(_topGridIds[1], isTop: true)),
             ],
           ),
         ),
@@ -320,25 +420,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         Expanded(
           child: Row(
             children: [
-              Expanded(
-                // [UPDATED] Passed the Shortfall Stream specifically to the Credit Card Tile
-                child: _buildCompactCard(
-                    context,
-                    "Credit Tracker",
-                    Icons.credit_card_rounded,
-                    const Color(0xFFEF476F),
-                    const CreditTrackerScreen(),
-                    warningStream: _creditShortfallStream),
-              ),
+              Expanded(child: _buildDraggableSlot(_topGridIds[2], isTop: true)),
               const SizedBox(width: 16),
-              Expanded(
-                child: _buildCompactCard(
-                    context,
-                    "Custom Entry",
-                    Icons.post_add_rounded,
-                    const Color(0xFFFFD166),
-                    const CustomEntryDashboard()),
-              ),
+              Expanded(child: _buildDraggableSlot(_topGridIds[3], isTop: true)),
             ],
           ),
         ),
@@ -346,102 +430,130 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+// ============================================================================
+  // [UPGRADED] Compact Grid with Cross-Page Drag & Drop Auto-Scroll
+  // ============================================================================
   Widget _buildCompactQuickActionGrid(BuildContext context) {
-    final List<Widget> page1 = [
-      _buildVerticalActionChip(
-          context,
-          "Trip Mode",
-          Icons.flight_takeoff_rounded,
-          const Color(0xFF00B4D8),
-          const TripDashboardScreen()),
-      _buildVerticalActionChip(context, "Investments", Icons.insights_rounded,
-          const Color(0xFFFF7F11), const PortfolioDashboard()),
-      _buildVerticalActionChip(
-          context,
-          "Goals & Loans",
-          Icons.rocket_launch_rounded,
-          const Color(0xFFE63946),
-          const GoalsLoansDashboard()),
-      _buildVerticalActionChip(context, "Net Worth", Icons.diamond_rounded,
-          const Color(0xFFFFB703), const NetWorthScreen()),
-      _buildVerticalActionChip(context, "Balance Sheet", Icons.balance_sharp,
-          const Color(0xFF9D4EDD), const BalanceSheetScreen()),
-      _buildVerticalActionChip(
-          context,
-          "Recurring Txns",
-          Icons.autorenew_rounded,
-          const Color(0xFF2EC4B6),
-          const RecurringDashboard()),
-    ];
-
-    final List<Widget> page2 = [
-      _buildVerticalActionChip(
-          context,
-          "Pending Txns",
-          Icons.pending_actions_rounded,
-          const Color(0xFF2DC653),
-          const GhostTransactionsScreen()),
-      _buildVerticalActionChip(context, "Settlements", Icons.fact_check_rounded,
-          const Color(0xFF9C6644), const SettlementScreen()),
-
-      _buildVerticalActionChip(context, "Secure Vault", Icons.security_rounded,
-          const Color(0xFFF72585), const VaultAuthScreen()),
-      _buildVerticalActionChip(context, "Budget Buckets", Icons.widgets_rounded,
-          const Color(0xFFFFE066), const SettingsScreen()),
-      _buildVerticalActionChip(context, "Reminders", Icons.access_alarm,
-          const Color(0xFF4361EE), const RemindersDashboardScreen()),
-      _buildVerticalActionChip(
-          context,
-          "Settings",
-          Icons.tune_rounded,
-          const Color.fromARGB(255, 252, 252, 252),
-          const ConfigurationMenuScreen()),
-      // const SizedBox.shrink(),
-      // const SizedBox.shrink(),
-      // const SizedBox.shrink(),
-    ];
-
-    final pages = [page1, page2];
+    // Break _bottomGridIds into chunks of 6 per page
+    List<List<String>> pages = [];
+    for (var i = 0; i < _bottomGridIds.length; i += 6) {
+      pages.add(_bottomGridIds.sublist(
+          i, i + 6 > _bottomGridIds.length ? _bottomGridIds.length : i + 6));
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
           height: 160,
-          child: PageView.builder(
-            controller: _toolsPageController,
-            onPageChanged: (index) {
-              setState(() {
-                _currentToolPage = index;
-              });
-            },
-            itemCount: pages.length,
-            itemBuilder: (context, pageIndex) {
-              final items = pages[pageIndex];
-              return Column(
-                children: [
-                  Row(
+          child: Stack(
+            children: [
+              // 1. The Slidable Pages
+              PageView.builder(
+                controller: _toolsPageController,
+                onPageChanged: (index) =>
+                    setState(() => _currentToolPage = index),
+                itemCount: pages.length,
+                itemBuilder: (context, pageIndex) {
+                  final items = pages[pageIndex];
+                  return Column(
                     children: [
-                      Expanded(child: items[0]),
-                      const SizedBox(width: 12),
-                      Expanded(child: items[1]),
-                      const SizedBox(width: 12),
-                      Expanded(child: items[2]),
+                      Row(
+                        children: [
+                          if (items.isNotEmpty) Expanded(child: _buildDraggableSlot(items[0], isTop: false)) else const Expanded(child: SizedBox.shrink()),
+                          const SizedBox(width: 12),
+                          if (items.length > 1) Expanded(child: _buildDraggableSlot(items[1], isTop: false)) else const Expanded(child: SizedBox.shrink()),
+                          const SizedBox(width: 12),
+                          if (items.length > 2) Expanded(child: _buildDraggableSlot(items[2], isTop: false)) else const Expanded(child: SizedBox.shrink()),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          if (items.length > 3) Expanded(child: _buildDraggableSlot(items[3], isTop: false)) else const Expanded(child: SizedBox.shrink()),
+                          const SizedBox(width: 12),
+                          if (items.length > 4) Expanded(child: _buildDraggableSlot(items[4], isTop: false)) else const Expanded(child: SizedBox.shrink()),
+                          const SizedBox(width: 12),
+                          if (items.length > 5) Expanded(child: _buildDraggableSlot(items[5], isTop: false)) else const Expanded(child: SizedBox.shrink()),
+                        ],
+                      ),
                     ],
+                  );
+                },
+              ),
+
+              // 2. Left Hover-to-Scroll Sensor Pad
+              if (_currentToolPage > 0)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 40,
+                  child: DragTarget<String>(
+                    onWillAcceptWithDetails: (_) {
+                      // Trigger page slide when hovered
+                      _toolsPageController.previousPage(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeInOut);
+                      return false; // Return false so it doesn't consume the drop!
+                    },
+                    builder: (context, candidateData, _) {
+                      // Subtle visual cue ONLY when hovering with a dragged item
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          gradient: candidateData.isNotEmpty
+                              ? LinearGradient(colors: [
+                                  Colors.white.withOpacity(0.15),
+                                  Colors.transparent
+                                ])
+                              : null,
+                        ),
+                        child: candidateData.isNotEmpty
+                            ? const Icon(Icons.arrow_back_ios_rounded,
+                                color: Colors.white54)
+                            : null,
+                      );
+                    },
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: items[3]),
-                      const SizedBox(width: 12),
-                      Expanded(child: items[4]),
-                      const SizedBox(width: 12),
-                      Expanded(child: items[5]),
-                    ],
+                ),
+
+              // 3. Right Hover-to-Scroll Sensor Pad
+              if (_currentToolPage < pages.length - 1)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 40,
+                  child: DragTarget<String>(
+                    onWillAcceptWithDetails: (_) {
+                      // Trigger page slide when hovered
+                      _toolsPageController.nextPage(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeInOut);
+                      return false; // Return false so it doesn't consume the drop!
+                    },
+                    builder: (context, candidateData, _) {
+                      // Subtle visual cue ONLY when hovering with a dragged item
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          gradient: candidateData.isNotEmpty
+                              ? LinearGradient(colors: [
+                                  Colors.transparent,
+                                  Colors.white.withOpacity(0.15)
+                                ])
+                              : null,
+                        ),
+                        child: candidateData.isNotEmpty
+                            ? const Icon(Icons.arrow_forward_ios_rounded,
+                                color: Colors.white54)
+                            : null,
+                      );
+                    },
                   ),
-                ],
-              );
-            },
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
@@ -467,44 +579,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildVerticalActionChip(BuildContext context, String label,
-      IconData icon, Color iconColor, Widget page) {
+  Widget _buildVerticalActionChip(BuildContext context, String label, IconData icon, Color iconColor, Widget page, {Stream<bool>? warningStream}) {
     return _BouncyButton(
-      onTap: () => Navigator.push(
-          context, MaterialPageRoute(builder: (context) => page)),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white10),
-          color: Colors.white.withOpacity(0.03),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: iconColor, size: 22),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.robotoSlab(
-                  color: Colors.white70, fontSize: 11, height: 1.1),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => page)),
+      child: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white10),
+              color: Colors.white.withOpacity(0.03),
             ),
-          ],
-        ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: iconColor, size: 22),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.robotoSlab(color: Colors.white70, fontSize: 11, height: 1.1),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          
+          // --- Mini Warning Badge for Bottom Grid ---
+          if (warningStream != null)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: StreamBuilder<bool>(
+                stream: warningStream,
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data == true) {
+                    return const Icon(Icons.warning_rounded, color: Color(0xFFE71D36), size: 14);
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
 
-  // [UPDATED] Re-engineered to support an optional warning badge overlay
-  Widget _buildCompactCard(BuildContext context, String title, IconData icon,
-      Color color, Widget page,
-      {Stream<bool>? warningStream}) {
+  Widget _buildCompactCard(BuildContext context, String title, IconData icon, Color color, Widget page, {Stream<bool>? warningStream}) {
     return _BouncyButton(
-      onTap: () => Navigator.push(
-          context, MaterialPageRoute(builder: (context) => page)),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => page)),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
@@ -519,15 +645,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 children: [
                   Icon(icon, color: color, size: 36),
                   const SizedBox(height: 10),
-                  Text(title,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.robotoSlab(
-                          color: Colors.white, fontWeight: FontWeight.w500)),
+                  Text(title, textAlign: TextAlign.center, style: GoogleFonts.robotoSlab(color: Colors.white, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
-
-            // The Dynamic Warning Badge
             if (warningStream != null)
               Positioned(
                 top: 8,
@@ -538,13 +659,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     if (snapshot.hasData && snapshot.data == true) {
                       return Container(
                         padding: const EdgeInsets.all(6),
-                        // decoration: BoxDecoration(
-                        //   color: const Color.fromARGB(255, 252, 213, 217)
-                        //       .withOpacity(0.1), // Light Red glow
-                        //   shape: BoxShape.circle,
-                        // ),
-                        child: const Icon(Icons.warning_rounded,
-                            color: Color(0xFFE71D36), size: 14),
+                        child: const Icon(Icons.warning_rounded, color: Color(0xFFE71D36), size: 14),
                       );
                     }
                     return const SizedBox.shrink();
@@ -557,10 +672,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(title,
-        style: GoogleFonts.robotoSlab(
-            color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold));
+  Widget _buildSectionHeader(String title, {bool showHint = false}) {
+    return Row(
+      children: [
+        Text(title, style: GoogleFonts.robotoSlab(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        if (showHint) ...[
+          const SizedBox(width: 8),
+          Text("(Hold & Drag to Reorder)", style: GoogleFonts.robotoSlab(color: Colors.white38, fontSize: 10)),
+        ]
+      ],
+    );
   }
 
   Widget _buildAmbientGlow(Alignment alignment, Color color) {
@@ -572,9 +693,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           height: 300,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(color: color, blurRadius: 100, spreadRadius: 50)
-            ],
+            boxShadow: [BoxShadow(color: color, blurRadius: 100, spreadRadius: 50)],
           ),
         ),
       ),
@@ -586,13 +705,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return StreamBuilder(
       stream: Rx.combineLatest3(
-        // [UPDATED] Use Auto-Calculated Net Worth instead of Account Balance
         netWorthService.getAutoCalculatedNetWorth(),
         dashboardService.getMonthlyTransactions(now.year, now.month),
         dashboardService.getFinancialRecords(),
-        (double netWorth, List<DashboardTransaction> txns,
-                List<FinancialRecord> records) =>
-            [netWorth, txns, records],
+        (double netWorth, List<DashboardTransaction> txns, List<FinancialRecord> records) => [netWorth, txns, records],
       ),
       builder: (context, snapshot) {
         double currentNetWorth = 0.0;
@@ -607,19 +723,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           final recordId = "${now.year}${now.month.toString().padLeft(2, '0')}";
           final currentRecord = records.firstWhere(
             (r) => r.id == recordId,
-            orElse: () => FinancialRecord(
-                id: '',
-                year: now.year,
-                month: now.month,
-                salary: 0,
-                extraIncome: 0,
-                emi: 0,
-                effectiveIncome: 0,
-                allocations: {},
-                allocationPercentages: {},
-                bucketOrder: [],
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now()),
+            orElse: () => FinancialRecord(id: '', year: now.year, month: now.month, salary: 0, extraIncome: 0, emi: 0, effectiveIncome: 0, allocations: {}, allocationPercentages: {}, bucketOrder: [], createdAt: DateTime.now(), updatedAt: DateTime.now()),
           );
 
           currentRecord.allocations.forEach((key, value) {
@@ -633,9 +737,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               if (txn.category == 'Non-Calculated Expense') exclude = true;
             }
             if (!exclude) {
-              if (txn.type == 'Expense' ||
-                  (txn.type == 'Transfer Out' &&
-                      txn.sourceType == TransactionSourceType.creditCard)) {
+              if (txn.type == 'Expense' || (txn.type == 'Transfer Out' && txn.sourceType == TransactionSourceType.creditCard)) {
                 totalSpent += txn.amount;
               }
             }
@@ -650,10 +752,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(0.08),
-                Colors.white.withOpacity(0.03),
-              ],
+              colors: [Colors.white.withOpacity(0.08), Colors.white.withOpacity(0.03)],
             ),
             border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
@@ -669,124 +768,60 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     padding: const EdgeInsets.only(top: 4),
                     child: Row(
                       children: [
-                        // [UPDATED] Changed the Title
-                        Text("Total Net Worth",
-                            style: GoogleFonts.robotoSlab(
-                                color: Colors.white70, fontSize: 13)),
+                        Text("Total Net Worth", style: GoogleFonts.robotoSlab(color: Colors.white70, fontSize: 13)),
                         const SizedBox(width: 8),
                         GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _isBalanceVisible = !_isBalanceVisible;
-                            });
-                          },
-                          child: Icon(
-                            _isBalanceVisible
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: Colors.white54,
-                            size: 18,
-                          ),
+                          onTap: () => setState(() => _isBalanceVisible = !_isBalanceVisible),
+                          child: Icon(_isBalanceVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: Colors.white54, size: 18),
                         ),
                       ],
                     ),
                   ),
                   StreamBuilder(
-                    stream: Stream.periodic(
-                        const Duration(seconds: 1), (_) => DateTime.now()),
+                    stream: Stream.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
                     builder: (context, snapshot) {
                       final now = DateTime.now();
-                      final months = [
-                        "Jan",
-                        "Feb",
-                        "Mar",
-                        "Apr",
-                        "May",
-                        "Jun",
-                        "Jul",
-                        "Aug",
-                        "Sep",
-                        "Oct",
-                        "Nov",
-                        "Dec"
-                      ];
-                      final weekdays = [
-                        "Mon",
-                        "Tue",
-                        "Wed",
-                        "Thu",
-                        "Fri",
-                        "Sat",
-                        "Sun"
-                      ];
+                      final months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                      final weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
                       final dayName = weekdays[now.weekday - 1];
                       final monthName = months[now.month - 1];
                       final dayNum = now.day.toString().padLeft(2, '0');
-                      final dateStr =
-                          "$dayName, $dayNum $monthName ${now.year}";
+                      final dateStr = "$dayName, $dayNum $monthName ${now.year}";
 
                       int hour = now.hour;
                       final String period = hour >= 12 ? 'PM' : 'AM';
                       hour = hour % 12;
                       if (hour == 0) hour = 12;
-                      final timeStr =
-                          "${hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} $period";
+                      final timeStr = "${hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} $period";
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(dateStr,
-                              style: GoogleFonts.robotoSlab(
-                                  color: Colors.white.withOpacity(0.6),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500)),
+                          Text(dateStr, style: GoogleFonts.robotoSlab(color: Colors.white.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w500)),
                           const SizedBox(height: 2),
-                          Text(timeStr,
-                              style: GoogleFonts.robotoSlab(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  fontFeatures: [
-                                    const FontFeature.tabularFigures()
-                                  ])),
+                          Text(timeStr, style: GoogleFonts.robotoSlab(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, fontFeatures: [const FontFeature.tabularFigures()])),
                         ],
                       );
                     },
                   ),
                 ],
               ),
-              // [UPDATED] Bound the visibility variable to currentNetWorth
               Text(
-                  _isBalanceVisible
-                      ? "₹ ${currentNetWorth.toStringAsFixed(2)}"
-                      : "₹ ${"*" * currentNetWorth.toStringAsFixed(2).length}",
-                  style: GoogleFonts.openSans(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1)),
+                  _isBalanceVisible ? "₹ ${currentNetWorth.toStringAsFixed(2)}" : "₹ ${"*" * currentNetWorth.toStringAsFixed(2).length}",
+                  style: GoogleFonts.openSans(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1)),
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildMiniStat(
-                      "Monthly Budget",
-                      "    ₹ ${monthlyBudget.toStringAsFixed(2)}",
-                      Colors.blueAccent),
+                  _buildMiniStat("Monthly Budget", "    ₹ ${monthlyBudget.toStringAsFixed(2)}", Colors.blueAccent),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          CircleAvatar(
-                              radius: 4,
-                              backgroundColor: _isBudgetMode
-                                  ? Colors.greenAccent
-                                  : Colors.orangeAccent),
+                          CircleAvatar(radius: 4, backgroundColor: _isBudgetMode ? Colors.greenAccent : Colors.orangeAccent),
                           const SizedBox(width: 8),
-                          Text(_isBudgetMode ? "Budget Spent" : "Spent so far",
-                              style: GoogleFonts.robotoSlab(
-                                  color: Colors.white54, fontSize: 11)),
+                          Text(_isBudgetMode ? "Budget Spent" : "Spent so far", style: GoogleFonts.robotoSlab(color: Colors.white54, fontSize: 11)),
                           const SizedBox(width: 6),
                           SizedBox(
                             height: 20,
@@ -796,29 +831,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               constraints: const BoxConstraints(),
                               iconSize: 16,
                               tooltip: "Budget Mode",
-                              onPressed: () {
-                                setState(() {
-                                  _isBudgetMode = !_isBudgetMode;
-                                });
-                              },
-                              icon: Icon(
-                                _isBudgetMode
-                                    ? Icons.savings_rounded
-                                    : Icons.savings_outlined,
-                                color: _isBudgetMode
-                                    ? const Color(0xFF00B4D8)
-                                    : Colors.white24,
-                              ),
+                              onPressed: () => setState(() => _isBudgetMode = !_isBudgetMode),
+                              icon: Icon(_isBudgetMode ? Icons.savings_rounded : Icons.savings_outlined, color: _isBudgetMode ? const Color(0xFF00B4D8) : Colors.white24),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text("    ₹ ${totalSpent.toStringAsFixed(2)}",
-                          style: GoogleFonts.openSans(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600)),
+                      Text("    ₹ ${totalSpent.toStringAsFixed(2)}", style: GoogleFonts.openSans(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ],
@@ -838,17 +858,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             CircleAvatar(radius: 4, backgroundColor: color),
             const SizedBox(width: 8),
-            Text(label,
-                style: GoogleFonts.robotoSlab(
-                    color: Colors.white54, fontSize: 11)),
+            Text(label, style: GoogleFonts.robotoSlab(color: Colors.white54, fontSize: 11)),
           ],
         ),
         const SizedBox(height: 4),
-        Text(value,
-            style: GoogleFonts.openSans(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600)),
+        Text(value, style: GoogleFonts.openSans(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -856,7 +870,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // The app just came back from the background. Re-evaluate the backup!
       _checkBackupStatus();
     }
   }
@@ -872,21 +885,15 @@ class _BouncyButton extends StatefulWidget {
   State<_BouncyButton> createState() => _BouncyButtonState();
 }
 
-class _BouncyButtonState extends State<_BouncyButton>
-    with SingleTickerProviderStateMixin {
+class _BouncyButtonState extends State<_BouncyButton> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
